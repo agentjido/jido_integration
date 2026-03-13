@@ -30,6 +30,9 @@ The runtime exposes:
 Handlers stay explicit and host-controlled through
 `Jido.Integration.V2.DispatchRuntime.Handler`.
 
+Hosted webhook routes typically arrive here from `core/webhook_router` after
+`core/ingress` has admitted the trigger into canonical control-plane truth.
+
 ## Lifecycle
 
 1. `enqueue/3` or `enqueue/4` persists a durable dispatch record keyed to the
