@@ -64,7 +64,8 @@ defmodule Jido.Integration.Workspace.MixProject do
         "README.md",
         "AGENTS.md",
         "docs/connector_review_baseline.md",
-        "docs/conformance_workflow.md"
+        "docs/conformance_workflow.md",
+        "docs/connector_scaffolding.md"
       ]
     ]
   end

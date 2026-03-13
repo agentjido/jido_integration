@@ -1,0 +1,47 @@
+defmodule <%= @project_module %> do
+  use Mix.Project
+
+  def project do
+    [
+      app: :<%= @app_name %>,
+      version: "0.1.0",
+      elixir: "~> 1.18",
+      start_permanent: Mix.env() == :prod,
+      deps: deps(),
+      dialyzer: dialyzer(),
+      docs: docs(),
+      name: "<%= @project_name %>",
+      description: "<%= @package_description %>"
+    ]
+  end
+
+  def application do
+    [
+      extra_applications: [:logger]
+    ]
+  end
+
+  defp deps do
+    [
+      {:jido_integration_v2_contracts, path: "<%= @contracts_dep_path %>"},
+<%= if @direct_runtime do %>      {:jido_action, path: "<%= @jido_action_dep_path %>"},
+      {:jido_integration_v2_direct_runtime, path: "<%= @runtime_dep_path %>"},
+<% else %>      {:<%= @runtime_dependency_app %>, path: "<%= @runtime_dep_path %>"},
+<% end %>      {:jido_integration_v2_conformance, path: "<%= @conformance_dep_path %>", only: :test, runtime: false},
+      {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
+    ]
+  end
+
+  defp dialyzer do
+    [plt_add_deps: :apps_direct]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md"]
+    ]
+  end
+end

@@ -1,0 +1,68 @@
+defmodule <%= @handler_module %> do
+  @moduledoc false
+
+  use Jido.Action,
+    name: "<%= @connector_name %>_perform",
+    description: "Placeholder direct capability for the scaffolded connector",
+    schema: [
+      message: [type: :string, required: true]
+    ]
+
+  alias Jido.Integration.V2.ArtifactBuilder
+  alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.RuntimeResult
+
+  @impl true
+  def run(params, context) do
+    subject = context.credential_lease.subject
+    message = Map.fetch!(params, :message)
+    auth_binding = ArtifactBuilder.digest(lease_value(context.credential_lease.payload, :api_token))
+
+    artifact =
+      ArtifactBuilder.build!(
+        run_id: context.run_id,
+        attempt_id: context.attempt_id,
+        artifact_type: :tool_output,
+        key: "<%= @connector_name %>/#{context.run_id}/#{context.attempt_id}/perform.term",
+        content: %{
+          message: message,
+          handled_by: subject,
+          auth_binding: auth_binding,
+          execution_policy: context.policy_inputs.execution
+        },
+        metadata: %{
+          connector: "<%= @connector_name %>",
+          capability_id: context.capability.id,
+          auth_binding: auth_binding
+        }
+      )
+
+    {:ok,
+     RuntimeResult.new!(%{
+       output: %{
+         message: message,
+         handled_by: subject,
+         auth_binding: auth_binding
+       },
+       events: [
+         %{
+           type: "<%= @conformance_event_type %>",
+           stream: :control,
+           payload: %{
+             message: message,
+             handled_by: subject,
+             auth_binding: auth_binding
+           }
+         }
+       ],
+       artifacts: [artifact]
+     })}
+  end
+
+  defp lease_value(payload, key) do
+    case Contracts.get(payload, key) do
+      nil -> raise ArgumentError, "missing credential lease field #{inspect(key)}"
+      value -> value
+    end
+  end
+end

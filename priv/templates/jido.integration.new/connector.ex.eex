@@ -1,0 +1,41 @@
+defmodule <%= @connector_module %> do
+  @moduledoc """
+  Scaffolded <%= Atom.to_string(@runtime_class) %> connector package.
+  """
+
+  @behaviour Jido.Integration.V2.Connector
+
+  alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.Manifest
+  alias <%= @handler_module %>
+
+  @impl true
+  def manifest do
+    Manifest.new!(%{
+      connector: "<%= @connector_name %>",
+      capabilities: [
+        Capability.new!(%{
+          id: "<%= @capability_id %>",
+          connector: "<%= @connector_name %>",
+          runtime_class: <%= @runtime_class_literal %>,
+          kind: <%= @capability_kind_literal %>,
+          transport_profile: <%= @transport_profile_literal %>,
+          handler: <%= @handler_alias %>,
+          metadata: %{
+            required_scopes: ["<%= @required_scope %>"],
+            policy: %{
+              environment: %{allowed: <%= @environment_allowed_literal %>},
+              sandbox: %{
+                level: <%= @sandbox_level_literal %>,
+                egress: <%= @sandbox_egress_literal %>,
+                approvals: <%= @sandbox_approvals_literal %>,
+<%= if @session_runtime do %>                file_scope: <%= @sandbox_file_scope_literal %>,
+<% end %>                allowed_tools: <%= @allowed_tools_literal %>
+              }
+            }
+          }
+        })
+      ]
+    })
+  end
+end

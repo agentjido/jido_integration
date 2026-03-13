@@ -56,6 +56,9 @@ Current app packages:
 - Treat `platform` as the public facade package. The root workspace must not
   reclaim app identity `:jido_integration_v2`.
 - Treat connector packages as isolated deliverables. Each connector should compile, test, lint, type-check, and document cleanly on its own.
+- Use the root `mix jido.integration.new` scaffold for new connector packages
+  so they start with explicit child-package deps, runtime-fit handlers, and
+  package-local conformance coverage.
 
 ## Required Validation Workflow
 
@@ -107,6 +110,9 @@ mix mr.docs
 - When adding a new package, wire it into the root monorepo task surface so it is covered by the same commands as the rest of the repo.
 - When changing connector review semantics, keep `core/conformance`, the root
   `mix jido.conformance` task, and connector companion evidence modules aligned.
+- When adding a new connector package, prefer generating it from
+  `mix jido.integration.new <connector_name>` and then editing the emitted
+  package in place instead of hand-rolling a new child project.
 - Keep README/package docs aligned with the current slice. Do not leave architecture or package docs behind the code.
 - Prefer TDD/RGR for new vertical slices: add or extend tests first, implement, then run the full root gate.
 - Do not silently weaken quality gates to get green CI. Fix package boundaries or dependency shape instead.

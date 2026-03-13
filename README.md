@@ -90,6 +90,8 @@ Connector quality surface:
 - `mix jido.conformance <ConnectorModule>` runs the stable
   `:connector_foundation` profile from the repo root
 - the root task delegates into `core/conformance`; the root stays tooling-only
+- `mix jido.integration.new <connector_name>` scaffolds a top-level
+  `connectors/<name>/` package for `direct`, `session`, or `stream` runtimes
 - connectors can publish deterministic fixture evidence through an optional
   `<ConnectorModule>.Conformance` companion module without depending on the
   root
@@ -112,6 +114,9 @@ The connector review baseline notes live in
 The conformance workflow and companion-module contract live in
 `docs/conformance_workflow.md`.
 
+The connector scaffold task and generated package contract live in
+`docs/connector_scaffolding.md`.
+
 ## Monorepo Commands
 
 Run these from the repo root:
@@ -129,6 +134,7 @@ mix quality
 mix docs.all
 mix ci
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix jido.integration.new acme_crm --runtime-class direct
 ```
 
 `mix ci` is the main acceptance gate.

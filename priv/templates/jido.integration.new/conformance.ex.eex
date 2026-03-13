@@ -1,0 +1,22 @@
+defmodule <%= @conformance_module %> do
+  @moduledoc false
+
+  @spec fixtures() :: [map()]
+  def fixtures do
+    [
+      %{
+        capability_id: "<%= @capability_id %>",
+        input: <%= @fixture_input_literal %>,
+        credential_ref: <%= @fixture_credential_ref_literal %>,
+        credential_lease: <%= @fixture_credential_lease_literal %>,
+        context: <%= @fixture_context_literal %>,
+        expect: %{
+          output: <%= @fixture_expect_output_literal %>,
+          event_types: <%= @fixture_event_types_literal %>,
+          artifact_types: <%= @fixture_artifact_types_literal %>,
+          artifact_keys: <%= @fixture_artifact_keys_literal %>
+        }
+      }
+    ]
+  end
+end
