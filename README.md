@@ -49,7 +49,14 @@ jido_integration/
 Runtime families proved in the repo today:
 
 - `:direct`
+  - `github.issue.list`
+  - `github.issue.fetch`
   - `github.issue.create`
+  - `github.issue.update`
+  - `github.issue.label`
+  - `github.issue.close`
+  - `github.comment.create`
+  - `github.comment.update`
 - `:session`
   - `codex.exec.session`
 - `:stream`
@@ -71,6 +78,8 @@ The connector contract baseline also proves:
 - admitted runs emit connector-specific review events plus canonical
   `artifact.recorded`
 - every baseline run persists one durable review artifact reference
+- the GitHub connector defaults to a deterministic provider while keeping a
+  package-local live client path available
 - session and stream reuse are keyed to credential ref, not only subject
 - runtime sandbox and environment posture stay explicit at the policy boundary
 
