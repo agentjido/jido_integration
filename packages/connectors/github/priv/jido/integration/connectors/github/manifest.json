@@ -1,0 +1,331 @@
+{
+  "id": "github",
+  "display_name": "GitHub",
+  "vendor": "GitHub, Inc.",
+  "domain": "saas",
+  "version": "0.1.0",
+  "quality_tier": "bronze",
+  "telemetry_namespace": "jido.integration.github",
+  "auth": [
+    {
+      "id": "oauth2",
+      "type": "oauth2",
+      "display_name": "GitHub OAuth2",
+      "secret_refs": ["github_client_id", "github_client_secret"],
+      "scopes": ["repo", "public_repo", "read:org"],
+      "token_semantics": "bearer",
+      "rotation_policy": {"required": false, "interval_days": null},
+      "tenant_binding": "tenant_only",
+      "health_check": {"enabled": true, "interval_s": 3600},
+      "oauth": {
+        "grant_type": "authorization_code",
+        "auth_url": "https://github.com/login/oauth/authorize",
+        "token_url": "https://github.com/login/oauth/access_token",
+        "revocation_url": null,
+        "pkce_required": false,
+        "refresh_supported": true,
+        "default_scopes": ["public_repo"]
+      }
+    }
+  ],
+  "operations": [
+    {
+      "id": "github.list_issues",
+      "summary": "List issues for a repository",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "owner": {"type": "string"},
+          "repo": {"type": "string"},
+          "state": {"type": "string", "enum": ["open", "closed", "all"]},
+          "per_page": {"type": "integer", "default": 30},
+          "page": {"type": "integer", "default": 1}
+        },
+        "required": ["owner", "repo"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "issues": {"type": "array"},
+          "total_count": {"type": "integer"}
+        }
+      },
+      "errors": [
+        {"code": "github.invalid_request", "class": "invalid_request", "retryability": "terminal"},
+        {"code": "github.auth_failed", "class": "auth_failed", "retryability": "terminal"},
+        {"code": "github.rate_limited", "class": "rate_limited", "retryability": "retryable"},
+        {"code": "github.unavailable", "class": "unavailable", "retryability": "retryable"}
+      ],
+      "idempotency": "none",
+      "timeout_ms": 15000,
+      "rate_limit": "gateway_default",
+      "required_scopes": ["public_repo"]
+    },
+    {
+      "id": "github.fetch_issue",
+      "summary": "Fetch a single issue by number",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "owner": {"type": "string"},
+          "repo": {"type": "string"},
+          "issue_number": {"type": "integer"}
+        },
+        "required": ["owner", "repo", "issue_number"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "number": {"type": "integer"},
+          "url": {"type": "string"},
+          "html_url": {"type": "string"},
+          "state": {"type": "string"},
+          "title": {"type": "string"}
+        }
+      },
+      "errors": [
+        {"code": "github.invalid_request", "class": "invalid_request", "retryability": "terminal"},
+        {"code": "github.auth_failed", "class": "auth_failed", "retryability": "terminal"},
+        {"code": "github.rate_limited", "class": "rate_limited", "retryability": "retryable"},
+        {"code": "github.unavailable", "class": "unavailable", "retryability": "retryable"}
+      ],
+      "idempotency": "none",
+      "timeout_ms": 15000,
+      "rate_limit": "gateway_default",
+      "required_scopes": ["public_repo"]
+    },
+    {
+      "id": "github.create_issue",
+      "summary": "Create a new issue in a repository",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "owner": {"type": "string"},
+          "repo": {"type": "string"},
+          "title": {"type": "string"},
+          "body": {"type": "string"},
+          "labels": {"type": "array", "items": {"type": "string"}},
+          "assignees": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["owner", "repo", "title"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "number": {"type": "integer"},
+          "url": {"type": "string"},
+          "html_url": {"type": "string"}
+        }
+      },
+      "errors": [
+        {"code": "github.invalid_request", "class": "invalid_request", "retryability": "terminal"},
+        {"code": "github.auth_failed", "class": "auth_failed", "retryability": "terminal"},
+        {"code": "github.rate_limited", "class": "rate_limited", "retryability": "retryable"},
+        {"code": "github.unavailable", "class": "unavailable", "retryability": "retryable"}
+      ],
+      "idempotency": "optional",
+      "timeout_ms": 15000,
+      "rate_limit": "gateway_default",
+      "required_scopes": ["repo"]
+    },
+    {
+      "id": "github.update_issue",
+      "summary": "Update an existing issue",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "owner": {"type": "string"},
+          "repo": {"type": "string"},
+          "issue_number": {"type": "integer"},
+          "title": {"type": "string"},
+          "body": {"type": "string"},
+          "state": {"type": "string", "enum": ["open", "closed"]},
+          "labels": {"type": "array", "items": {"type": "string"}},
+          "assignees": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["owner", "repo", "issue_number"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "number": {"type": "integer"},
+          "url": {"type": "string"},
+          "html_url": {"type": "string"},
+          "state": {"type": "string"},
+          "title": {"type": "string"},
+          "labels": {"type": "array"}
+        }
+      },
+      "errors": [
+        {"code": "github.invalid_request", "class": "invalid_request", "retryability": "terminal"},
+        {"code": "github.auth_failed", "class": "auth_failed", "retryability": "terminal"},
+        {"code": "github.rate_limited", "class": "rate_limited", "retryability": "retryable"},
+        {"code": "github.unavailable", "class": "unavailable", "retryability": "retryable"}
+      ],
+      "idempotency": "optional",
+      "timeout_ms": 15000,
+      "rate_limit": "gateway_default",
+      "required_scopes": ["repo"]
+    },
+    {
+      "id": "github.label_issue",
+      "summary": "Add labels to an issue",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "owner": {"type": "string"},
+          "repo": {"type": "string"},
+          "issue_number": {"type": "integer"},
+          "labels": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["owner", "repo", "issue_number", "labels"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "labels": {"type": "array"}
+        }
+      },
+      "errors": [
+        {"code": "github.invalid_request", "class": "invalid_request", "retryability": "terminal"},
+        {"code": "github.auth_failed", "class": "auth_failed", "retryability": "terminal"},
+        {"code": "github.rate_limited", "class": "rate_limited", "retryability": "retryable"},
+        {"code": "github.unavailable", "class": "unavailable", "retryability": "retryable"}
+      ],
+      "idempotency": "optional",
+      "timeout_ms": 15000,
+      "rate_limit": "gateway_default",
+      "required_scopes": ["repo"]
+    },
+    {
+      "id": "github.create_comment",
+      "summary": "Add a comment to an issue or pull request",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "owner": {"type": "string"},
+          "repo": {"type": "string"},
+          "issue_number": {"type": "integer"},
+          "body": {"type": "string"}
+        },
+        "required": ["owner", "repo", "issue_number", "body"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "url": {"type": "string"},
+          "html_url": {"type": "string"}
+        }
+      },
+      "errors": [
+        {"code": "github.invalid_request", "class": "invalid_request", "retryability": "terminal"},
+        {"code": "github.auth_failed", "class": "auth_failed", "retryability": "terminal"},
+        {"code": "github.rate_limited", "class": "rate_limited", "retryability": "retryable"},
+        {"code": "github.unavailable", "class": "unavailable", "retryability": "retryable"}
+      ],
+      "idempotency": "optional",
+      "timeout_ms": 15000,
+      "rate_limit": "gateway_default",
+      "required_scopes": ["repo"]
+    },
+    {
+      "id": "github.update_comment",
+      "summary": "Update an existing issue comment",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "owner": {"type": "string"},
+          "repo": {"type": "string"},
+          "comment_id": {"type": "integer"},
+          "body": {"type": "string"}
+        },
+        "required": ["owner", "repo", "comment_id", "body"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "url": {"type": "string"},
+          "html_url": {"type": "string"},
+          "body": {"type": "string"}
+        }
+      },
+      "errors": [
+        {"code": "github.invalid_request", "class": "invalid_request", "retryability": "terminal"},
+        {"code": "github.auth_failed", "class": "auth_failed", "retryability": "terminal"},
+        {"code": "github.rate_limited", "class": "rate_limited", "retryability": "retryable"},
+        {"code": "github.unavailable", "class": "unavailable", "retryability": "retryable"}
+      ],
+      "idempotency": "optional",
+      "timeout_ms": 15000,
+      "rate_limit": "gateway_default",
+      "required_scopes": ["repo"]
+    },
+    {
+      "id": "github.close_issue",
+      "summary": "Close an issue",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "owner": {"type": "string"},
+          "repo": {"type": "string"},
+          "issue_number": {"type": "integer"}
+        },
+        "required": ["owner", "repo", "issue_number"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "number": {"type": "integer"},
+          "url": {"type": "string"},
+          "html_url": {"type": "string"},
+          "state": {"type": "string"}
+        }
+      },
+      "errors": [
+        {"code": "github.invalid_request", "class": "invalid_request", "retryability": "terminal"},
+        {"code": "github.auth_failed", "class": "auth_failed", "retryability": "terminal"},
+        {"code": "github.rate_limited", "class": "rate_limited", "retryability": "retryable"},
+        {"code": "github.unavailable", "class": "unavailable", "retryability": "retryable"}
+      ],
+      "idempotency": "optional",
+      "timeout_ms": 15000,
+      "rate_limit": "gateway_default",
+      "required_scopes": ["repo"]
+    }
+  ],
+  "triggers": [
+    {
+      "id": "github.webhook.push",
+      "class": "webhook",
+      "summary": "GitHub push, PR, and issue webhook events",
+      "payload_schema": {"type": "object"},
+      "delivery_semantics": "at_least_once",
+      "ordering_scope": "tenant_connector",
+      "checkpoint_mode": "cursor",
+      "dedupe_key_path": "$.headers.x-github-delivery",
+      "max_delivery_lag_s": 300,
+      "verification": {
+        "type": "hmac",
+        "algorithm": "sha256",
+        "header": "x-hub-signature-256"
+      },
+      "callback_topology": "dynamic_per_install",
+      "replay_window_days": 7,
+      "backfill_supported": false
+    }
+  ],
+  "capabilities": {
+    "auth.oauth2": "native",
+    "auth.token_refresh": "native",
+    "triggers.webhook": "native",
+    "devtools.issues.read": "native",
+    "devtools.issues.write": "native",
+    "devtools.repos.read": "native"
+  }
+}
