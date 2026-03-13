@@ -9,7 +9,6 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.DirectRuntime
   alias Jido.Integration.V2.Gateway.Policy
-  alias Jido.Integration.V2.RuntimeResult
   alias Jido.Integration.V2.SessionKernel
   alias Jido.Integration.V2.StreamRuntime
 
@@ -208,12 +207,11 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
 
   defp normalize_credential_ref(raw_fixture) do
     case SuiteSupport.fetch(raw_fixture, :credential_ref) do
+      %CredentialRef{} = credential_ref ->
+        {:ok, credential_ref}
+
       credential_ref when is_map(credential_ref) ->
-        if struct_instance?(credential_ref, CredentialRef) do
-          {:ok, credential_ref}
-        else
-          {:ok, CredentialRef.new!(credential_ref)}
-        end
+        {:ok, CredentialRef.new!(credential_ref)}
 
       nil ->
         {:error, "fixtures must declare credential_ref"}
@@ -227,12 +225,11 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
 
   defp normalize_credential_lease(raw_fixture) do
     case SuiteSupport.fetch(raw_fixture, :credential_lease) do
+      %CredentialLease{} = credential_lease ->
+        {:ok, credential_lease}
+
       credential_lease when is_map(credential_lease) ->
-        if struct_instance?(credential_lease, CredentialLease) do
-          {:ok, credential_lease}
-        else
-          {:ok, CredentialLease.new!(credential_lease)}
-        end
+        {:ok, CredentialLease.new!(credential_lease)}
 
       nil ->
         {:error, "fixtures must declare credential_lease"}
@@ -263,11 +260,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
 
     case dispatch(capability, fixture.input, build_context(capability, fixture)) do
       {:ok, result} ->
-        if struct_instance?(result, RuntimeResult) do
-          {:ok, result}
-        else
-          {:error, "runtime did not return a RuntimeResult"}
-        end
+        {:ok, result}
 
       {:error, reason, _result} ->
         {:error, inspect(reason)}
@@ -373,7 +366,4 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
   end
 
   defp deep_merge(_left, right), do: right
-
-  defp struct_instance?(value, module),
-    do: is_map(value) and Map.get(value, :__struct__) == module
 end

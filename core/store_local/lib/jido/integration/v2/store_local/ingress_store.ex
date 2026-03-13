@@ -13,6 +13,7 @@ defmodule Jido.Integration.V2.StoreLocal.IngressStore do
     Storage.transaction(fun)
   end
 
+  @spec rollback(term()) :: no_return()
   @impl true
   def rollback(reason) do
     Storage.rollback(reason)

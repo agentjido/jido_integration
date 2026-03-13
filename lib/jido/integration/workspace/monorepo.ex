@@ -51,8 +51,19 @@ defmodule Jido.Integration.Workspace.Monorepo do
   def run!(task, extra_args \\ []) do
     Enum.each(project_paths(), fn project_path ->
       ensure_project_deps!(project_path, task)
-      run_project!(project_path, mix_args(task, extra_args))
+      run_project!(project_path, task, mix_args(task, extra_args))
     end)
+  end
+
+  @spec command_env(String.t(), task_name()) :: [{String.t(), String.t()}]
+  def command_env(project_path, task) do
+    project_root = Path.expand(project_path, root_dir())
+
+    [
+      {"MIX_DEPS_PATH", Path.join(project_root, "deps")},
+      {"MIX_BUILD_PATH", Path.join(project_root, "_build/#{mix_env(task)}")},
+      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")}
+    ]
   end
 
   defp ensure_project_deps!(_project_path, :deps_get), do: :ok
@@ -62,26 +73,20 @@ defmodule Jido.Integration.Workspace.Monorepo do
 
     if File.exists?(Path.join(project_root, "mix.lock")) and
          not File.dir?(Path.join(project_root, "deps")) do
-      run_project!(project_path, mix_args(:deps_get, []))
+      run_project!(project_path, :deps_get, mix_args(:deps_get, []))
     else
       :ok
     end
   end
 
-  defp run_project!(project_path, args) do
+  defp run_project!(project_path, task, args) do
     IO.puts("==> #{project_path}: mix #{Enum.join(args, " ")}")
 
     project_root = Path.expand(project_path, root_dir())
 
-    env = [
-      {"MIX_DEPS_PATH", Path.join(project_root, "deps")},
-      {"MIX_BUILD_PATH", Path.join(project_root, "_build")},
-      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")}
-    ]
-
     case System.cmd("mix", args,
            cd: project_root,
-           env: env,
+           env: command_env(project_path, task),
            into: IO.stream(:stdio, :line),
            stderr_to_stdout: true
          ) do
@@ -92,4 +97,7 @@ defmodule Jido.Integration.Workspace.Monorepo do
         Mix.raise("command failed in #{project_path} with exit code #{exit_code}")
     end
   end
+
+  defp mix_env(:test), do: "test"
+  defp mix_env(_task), do: System.get_env("MIX_ENV", "dev")
 end

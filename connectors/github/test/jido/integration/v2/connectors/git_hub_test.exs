@@ -1,9 +1,9 @@
 defmodule Jido.Integration.V2.Connectors.GitHubTest do
   use ExUnit.Case, async: true
 
+  alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
-  alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.DirectRuntime
 
   @github_capabilities [

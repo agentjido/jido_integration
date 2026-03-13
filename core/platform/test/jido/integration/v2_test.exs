@@ -3,8 +3,8 @@ defmodule Jido.Integration.V2Test do
 
   alias Jido.Integration.V2.Connectors.CodexCli
   alias Jido.Integration.V2.Connectors.GitHub
-  alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Connectors.MarketData
+  alias Jido.Integration.V2.InvocationRequest
 
   @github %{
     connector: GitHub,

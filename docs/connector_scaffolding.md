@@ -47,12 +47,16 @@ explicit `path:` deps only for the child packages it actually needs.
 
 Generated files include:
 
-- package-local `mix.exs`, `.formatter.exs`, and `.gitignore`
+- package-local `mix.exs`, `mix.lock`, `.formatter.exs`, and `.gitignore`
 - a connector module that publishes `Manifest` and `Capability`
 - a runtime-class-appropriate action or provider skeleton
 - a `<ConnectorModule>.Conformance` companion module with deterministic fixtures
 - package-local tests, including a baseline conformance test
 - a package README suitable for `mix docs`
+
+When the workspace root already has a `mix.lock`, the scaffold copies that lock
+snapshot into the new package so it participates in the same monorepo
+dependency surface as the existing child packages.
 
 ## Current Options
 

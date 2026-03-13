@@ -33,4 +33,21 @@ defmodule Jido.Integration.Workspace.MonorepoTest do
     assert Monorepo.mix_args(:test, ["--seed", "0"]) == ["test", "--seed", "0"]
     assert Monorepo.mix_args(:format, ["--check-formatted"]) == ["format", "--check-formatted"]
   end
+
+  test "uses env-specific build paths for child commands" do
+    test_env = Map.new(Monorepo.command_env("connectors/github", :test))
+    compile_env = Map.new(Monorepo.command_env("core/contracts", :compile))
+
+    assert test_env["MIX_DEPS_PATH"] ==
+             Path.expand("connectors/github/deps", Monorepo.root_dir())
+
+    assert test_env["MIX_BUILD_PATH"] ==
+             Path.expand("connectors/github/_build/test", Monorepo.root_dir())
+
+    assert test_env["MIX_LOCKFILE"] ==
+             Path.expand("connectors/github/mix.lock", Monorepo.root_dir())
+
+    assert compile_env["MIX_BUILD_PATH"] ==
+             Path.expand("core/contracts/_build/dev", Monorepo.root_dir())
+  end
 end

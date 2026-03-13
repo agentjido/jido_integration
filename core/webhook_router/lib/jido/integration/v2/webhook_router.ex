@@ -27,11 +27,13 @@ defmodule Jido.Integration.V2.WebhookRouter do
           | {:secret_resolution_failed, term()}
           | term()
 
+  @type ingress_definition :: struct()
+
   @type webhook_result ::
           {:ok,
            %{
              route: Route.t(),
-             definition: Definition.t(),
+             definition: ingress_definition(),
              ingress: map(),
              dispatch_status: :accepted | :duplicate,
              dispatch: map(),
@@ -79,7 +81,8 @@ defmodule Jido.Integration.V2.WebhookRouter do
     GenServer.call(server, {:resolve_route, lookup})
   end
 
-  @spec build_definition(Route.t(), keyword()) :: {:ok, Definition.t()} | {:error, route_error()}
+  @spec build_definition(Route.t(), keyword()) ::
+          {:ok, ingress_definition()} | {:error, route_error()}
   def build_definition(%Route{} = route, opts \\ []) do
     with {:ok, verification} <- build_verification(route, opts) do
       {:ok,
@@ -191,13 +194,7 @@ defmodule Jido.Integration.V2.WebhookRouter do
           {:error, :route_not_found}
 
         route_id ->
-          case Map.fetch(state.routes, route_id) do
-            {:ok, %Route{} = route} ->
-              if Route.active?(route), do: {:ok, route}, else: {:error, :route_not_found}
-
-            _ ->
-              {:error, :route_not_found}
-          end
+          fetch_active_route(state, route_id)
       end
 
     {:reply, reply, state}
@@ -215,6 +212,16 @@ defmodule Jido.Integration.V2.WebhookRouter do
 
   def handle_call({:resolve_route, _lookup}, _from, state) do
     {:reply, {:error, :route_not_found}, state}
+  end
+
+  defp fetch_active_route(state, route_id) do
+    case Map.fetch(state.routes, route_id) do
+      {:ok, %Route{} = route} ->
+        if Route.active?(route), do: {:ok, route}, else: {:error, :route_not_found}
+
+      _ ->
+        {:error, :route_not_found}
+    end
   end
 
   defp merge_existing_route(%Route{} = route, routes) do

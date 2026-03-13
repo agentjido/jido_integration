@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.StoreLocal do
   alias Jido.Integration.V2.StoreLocal.InstallStore
   alias Jido.Integration.V2.StoreLocal.LeaseStore
   alias Jido.Integration.V2.StoreLocal.RunStore
+  alias Jido.Integration.V2.StoreLocal.Server
   alias Jido.Integration.V2.StoreLocal.TargetStore
 
   @default_storage_dir Path.join(System.tmp_dir!(), "jido_integration_v2_store_local")
@@ -55,6 +56,6 @@ defmodule Jido.Integration.V2.StoreLocal do
 
   @spec reset!() :: :ok
   def reset! do
-    Jido.Integration.V2.StoreLocal.Server.reset!()
+    Server.reset!()
   end
 end

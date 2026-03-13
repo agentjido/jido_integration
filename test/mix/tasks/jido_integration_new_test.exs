@@ -18,6 +18,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert File.exists?(Path.join(package_root, ".gitignore"))
     assert File.exists?(Path.join(package_root, "README.md"))
     assert File.exists?(Path.join(package_root, "mix.exs"))
+    assert File.exists?(Path.join(package_root, "mix.lock"))
     assert File.exists?(Path.join(package_root, "test/test_helper.exs"))
 
     assert File.exists?(Path.join(package_root, "lib/jido/integration/v2/connectors/acme_crm.ex"))
@@ -168,12 +169,11 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       run_task([name, "--workspace-root", workspace_root, "--runtime-class", runtime_class])
       package_root = Path.join(workspace_root, "connectors/#{name}")
 
-      assert_mix!(package_root, ["deps.get"])
-      assert_mix!(package_root, ["compile", "--warnings-as-errors"])
-      assert_mix!(package_root, ["test"])
+      assert_mix!(workspace_root, package_root, ["compile", "--warnings-as-errors"])
+      assert_mix!(workspace_root, package_root, ["test"])
     end
 
-    assert_mix!(Path.join(workspace_root, "connectors/acme_direct"), ["docs"])
+    assert_mix!(workspace_root, Path.join(workspace_root, "connectors/acme_direct"), ["docs"])
   end
 
   defp run_task(args) do
@@ -196,12 +196,18 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     File.ln_s!(Path.join(Monorepo.root_dir(), "core"), Path.join(root, "core"))
     File.ln_s!(Path.expand("../jido_action", Monorepo.root_dir()), Path.join(root, "jido_action"))
     File.ln_s!(Path.expand("../jido_signal", Monorepo.root_dir()), Path.join(root, "jido_signal"))
+    File.ln_s!(Path.join(Monorepo.root_dir(), "deps"), Path.join(root, "deps"))
+    File.ln_s!(Path.join(Monorepo.root_dir(), "mix.lock"), Path.join(root, "mix.lock"))
 
     root
   end
 
-  defp assert_mix!(project_root, args) do
-    env = [{"MIX_BUILD_PATH", Path.join(project_root, "_build")}]
+  defp assert_mix!(workspace_root, project_root, args) do
+    env = [
+      {"MIX_DEPS_PATH", Path.join(workspace_root, "deps")},
+      {"MIX_BUILD_PATH", Path.join(workspace_root, "_build")},
+      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")}
+    ]
 
     case System.cmd("mix", args, cd: project_root, env: env, stderr_to_stdout: true) do
       {output, 0} ->
