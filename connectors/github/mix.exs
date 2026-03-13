@@ -23,7 +23,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
 
   defp deps do
     [
-      {:jido_action, path: "../../../../../../jido_action"},
+      {:jido_action, path: "../../../jido_action"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
       {:jido_integration_v2_direct_runtime, path: "../../core/direct_runtime"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

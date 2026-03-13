@@ -1,41 +1,49 @@
-# Jido Integration V2
+# Jido Integration
 
-Greenfield restart of the integration platform as a thin-root monorepo.
+Tooling-root, non-umbrella Elixir monorepo for the greenfield integration
+platform.
 
-## Shape
+## Repo Shape
 
-Core packages:
+```text
+jido_integration/
+  mix.exs                    # tooling/workspace root only
+  README.md                  # repo architecture + monorepo commands
+  AGENTS.md                  # working contract for future agents
+  lib/                       # root monorepo tooling only
+  test/                      # root tooling tests only
+  docs/                      # repo-level docs only
+  core/
+    platform/               # public facade package (`:jido_integration_v2`)
+    contracts/
+    control_plane/
+    auth/
+    ingress/
+    policy/
+    direct_runtime/
+    session_kernel/
+    stream_runtime/
+    store_postgres/
+  connectors/
+    github/
+    codex_cli/
+    market_data/
+  apps/
+    trading_ops/
+```
 
-- `packages/core/auth`
-- `packages/core/contracts`
-- `packages/core/control_plane`
-- `packages/core/direct_runtime`
-- `packages/core/ingress`
-- `packages/core/policy`
-- `packages/core/session_kernel`
-- `packages/core/store_postgres`
-- `packages/core/stream_runtime`
+## Architecture
 
-Connector packages:
+- the repo root owns monorepo tooling and quality gates only
+- `core/platform` owns app `:jido_integration_v2` and module
+  `Jido.Integration.V2`
+- child projects depend on each other only through explicit `path:` deps
+- no child project depends on the repo root
+- connectors stay opt-in, so apps compile only the integrations they declare
 
-- `packages/connectors/github`
-- `packages/connectors/codex_cli`
-- `packages/connectors/market_data`
+## Current Slice
 
-App packages:
-
-- `packages/apps/trading_ops`
-
-The root app stays thin on purpose:
-
-- public facade only
-- path dependency wiring only
-- monorepo verification commands only
-- no core runtime logic accretes at the root
-
-## Current slice
-
-The repo now proves all three runtime families:
+Runtime families proved in the repo today:
 
 - `:direct`
   - `github.issue.create`
@@ -44,73 +52,47 @@ The repo now proves all three runtime families:
 - `:stream`
   - `market.ticks.pull`
 
-The repo now also proves the first thin app layer:
+Reference app slice:
 
-- `trading_ops`
+- `apps/trading_ops`
   - provisions operator-visible connection state through the public auth API
   - admits a market-alert trigger through `core/ingress`
   - reviews one workflow across market feed pull, analyst session, and operator
     escalation
-  - consumes `TargetDescriptor` compatibility and records the selected
-    `target_id` in durable run, attempt, and event truth
+  - records selected `target_id` values in durable run, attempt, and event
+    truth
 
-The baseline connector contract now also proves:
+The connector contract baseline also proves:
 
-- every baseline connector runs through auth leases, not durable credential truth
-- every admitted run emits connector-specific review events plus canonical `artifact.recorded` events
-- every baseline run persists one durable review artifact reference through the control plane
-- session and stream reuse are keyed to the credential ref, not only the subject
-- connector policy is explicit about runtime-class sandbox and environment posture
+- connectors run through auth leases, not durable credential truth
+- admitted runs emit connector-specific review events plus canonical
+  `artifact.recorded`
+- every baseline run persists one durable review artifact reference
+- session and stream reuse are keyed to credential ref, not only subject
+- runtime sandbox and environment posture stay explicit at the policy boundary
 
-The control plane now persists durable truth in Postgres:
+## Dependency Posture
 
-- `core/control_plane` owns run, attempt, and event behaviours
-- `core/control_plane` now also owns trigger admission and checkpoint behaviours
-- `core/control_plane` also owns artifact-ref and target-descriptor behaviours
-- `core/auth` owns install, connection, credential-ref, refresh, rotation, revocation, and lease behaviours
-- `core/store_postgres` owns the Repo, migrations, and sandbox posture
-- `core/ingress` normalizes webhook and polling inputs into durable trigger truth
-- duplicate webhook or polling deliveries reuse the original durable run admission
-- polling checkpoints and dedupe state survive Repo restarts
-- host apps drive auth through install start, install completion, connection status, and lease request boundaries
-- durable credential truth stays behind `core/auth` and is bound to explicit connection/install records
-- runtimes receive short-lived `CredentialLease` values instead of durable credentials
-- lease payloads are minimized and raw secret material is kept out of run, attempt, and event truth
-- capability admission is evaluated through `core/policy`
-- denied work is recorded as a denied run without an attempt
-- attempts derive deterministic ids from `run_id` and `attempt`
-- run, attempt, event, and auth truth survive Repo restarts
-- contracts now include first-class `ArtifactRef` and `TargetDescriptor` objects
-- contracts now include a shared `RuntimeResult` emission envelope for connector outputs, events, and artifact refs
-- artifact refs carry checksum, payload-reference, retention, and redaction truth
-- target descriptors carry explicit compatibility and version-negotiation truth
+- `core/direct_runtime` and `connectors/github` keep explicit local `jido_action`
+  path deps
+- `core/ingress` keeps an explicit local `jido_signal` path dep
+- `core/platform` does not pull connectors at runtime; connector packages are
+  only test deps there
+- host apps should still declare explicit deps on any child package whose
+  modules they reference directly
 
-## Connector Review
+## Docs
 
 The connector review baseline notes live in
 `docs/connector_review_baseline.md`.
 
-## Dependency posture
+## Monorepo Commands
 
-Mandatory now:
-
-- `jido_action`
-- `jido_signal`
-
-Deferred but expected later:
-
-- `jido`
-- `Jido.Sensor`
-
-This keeps the first greenfield skeleton honest: couple only where the abstraction
-is already clearly justified.
-
-## Monorepo commands
-
-Run these from the root:
+Run these from the repo root:
 
 ```bash
 mix test
+mix monorepo.deps.get
 mix monorepo.format
 mix monorepo.compile
 mix monorepo.test
@@ -121,3 +103,5 @@ mix quality
 mix docs.all
 mix ci
 ```
+
+`mix ci` is the main acceptance gate.

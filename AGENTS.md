@@ -1,53 +1,59 @@
 # AGENTS.md
 
-This file defines the working contract for `/home/home/p/g/n/jido_brainstorm/nshkrdotcom/jido_integration_v2`.
+This file defines the working contract for `/home/home/p/g/n/jido_integration`.
 
 ## Purpose
 
-`jido_integration_v2` is a thin-root Elixir monorepo for the greenfield integration platform. The root app is intentionally small. Most real code belongs in isolated child packages.
+`jido_integration` is a tooling-root Elixir monorepo for the greenfield
+integration platform. The repo root owns workspace tooling only. Runtime code
+belongs in isolated child packages.
 
 ## Repository Shape
 
 The current package layout is:
 
 ```text
-jido_integration_v2/
-  lib/                  # thin root facade + monorepo Mix tasks
-  test/                 # root-level integration tests for the monorepo facade
-  packages/
-    core/               # platform/runtime packages
-    connectors/         # connector packages, one package per connector
-    apps/               # thin app/reference packages above the public platform
+jido_integration/
+  lib/                  # monorepo Mix tasks and workspace helpers only
+  test/                 # root tooling tests only
+  docs/                 # repo-level docs only
+  core/                 # platform/runtime packages
+  connectors/           # connector packages, one package per connector
+  apps/                 # thin app/reference packages above the public platform
 ```
 
 Current core packages:
 
-- `packages/core/contracts`
-- `packages/core/control_plane`
-- `packages/core/auth`
-- `packages/core/ingress`
-- `packages/core/policy`
-- `packages/core/direct_runtime`
-- `packages/core/session_kernel`
-- `packages/core/store_postgres`
-- `packages/core/stream_runtime`
+- `core/platform`
+- `core/contracts`
+- `core/control_plane`
+- `core/auth`
+- `core/ingress`
+- `core/policy`
+- `core/direct_runtime`
+- `core/session_kernel`
+- `core/store_postgres`
+- `core/stream_runtime`
 
 Current connector packages:
 
-- `packages/connectors/github`
-- `packages/connectors/codex_cli`
-- `packages/connectors/market_data`
+- `connectors/github`
+- `connectors/codex_cli`
+- `connectors/market_data`
 
 Current app packages:
 
-- `packages/apps/trading_ops`
+- `apps/trading_ops`
 
 ## Operating Rules
 
-- Keep the root app thin. Do not move runtime or connector logic into the root unless it is genuinely monorepo-wide glue.
+- Keep the repo root tooling-only. Do not move runtime or connector logic into
+  the root unless it is genuinely monorepo-wide glue.
 - Keep package boundaries explicit. If a connector uses a library directly, declare that dependency in the connector package instead of relying on transitive deps.
 - Prefer adding new capabilities by adding or extending child packages, not by broadening the root project.
 - Treat `contracts` as the shared public model and keep downstream packages honest against it.
+- Treat `platform` as the public facade package. The root workspace must not
+  reclaim app identity `:jido_integration_v2`.
 - Treat connector packages as isolated deliverables. Each connector should compile, test, lint, type-check, and document cleanly on its own.
 
 ## Required Validation Workflow
@@ -56,7 +62,9 @@ The root monorepo commands are the canonical quality surface for this repo.
 
 At minimum, future agents should preserve this invariant:
 
-> The repo docs now match the second slice. I’m finishing with the root `mix ci` pass so the new package graph is validated under the same monorepo commands the repo is supposed to expose.
+> The repo docs now match the tooling-root workspace slice. I’m finishing with
+> the root `mix ci` pass so the package graph is validated under the same
+> monorepo commands the repo is supposed to expose.
 
 Run these from the repo root:
 
@@ -83,7 +91,10 @@ mix ci
 ## Common Pitfalls
 
 - Do not rely on transitive dependencies between child packages.
-- Do not let a connector package depend on unrelated runtime packages “because it works”; keep dependencies minimal and explicit.
+- Do not let a connector or app depend on the repo root; keep dependencies
+  minimal and explicit.
+- Do not let a connector package depend on unrelated runtime packages “because
+  it works”; keep dependencies minimal and explicit.
 - Do not assume root Dialyzer coverage is enough. The monorepo tasks intentionally run quality checks inside each child package as well.
 - Do not treat generated docs as proof of correctness unless `mix monorepo.docs` or `mix docs.all` passes cleanly.
 

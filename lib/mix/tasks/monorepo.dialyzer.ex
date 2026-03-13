@@ -1,9 +1,11 @@
 defmodule Mix.Tasks.Monorepo.Dialyzer do
   use Mix.Task
 
-  @moduledoc false
+  @moduledoc """
+  Run Dialyzer for the workspace root and every child project.
+  """
 
-  alias Jido.Integration.V2.Monorepo
+  alias Jido.Integration.Workspace.Monorepo
 
   @shortdoc "Run Dialyzer for the root app and every child package"
 

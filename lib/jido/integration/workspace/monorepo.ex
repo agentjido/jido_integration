@@ -1,13 +1,13 @@
-defmodule Jido.Integration.V2.Monorepo do
+defmodule Jido.Integration.Workspace.Monorepo do
   @moduledoc """
-  Thin-root monorepo helper for running standard Mix tasks across the root project
-  and every child package in isolation.
+  Tooling-root monorepo helper for running standard Mix tasks across the
+  workspace root and every child project in isolation.
   """
 
-  @package_globs [
-    "packages/core/*",
-    "packages/connectors/*",
-    "packages/apps/*"
+  @project_globs [
+    "core/*",
+    "connectors/*",
+    "apps/*"
   ]
 
   @type task_name :: :deps_get | :compile | :test | :format | :credo | :dialyzer | :docs
@@ -27,11 +27,12 @@ defmodule Jido.Integration.V2.Monorepo do
   def package_paths do
     root = root_dir()
 
-    @package_globs
+    @project_globs
     |> Enum.flat_map(fn glob ->
       root
       |> Path.join(glob)
       |> Path.wildcard()
+      |> Enum.filter(&File.regular?(Path.join(&1, "mix.exs")))
       |> Enum.sort()
     end)
     |> Enum.map(&Path.relative_to(&1, root))

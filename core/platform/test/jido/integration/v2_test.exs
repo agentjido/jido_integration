@@ -84,7 +84,7 @@ defmodule Jido.Integration.V2Test do
     assert {:ok, result} =
              V2.invoke(
                @github.capability_id,
-               %{repo: "agentjido/jido_integration_v2", title: "Ship the thin root"},
+               %{repo: "agentjido/jido_integration_v2", title: "Ship the platform package"},
                invoke_opts(@github.capability_id, credential_ref, @github)
              )
 

@@ -23,10 +23,11 @@ defmodule Jido.Integration.V2.Apps.TradingOps.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2, path: "../../.."},
+      {:jido_integration_v2, path: "../../core/platform"},
       {:jido_integration_v2_auth, path: "../../core/auth"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
       {:jido_integration_v2_ingress, path: "../../core/ingress"},
+      {:jido_integration_v2_store_postgres, path: "../../core/store_postgres", only: :test},
       {:jido_integration_v2_github, path: "../../connectors/github"},
       {:jido_integration_v2_codex_cli, path: "../../connectors/codex_cli"},
       {:jido_integration_v2_market_data, path: "../../connectors/market_data"},
