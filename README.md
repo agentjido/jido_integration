@@ -105,3 +105,20 @@ mix ci
 ```
 
 `mix ci` is the main acceptance gate.
+
+## Shortcuts
+
+The root `mix.exs` also defines `mr.*` aliases for the same monorepo task
+surface:
+
+```bash
+mix mr.deps.get
+mix mr.format
+mix mr.compile
+mix mr.test
+mix mr.credo --strict
+mix mr.dialyzer
+mix mr.docs
+```
+
+These are shortcuts for the corresponding `mix monorepo.*` commands above.

@@ -80,6 +80,19 @@ mix ci
 
 `mix ci` is the main acceptance gate. If it fails, the repo is not done.
 
+The root `mix.exs` also exposes equivalent `mr.*` shortcuts for day-to-day
+use:
+
+```bash
+mix mr.deps.get
+mix mr.format
+mix mr.compile
+mix mr.test
+mix mr.credo --strict
+mix mr.dialyzer
+mix mr.docs
+```
+
 ## Working Style
 
 - Make changes package-first, then validate from the root.
