@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Connectors.GitHub.LiveEnv
+  alias Jido.Integration.V2.Connectors.GitHub.LivePlan
   alias Jido.Integration.V2.Connectors.GitHub.Provider
   alias Jido.Integration.V2.Connectors.GitHub.Provider.Live, as: LiveProvider
   alias Jido.Integration.V2.Connectors.GitHub.Client.HTTP
@@ -19,192 +20,77 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
   def run_auth_lifecycle! do
     spec = prepare!(:auth)
     auth = install_connection!(spec)
-
-    result = %{
-      install_id: auth.install.install_id,
-      connection_id: auth.connection.connection_id,
-      credential_ref_id: auth.credential_ref.id,
-      connection_state: auth.connection.state,
-      granted_scopes: auth.connection.granted_scopes,
-      lease_id: auth.lease.lease_id,
-      lease_payload_keys: auth.lease.payload |> Map.keys() |> Enum.sort(),
-      subject: auth.lease.subject
-    }
-
-    print_result!("auth lifecycle", result)
+    print_result!("auth lifecycle", auth_summary(auth))
   end
 
   @spec run_read_acceptance!() :: map()
   def run_read_acceptance! do
     spec = prepare!(:read)
     auth = install_connection!(spec)
-
-    list_result =
-      invoke!(auth, "github.issue.list", %{
-        repo: spec.repo,
-        state: "all",
-        per_page: 5,
-        page: 1
-      })
-
-    issue_number =
-      spec.read_issue_number || first_issue_number!(list_result.output.issues, spec.repo)
-
-    fetch_result =
-      invoke!(auth, "github.issue.fetch", %{
-        repo: spec.repo,
-        issue_number: issue_number
-      })
-
-    expect!(list_result.output.repo == spec.repo, "live issue list returned the wrong repo")
-    expect!(fetch_result.output.repo == spec.repo, "live issue fetch returned the wrong repo")
-
-    expect!(
-      fetch_result.output.issue_number == issue_number,
-      "live issue fetch returned the wrong issue"
-    )
-
-    expect!(
-      list_result.output.listed_by == spec.subject,
-      "list result subject did not come from the lease"
-    )
-
-    expect!(
-      fetch_result.output.fetched_by == spec.subject,
-      "fetch result subject did not come from the lease"
-    )
-
-    result = %{
-      repo: spec.repo,
-      listed_issue_count: list_result.output.total_count,
-      fetched_issue_number: issue_number,
-      auth_connection_id: auth.connection.connection_id,
-      run_ids: [list_result.run.run_id, fetch_result.run.run_id]
-    }
-
-    print_result!("read acceptance", result)
+    print_result!("read acceptance", perform_read_acceptance(auth, spec))
   end
 
   @spec run_write_acceptance!() :: map()
   def run_write_acceptance! do
     spec = prepare!(:write)
     auth = install_connection!(spec)
-    marker = Integer.to_string(System.system_time(:second))
-    title = "Jido live acceptance #{marker}"
-    body = "Created by the package-local GitHub live proof harness."
-    comment_body = "Live proof comment #{marker}"
+    print_result!("write acceptance", perform_write_acceptance(auth, spec))
+  end
 
-    create_result =
-      invoke!(auth, "github.issue.create", %{
-        repo: spec.write_repo,
-        title: title,
-        body: body
-      })
-
-    issue_number = create_result.output.issue_number
+  @spec run_all_acceptance!() :: map()
+  def run_all_acceptance! do
+    spec = prepare!(:write)
+    auth = install_connection!(spec)
+    initial_list_result = list_issues!(auth, spec.repo)
 
     result =
-      try do
-        fetch_result =
-          invoke!(auth, "github.issue.fetch", %{
-            repo: spec.write_repo,
-            issue_number: issue_number
-          })
+      case LivePlan.all_read_target(spec, initial_list_result.output.issues) do
+        {:existing, target} ->
+          %{
+            auth: auth_summary(auth),
+            read:
+              perform_read_acceptance(auth, spec,
+                repo: target.repo,
+                issue_number: target.issue_number,
+                list_result: initial_list_result
+              ),
+            write: perform_write_acceptance(auth, spec),
+            bootstrap: %{used?: false, source: target.source}
+          }
 
-        update_result =
-          invoke!(auth, "github.issue.update", %{
-            repo: spec.write_repo,
-            issue_number: issue_number,
-            title: title <> " [updated]",
-            body: body <> " Updated through the v2 platform boundary.",
-            state: "open",
-            labels: [spec.write_label],
-            assignees: []
-          })
+        {:bootstrap, target} ->
+          seed = write_seed()
+          create_result = create_issue!(auth, target.repo, seed.title, seed.body)
+          issue_number = create_result.output.issue_number
 
-        label_result =
-          invoke!(auth, "github.issue.label", %{
-            repo: spec.write_repo,
-            issue_number: issue_number,
-            labels: [spec.write_label]
-          })
-
-        create_comment_result =
-          invoke!(auth, "github.comment.create", %{
-            repo: spec.write_repo,
-            issue_number: issue_number,
-            body: comment_body
-          })
-
-        update_comment_result =
-          invoke!(auth, "github.comment.update", %{
-            repo: spec.write_repo,
-            comment_id: create_comment_result.output.comment_id,
-            body: comment_body <> " [updated]"
-          })
-
-        close_result =
-          invoke!(auth, "github.issue.close", %{
-            repo: spec.write_repo,
-            issue_number: issue_number
-          })
-
-        expect!(
-          create_result.output.repo == spec.write_repo,
-          "issue create returned the wrong repo"
-        )
-
-        expect!(
-          fetch_result.output.issue_number == issue_number,
-          "issue fetch returned the wrong issue"
-        )
-
-        expect!(
-          update_result.output.title == title <> " [updated]",
-          "issue update did not persist the title"
-        )
-
-        expect!(spec.write_label in label_result.output.labels, "issue label did not apply")
-
-        expect!(
-          create_comment_result.output.issue_number == issue_number,
-          "comment create did not stay attached to the created issue"
-        )
-
-        expect!(
-          update_comment_result.output.body == comment_body <> " [updated]",
-          "comment update did not persist"
-        )
-
-        expect!(
-          close_result.output.state == "closed",
-          "issue close did not return a closed state"
-        )
-
-        %{
-          repo: spec.write_repo,
-          issue_number: issue_number,
-          comment_id: create_comment_result.output.comment_id,
-          label: spec.write_label,
-          close_state: close_result.output.state,
-          auth_connection_id: auth.connection.connection_id,
-          run_ids: [
-            create_result.run.run_id,
-            fetch_result.run.run_id,
-            update_result.run.run_id,
-            label_result.run.run_id,
-            create_comment_result.run.run_id,
-            update_comment_result.run.run_id,
-            close_result.run.run_id
-          ]
-        }
-      rescue
-        error ->
-          safe_close_issue(auth, spec.write_repo, issue_number)
-          reraise(error, __STACKTRACE__)
+          try do
+            %{
+              auth: auth_summary(auth),
+              read:
+                perform_read_acceptance(auth, spec, repo: target.repo, issue_number: issue_number),
+              write:
+                perform_write_acceptance(auth, spec,
+                  repo: target.repo,
+                  seed: seed,
+                  create_result: create_result,
+                  issue_number: issue_number
+                ),
+              bootstrap: %{
+                used?: true,
+                reason: target.reason,
+                requested_read_repo: spec.repo,
+                effective_read_repo: target.repo,
+                issue_number: issue_number
+              }
+            }
+          rescue
+            error ->
+              safe_close_issue(auth, target.repo, issue_number)
+              reraise(error, __STACKTRACE__)
+          end
       end
 
-    print_result!("write acceptance", result)
+    print_result!("full acceptance", result)
   end
 
   defp prepare!(mode) do
@@ -380,6 +266,180 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     result
   end
 
+  defp perform_read_acceptance(auth, spec, opts \\ []) do
+    repo = Keyword.get(opts, :repo, spec.repo)
+    list_result = Keyword.get(opts, :list_result) || list_issues!(auth, repo)
+
+    issue_number =
+      Keyword.get(opts, :issue_number) || spec.read_issue_number ||
+        first_issue_number!(list_result.output.issues, repo)
+
+    fetch_result = fetch_issue!(auth, repo, issue_number)
+
+    expect!(list_result.output.repo == repo, "live issue list returned the wrong repo")
+    expect!(fetch_result.output.repo == repo, "live issue fetch returned the wrong repo")
+
+    expect!(
+      fetch_result.output.issue_number == issue_number,
+      "live issue fetch returned the wrong issue"
+    )
+
+    expect!(
+      list_result.output.listed_by == spec.subject,
+      "list result subject did not come from the lease"
+    )
+
+    expect!(
+      fetch_result.output.fetched_by == spec.subject,
+      "fetch result subject did not come from the lease"
+    )
+
+    %{
+      repo: repo,
+      listed_issue_count: list_result.output.total_count,
+      fetched_issue_number: issue_number,
+      auth_connection_id: auth.connection.connection_id,
+      run_ids: [list_result.run.run_id, fetch_result.run.run_id]
+    }
+  end
+
+  defp perform_write_acceptance(auth, spec, opts \\ []) do
+    repo = Keyword.get(opts, :repo, spec.write_repo)
+    seed = Keyword.get(opts, :seed, write_seed())
+
+    create_result =
+      Keyword.get(opts, :create_result) || create_issue!(auth, repo, seed.title, seed.body)
+
+    issue_number = Keyword.get(opts, :issue_number) || create_result.output.issue_number
+
+    try do
+      fetch_result = fetch_issue!(auth, repo, issue_number)
+
+      update_result =
+        invoke!(auth, "github.issue.update", %{
+          repo: repo,
+          issue_number: issue_number,
+          title: seed.title <> " [updated]",
+          body: seed.body <> " Updated through the v2 platform boundary.",
+          state: "open",
+          labels: [spec.write_label],
+          assignees: []
+        })
+
+      label_result =
+        invoke!(auth, "github.issue.label", %{
+          repo: repo,
+          issue_number: issue_number,
+          labels: [spec.write_label]
+        })
+
+      create_comment_result =
+        invoke!(auth, "github.comment.create", %{
+          repo: repo,
+          issue_number: issue_number,
+          body: seed.comment_body
+        })
+
+      update_comment_result =
+        invoke!(auth, "github.comment.update", %{
+          repo: repo,
+          comment_id: create_comment_result.output.comment_id,
+          body: seed.comment_body <> " [updated]"
+        })
+
+      close_result =
+        invoke!(auth, "github.issue.close", %{
+          repo: repo,
+          issue_number: issue_number
+        })
+
+      expect!(create_result.output.repo == repo, "issue create returned the wrong repo")
+
+      expect!(
+        fetch_result.output.issue_number == issue_number,
+        "issue fetch returned the wrong issue"
+      )
+
+      expect!(
+        update_result.output.title == seed.title <> " [updated]",
+        "issue update did not persist the title"
+      )
+
+      expect!(spec.write_label in label_result.output.labels, "issue label did not apply")
+
+      expect!(
+        create_comment_result.output.issue_number == issue_number,
+        "comment create did not stay attached to the created issue"
+      )
+
+      expect!(
+        update_comment_result.output.body == seed.comment_body <> " [updated]",
+        "comment update did not persist"
+      )
+
+      expect!(
+        close_result.output.state == "closed",
+        "issue close did not return a closed state"
+      )
+
+      %{
+        repo: repo,
+        issue_number: issue_number,
+        comment_id: create_comment_result.output.comment_id,
+        label: spec.write_label,
+        close_state: close_result.output.state,
+        auth_connection_id: auth.connection.connection_id,
+        run_ids: [
+          create_result.run.run_id,
+          fetch_result.run.run_id,
+          update_result.run.run_id,
+          label_result.run.run_id,
+          create_comment_result.run.run_id,
+          update_comment_result.run.run_id,
+          close_result.run.run_id
+        ]
+      }
+    rescue
+      error ->
+        safe_close_issue(auth, repo, issue_number)
+        reraise(error, __STACKTRACE__)
+    end
+  end
+
+  defp list_issues!(auth, repo) do
+    invoke!(auth, "github.issue.list", %{
+      repo: repo,
+      state: "all",
+      per_page: 5,
+      page: 1
+    })
+  end
+
+  defp fetch_issue!(auth, repo, issue_number) do
+    invoke!(auth, "github.issue.fetch", %{
+      repo: repo,
+      issue_number: issue_number
+    })
+  end
+
+  defp create_issue!(auth, repo, title, body) do
+    invoke!(auth, "github.issue.create", %{
+      repo: repo,
+      title: title,
+      body: body
+    })
+  end
+
+  defp write_seed do
+    marker = Integer.to_string(System.system_time(:second))
+
+    %{
+      title: "Jido live acceptance #{marker}",
+      body: "Created by the package-local GitHub live proof harness.",
+      comment_body: "Live proof comment #{marker}"
+    }
+  end
+
   defp safe_close_issue(auth, repo, issue_number)
        when is_binary(repo) and is_integer(issue_number) do
     _ =
@@ -399,10 +459,25 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
           """
           the read-only proof needs a repo with at least one issue or #{LiveEnv.env_names().read_issue_number}
           set explicitly. Repo: #{repo}
+
+          For the combined smoke run, `scripts/live_acceptance.sh all` can bootstrap a writable repo issue automatically.
           """
   end
 
   defp first_issue_number!([issue | _rest], _repo), do: issue.issue_number
+
+  defp auth_summary(auth) do
+    %{
+      install_id: auth.install.install_id,
+      connection_id: auth.connection.connection_id,
+      credential_ref_id: auth.credential_ref.id,
+      connection_state: auth.connection.state,
+      granted_scopes: auth.connection.granted_scopes,
+      lease_id: auth.lease.lease_id,
+      lease_payload_keys: auth.lease.payload |> Map.keys() |> Enum.sort(),
+      subject: auth.lease.subject
+    }
+  end
 
   defp refute_secret_leaks!(term, token) do
     expect!(

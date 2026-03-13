@@ -64,7 +64,20 @@ Use the package-local wrapper:
 ```bash
 cd connectors/github
 JIDO_INTEGRATION_V2_GITHUB_LIVE=1 \
+JIDO_INTEGRATION_V2_GITHUB_LIVE_WRITE=1 \
 JIDO_INTEGRATION_V2_GITHUB_REPO=owner/repo \
+JIDO_INTEGRATION_V2_GITHUB_WRITE_REPO=owner/sandbox-repo \
+scripts/live_acceptance.sh all
+```
+
+`all` runs one combined live proof. If the read repo does not already have an
+issue and `JIDO_INTEGRATION_V2_GITHUB_READ_ISSUE_NUMBER` is not set, the
+combined flow bootstraps the writable repo with a temporary issue and reuses it
+for the read and write steps.
+
+```bash
+cd connectors/github
+JIDO_INTEGRATION_V2_GITHUB_LIVE=1 \
 scripts/live_acceptance.sh auth
 ```
 
@@ -74,6 +87,9 @@ JIDO_INTEGRATION_V2_GITHUB_LIVE=1 \
 JIDO_INTEGRATION_V2_GITHUB_REPO=owner/repo \
 scripts/live_acceptance.sh read
 ```
+
+`read` stays strict on purpose. It still needs an existing issue in the target
+repo or `JIDO_INTEGRATION_V2_GITHUB_READ_ISSUE_NUMBER` set explicitly.
 
 ```bash
 cd connectors/github
@@ -123,6 +139,7 @@ Successful runs emit:
 
 ## Files
 
+- full live proof: `examples/github_live_all_acceptance.exs`
 - live auth proof: `examples/github_auth_lifecycle.exs`
 - live read proof: `examples/github_live_read_acceptance.exs`
 - live write proof: `examples/github_live_write_acceptance.exs`
