@@ -25,8 +25,8 @@ Dependency posture:
 
 - runtime dependencies stay in `core/*`
 - connectors remain opt-in and are pulled into this package only for tests
-- `core/store_postgres` is used to validate the facade contract in tests, not as
-  a mandatory runtime dependency for consumers
+- `core/store_local` and `core/store_postgres` remain explicit durability
+  dependencies, not mandatory runtime dependencies for consumers
 
 ## Installation
 

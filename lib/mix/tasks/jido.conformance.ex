@@ -131,32 +131,75 @@ defmodule Mix.Tasks.Jido.Conformance do
 
   defp run_in_project!(project_path, module_string, normalized_module_name, profile) do
     project_root = Path.expand(project_path, Monorepo.root_dir())
+    build_path = project_build_path(project_root)
 
-    Mix.Project.in_project(@loader_project, project_root, fn _project ->
-      prepare_project!()
+    compile_project!(project_root, build_path)
 
-      case loaded_connector_module(normalized_module_name) do
-        {:ok, module} ->
-          run_loaded_connector!(module, profile)
+    with_project_build_path(build_path, fn ->
+      Mix.Project.in_project(@loader_project, project_root, fn _project ->
+        prepare_project!()
 
-        :error ->
-          Mix.raise("Module #{module_string} could not be loaded from #{project_path}")
-      end
+        case loaded_connector_module(normalized_module_name) do
+          {:ok, module} ->
+            run_loaded_connector!(module, profile)
+
+          :error ->
+            Mix.raise("Module #{module_string} could not be loaded from #{project_path}")
+        end
+      end)
     end)
   end
 
   defp prepare_project! do
-    Enum.each(["deps.loadpaths", "compile", "loadpaths"], &Mix.Task.reenable/1)
+    Enum.each(["deps.loadpaths", "loadpaths"], &Mix.Task.reenable/1)
     Mix.Task.run("deps.loadpaths")
-    Mix.Task.run("compile", ["--quiet"])
     Mix.Task.run("loadpaths")
   end
 
-  defp loaded_connector_module(normalized_module_name) do
-    module_name = "Elixir." <> normalized_module_name
+  defp compile_project!(project_root, build_path) do
+    env = [{"MIX_ENV", Atom.to_string(Mix.env())}, {"MIX_BUILD_PATH", build_path}]
 
-    with {:ok, module} <- existing_module(module_name),
-         true <- Code.ensure_loaded?(module),
+    case System.cmd("mix", ["compile", "--quiet"],
+           cd: project_root,
+           env: env,
+           stderr_to_stdout: true
+         ) do
+      {_, 0} ->
+        :ok
+
+      {output, exit_code} ->
+        Mix.raise("""
+        Could not compile #{project_root} for conformance.
+
+        mix compile --quiet exited with #{exit_code}
+
+        #{output}
+        """)
+    end
+  end
+
+  defp with_project_build_path(build_path, fun) do
+    previous = System.get_env("MIX_BUILD_PATH")
+    System.put_env("MIX_BUILD_PATH", build_path)
+
+    try do
+      fun.()
+    after
+      restore_env("MIX_BUILD_PATH", previous)
+    end
+  end
+
+  defp project_build_path(project_root) do
+    Path.join(project_root, "_build/#{Mix.env()}")
+  end
+
+  defp restore_env(key, nil), do: System.delete_env(key)
+  defp restore_env(key, value), do: System.put_env(key, value)
+
+  defp loaded_connector_module(normalized_module_name) do
+    module = Module.concat([normalized_module_name])
+
+    with true <- Code.ensure_loaded?(module),
          true <- function_exported?(module, :manifest, 0) do
       {:ok, module}
     else
@@ -191,11 +234,5 @@ defmodule Mix.Tasks.Jido.Conformance do
 
   defp normalize_module_name(module_string) do
     String.trim_leading(module_string, "Elixir.")
-  end
-
-  defp existing_module(module_name) do
-    {:ok, String.to_existing_atom(module_name)}
-  rescue
-    ArgumentError -> :error
   end
 end

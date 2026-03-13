@@ -19,4 +19,5 @@ Current responsibilities:
 - mint short-lived `CredentialLease` values for runtime execution
 - refresh expired credentials before lease issuance when a refresh handler is configured
 - minimize lease payloads and invalidate lease use through connection state, not run-ledger cleanup
+- delegate restart-safe local auth durability to `core/store_local`
 - delegate Postgres Repo and migration ownership to `core/store_postgres`

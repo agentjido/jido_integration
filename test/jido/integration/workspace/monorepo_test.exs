@@ -15,6 +15,7 @@ defmodule Jido.Integration.Workspace.MonorepoTest do
              "core/platform",
              "core/policy",
              "core/session_kernel",
+             "core/store_local",
              "core/store_postgres",
              "core/stream_runtime",
              "connectors/codex_cli",

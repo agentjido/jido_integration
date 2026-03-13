@@ -50,15 +50,38 @@ defmodule Jido.Integration.Workspace.Monorepo do
   @spec run!(task_name(), [String.t()]) :: :ok
   def run!(task, extra_args \\ []) do
     Enum.each(project_paths(), fn project_path ->
+      ensure_project_deps!(project_path, task)
       run_project!(project_path, mix_args(task, extra_args))
     end)
+  end
+
+  defp ensure_project_deps!(_project_path, :deps_get), do: :ok
+
+  defp ensure_project_deps!(project_path, _task) do
+    project_root = Path.expand(project_path, root_dir())
+
+    if File.exists?(Path.join(project_root, "mix.lock")) and
+         not File.dir?(Path.join(project_root, "deps")) do
+      run_project!(project_path, mix_args(:deps_get, []))
+    else
+      :ok
+    end
   end
 
   defp run_project!(project_path, args) do
     IO.puts("==> #{project_path}: mix #{Enum.join(args, " ")}")
 
+    project_root = Path.expand(project_path, root_dir())
+
+    env = [
+      {"MIX_DEPS_PATH", Path.join(project_root, "deps")},
+      {"MIX_BUILD_PATH", Path.join(project_root, "_build")},
+      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")}
+    ]
+
     case System.cmd("mix", args,
-           cd: Path.expand(project_path, root_dir()),
+           cd: project_root,
+           env: env,
            into: IO.stream(:stdio, :line),
            stderr_to_stdout: true
          ) do

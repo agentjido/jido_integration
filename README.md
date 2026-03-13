@@ -23,6 +23,7 @@ jido_integration/
     policy/
     direct_runtime/
     session_kernel/
+    store_local/
     stream_runtime/
     store_postgres/
   connectors/
@@ -40,6 +41,10 @@ jido_integration/
   `Jido.Integration.V2`
 - `core/conformance` owns the reusable v2-native connector conformance engine
   behind the root `mix jido.conformance` task
+- durability stays package-owned and explicit:
+  - `core/auth` and `core/control_plane` still ship in-memory defaults
+  - `core/store_local` is the restart-safe local durability tier
+  - `core/store_postgres` is the database-backed durable tier
 - child projects depend on each other only through explicit `path:` deps
 - no child project depends on the repo root
 - connectors stay opt-in, so apps compile only the integrations they declare
@@ -112,6 +117,8 @@ Connector quality surface:
 - `core/ingress` keeps an explicit local `jido_signal` path dep
 - `core/platform` does not pull connectors at runtime; connector packages are
   only test deps there
+- `core/store_local` and `core/store_postgres` are opt-in durability packages,
+  not implicit runtime dependencies of the public facade
 - host apps should still declare explicit deps on any child package whose
   modules they reference directly
 

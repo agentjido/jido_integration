@@ -167,7 +167,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
           %{
             message: "hello from scaffold",
             handled_by: "operator",
-            auth_binding: :crypto.hash(:sha256, auth_token) |> Base.encode16(case: :lower)
+            auth_binding: fixture_digest(auth_token)
           },
           pretty: true,
           limit: :infinity
@@ -190,7 +190,9 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
           limit: :infinity
         ),
       conformance_event_type: "connector.#{connector_name}.sample.completed",
-      fixture_auth_binding: :crypto.hash(:sha256, auth_token) |> Base.encode16(case: :lower),
+      fixture_auth_binding: fixture_digest(auth_token),
+      publish_ingress_definitions: false,
+      ingress_definitions_literal: "[]",
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
     }
@@ -265,7 +267,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
             reply: "#{connector_name}(operator) turn 1: review the runbook",
             turn: 1,
             workspace: "/workspaces/#{connector_name}",
-            auth_binding: :crypto.hash(:sha256, access_token) |> Base.encode16(case: :lower)
+            auth_binding: fixture_digest(access_token)
           },
           pretty: true,
           limit: :infinity
@@ -289,7 +291,9 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
           limit: :infinity
         ),
       conformance_event_type: "connector.#{connector_name}.session.turn.completed",
-      fixture_auth_binding: :crypto.hash(:sha256, access_token) |> Base.encode16(case: :lower),
+      fixture_auth_binding: fixture_digest(access_token),
+      publish_ingress_definitions: false,
+      ingress_definitions_literal: "[]",
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
     }
@@ -373,7 +377,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
                 ask: 5_002
               }
             ],
-            auth_binding: :crypto.hash(:sha256, api_key) |> Base.encode16(case: :lower)
+            auth_binding: fixture_digest(api_key)
           },
           pretty: true,
           limit: :infinity
@@ -397,7 +401,23 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
           limit: :infinity
         ),
       conformance_event_type: "connector.#{connector_name}.stream.batch.pulled",
-      fixture_auth_binding: :crypto.hash(:sha256, api_key) |> Base.encode16(case: :lower),
+      fixture_auth_binding: fixture_digest(api_key),
+      publish_ingress_definitions: true,
+      ingress_definitions_literal:
+        inspect(
+          [
+            %{
+              source: :poll,
+              connector_id: connector_name,
+              trigger_id: "#{connector_name}.stream.pull.poll",
+              capability_id: capability_id,
+              signal_type: "connector.#{connector_name}.stream.poll",
+              signal_source: "/connectors/#{connector_name}/poll"
+            }
+          ],
+          pretty: true,
+          limit: :infinity
+        ),
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
     }
@@ -516,7 +536,25 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
   end
 
   defp relative_dep_path(package_root, target_path) do
-    Path.relative_to(target_path, package_root)
+    package_segments = package_root |> Path.expand() |> Path.split()
+    target_segments = target_path |> Path.expand() |> Path.split()
+    common_length = common_prefix_length(package_segments, target_segments)
+
+    relative_segments =
+      List.duplicate("..", length(package_segments) - common_length) ++
+        Enum.drop(target_segments, common_length)
+
+    case relative_segments do
+      [] -> "."
+      segments -> Path.join(segments)
+    end
+  end
+
+  defp common_prefix_length(left, right) do
+    left
+    |> Enum.zip(right)
+    |> Enum.take_while(fn {left_segment, right_segment} -> left_segment == right_segment end)
+    |> length()
   end
 
   defp template_path(template_name) do
@@ -525,5 +563,9 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
 
   defp template_root do
     Path.expand("../../../../priv/templates/jido.integration.new", __DIR__)
+  end
+
+  defp fixture_digest(value) do
+    "sha256:" <> Base.encode16(:crypto.hash(:sha256, value), case: :lower)
   end
 end
