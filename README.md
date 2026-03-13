@@ -34,6 +34,7 @@ jido_integration/
     market_data/
   apps/
     trading_ops/
+    devops_incident_response/
 ```
 
 ## Architecture
@@ -87,6 +88,14 @@ Reference app slice:
     escalation
   - records selected `target_id` values in durable run, attempt, and event
     truth
+- `apps/devops_incident_response`
+  - provisions one GitHub-shaped install and hosted webhook route through the
+    public auth and webhook-router surfaces
+  - admits a signed webhook into durable ingress truth and hands it into the
+    async dispatch runtime
+  - proves dead-letter, replay, and restart recovery with `core/store_local`
+  - keeps its proof callback local to the app instead of widening
+    `connectors/github`
 
 The connector contract baseline also proves:
 
