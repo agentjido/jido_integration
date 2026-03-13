@@ -48,6 +48,7 @@ Current connector packages:
 Current app packages:
 
 - `apps/trading_ops`
+- `apps/devops_incident_response`
 
 ## Operating Rules
 
