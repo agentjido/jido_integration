@@ -12,12 +12,6 @@ db_pool_size =
     _ -> 10
   end
 
-db_name =
-  case config_env() do
-    :test -> System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_test")
-    _ -> System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_dev")
-  end
-
 config :jido_integration_v2_control_plane,
   run_store: Jido.Integration.V2.StorePostgres.RunStore,
   attempt_store: Jido.Integration.V2.StorePostgres.AttemptStore,
@@ -39,14 +33,10 @@ config :jido_integration_v2_store_postgres, Jido.Integration.V2.StorePostgres.Re
   password: System.get_env("JIDO_INTEGRATION_V2_DB_PASSWORD", "postgres"),
   hostname: System.get_env("JIDO_INTEGRATION_V2_DB_HOST", "127.0.0.1"),
   port: db_port,
-  database: db_name,
+  database: System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_test"),
+  pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: db_pool_size,
   queue_target: 5_000,
   queue_interval: 1_000,
-  timeout: 15_000
-
-if config_env() == :test do
-  config :jido_integration_v2_store_postgres, Jido.Integration.V2.StorePostgres.Repo,
-    pool: Ecto.Adapters.SQL.Sandbox,
-    ownership_timeout: 60_000
-end
+  timeout: 15_000,
+  ownership_timeout: 60_000

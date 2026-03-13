@@ -1,6 +1,6 @@
 # Jido Integration V2 Trading Ops
 
-Thin reference app package for the first operator-facing slice above the public
+Top-level reference app for the first operator-facing slice above the public
 platform packages.
 
 Current scope:
@@ -20,4 +20,3 @@ The app stays thin by design:
 - auth lifecycle still belongs to `core/auth`
 
 The app only composes those public surfaces into one reviewable operator flow.
-

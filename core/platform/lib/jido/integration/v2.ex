@@ -1,9 +1,10 @@
 defmodule Jido.Integration.V2 do
   @moduledoc """
-  Thin root facade for the greenfield `jido_integration_v2` monorepo.
+  Public facade package for the greenfield `jido_integration_v2` platform.
 
-  The root app owns almost no runtime behavior. It delegates to the control
-  plane and lets the core packages remain isolated and testable.
+  The tooling workspace lives at the repository root. Runtime entrypoints live
+  here and delegate to the child packages that implement the control plane,
+  auth boundary, and shared contracts.
   """
 
   alias Jido.Integration.V2.ArtifactRef
