@@ -9,18 +9,96 @@ defmodule Jido.Integration.V2Test do
   @github %{
     connector: GitHub,
     connector_id: "github",
-    capability_id: "github.issue.create",
     tenant_id: "tenant-github",
     environment: :prod,
-    sandbox: %{
-      level: :standard,
-      egress: :restricted,
-      approvals: :auto,
-      allowed_tools: ["github.api.issue.create"]
-    },
-    event_type: "connector.github.issue.created",
     artifact_type: :tool_output
   }
+
+  @github_capabilities [
+    %{
+      capability_id: "github.comment.create",
+      event_type: "connector.github.comment.created",
+      allowed_tools: ["github.api.comment.create"],
+      artifact_slug: "comment_create",
+      input: %{
+        repo: "agentjido/jido_integration_v2",
+        issue_number: 42,
+        body: "Add a deterministic review note"
+      }
+    },
+    %{
+      capability_id: "github.comment.update",
+      event_type: "connector.github.comment.updated",
+      allowed_tools: ["github.api.comment.update"],
+      artifact_slug: "comment_update",
+      input: %{
+        repo: "agentjido/jido_integration_v2",
+        comment_id: 901,
+        body: "Edited deterministic review note"
+      }
+    },
+    %{
+      capability_id: "github.issue.close",
+      event_type: "connector.github.issue.closed",
+      allowed_tools: ["github.api.issue.close"],
+      artifact_slug: "issue_close",
+      input: %{repo: "agentjido/jido_integration_v2", issue_number: 42}
+    },
+    %{
+      capability_id: "github.issue.create",
+      event_type: "connector.github.issue.created",
+      allowed_tools: ["github.api.issue.create"],
+      artifact_slug: "issue_create",
+      input: %{
+        repo: "agentjido/jido_integration_v2",
+        title: "Ship the platform package",
+        body: "Direct runtime slice"
+      }
+    },
+    %{
+      capability_id: "github.issue.fetch",
+      event_type: "connector.github.issue.fetched",
+      allowed_tools: ["github.api.issue.fetch"],
+      artifact_slug: "issue_fetch",
+      input: %{repo: "agentjido/jido_integration_v2", issue_number: 42}
+    },
+    %{
+      capability_id: "github.issue.label",
+      event_type: "connector.github.issue.labeled",
+      allowed_tools: ["github.api.issue.label"],
+      artifact_slug: "issue_label",
+      input: %{
+        repo: "agentjido/jido_integration_v2",
+        issue_number: 42,
+        labels: ["platform", "triaged"]
+      }
+    },
+    %{
+      capability_id: "github.issue.list",
+      event_type: "connector.github.issue.listed",
+      allowed_tools: ["github.api.issue.list"],
+      artifact_slug: "issue_list",
+      input: %{repo: "agentjido/jido_integration_v2", state: "open", per_page: 2, page: 1}
+    },
+    %{
+      capability_id: "github.issue.update",
+      event_type: "connector.github.issue.updated",
+      allowed_tools: ["github.api.issue.update"],
+      artifact_slug: "issue_update",
+      input: %{
+        repo: "agentjido/jido_integration_v2",
+        issue_number: 42,
+        title: "Ship the platform package now",
+        body: "Expanded deterministic review surface",
+        state: "open",
+        labels: ["platform", "v2"],
+        assignees: ["octocat"]
+      }
+    }
+  ]
+
+  @github_capability_ids Enum.map(@github_capabilities, & &1.capability_id)
+  @github_capability_specs Map.new(@github_capabilities, &{&1.capability_id, &1})
 
   @codex_cli %{
     connector: CodexCli,
@@ -66,7 +144,11 @@ defmodule Jido.Integration.V2Test do
       |> Enum.sort()
 
     assert {"codex.exec.session", :session} in capability_ids
-    assert {"github.issue.create", :direct} in capability_ids
+
+    Enum.each(@github_capability_ids, fn capability_id ->
+      assert {capability_id, :direct} in capability_ids
+    end)
+
     assert {"market.ticks.pull", :stream} in capability_ids
   end
 
@@ -79,17 +161,20 @@ defmodule Jido.Integration.V2Test do
 
     assert {:ok, github_manifest} = V2.fetch_connector("github")
     assert github_manifest.connector == "github"
-    assert Enum.map(github_manifest.capabilities, & &1.id) == ["github.issue.create"]
+    assert Enum.map(github_manifest.capabilities, & &1.id) == @github_capability_ids
     assert {:error, :unknown_connector} = V2.fetch_connector("missing")
 
     assert {:ok, capability} = V2.fetch_capability("github.issue.create")
     assert capability.connector == "github"
     assert capability.runtime_class == :direct
-    assert {:error, :unknown_capability} = V2.fetch_capability("github.issue.close")
+    assert {:ok, closed_issue} = V2.fetch_capability("github.issue.close")
+    assert closed_issue.metadata.policy.sandbox.allowed_tools == ["github.api.issue.close"]
+    assert {:error, :unknown_capability} = V2.fetch_capability("github.issue.reopen")
   end
 
   test "invoke/1 accepts an invocation request and matches invoke/3 behavior" do
     register_connector!(@github.connector)
+    github_spec = github_spec("github.issue.create")
 
     credential_ref =
       install_connection!(
@@ -102,16 +187,17 @@ defmodule Jido.Integration.V2Test do
 
     request =
       InvocationRequest.new!(%{
-        capability_id: @github.capability_id,
+        capability_id: "github.issue.create",
         input: %{
           repo: "agentjido/jido_integration_v2",
-          title: "Ship the platform package"
+          title: "Ship the platform package",
+          body: "Direct runtime slice"
         },
         credential_ref: credential_ref,
         actor_id: "connector-contract",
         tenant_id: @github.tenant_id,
         environment: @github.environment,
-        sandbox: @github.sandbox
+        sandbox: github_spec.sandbox
       })
 
     assert {:ok, via_request} = V2.invoke(request)
@@ -127,7 +213,7 @@ defmodule Jido.Integration.V2Test do
     assert via_request.attempt.runtime_ref_id == via_arity_three.attempt.runtime_ref_id
   end
 
-  test "direct connector emits reviewable events and durable artifacts through a lease" do
+  test "direct GitHub capabilities emit reviewable events and durable artifacts through a lease" do
     register_connector!(@github.connector)
 
     credential_ref =
@@ -139,29 +225,45 @@ defmodule Jido.Integration.V2Test do
         %{access_token: "gho_test", refresh_token: "ghr_test"}
       )
 
-    assert {:ok, result} =
-             V2.invoke(
-               @github.capability_id,
-               %{repo: "agentjido/jido_integration_v2", title: "Ship the platform package"},
-               invoke_opts(@github.capability_id, credential_ref, @github)
-             )
+    Enum.each(@github_capabilities, fn capability_spec ->
+      spec = github_spec(capability_spec.capability_id)
 
-    assert result.run.runtime_class == :direct
-    assert result.attempt.status == :completed
-    assert result.attempt.runtime_ref_id == nil
-    assert result.output.opened_by == "octocat"
-    assert result.output.auth_binding =~ "sha256:"
+      assert {:ok, result} =
+               V2.invoke(
+                 capability_spec.capability_id,
+                 capability_spec.input,
+                 invoke_opts(capability_spec.capability_id, credential_ref, spec)
+               )
 
-    assert_review_surface!(
-      result,
-      @github,
-      %{access_token: "gho_test"},
-      ["gho_test", "ghr_test"]
-    )
+      assert result.run.runtime_class == :direct
+      assert result.attempt.status == :completed
+      assert result.attempt.runtime_ref_id == nil
+      assert result.output.auth_binding =~ "sha256:"
+
+      assert_github_output(capability_spec.capability_id, capability_spec.input, result.output)
+
+      assert [artifact] = V2.run_artifacts(result.run.run_id)
+
+      assert artifact.payload_ref.key ==
+               github_artifact_key(
+                 capability_spec.capability_id,
+                 capability_spec.artifact_slug,
+                 result.run.run_id,
+                 result.attempt.attempt_id
+               )
+
+      assert_review_surface!(
+        result,
+        spec,
+        %{access_token: "gho_test"},
+        ["gho_test", "ghr_test"]
+      )
+    end)
   end
 
   test "direct connector denies work when the credential scopes are insufficient" do
     register_connector!(@github.connector)
+    github_spec = github_spec("github.issue.create")
 
     credential_ref =
       install_connection!(
@@ -174,9 +276,9 @@ defmodule Jido.Integration.V2Test do
 
     assert {:error, error} =
              V2.invoke(
-               @github.capability_id,
+               "github.issue.create",
                %{repo: "agentjido/jido_integration_v2", title: "Denied"},
-               invoke_opts(@github.capability_id, credential_ref, @github)
+               invoke_opts("github.issue.create", credential_ref, github_spec)
              )
 
     assert error.reason == :policy_denied
@@ -403,5 +505,95 @@ defmodule Jido.Integration.V2Test do
     assert error.reason == :policy_denied
 
     assert "environment dev is not permitted for market.ticks.pull" in error.policy_decision.reasons
+  end
+
+  defp github_spec(capability_id) do
+    capability = Map.fetch!(@github_capability_specs, capability_id)
+
+    Map.merge(
+      @github,
+      %{
+        capability_id: capability_id,
+        event_type: capability.event_type,
+        sandbox: %{
+          level: :standard,
+          egress: :restricted,
+          approvals: :auto,
+          allowed_tools: capability.allowed_tools
+        }
+      }
+    )
+  end
+
+  defp github_artifact_key(_capability_id, artifact_slug, run_id, attempt_id) do
+    "github/#{run_id}/#{attempt_id}/#{artifact_slug}.term"
+  end
+
+  defp assert_github_output("github.issue.list", input, output) do
+    assert output.repo == input.repo
+    assert output.state == input.state
+    assert output.page == input.page
+    assert output.per_page == input.per_page
+    assert output.total_count == length(output.issues)
+    assert length(output.issues) == input.per_page
+    assert output.listed_by == "octocat"
+  end
+
+  defp assert_github_output("github.issue.fetch", input, output) do
+    assert output.repo == input.repo
+    assert output.issue_number == input.issue_number
+    assert output.fetched_by == "octocat"
+    assert output.state in ["open", "closed"]
+    assert is_binary(output.title)
+    assert is_binary(output.body)
+  end
+
+  defp assert_github_output("github.issue.create", input, output) do
+    assert output.repo == input.repo
+    assert output.title == input.title
+    assert output.body == input.body
+    assert output.state == "open"
+    assert output.opened_by == "octocat"
+    assert is_integer(output.issue_number)
+  end
+
+  defp assert_github_output("github.issue.update", input, output) do
+    assert output.repo == input.repo
+    assert output.issue_number == input.issue_number
+    assert output.title == input.title
+    assert output.body == input.body
+    assert output.state == input.state
+    assert output.labels == input.labels
+    assert output.assignees == input.assignees
+    assert output.updated_by == "octocat"
+  end
+
+  defp assert_github_output("github.issue.label", input, output) do
+    assert output.repo == input.repo
+    assert output.issue_number == input.issue_number
+    assert output.labels == input.labels
+    assert output.labeled_by == "octocat"
+  end
+
+  defp assert_github_output("github.issue.close", input, output) do
+    assert output.repo == input.repo
+    assert output.issue_number == input.issue_number
+    assert output.state == "closed"
+    assert output.closed_by == "octocat"
+  end
+
+  defp assert_github_output("github.comment.create", input, output) do
+    assert output.repo == input.repo
+    assert output.issue_number == input.issue_number
+    assert output.body == input.body
+    assert output.created_by == "octocat"
+    assert is_integer(output.comment_id)
+  end
+
+  defp assert_github_output("github.comment.update", input, output) do
+    assert output.repo == input.repo
+    assert output.comment_id == input.comment_id
+    assert output.body == input.body
+    assert output.updated_by == "octocat"
   end
 end
