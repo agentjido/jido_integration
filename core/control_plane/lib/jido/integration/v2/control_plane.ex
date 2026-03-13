@@ -80,6 +80,30 @@ defmodule Jido.Integration.V2.ControlPlane do
     end
   end
 
+  @spec execute_run(String.t(), pos_integer(), keyword()) ::
+          {:ok, %{run: Run.t(), attempt: Attempt.t(), output: map()}}
+          | {:error,
+             %{
+               reason: term(),
+               run: Run.t(),
+               attempt: Attempt.t() | nil,
+               policy_decision: PolicyDecision.t() | nil
+             }}
+          | {:error, :unknown_run | {:unknown_capability, String.t()}}
+  def execute_run(run_id, attempt_number, opts \\ [])
+      when is_binary(run_id) and is_integer(attempt_number) and attempt_number > 0 do
+    with {:ok, run} <- fetch_run(run_id),
+         {:ok, capability} <- fetch_capability(run.capability_id) do
+      continue_execute_run(capability, run, attempt_number, opts)
+    else
+      :error ->
+        {:error, :unknown_run}
+
+      {:error, :unknown_capability} ->
+        {:error, {:unknown_capability, run_id}}
+    end
+  end
+
   @spec fetch_run(String.t()) :: {:ok, Run.t()} | :error
   def fetch_run(run_id), do: Stores.run_store().fetch_run(run_id)
 
@@ -202,6 +226,35 @@ defmodule Jido.Integration.V2.ControlPlane do
     end
   end
 
+  defp continue_execute_run(capability, run, attempt_number, opts) do
+    credential_ref = run.credential_ref
+    input = run.input
+
+    with :ok <- validate_execution_status(run),
+         :ok <- validate_target_selection(run, capability),
+         {:ok, resolved_credential} <- resolve_credential(credential_ref),
+         %PolicyDecision{status: :allowed} = policy_decision <-
+           evaluate_policy(capability, resolved_credential, credential_ref, input, opts),
+         {:ok, credential_lease} <-
+           issue_credential_lease(credential_ref, capability) do
+      execute_admitted_run(
+        capability,
+        run,
+        input,
+        opts,
+        policy_decision,
+        credential_lease,
+        attempt_number
+      )
+    else
+      {:error, reason} ->
+        fail_before_attempt(run, reason)
+
+      %PolicyDecision{status: :denied} = decision ->
+        deny_run(run, decision)
+    end
+  end
+
   defp evaluate_policy(capability, resolved_credential, credential_ref, input, opts) do
     gateway =
       Gateway.new!(%{
@@ -219,19 +272,30 @@ defmodule Jido.Integration.V2.ControlPlane do
     Policy.evaluate(capability, resolved_credential, input, gateway)
   end
 
-  defp execute_admitted_run(capability, run, input, opts, policy_decision, credential_lease) do
-    attempt = build_attempt(run, credential_lease, opts)
+  defp execute_admitted_run(
+         capability,
+         run,
+         input,
+         opts,
+         policy_decision,
+         credential_lease,
+         attempt_number \\ 1
+       ) do
+    attempt = build_attempt(run, credential_lease, opts, attempt_number)
     context = build_context(run, attempt, opts, policy_decision, credential_lease)
 
-    :ok = Stores.attempt_store().put_attempt(attempt)
-    :ok = append_specs(run.run_id, attempt, [%{type: "run.started"}])
+    with :ok <- Stores.attempt_store().put_attempt(attempt),
+         :ok <- append_specs(run.run_id, attempt, [%{type: "run.started"}]) do
+      case dispatch(capability, input, context) do
+        {:ok, runtime_result} ->
+          complete_attempt(run, attempt, runtime_result)
 
-    case dispatch(capability, input, context) do
-      {:ok, runtime_result} ->
-        complete_attempt(run, attempt, runtime_result)
-
-      {:error, reason, runtime_result} ->
-        fail_attempt(run, attempt, reason, runtime_result, policy_decision)
+        {:error, reason, runtime_result} ->
+          fail_attempt(run, attempt, reason, runtime_result, policy_decision)
+      end
+    else
+      {:error, reason} ->
+        fail_before_attempt(run, reason)
     end
   end
 
@@ -344,12 +408,12 @@ defmodule Jido.Integration.V2.ControlPlane do
     })
   end
 
-  defp build_attempt(run, credential_lease, opts) do
+  defp build_attempt(run, credential_lease, opts, attempt_number) do
     Attempt.new!(%{
       run_id: run.run_id,
-      attempt: 1,
+      attempt: attempt_number,
       aggregator_id: Keyword.get(opts, :aggregator_id, "control_plane"),
-      aggregator_epoch: Keyword.get(opts, :aggregator_epoch, 1),
+      aggregator_epoch: Keyword.get(opts, :aggregator_epoch, attempt_number),
       runtime_class: run.runtime_class,
       status: :accepted,
       credential_lease_id: credential_lease.lease_id,
@@ -508,6 +572,12 @@ defmodule Jido.Integration.V2.ControlPlane do
   defp resolve_credential(%CredentialRef{} = credential_ref) do
     Auth.resolve(credential_ref, %{})
   end
+
+  defp validate_execution_status(%Run{status: status}) when status in [:accepted, :failed],
+    do: :ok
+
+  defp validate_execution_status(%Run{status: :completed}), do: {:error, :run_completed}
+  defp validate_execution_status(%Run{status: :denied}), do: {:error, :run_denied}
 
   defp validate_target_selection(%Run{target_id: nil}, %Capability{}), do: :ok
 

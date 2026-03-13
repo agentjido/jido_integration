@@ -18,6 +18,7 @@ jido_integration/
     platform/               # public facade package (`:jido_integration_v2`)
     contracts/
     control_plane/
+    dispatch_runtime/
     auth/
     ingress/
     policy/
@@ -41,6 +42,8 @@ jido_integration/
   `Jido.Integration.V2`
 - `core/conformance` owns the reusable v2-native connector conformance engine
   behind the root `mix jido.conformance` task
+- `core/dispatch_runtime` owns async trigger queueing, retry/backoff, replay,
+  and transport-state recovery above `core/control_plane`
 - durability stays package-owned and explicit:
   - `core/auth` and `core/control_plane` still ship in-memory defaults
   - `core/store_local` is the restart-safe local durability tier
@@ -132,6 +135,9 @@ The conformance workflow and companion-module contract live in
 
 The connector scaffold task and generated package contract live in
 `docs/connector_scaffolding.md`.
+
+The async trigger lifecycle, replay model, and restart caveats live in
+`core/dispatch_runtime/README.md`.
 
 ## Monorepo Commands
 
