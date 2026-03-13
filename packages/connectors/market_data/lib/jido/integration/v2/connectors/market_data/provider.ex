@@ -1,0 +1,101 @@
+defmodule Jido.Integration.V2.Connectors.MarketData.Provider do
+  @moduledoc false
+
+  @behaviour Jido.Integration.V2.StreamRuntime.Provider
+
+  alias Jido.Integration.V2.ArtifactBuilder
+  alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.RuntimeResult
+
+  @impl true
+  def reuse_key(%Capability{id: capability_id}, input, context) do
+    {capability_id, input.symbol, context.credential_ref.id}
+  end
+
+  @impl true
+  def open_stream(_capability, input, context) do
+    {:ok,
+     %{
+       stream_id: Contracts.next_id("stream"),
+       symbol: input.symbol,
+       cursor: 0,
+       consumer: context.credential_ref.id,
+       auth_binding:
+         ArtifactBuilder.digest(lease_value(context.credential_lease.payload, :api_key))
+     }}
+  end
+
+  @impl true
+  def pull(capability, stream, input, context) do
+    limit = Map.get(input, :limit, 1)
+    venue = Map.get(input, :venue, "demo")
+
+    items =
+      for seq <- (stream.cursor + 1)..(stream.cursor + limit) do
+        %{
+          seq: seq,
+          symbol: stream.symbol,
+          venue: venue,
+          bid: 5_000 + seq,
+          ask: 5_001 + seq
+        }
+      end
+
+    updated_stream = %{stream | cursor: stream.cursor + limit}
+
+    artifact =
+      ArtifactBuilder.build!(
+        run_id: context.run_id,
+        attempt_id: context.attempt_id,
+        artifact_type: :log,
+        key:
+          "market_data/#{context.run_id}/#{context.attempt_id}/batch_#{updated_stream.cursor}.term",
+        content: %{
+          symbol: stream.symbol,
+          venue: venue,
+          cursor: updated_stream.cursor,
+          batch_size: limit,
+          items: items
+        },
+        metadata: %{
+          connector: "market_data",
+          capability_id: capability.id,
+          stream_id: stream.stream_id,
+          auth_binding: stream.auth_binding
+        }
+      )
+
+    {:ok,
+     RuntimeResult.new!(%{
+       output: %{
+         symbol: stream.symbol,
+         venue: venue,
+         cursor: updated_stream.cursor,
+         items: items,
+         auth_binding: stream.auth_binding
+       },
+       events: [
+         %{
+           type: "connector.market_data.batch.pulled",
+           stream: :control,
+           payload: %{
+             symbol: stream.symbol,
+             venue: venue,
+             cursor: updated_stream.cursor,
+             batch_size: limit,
+             auth_binding: stream.auth_binding
+           }
+         }
+       ],
+       artifacts: [artifact]
+     }), updated_stream}
+  end
+
+  defp lease_value(payload, key) do
+    case Contracts.get(payload, key) do
+      nil -> raise ArgumentError, "missing credential lease field #{inspect(key)}"
+      value -> value
+    end
+  end
+end

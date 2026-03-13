@@ -17,7 +17,7 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-jido_integration-*.tar
+jido_integration_v2-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/

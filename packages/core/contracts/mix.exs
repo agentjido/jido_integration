@@ -1,19 +1,17 @@
-defmodule Jido.Integration.Contracts.MixProject do
+defmodule Jido.Integration.V2.Contracts.MixProject do
   use Mix.Project
-
-  @version "0.1.0"
-  @source_url "https://github.com/agentjido/jido_integration"
 
   def project do
     [
-      app: :jido_integration_contracts,
-      version: @version,
-      elixir: "~> 1.17",
+      app: :jido_integration_v2_contracts,
+      version: "0.1.0",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      name: "Jido Integration Contracts",
-      source_url: @source_url,
-      docs: docs()
+      dialyzer: dialyzer(),
+      docs: docs(),
+      name: "Jido Integration V2 Contracts",
+      description: "Greenfield public contracts for runs, attempts, capabilities, and credentials"
     ]
   end
 
@@ -25,12 +23,14 @@ defmodule Jido.Integration.Contracts.MixProject do
 
   defp deps do
     [
-      {:jason, "~> 1.4"},
-      {:nimble_options, "~> 1.1"},
-      {:telemetry, "~> 1.2"},
-      {:ex_json_schema, "~> 0.10"},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
     ]
+  end
+
+  defp dialyzer do
+    [plt_add_deps: :apps_direct]
   end
 
   defp docs do
