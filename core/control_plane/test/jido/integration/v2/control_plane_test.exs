@@ -297,6 +297,59 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert "tenant tenant-2 cannot use credential for tenant tenant-1" in audit_payload.reasons
   end
 
+  test "records a shed run without creating an attempt" do
+    credential_ref = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    assert {:error, error} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "later"},
+               invoke_opts(
+                 credential_ref,
+                 trace_id: "trace-policy-shed",
+                 pressure: %{
+                   decision: :shed,
+                   reason: "dispatch queue saturated",
+                   scope: "tenant-1:test"
+                 }
+               )
+             )
+
+    assert error.reason == :policy_shed
+    assert error.run.status == :shed
+    assert error.attempt == nil
+    assert error.policy_decision.status == :shed
+    assert error.policy_decision.reasons == ["dispatch queue saturated"]
+
+    assert {:ok, stored_run} = ControlPlane.fetch_run(error.run.run_id)
+    assert stored_run.result.policy.status == :shed
+    assert stored_run.result.policy.trace_id == "trace-policy-shed"
+    assert stored_run.result.policy.pressure.reason == "dispatch queue saturated"
+    assert stored_run.result.policy.pressure.scope == "tenant-1:test"
+
+    assert [
+             %Event{
+               attempt: nil,
+               attempt_id: nil,
+               seq: 0,
+               type: "run.shed",
+               payload: %{reasons: ["dispatch queue saturated"]}
+             },
+             %Event{
+               attempt: nil,
+               attempt_id: nil,
+               seq: 1,
+               type: "audit.policy_shed",
+               payload: audit_payload,
+               trace: %{trace_id: "trace-policy-shed"}
+             }
+           ] = ControlPlane.events(error.run.run_id)
+
+    assert audit_payload.pressure.reason == "dispatch queue saturated"
+    assert audit_payload.pressure.scope == "tenant-1:test"
+  end
+
   test "redacts credential lease material from durable run attempt and event truth" do
     credential_ref =
       install_connection!("leaky-user", ["echo:write"], %{

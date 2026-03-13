@@ -26,11 +26,13 @@ Current hardening guarantees:
 - `ArtifactRef` is a first-class public object with explicit checksum, transport, payload reference, retention, and redaction metadata
 - `TargetDescriptor` is a first-class public object with explicit capability identity, runtime class, semantic version, health, location, and compatibility negotiation inputs
 - `Run` is the durable work record and can carry artifact refs plus an optional target id
+- `Run.status` distinguishes execution failure from pre-attempt `:denied` and `:shed` outcomes
 - `Attempt` identity is deterministic from `run_id` and monotonic `attempt`
 - `Event` uses a canonical control-plane envelope with `schema_version`, attempt-aware sequencing, trace fields, and optional `payload_ref` maps
 - `RuntimeResult` is the shared connector/runtime emission contract for output, reviewable events, and durable artifact refs
 - `Gateway` is the shared admission plus execution-policy request shape used before dispatch
 - `Gateway.Policy` is the normalized capability-side security contract for actor, tenant, environment, runtime, operation, and sandbox checks
+- `PolicyDecision` can allow work, deny it, or shed it before attempt creation
 - `InvocationRequest` is the typed public invoke helper that normalizes stable facade fields and derives the requested capability allowlist by default
 - `CredentialRef` remains durable while `CredentialLease` is the short-lived execution boundary
 - `Credential` carries durable subject/scope/auth metadata plus secret-bearing fields that are meant to stay behind auth APIs

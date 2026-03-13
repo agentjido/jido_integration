@@ -6,7 +6,9 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.DispatchRuntime
   alias Jido.Integration.V2.DispatchRuntime.Dispatch
+  alias Jido.Integration.V2.DispatchRuntime.Telemetry, as: DispatchTelemetry
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.TriggerRecord
 
@@ -95,6 +97,109 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     end)
 
     %{storage_dir: storage_dir}
+  end
+
+  test "emits redacted telemetry for enqueue and delivery", %{storage_dir: storage_dir} do
+    {:ok, runtime} = start_runtime(storage_dir)
+    assert :ok = DispatchRuntime.register_handler(runtime, "desk.alert", ExecuteTriggerHandler)
+
+    attach_telemetry!(
+      [
+        DispatchTelemetry.event(:enqueue),
+        DispatchTelemetry.event(:deliver)
+      ],
+      "dispatch-runtime-telemetry"
+    )
+
+    trigger =
+      trigger_fixture("delivery-telemetry", %{
+        "authorization" => "Bearer dispatch-secret",
+        "nested" => %{"client_secret" => "nested-secret"},
+        "value" => "ok"
+      })
+
+    assert {:ok, %{dispatch: dispatch, run: run}} =
+             DispatchRuntime.enqueue(runtime, trigger, max_attempts: 2)
+
+    assert_receive {:telemetry_event, event, %{count: 1}, metadata}, 1_000
+    assert event == DispatchTelemetry.event(:enqueue)
+    assert metadata.dispatch_id == dispatch.dispatch_id
+    assert metadata.run_id == run.run_id
+    assert metadata.status == :accepted
+    assert metadata.trigger.payload["authorization"] == Redaction.redacted()
+    assert metadata.trigger.payload["nested"]["client_secret"] == Redaction.redacted()
+    refute inspect(metadata) =~ "dispatch-secret"
+    refute inspect(metadata) =~ "nested-secret"
+
+    completed_dispatch =
+      wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :completed))
+
+    assert completed_dispatch.attempts == 1
+
+    assert_receive {:telemetry_event, event, %{attempt: 1}, metadata}, 1_000
+    assert event == DispatchTelemetry.event(:deliver)
+    assert metadata.dispatch_id == dispatch.dispatch_id
+    assert metadata.run_id == run.run_id
+    assert metadata.status == :completed
+    assert metadata.attempts == 1
+  end
+
+  test "emits retry, dead-letter, and replay telemetry with backoff measurements", %{
+    storage_dir: storage_dir
+  } do
+    {:ok, runtime} = start_runtime(storage_dir, backoff_base_ms: 10, backoff_cap_ms: 10)
+    assert :ok = DispatchRuntime.register_handler(runtime, "desk.alert", ExecuteTriggerHandler)
+
+    attach_telemetry!(
+      [
+        DispatchTelemetry.event(:retry),
+        DispatchTelemetry.event(:dead_letter),
+        DispatchTelemetry.event(:replay)
+      ],
+      "dispatch-runtime-pressure"
+    )
+
+    trigger =
+      trigger_fixture("delivery-pressure", %{
+        "api_token" => "dispatch-token",
+        "fail_attempts" => 2,
+        "value" => "replayed"
+      })
+
+    assert {:ok, %{dispatch: dispatch}} =
+             DispatchRuntime.enqueue(runtime, trigger, max_attempts: 2)
+
+    dead_lettered_dispatch =
+      wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :dead_lettered))
+
+    assert dead_lettered_dispatch.attempts == 2
+
+    assert_receive {:telemetry_event, event, %{attempt: 1, backoff_ms: 10}, metadata}, 1_000
+    assert event == DispatchTelemetry.event(:retry)
+    assert metadata.dispatch_id == dispatch.dispatch_id
+    assert metadata.status == :retry_scheduled
+    assert metadata.attempts == 1
+    assert metadata.trigger.payload["api_token"] == Redaction.redacted()
+    refute inspect(metadata) =~ "dispatch-token"
+
+    assert_receive {:telemetry_event, event, %{attempts: 2}, metadata}, 1_000
+    assert event == DispatchTelemetry.event(:dead_letter)
+    assert metadata.dispatch_id == dispatch.dispatch_id
+    assert metadata.status == :dead_lettered
+    assert metadata.last_error.reason == "{:scripted_failure, 2}"
+
+    assert {:ok, replayed_dispatch} = DispatchRuntime.replay(runtime, dispatch.dispatch_id)
+    assert replayed_dispatch.status in [:queued, :retry_scheduled, :running]
+
+    assert_receive {:telemetry_event, event, %{attempts: 2}, metadata}, 1_000
+    assert event == DispatchTelemetry.event(:replay)
+    assert metadata.dispatch_id == dispatch.dispatch_id
+    assert metadata.attempts == 2
+
+    completed_dispatch =
+      wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :completed))
+
+    assert completed_dispatch.attempts == 3
   end
 
   test "enqueue accepts work durably and exposes stable query APIs", %{storage_dir: storage_dir} do
@@ -409,5 +514,23 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     File.rm_rf!(path)
     File.mkdir_p!(path)
     path
+  end
+
+  defp attach_telemetry!(events, prefix) do
+    handler_id = "#{prefix}-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach_many(
+        handler_id,
+        events,
+        &__MODULE__.handle_telemetry_event/4,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+  end
+
+  def handle_telemetry_event(event, measurements, metadata, test_pid) do
+    send(test_pid, {:telemetry_event, event, measurements, metadata})
   end
 end

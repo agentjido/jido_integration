@@ -66,7 +66,8 @@ defmodule Jido.Integration.Workspace.MixProject do
         "AGENTS.md",
         "docs/connector_review_baseline.md",
         "docs/conformance_workflow.md",
-        "docs/connector_scaffolding.md"
+        "docs/connector_scaffolding.md",
+        "docs/observability_and_pressure_semantics.md"
       ]
     ]
   end

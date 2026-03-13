@@ -44,10 +44,14 @@ jido_integration/
 - `core/conformance` owns the reusable v2-native connector conformance engine
   behind the root `mix jido.conformance` task
 - `core/dispatch_runtime` owns async trigger queueing, retry/backoff, replay,
-  and transport-state recovery above `core/control_plane`
+  transport-state recovery, and package-owned live telemetry above
+  `core/control_plane`
 - `core/webhook_router` owns hosted webhook route lifecycle, callback-topology
-  resolution, auth-backed secret lookup, ingress-definition assembly, and
-  dispatch-runtime handoff above `core/ingress`
+  resolution, auth-backed secret lookup, ingress-definition assembly,
+  package-owned route telemetry, and dispatch-runtime handoff above
+  `core/ingress`
+- `core/policy` owns pre-dispatch deny and shed verdicts; it does not own retry
+  timing or backoff scheduling
 - durability stays package-owned and explicit:
   - `core/auth` and `core/control_plane` still ship in-memory defaults
   - `core/store_local` is the restart-safe local durability tier
@@ -142,6 +146,9 @@ The conformance workflow and companion-module contract live in
 
 The connector scaffold task and generated package contract live in
 `docs/connector_scaffolding.md`.
+
+The observability event families, redaction rules, and pressure split live in
+`docs/observability_and_pressure_semantics.md`.
 
 The async trigger lifecycle, replay model, and restart caveats live in
 `core/dispatch_runtime/README.md`.
