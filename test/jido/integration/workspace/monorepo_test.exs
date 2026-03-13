@@ -19,9 +19,11 @@ defmodule Jido.Integration.Workspace.MonorepoTest do
              "core/store_local",
              "core/store_postgres",
              "core/stream_runtime",
+             "core/webhook_router",
              "connectors/codex_cli",
              "connectors/github",
              "connectors/market_data",
+             "apps/devops_incident_response",
              "apps/trading_ops"
            ]
   end

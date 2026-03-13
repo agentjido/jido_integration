@@ -27,6 +27,10 @@ The connector publishes these direct capabilities:
 
 All direct capabilities currently require the GitHub `repo` scope.
 
+Webhook routing is intentionally not part of this package. Hosted webhook proof
+code lives in `apps/devops_incident_response` so the direct connector contract
+stays honest.
+
 ## Deterministic CI
 
 Default package tests stay offline and deterministic.
@@ -38,6 +42,12 @@ mix test
 
 The root monorepo gates use that same deterministic surface. Live proofs are not
 part of default `mix test`, `mix monorepo.test`, or `mix ci`.
+
+The connector should also pass the root conformance surface:
+
+```bash
+mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+```
 
 ## Live Proofs
 
@@ -89,6 +99,19 @@ The live proof scripts switch the provider to:
 
 The live provider reads `access_token` from the short-lived credential lease,
 never from durable review truth.
+
+## Architecture Boundary
+
+This package owns direct GitHub capability execution only.
+
+It does not own:
+
+- hosted webhook route registration
+- dispatch-runtime handlers
+- reference-app proof composition
+
+Those higher-level concerns stay in app packages so this connector remains a
+reusable direct integration deliverable.
 
 ## Review Surface
 

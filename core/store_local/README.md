@@ -58,6 +58,18 @@ config :jido_integration_v2_control_plane,
 For tests and scripts, `Jido.Integration.V2.StoreLocal.configure_defaults!/1`
 can set the same application env values programmatically.
 
+## What It Pairs With
+
+`core/store_local` owns auth and control-plane truth only.
+
+For full local hosted-webhook recovery, pair it with:
+
+- `core/dispatch_runtime` storage for async transport state
+- `core/webhook_router` storage for hosted route state
+
+That split is intentional. The package does not absorb transport or route state
+from the higher-level packages.
+
 ## Semantics
 
 Compared with the owner-package in-memory defaults:
@@ -88,3 +100,11 @@ Compared with `core/store_postgres`:
   provisioning Postgres.
 - Use `core/store_postgres` when you need the canonical durable tier for shared
   environments, migrations, and stronger operational guarantees.
+
+## Proof Surface
+
+Current proofs:
+
+- package-local contract and restart-recovery tests in `core/store_local/test`
+- `apps/devops_incident_response`, which uses `StoreLocal.configure_defaults!/1`
+  to prove restart-safe auth and control-plane truth in the hosted async path

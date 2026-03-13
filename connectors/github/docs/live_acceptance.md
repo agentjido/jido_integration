@@ -8,6 +8,21 @@ This package keeps two separate quality surfaces:
 The live path exists to prove the current v2 auth and platform boundary against
 real GitHub state without contaminating default CI.
 
+## Before You Run It
+
+Prerequisites:
+
+- a GitHub token with the scopes required by the proof mode you intend to run
+- one readable repository for the read proof
+- one disposable sandbox repository for the write proof
+- `gh` authenticated locally if you want token fallback through `gh auth token`
+
+Safety:
+
+- live proofs perform real reads and, in write mode, real writes
+- use a sandbox repository for write mode
+- the scripts attempt cleanup, but they are still real API calls
+
 ## Proof Modes
 
 ### Auth Lifecycle
@@ -116,6 +131,17 @@ Optional overrides:
 
 If neither `JIDO_INTEGRATION_V2_GITHUB_TOKEN` nor `GITHUB_TOKEN` is set, the
 scripts fall back to `gh auth token`.
+
+## Validation Boundary
+
+These live proofs are package-local and opt-in by design.
+
+They are not part of:
+
+- `mix test`
+- `mix monorepo.test`
+- `mix ci`
+- default root connector conformance
 
 ## Implementation Files
 

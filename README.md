@@ -1,69 +1,108 @@
 # Jido Integration
 
-Tooling-root, non-umbrella Elixir monorepo for the greenfield integration
+Tooling-root, non-umbrella Elixir monorepo for the final V2 integration
 platform.
 
-## Repo Shape
+The repo root owns workspace tooling, quality gates, and repo-level guides
+only. Runtime code, connector code, and proof surfaces live in child packages
+and top-level apps. We do not restore root `examples/` or `reference_apps/`.
+
+## Workspace Model
 
 ```text
 jido_integration/
   mix.exs                    # tooling/workspace root only
-  README.md                  # repo architecture + monorepo commands
+  README.md                  # repo architecture + command index
   AGENTS.md                  # working contract for future agents
-  lib/                       # root monorepo tooling only
+  lib/                       # root Mix tasks and workspace helpers only
   test/                      # root tooling tests only
-  docs/                      # repo-level docs only
+  docs/                      # repo-level architecture and operational guides
   core/
-    conformance/           # reusable connector conformance engine + profiles
     platform/               # public facade package (`:jido_integration_v2`)
-    contracts/
-    control_plane/
-    dispatch_runtime/
-    webhook_router/
-    auth/
-    ingress/
-    policy/
-    direct_runtime/
-    session_kernel/
-    store_local/
-    stream_runtime/
-    store_postgres/
+    contracts/              # shared public structs and behaviours
+    control_plane/          # connector registry + durable run/trigger truth
+    conformance/            # reusable connector conformance engine
+    auth/                   # install, connection, credential, and lease truth
+    ingress/                # trigger normalization and durable admission
+    policy/                 # pre-attempt policy and shed decisions
+    direct_runtime/         # direct capability execution
+    session_kernel/         # reusable session execution
+    stream_runtime/         # reusable stream execution
+    store_local/            # restart-safe local durability tier
+    store_postgres/         # database-backed durable tier
+    dispatch_runtime/       # async queue, retry, replay, recovery
+    webhook_router/         # hosted route lifecycle and ingress bridge
   connectors/
-    github/
-    codex_cli/
-    market_data/
+    github/                # direct GitHub connector + live acceptance runbook
+    codex_cli/             # session baseline connector
+    market_data/           # stream baseline connector
   apps/
-    trading_ops/
-    devops_incident_response/
+    trading_ops/           # cross-runtime operator proof
+    devops_incident_response/ # hosted webhook + async recovery proof
 ```
 
-## Architecture
+## Final V2 Surface
 
-- the repo root owns monorepo tooling and quality gates only
-- `core/platform` owns app `:jido_integration_v2` and module
-  `Jido.Integration.V2`
-- `core/conformance` owns the reusable v2-native connector conformance engine
-  behind the root `mix jido.conformance` task
-- `core/dispatch_runtime` owns async trigger queueing, retry/backoff, replay,
-  transport-state recovery, and package-owned live telemetry above
-  `core/control_plane`
-- `core/webhook_router` owns hosted webhook route lifecycle, callback-topology
-  resolution, auth-backed secret lookup, ingress-definition assembly,
-  package-owned route telemetry, and dispatch-runtime handoff above
-  `core/ingress`
-- `core/policy` owns pre-dispatch deny and shed verdicts; it does not own retry
-  timing or backoff scheduling
-- durability stays package-owned and explicit:
-  - `core/auth` and `core/control_plane` still ship in-memory defaults
-  - `core/store_local` is the restart-safe local durability tier
-  - `core/store_postgres` is the database-backed durable tier
-- child projects depend on each other only through explicit `path:` deps
-- no child project depends on the repo root
-- connectors stay opt-in, so apps compile only the integrations they declare
+- `core/platform` owns the public app identity `:jido_integration_v2` and the
+  stable facade module `Jido.Integration.V2`.
+- `Jido.Integration.V2` exposes typed invocation, connector discovery, auth
+  lifecycle calls, durable review lookups, and target lookup through a single
+  public surface.
+- `core/conformance` owns reusable connector review logic behind the root
+  `mix jido.conformance` task.
+- `core/dispatch_runtime` and `core/webhook_router` stay as child packages.
+  Hosted async and webhook behavior does not move back into the root or the
+  facade package.
+- Durability is explicit and package-owned:
+  - `core/auth` and `core/control_plane` still ship in-memory defaults.
+  - `core/store_local` is the restart-safe local durability tier.
+  - `core/store_postgres` is the shared database-backed durable tier.
+- Child packages depend on each other only through explicit `path:` deps.
+- No child package depends on the repo root.
 
-## Current Slice
+## Public API Highlights
 
-Runtime families proved in the repo today:
+The stable public entrypoint is `Jido.Integration.V2`.
+
+Key calls:
+
+- connector discovery:
+  - `connectors/0`
+  - `capabilities/0`
+  - `fetch_connector/1`
+  - `fetch_capability/1`
+- auth lifecycle:
+  - `start_install/3`
+  - `complete_install/2`
+  - `fetch_install/1`
+  - `connection_status/1`
+  - `request_lease/2`
+  - `rotate_connection/2`
+  - `revoke_connection/2`
+- invocation:
+  - `InvocationRequest.new!/1`
+  - `invoke/1`
+  - `invoke/3`
+- durable review truth:
+  - `fetch_run/1`
+  - `fetch_attempt/1`
+  - `events/1`
+  - `run_artifacts/1`
+  - `fetch_artifact/1`
+- target announcement and lookup:
+  - `announce_target/1`
+  - `fetch_target/1`
+  - `compatible_targets/1`
+
+Hosted webhook routing and async replay are intentionally separate public
+package APIs:
+
+- `Jido.Integration.V2.DispatchRuntime`
+- `Jido.Integration.V2.WebhookRouter`
+
+## Current Proof Surface
+
+Runtime families proved in-tree:
 
 - `:direct`
   - `github.issue.list`
@@ -79,91 +118,52 @@ Runtime families proved in the repo today:
 - `:stream`
   - `market.ticks.pull`
 
-Reference app slice:
+Reference apps:
 
 - `apps/trading_ops`
-  - provisions operator-visible connection state through the public auth API
-  - admits a market-alert trigger through `core/ingress`
-  - reviews one workflow across market feed pull, analyst session, and operator
-    escalation
-  - records selected `target_id` values in durable run, attempt, and event
-    truth
+  - proves one operator-visible workflow across stream, session, and direct
+    runtimes
+  - keeps trigger admission in `core/ingress`
+  - keeps durable review truth in `core/control_plane`
 - `apps/devops_incident_response`
-  - provisions one GitHub-shaped install and hosted webhook route through the
-    public auth and webhook-router surfaces
-  - admits a signed webhook into durable ingress truth and hands it into the
-    async dispatch runtime
-  - proves dead-letter, replay, and restart recovery with `core/store_local`
-  - keeps its proof callback local to the app instead of widening
-    `connectors/github`
+  - proves hosted webhook registration, async dispatch, dead-letter, replay,
+    and restart recovery
+  - keeps webhook behavior app-local instead of widening `connectors/github`
 
-The connector contract baseline also proves:
+The current surface also proves:
 
-- connectors run through auth leases, not durable credential truth
-- admitted runs emit connector-specific review events plus canonical
-  `artifact.recorded`
-- every baseline run persists one durable review artifact reference
-- the GitHub connector defaults to a deterministic provider while keeping a
-  package-local live client path available
-- session and stream reuse are keyed to credential ref, not only subject
-- runtime sandbox and environment posture stay explicit at the policy boundary
+- connectors execute through short-lived auth leases, not durable credential
+  truth
+- `InvocationRequest` is the typed public invoke object
+- conformance runs from the root while connector evidence stays package-local
+- local durability, async queue state, and webhook route state are all explicit
+  opt-in packages
 
-Public v2 API highlights:
+## Guide Index
 
-- `Jido.Integration.V2.InvocationRequest` is the typed request object for
-  public invocation ergonomics
-- `Jido.Integration.V2.invoke/1` accepts that request while `invoke/3` remains
-  available for direct callers
-- `Jido.Integration.V2.connectors/0` lists registered manifests in
-  deterministic connector-id order
-- `Jido.Integration.V2.fetch_connector/1` and
-  `Jido.Integration.V2.fetch_capability/1` expose public discovery by id
+Repo-level guides in `docs/`:
 
-Connector quality surface:
+- [Architecture Overview](docs/architecture_overview.md)
+- [Connector Review Baseline](docs/connector_review_baseline.md)
+- [Connector Authoring And Scaffolding](docs/connector_scaffolding.md)
+- [Connector Conformance Guide](docs/conformance_workflow.md)
+- [Local Durability Guide](docs/local_durability.md)
+- [Async Dispatch And Replay Guide](docs/async_dispatch_and_replay.md)
+- [Webhook Routing Guide](docs/webhook_routing.md)
+- [Reference Apps Guide](docs/reference_apps.md)
+- [Observability And Pressure Semantics](docs/observability_and_pressure_semantics.md)
 
-- `mix jido.conformance <ConnectorModule>` runs the stable
-  `:connector_foundation` profile from the repo root
-- the root task delegates into `core/conformance`; the root stays tooling-only
-- `mix jido.integration.new <connector_name>` scaffolds a top-level
-  `connectors/<name>/` package for `direct`, `session`, or `stream` runtimes
-- connectors can publish deterministic fixture evidence through an optional
-  `<ConnectorModule>.Conformance` companion module without depending on the
-  root
+Package and app runbooks:
 
-## Dependency Posture
-
-- `core/direct_runtime` and `connectors/github` keep explicit local `jido_action`
-  path deps
-- `core/ingress` keeps an explicit local `jido_signal` path dep
-- `core/webhook_router` depends explicitly on `core/auth`, `core/ingress`, and
-  `core/dispatch_runtime`; hosted webhook route state does not move back into
-  `core/ingress`
-- `core/platform` does not pull connectors at runtime; connector packages are
-  only test deps there
-- `core/store_local` and `core/store_postgres` are opt-in durability packages,
-  not implicit runtime dependencies of the public facade
-- host apps should still declare explicit deps on any child package whose
-  modules they reference directly
-
-## Docs
-
-The connector review baseline notes live in
-`docs/connector_review_baseline.md`.
-
-The conformance workflow and companion-module contract live in
-`docs/conformance_workflow.md`.
-
-The connector scaffold task and generated package contract live in
-`docs/connector_scaffolding.md`.
-
-The observability event families, redaction rules, and pressure split live in
-`docs/observability_and_pressure_semantics.md`.
-
-The async trigger lifecycle, replay model, and restart caveats live in
-`core/dispatch_runtime/README.md`.
-
-The hosted webhook route lifecycle and ingress/dispatch bridge contract live in
-`core/webhook_router/README.md`.
+- `core/platform/README.md`
+- `core/conformance/README.md`
+- `core/store_local/README.md`
+- `core/dispatch_runtime/README.md`
+- `core/webhook_router/README.md`
+- `connectors/github/README.md`
+- `connectors/github/docs/live_acceptance.md`
+- `apps/trading_ops/README.md`
+- `apps/devops_incident_response/README.md`
 
 ## Monorepo Commands
 

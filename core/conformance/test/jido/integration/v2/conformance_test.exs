@@ -3,8 +3,8 @@ defmodule Jido.Integration.V2.ConformanceTest do
 
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Conformance
-  alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Connector
+  alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Manifest
 
   defmodule BrokenSessionHandler do

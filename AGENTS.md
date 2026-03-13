@@ -50,6 +50,17 @@ Current app packages:
 - `apps/trading_ops`
 - `apps/devops_incident_response`
 
+## Documentation Homes
+
+Keep documentation aligned to the permanent V2 layout:
+
+- repo-level architecture and operational guides belong in `docs/`
+- package-specific workflows belong in package-local `README.md` files and
+  package-local docs folders when needed
+- host-level proof runbooks belong in `apps/*/README.md`
+- proof code belongs in child packages or top-level apps, not in root
+  `examples/` or `reference_apps/`
+
 ## Operating Rules
 
 - Keep the repo root tooling-only. Do not move runtime or connector logic into
@@ -63,6 +74,11 @@ Current app packages:
 - Use the root `mix jido.integration.new` scaffold for new connector packages
   so they start with explicit child-package deps, runtime-fit handlers, and
   package-local conformance coverage.
+- Keep webhook and async proof surfaces where they belong:
+  - connector-local when the behavior is part of the connector contract
+  - app-local when the behavior depends on hosted routing, dispatch handlers, or
+    package composition above the connector
+- Do not recreate the old root `examples/` or `reference_apps/` layout.
 
 ## Required Validation Workflow
 
@@ -108,6 +124,9 @@ mix mr.dialyzer
 mix mr.docs
 ```
 
+Package-local live proofs remain opt-in. They should never be required for the
+default root acceptance gate.
+
 ## Working Style
 
 - Make changes package-first, then validate from the root.
@@ -118,6 +137,9 @@ mix mr.docs
   `mix jido.integration.new <connector_name>` and then editing the emitted
   package in place instead of hand-rolling a new child project.
 - Keep README/package docs aligned with the current slice. Do not leave architecture or package docs behind the code.
+- Keep repo guide text aligned with the actual package graph and proof surfaces.
+- When documenting workflows, point to package-local or app-level proofs rather
+  than inventing new root-level examples.
 - Prefer TDD/RGR for new vertical slices: add or extend tests first, implement, then run the full root gate.
 - Do not silently weaken quality gates to get green CI. Fix package boundaries or dependency shape instead.
 
@@ -130,6 +152,7 @@ mix mr.docs
   it works”; keep dependencies minimal and explicit.
 - Do not assume root Dialyzer coverage is enough. The monorepo tasks intentionally run quality checks inside each child package as well.
 - Do not treat generated docs as proof of correctness unless `mix monorepo.docs` or `mix docs.all` passes cleanly.
+- Do not let V1-only layout language drift back into repo docs or package docs.
 
 ## Expected Next Steps
 
