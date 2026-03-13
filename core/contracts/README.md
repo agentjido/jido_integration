@@ -7,6 +7,7 @@ Public structs and behaviours for the greenfield platform:
 - `Credential`
 - `CredentialLease`
 - `Manifest`
+- `InvocationRequest`
 - `CredentialRef`
 - `Run`
 - `Attempt`
@@ -30,6 +31,7 @@ Current hardening guarantees:
 - `RuntimeResult` is the shared connector/runtime emission contract for output, reviewable events, and durable artifact refs
 - `Gateway` is the shared admission plus execution-policy request shape used before dispatch
 - `Gateway.Policy` is the normalized capability-side security contract for actor, tenant, environment, runtime, operation, and sandbox checks
+- `InvocationRequest` is the typed public invoke helper that normalizes stable facade fields and derives the requested capability allowlist by default
 - `CredentialRef` remains durable while `CredentialLease` is the short-lived execution boundary
 - `Credential` carries durable subject/scope/auth metadata plus secret-bearing fields that are meant to stay behind auth APIs
 - `CredentialLease` carries only the execution-time payload needed for a bounded lease lifetime
@@ -50,6 +52,16 @@ Current hardening guarantees:
 - stores `target_id`, `capability_id`, `runtime_class`, `version`, `features`, `constraints`, `health`, and `location`
 - keeps unknown fields in `extensions` so mixed-version descriptors remain survivable
 - exposes explicit compatibility checks plus runspec/event-schema version negotiation
+
+`InvocationRequest`
+
+- stores the stable public invoke fields such as `capability_id`, `input`,
+  actor/tenant/environment identity, sandbox posture, and optional target
+  selection
+- keeps non-reserved extension opts explicit so callers can pass additional
+  runtime context without collapsing back to an untyped map wrapper
+- exposes `to_opts/1` so `invoke/1` and `invoke/3` can share one normalized
+  request shape
 
 ## Installation
 

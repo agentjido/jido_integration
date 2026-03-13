@@ -1,6 +1,9 @@
 defmodule Jido.Integration.V2.ControlPlane do
   @moduledoc """
-  Capability registry plus canonical run/attempt/event ledger.
+  Connector registry plus canonical run/attempt/event ledger.
+
+  The control plane owns deterministic connector and capability discovery as
+  well as the stable invocation boundary that powers the public facade.
   """
 
   alias Jido.Integration.V2.ArtifactRef
@@ -16,6 +19,8 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.DirectRuntime
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Gateway
+  alias Jido.Integration.V2.InvocationRequest
+  alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.Policy
   alias Jido.Integration.V2.PolicyDecision
   alias Jido.Integration.V2.Run
@@ -31,8 +36,30 @@ defmodule Jido.Integration.V2.ControlPlane do
     Registry.register_manifest(connector.manifest())
   end
 
+  @spec connectors() :: [Manifest.t()]
+  def connectors, do: Registry.connectors()
+
+  @spec fetch_connector(String.t()) :: {:ok, Manifest.t()} | {:error, :unknown_connector}
+  def fetch_connector(connector_id), do: Registry.fetch_connector(connector_id)
+
   @spec capabilities() :: [Capability.t()]
   def capabilities, do: Registry.capabilities()
+
+  @spec fetch_capability(String.t()) :: {:ok, Capability.t()} | {:error, :unknown_capability}
+  def fetch_capability(capability_id), do: Registry.fetch_capability(capability_id)
+
+  @spec invoke(InvocationRequest.t()) ::
+          {:ok, %{run: Run.t(), attempt: Attempt.t(), output: map()}}
+          | {:error,
+             %{
+               reason: term(),
+               run: Run.t(),
+               attempt: Attempt.t() | nil,
+               policy_decision: PolicyDecision.t() | nil
+             }}
+  def invoke(%InvocationRequest{} = request) do
+    invoke(request.capability_id, request.input, InvocationRequest.to_opts(request))
+  end
 
   @spec invoke(String.t(), map(), keyword()) ::
           {:ok, %{run: Run.t(), attempt: Attempt.t(), output: map()}}
@@ -44,7 +71,7 @@ defmodule Jido.Integration.V2.ControlPlane do
                policy_decision: PolicyDecision.t() | nil
              }}
   def invoke(capability_id, input, opts \\ []) do
-    with {:ok, capability} <- Registry.fetch_capability(capability_id) do
+    with {:ok, capability} <- fetch_capability(capability_id) do
       credential_ref = Keyword.get(opts, :credential_ref, anonymous_credential())
       run = build_run(capability, input, credential_ref, opts)
 
@@ -66,7 +93,7 @@ defmodule Jido.Integration.V2.ControlPlane do
           {:ok, %{status: :accepted | :duplicate, trigger: TriggerRecord.t(), run: Run.t()}}
           | {:error, term()}
   def admit_trigger(%TriggerRecord{} = trigger, opts \\ []) do
-    with {:ok, capability} <- Registry.fetch_capability(trigger.capability_id) do
+    with {:ok, capability} <- fetch_capability(trigger.capability_id) do
       ingress_store = Stores.ingress_store()
       checkpoint = Keyword.get(opts, :checkpoint)
 
