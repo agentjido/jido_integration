@@ -11,6 +11,7 @@ defmodule Jido.Integration.Workspace.MonorepoTest do
              "core/contracts",
              "core/control_plane",
              "core/direct_runtime",
+             "core/dispatch_runtime",
              "core/ingress",
              "core/platform",
              "core/policy",
