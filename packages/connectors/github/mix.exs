@@ -1,48 +1,41 @@
-defmodule Jido.Integration.GitHub.MixProject do
+defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
   use Mix.Project
-
-  @version "0.1.0"
-  @source_url "https://github.com/agentjido/jido_integration"
 
   def project do
     [
-      app: :jido_integration_github,
-      version: @version,
-      elixir: "~> 1.17",
+      app: :jido_integration_v2_github,
+      version: "0.1.0",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      elixirc_paths: elixirc_paths(Mix.env()),
-      aliases: aliases(),
-      name: "Jido Integration GitHub",
-      source_url: @source_url,
+      dialyzer: dialyzer(),
       docs: docs(),
-      preferred_cli_env: [
-        conformance: :test
-      ]
+      name: "Jido Integration V2 GitHub Connector",
+      description: "Example direct connector package for the greenfield platform"
     ]
   end
 
   def application do
     [
-      extra_applications: [:logger, :crypto]
+      extra_applications: [:logger]
     ]
   end
-
-  defp elixirc_paths(:test), do: ["lib", "test/support", "examples"]
-  defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
     [
-      {:jido_integration, path: "../../.."},
-      {:jason, "~> 1.4"},
-      {:req, "~> 0.5", optional: true},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      {:jido_action, path: "../../../../../../jido_action"},
+      {:jido_integration_v2_contracts, path: "../../core/contracts"},
+      {:jido_integration_v2_direct_runtime, path: "../../core/direct_runtime"},
+      {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
     ]
   end
 
-  defp aliases do
+  defp dialyzer do
     [
-      conformance: ["test --only conformance"]
+      plt_add_deps: :apps_direct,
+      plt_add_apps: [:mix]
     ]
   end
 
