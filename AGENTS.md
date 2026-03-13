@@ -33,6 +33,7 @@ Current core packages:
 - `core/policy`
 - `core/direct_runtime`
 - `core/session_kernel`
+- `core/store_local`
 - `core/store_postgres`
 - `core/stream_runtime`
 
@@ -137,7 +138,7 @@ The current skeleton proves three runtime families:
 
 Natural future slices include:
 
-- durable stores
+- additional durable stores
 - richer auth lifecycle
 - composed policy/gateway rules
 - more connectors

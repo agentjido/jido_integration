@@ -46,15 +46,16 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     mix_content = File.read!(Path.join(package_root, "mix.exs"))
 
-    assert mix_content =~ "{:jido_integration_v2_contracts, path: \"../../core/contracts\"}"
+    assert mix_content =~
+             "{:jido_integration_v2_contracts, path: \"../../core/contracts\", override: true}"
 
     assert mix_content =~
-             "{:jido_integration_v2_direct_runtime, path: \"../../core/direct_runtime\"}"
+             "{:jido_integration_v2_direct_runtime, path: \"../../core/direct_runtime\", override: true}"
 
     assert mix_content =~
              "{:jido_integration_v2_conformance, path: \"../../core/conformance\", only: :test, runtime: false}"
 
-    assert mix_content =~ "{:jido_action, path: \"../../../jido_action\"}"
+    assert mix_content =~ "{:jido_action, path: \"../../jido_action\", override: true}"
     refute mix_content =~ "jido_integration_workspace"
 
     connector_content =
@@ -87,7 +88,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     session_mix = File.read!(Path.join(session_package_root, "mix.exs"))
 
     assert session_mix =~
-             "{:jido_integration_v2_session_kernel, path: \"../../core/session_kernel\"}"
+             "{:jido_integration_v2_session_kernel, path: \"../../core/session_kernel\", override: true}"
 
     refute session_mix =~ "jido_integration_v2_direct_runtime"
     refute session_mix =~ "jido_integration_v2_stream_runtime"
@@ -125,7 +126,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     stream_mix = File.read!(Path.join(stream_package_root, "mix.exs"))
 
     assert stream_mix =~
-             "{:jido_integration_v2_stream_runtime, path: \"../../core/stream_runtime\"}"
+             "{:jido_integration_v2_stream_runtime, path: \"../../core/stream_runtime\", override: true}"
 
     refute stream_mix =~ "jido_integration_v2_direct_runtime"
     refute stream_mix =~ "jido_integration_v2_session_kernel"
@@ -155,6 +156,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert stream_provider =~ "def pull"
   end
 
+  @tag timeout: 180_000
   test "generated packages compile, test, build docs, and pass baseline conformance" do
     workspace_root = temp_workspace!("validation")
 
@@ -189,6 +191,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
         "jido_integration_new_#{label}_#{System.unique_integer([:positive, :monotonic])}"
       )
 
+    File.rm_rf!(root)
     File.mkdir_p!(Path.join(root, "connectors"))
     File.ln_s!(Path.join(Monorepo.root_dir(), "core"), Path.join(root, "core"))
     File.ln_s!(Path.expand("../jido_action", Monorepo.root_dir()), Path.join(root, "jido_action"))

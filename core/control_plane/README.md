@@ -16,6 +16,7 @@ Owns:
 The important current contract is:
 
 - `control_plane` owns the domain-facing persistence behaviours, not the Repo
+- restart-safe local control-plane truth is implemented by `core/store_local`
 - Postgres-backed control-plane truth is implemented by `core/store_postgres`
 - artifact truth is exposed through `record_artifact/1`, `fetch_artifact/1`, and `run_artifacts/1`
 - ingress truth is exposed through `admit_trigger/2`, `record_rejected_trigger/2`, `fetch_trigger/4`, and `fetch_trigger_checkpoint/4`

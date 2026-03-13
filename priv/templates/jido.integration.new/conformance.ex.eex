@@ -19,4 +19,11 @@ defmodule <%= @conformance_module %> do
       }
     ]
   end
+
+<%= if @publish_ingress_definitions do %>
+  @spec ingress_definitions() :: [map()]
+  def ingress_definitions do
+    <%= @ingress_definitions_literal %>
+  end
+<% end %>
 end

@@ -14,6 +14,11 @@ foundation phase, owner packages define behaviours while `store_postgres`
 implements them and keeps database startup, migrations, and test posture
 coherent.
 
+Use `core/store_local` when a host needs restart-safe single-node durability
+without provisioning Postgres. Use `core/store_postgres` when the environment
+needs the canonical shared durable tier, migrations, sandbox support, and
+database-backed operational guarantees.
+
 Current control-plane durability includes:
 
 - runs, attempts, and append-only run events
