@@ -7,6 +7,7 @@ defmodule Jido.Integration.Workspace.MonorepoTest do
     assert Monorepo.project_paths() == [
              ".",
              "core/auth",
+             "core/conformance",
              "core/contracts",
              "core/control_plane",
              "core/direct_runtime",

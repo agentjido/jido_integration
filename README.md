@@ -14,6 +14,7 @@ jido_integration/
   test/                      # root tooling tests only
   docs/                      # repo-level docs only
   core/
+    conformance/           # reusable connector conformance engine + profiles
     platform/               # public facade package (`:jido_integration_v2`)
     contracts/
     control_plane/
@@ -37,6 +38,8 @@ jido_integration/
 - the repo root owns monorepo tooling and quality gates only
 - `core/platform` owns app `:jido_integration_v2` and module
   `Jido.Integration.V2`
+- `core/conformance` owns the reusable v2-native connector conformance engine
+  behind the root `mix jido.conformance` task
 - child projects depend on each other only through explicit `path:` deps
 - no child project depends on the repo root
 - connectors stay opt-in, so apps compile only the integrations they declare
@@ -82,6 +85,15 @@ Public v2 API highlights:
 - `Jido.Integration.V2.fetch_connector/1` and
   `Jido.Integration.V2.fetch_capability/1` expose public discovery by id
 
+Connector quality surface:
+
+- `mix jido.conformance <ConnectorModule>` runs the stable
+  `:connector_foundation` profile from the repo root
+- the root task delegates into `core/conformance`; the root stays tooling-only
+- connectors can publish deterministic fixture evidence through an optional
+  `<ConnectorModule>.Conformance` companion module without depending on the
+  root
+
 ## Dependency Posture
 
 - `core/direct_runtime` and `connectors/github` keep explicit local `jido_action`
@@ -96,6 +108,9 @@ Public v2 API highlights:
 
 The connector review baseline notes live in
 `docs/connector_review_baseline.md`.
+
+The conformance workflow and companion-module contract live in
+`docs/conformance_workflow.md`.
 
 ## Monorepo Commands
 
@@ -113,6 +128,7 @@ mix monorepo.docs
 mix quality
 mix docs.all
 mix ci
+mix jido.conformance Jido.Integration.V2.Connectors.GitHub
 ```
 
 `mix ci` is the main acceptance gate.

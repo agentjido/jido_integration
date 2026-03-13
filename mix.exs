@@ -24,6 +24,7 @@ defmodule Jido.Integration.Workspace.MixProject do
 
   defp deps do
     [
+      {:jido_integration_v2_conformance, path: "core/conformance", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
@@ -59,7 +60,12 @@ defmodule Jido.Integration.Workspace.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "AGENTS.md", "docs/connector_review_baseline.md"]
+      extras: [
+        "README.md",
+        "AGENTS.md",
+        "docs/connector_review_baseline.md",
+        "docs/conformance_workflow.md"
+      ]
     ]
   end
 end

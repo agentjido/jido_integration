@@ -25,6 +25,7 @@ jido_integration/
 Current core packages:
 
 - `core/platform`
+- `core/conformance`
 - `core/contracts`
 - `core/control_plane`
 - `core/auth`
@@ -80,6 +81,13 @@ mix ci
 
 `mix ci` is the main acceptance gate. If it fails, the repo is not done.
 
+For connector-facing slices, also run the root conformance task against every
+affected connector module, for example:
+
+```bash
+mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+```
+
 The root `mix.exs` also exposes equivalent `mr.*` shortcuts for day-to-day
 use:
 
@@ -97,6 +105,8 @@ mix mr.docs
 
 - Make changes package-first, then validate from the root.
 - When adding a new package, wire it into the root monorepo task surface so it is covered by the same commands as the rest of the repo.
+- When changing connector review semantics, keep `core/conformance`, the root
+  `mix jido.conformance` task, and connector companion evidence modules aligned.
 - Keep README/package docs aligned with the current slice. Do not leave architecture or package docs behind the code.
 - Prefer TDD/RGR for new vertical slices: add or extend tests first, implement, then run the full root gate.
 - Do not silently weaken quality gates to get green CI. Fix package boundaries or dependency shape instead.
