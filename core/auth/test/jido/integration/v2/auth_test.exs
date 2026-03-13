@@ -197,6 +197,28 @@ defmodule Jido.Integration.V2.AuthTest do
     refute inspect(resolved_credential) =~ "ghr_rotated_refresh_secret"
   end
 
+  test "resolves a specific secret value through the auth boundary" do
+    {_, _, credential_ref} =
+      install_connection(%{
+        connector_id: "github",
+        tenant_id: "tenant-secret",
+        actor_id: "user-secret",
+        auth_type: :oauth2,
+        subject: "secret-octocat",
+        requested_scopes: ["repo"],
+        granted_scopes: ["repo"],
+        secret: %{
+          access_token: "gho_secret_value",
+          webhook_secret: "whsec_123"
+        },
+        expires_at: ~U[2026-03-09 13:00:00Z],
+        now: ~U[2026-03-09 12:00:00Z]
+      })
+
+    assert {:ok, "whsec_123"} = Auth.resolve_secret(credential_ref, "webhook_secret")
+    assert {:error, :unknown_secret} = Auth.resolve_secret(credential_ref, "missing_secret")
+  end
+
   test "rotates and revokes connections through the host boundary" do
     {_, connection, credential_ref} =
       install_connection(%{

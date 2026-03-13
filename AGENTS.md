@@ -29,6 +29,7 @@ Current core packages:
 - `core/contracts`
 - `core/control_plane`
 - `core/dispatch_runtime`
+- `core/webhook_router`
 - `core/auth`
 - `core/ingress`
 - `core/policy`

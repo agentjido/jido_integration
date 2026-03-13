@@ -236,6 +236,17 @@ defmodule Jido.Integration.V2.Auth do
     end
   end
 
+  @spec resolve_secret(CredentialRef.t(), String.t() | atom()) ::
+          {:ok, term()}
+          | {:error, :unknown_credential | :credential_subject_mismatch | :unknown_secret}
+  def resolve_secret(%CredentialRef{} = credential_ref, secret_key) do
+    with {:ok, credential} <- fetch_durable_credential(credential_ref.id),
+         :ok <- match_subject(credential_ref, credential),
+         {:ok, secret_value} <- fetch_secret_value(credential, secret_key) do
+      {:ok, secret_value}
+    end
+  end
+
   @spec rotate_connection(String.t(), map()) ::
           {:ok, %{connection: Connection.t(), credential_ref: CredentialRef.t()}}
           | {:error, term()}
@@ -546,6 +557,15 @@ defmodule Jido.Integration.V2.Auth do
 
   defp match_subject(%CredentialRef{subject: subject}, %Credential{subject: subject}), do: :ok
   defp match_subject(_credential_ref, _credential), do: {:error, :credential_subject_mismatch}
+
+  defp fetch_secret_value(%Credential{} = credential, secret_key) do
+    normalized_secret_key = normalize_key(secret_key)
+
+    case Enum.find(Map.keys(credential.secret), &(normalize_key(&1) == normalized_secret_key)) do
+      nil -> {:error, :unknown_secret}
+      key -> {:ok, Map.fetch!(credential.secret, key)}
+    end
+  end
 
   defp transition_connection(%Connection{} = connection, to_state) do
     cond do

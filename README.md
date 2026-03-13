@@ -19,6 +19,7 @@ jido_integration/
     contracts/
     control_plane/
     dispatch_runtime/
+    webhook_router/
     auth/
     ingress/
     policy/
@@ -44,6 +45,9 @@ jido_integration/
   behind the root `mix jido.conformance` task
 - `core/dispatch_runtime` owns async trigger queueing, retry/backoff, replay,
   and transport-state recovery above `core/control_plane`
+- `core/webhook_router` owns hosted webhook route lifecycle, callback-topology
+  resolution, auth-backed secret lookup, ingress-definition assembly, and
+  dispatch-runtime handoff above `core/ingress`
 - durability stays package-owned and explicit:
   - `core/auth` and `core/control_plane` still ship in-memory defaults
   - `core/store_local` is the restart-safe local durability tier
@@ -118,6 +122,9 @@ Connector quality surface:
 - `core/direct_runtime` and `connectors/github` keep explicit local `jido_action`
   path deps
 - `core/ingress` keeps an explicit local `jido_signal` path dep
+- `core/webhook_router` depends explicitly on `core/auth`, `core/ingress`, and
+  `core/dispatch_runtime`; hosted webhook route state does not move back into
+  `core/ingress`
 - `core/platform` does not pull connectors at runtime; connector packages are
   only test deps there
 - `core/store_local` and `core/store_postgres` are opt-in durability packages,
@@ -138,6 +145,9 @@ The connector scaffold task and generated package contract live in
 
 The async trigger lifecycle, replay model, and restart caveats live in
 `core/dispatch_runtime/README.md`.
+
+The hosted webhook route lifecycle and ingress/dispatch bridge contract live in
+`core/webhook_router/README.md`.
 
 ## Monorepo Commands
 
