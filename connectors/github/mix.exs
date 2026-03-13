@@ -26,6 +26,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
       {:jido_action, path: "../../../jido_action"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
       {:jido_integration_v2_direct_runtime, path: "../../core/direct_runtime"},
+      {:jido_integration_v2, path: "../../core/platform", only: :dev},
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
@@ -43,7 +44,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: ["README.md", "docs/live_acceptance.md"]
     ]
   end
 end
