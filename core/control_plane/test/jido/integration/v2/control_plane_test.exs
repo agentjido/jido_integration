@@ -119,6 +119,23 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     :ok
   end
 
+  test "lists connectors deterministically and fetches connectors and capabilities by id" do
+    assert :ok = ControlPlane.register_connector(TestConnector)
+    assert :ok = ControlPlane.register_connector(LeakyConnector)
+
+    assert [%Manifest{connector: "leaky"}, %Manifest{connector: "test"}] =
+             ControlPlane.connectors()
+
+    assert {:ok, %Manifest{connector: "test"} = manifest} = ControlPlane.fetch_connector("test")
+    assert Enum.map(manifest.capabilities, & &1.id) == ["test.echo"]
+    assert {:error, :unknown_connector} = ControlPlane.fetch_connector("missing")
+
+    assert {:ok, %Capability{id: "leaky.echo", connector: "leaky"}} =
+             ControlPlane.fetch_capability("leaky.echo")
+
+    assert {:error, :unknown_capability} = ControlPlane.fetch_capability("missing.echo")
+  end
+
   test "registers a manifest and records a completed run" do
     credential_ref = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)

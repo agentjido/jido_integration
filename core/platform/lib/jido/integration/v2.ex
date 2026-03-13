@@ -5,6 +5,14 @@ defmodule Jido.Integration.V2 do
   The tooling workspace lives at the repository root. Runtime entrypoints live
   here and delegate to the child packages that implement the control plane,
   auth boundary, and shared contracts.
+
+  The public surface includes:
+
+  - typed invocation through `InvocationRequest` and `invoke/1`
+  - direct invocation through `invoke/3`
+  - deterministic connector discovery through `connectors/0`
+  - connector and capability lookup through `fetch_connector/1` and
+    `fetch_capability/1`
   """
 
   alias Jido.Integration.V2.ArtifactRef
@@ -16,6 +24,7 @@ defmodule Jido.Integration.V2 do
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
+  alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.TargetDescriptor
 
@@ -30,6 +39,26 @@ defmodule Jido.Integration.V2 do
   """
   @spec capabilities() :: [Jido.Integration.V2.Capability.t()]
   defdelegate capabilities(), to: ControlPlane
+
+  @doc """
+  List all registered connector manifests in deterministic connector-id order.
+  """
+  @spec connectors() :: [Jido.Integration.V2.Manifest.t()]
+  defdelegate connectors(), to: ControlPlane
+
+  @doc """
+  Fetch a registered connector manifest by connector id.
+  """
+  @spec fetch_connector(String.t()) ::
+          {:ok, Jido.Integration.V2.Manifest.t()} | {:error, :unknown_connector}
+  defdelegate fetch_connector(connector_id), to: ControlPlane
+
+  @doc """
+  Fetch a registered capability by capability id.
+  """
+  @spec fetch_capability(String.t()) ::
+          {:ok, Jido.Integration.V2.Capability.t()} | {:error, :unknown_capability}
+  defdelegate fetch_capability(capability_id), to: ControlPlane
 
   @doc """
   Start an install flow through the auth subsystem.
@@ -79,6 +108,20 @@ defmodule Jido.Integration.V2 do
   """
   @spec revoke_connection(String.t(), map()) :: {:ok, Connection.t()} | {:error, term()}
   defdelegate revoke_connection(connection_id, attrs), to: Auth
+
+  @doc """
+  Invoke a capability through the control plane using a typed request.
+  """
+  @spec invoke(InvocationRequest.t()) ::
+          {:ok, %{run: Run.t(), attempt: Jido.Integration.V2.Attempt.t(), output: map()}}
+          | {:error,
+             %{
+               reason: term(),
+               run: Run.t(),
+               attempt: Jido.Integration.V2.Attempt.t() | nil,
+               policy_decision: Jido.Integration.V2.PolicyDecision.t() | nil
+             }}
+  defdelegate invoke(request), to: ControlPlane
 
   @doc """
   Invoke a capability through the control plane.

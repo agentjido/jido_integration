@@ -11,16 +11,35 @@ defmodule Jido.Integration.V2.ControlPlane.Registry do
 
   def register_manifest(%Manifest{} = manifest) do
     Agent.update(__MODULE__, fn state ->
+      previous_manifest = Map.get(state.manifests, manifest.connector)
+
       capabilities =
-        Enum.reduce(manifest.capabilities, state.capabilities, fn capability, acc ->
-          Map.put(acc, capability.id, capability)
-        end)
+        state.capabilities
+        |> drop_manifest_capabilities(previous_manifest)
+        |> put_manifest_capabilities(manifest)
 
       %{
         state
         | manifests: Map.put(state.manifests, manifest.connector, manifest),
           capabilities: capabilities
       }
+    end)
+  end
+
+  def connectors do
+    Agent.get(__MODULE__, fn state ->
+      state.manifests
+      |> Map.values()
+      |> Enum.sort_by(& &1.connector)
+    end)
+  end
+
+  def fetch_connector(connector_id) do
+    Agent.get(__MODULE__, fn state ->
+      case Map.fetch(state.manifests, connector_id) do
+        {:ok, manifest} -> {:ok, manifest}
+        :error -> {:error, :unknown_connector}
+      end
     end)
   end
 
@@ -43,5 +62,19 @@ defmodule Jido.Integration.V2.ControlPlane.Registry do
 
   def reset! do
     Agent.update(__MODULE__, fn _ -> %{manifests: %{}, capabilities: %{}} end)
+  end
+
+  defp drop_manifest_capabilities(capabilities, nil), do: capabilities
+
+  defp drop_manifest_capabilities(capabilities, %Manifest{} = manifest) do
+    Enum.reduce(manifest.capabilities, capabilities, fn capability, acc ->
+      Map.delete(acc, capability.id)
+    end)
+  end
+
+  defp put_manifest_capabilities(capabilities, %Manifest{} = manifest) do
+    Enum.reduce(manifest.capabilities, capabilities, fn capability, acc ->
+      Map.put(acc, capability.id, capability)
+    end)
   end
 end

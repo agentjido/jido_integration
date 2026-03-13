@@ -71,6 +71,17 @@ The connector contract baseline also proves:
 - session and stream reuse are keyed to credential ref, not only subject
 - runtime sandbox and environment posture stay explicit at the policy boundary
 
+Public v2 API highlights:
+
+- `Jido.Integration.V2.InvocationRequest` is the typed request object for
+  public invocation ergonomics
+- `Jido.Integration.V2.invoke/1` accepts that request while `invoke/3` remains
+  available for direct callers
+- `Jido.Integration.V2.connectors/0` lists registered manifests in
+  deterministic connector-id order
+- `Jido.Integration.V2.fetch_connector/1` and
+  `Jido.Integration.V2.fetch_capability/1` expose public discovery by id
+
 ## Dependency Posture
 
 - `core/direct_runtime` and `connectors/github` keep explicit local `jido_action`

@@ -6,8 +6,20 @@ Owns:
 
 - the public app identity `:jido_integration_v2`
 - the stable `Jido.Integration.V2` facade module
+- the typed public invocation helper `Jido.Integration.V2.InvocationRequest`
+- connector and capability discovery through `connectors/0`,
+  `fetch_connector/1`, `fetch_capability/1`, and `capabilities/0`
 - connector contract integration tests that prove direct, session, and stream
   execution through the public API
+
+Key public calls:
+
+- `Jido.Integration.V2.invoke/1`
+- `Jido.Integration.V2.invoke/3`
+- `Jido.Integration.V2.connectors/0`
+- `Jido.Integration.V2.fetch_connector/1`
+- `Jido.Integration.V2.fetch_capability/1`
+- `Jido.Integration.V2.capabilities/0`
 
 Dependency posture:
 

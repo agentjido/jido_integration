@@ -3,6 +3,7 @@ defmodule Jido.Integration.V2Test do
 
   alias Jido.Integration.V2.Connectors.CodexCli
   alias Jido.Integration.V2.Connectors.GitHub
+  alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Connectors.MarketData
 
   @github %{
@@ -67,6 +68,63 @@ defmodule Jido.Integration.V2Test do
     assert {"codex.exec.session", :session} in capability_ids
     assert {"github.issue.create", :direct} in capability_ids
     assert {"market.ticks.pull", :stream} in capability_ids
+  end
+
+  test "lists connectors and fetches connector and capability discovery records" do
+    register_connector!(@market_data.connector)
+    register_connector!(@github.connector)
+    register_connector!(@codex_cli.connector)
+
+    assert Enum.map(V2.connectors(), & &1.connector) == ["codex_cli", "github", "market_data"]
+
+    assert {:ok, github_manifest} = V2.fetch_connector("github")
+    assert github_manifest.connector == "github"
+    assert Enum.map(github_manifest.capabilities, & &1.id) == ["github.issue.create"]
+    assert {:error, :unknown_connector} = V2.fetch_connector("missing")
+
+    assert {:ok, capability} = V2.fetch_capability("github.issue.create")
+    assert capability.connector == "github"
+    assert capability.runtime_class == :direct
+    assert {:error, :unknown_capability} = V2.fetch_capability("github.issue.close")
+  end
+
+  test "invoke/1 accepts an invocation request and matches invoke/3 behavior" do
+    register_connector!(@github.connector)
+
+    credential_ref =
+      install_connection!(
+        @github.connector_id,
+        @github.tenant_id,
+        "octocat",
+        ["repo"],
+        %{access_token: "gho_test", refresh_token: "ghr_test"}
+      )
+
+    request =
+      InvocationRequest.new!(%{
+        capability_id: @github.capability_id,
+        input: %{
+          repo: "agentjido/jido_integration_v2",
+          title: "Ship the platform package"
+        },
+        credential_ref: credential_ref,
+        actor_id: "connector-contract",
+        tenant_id: @github.tenant_id,
+        environment: @github.environment,
+        sandbox: @github.sandbox
+      })
+
+    assert {:ok, via_request} = V2.invoke(request)
+
+    assert {:ok, via_arity_three} =
+             V2.invoke(request.capability_id, request.input, InvocationRequest.to_opts(request))
+
+    assert via_request.output == via_arity_three.output
+    assert via_request.run.capability_id == via_arity_three.run.capability_id
+    assert via_request.run.runtime_class == via_arity_three.run.runtime_class
+    assert via_request.run.status == via_arity_three.run.status
+    assert via_request.attempt.status == via_arity_three.attempt.status
+    assert via_request.attempt.runtime_ref_id == via_arity_three.attempt.runtime_ref_id
   end
 
   test "direct connector emits reviewable events and durable artifacts through a lease" do
