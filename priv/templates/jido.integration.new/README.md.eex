@@ -1,0 +1,36 @@
+# <%= @project_name %>
+
+Scaffolded <%= Atom.to_string(@runtime_class) %> connector package generated from the
+workspace root.
+
+This package starts with:
+
+- one placeholder capability published through `Manifest` and `Capability`
+- a runtime-class-appropriate handler/provider skeleton
+- a deterministic conformance companion module
+- package-local tests that prove the scaffold passes the baseline conformance flow
+
+## Commands
+
+From the package root:
+
+```bash
+mix deps.get
+mix test
+mix docs
+```
+
+From the workspace root:
+
+```bash
+mix jido.conformance <%= @connector_module %>
+```
+
+## What To Replace
+
+The scaffold is intentionally honest and minimal. Replace these placeholders as
+you turn it into a real connector:
+
+1. capability id, scopes, and policy metadata in `[<%= @module_file %>]`
+2. handler/provider logic in `[<%= @handler_file %>]`
+3. deterministic fixture expectations in `[<%= @conformance_file %>]`

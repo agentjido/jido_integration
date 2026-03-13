@@ -1,0 +1,18 @@
+defmodule <%= @connector_module %>Test do
+  use ExUnit.Case, async: true
+
+  test "<%= @manifest_test_name %>" do
+    manifest = <%= @connector_module %>.manifest()
+    [capability] = manifest.capabilities
+
+    assert manifest.connector == "<%= @connector_name %>"
+    assert capability.id == "<%= @capability_id %>"
+    assert capability.runtime_class == <%= @runtime_class_literal %>
+    assert capability.kind == <%= @capability_kind_literal %>
+    assert capability.transport_profile == <%= @transport_profile_literal %>
+    assert capability.metadata.required_scopes == ["<%= @required_scope %>"]
+    assert capability.metadata.policy.environment.allowed == <%= @environment_allowed_literal %>
+    assert capability.metadata.policy.sandbox.allowed_tools == <%= @allowed_tools_literal %>
+<%= if @session_runtime do %>    assert capability.metadata.policy.sandbox.file_scope == <%= @sandbox_file_scope_literal %>
+<% end %>  end
+end
