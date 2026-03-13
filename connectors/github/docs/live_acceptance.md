@@ -25,6 +25,35 @@ Safety:
 
 ## Proof Modes
 
+### Full Acceptance
+
+Command:
+
+```bash
+cd connectors/github
+JIDO_INTEGRATION_V2_GITHUB_LIVE=1 \
+JIDO_INTEGRATION_V2_GITHUB_LIVE_WRITE=1 \
+JIDO_INTEGRATION_V2_GITHUB_REPO=owner/repo \
+JIDO_INTEGRATION_V2_GITHUB_WRITE_REPO=owner/sandbox-repo \
+scripts/live_acceptance.sh all
+```
+
+What it proves:
+
+- the auth lifecycle proof
+- the read proof surface (`github.issue.list` and `github.issue.fetch`)
+- the write proof surface (`github.issue.create`, update, label, comment, and close)
+
+Combined-mode behavior:
+
+- if `JIDO_INTEGRATION_V2_GITHUB_READ_ISSUE_NUMBER` is set, `all` uses that issue
+- otherwise `all` first looks for an existing issue in `JIDO_INTEGRATION_V2_GITHUB_REPO`
+- if none exists, `all` bootstraps `JIDO_INTEGRATION_V2_GITHUB_WRITE_REPO` by creating
+  one issue and reuses it for the read and write steps
+
+Use `all` when you want one end-to-end smoke run without having to pre-seed a
+readable repo issue.
+
 ### Auth Lifecycle
 
 Command:
@@ -63,6 +92,7 @@ What it proves:
 Notes:
 
 - use a repo with at least one issue, or set `JIDO_INTEGRATION_V2_GITHUB_READ_ISSUE_NUMBER`
+- for a one-command smoke run that can bootstrap its own issue, use `scripts/live_acceptance.sh all`
 - the connector still requires the `repo` scope for the live read proof because
   that is the current published capability contract
 
@@ -106,6 +136,10 @@ Required for write proofs:
 
 - `JIDO_INTEGRATION_V2_GITHUB_LIVE_WRITE=1`
 
+Required for `all`:
+
+- the same environment contract as write proofs
+
 Optional overrides:
 
 - `JIDO_INTEGRATION_V2_GITHUB_WRITE_REPO=owner/repo`
@@ -146,6 +180,7 @@ They are not part of:
 ## Implementation Files
 
 - `examples/support/live_support.exs`
+- `examples/github_live_all_acceptance.exs`
 - `examples/github_auth_lifecycle.exs`
 - `examples/github_live_read_acceptance.exs`
 - `examples/github_live_write_acceptance.exs`

@@ -19,9 +19,7 @@ case "${MODE}" in
     mix run examples/github_live_write_acceptance.exs
     ;;
   all)
-    mix run examples/github_auth_lifecycle.exs
-    mix run examples/github_live_read_acceptance.exs
-    mix run examples/github_live_write_acceptance.exs
+    mix run examples/github_live_all_acceptance.exs
     ;;
   *)
     cat <<'USAGE'
