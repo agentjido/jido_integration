@@ -1,23 +1,23 @@
 # Jido Integration V2 Conformance
 
-Reusable v2-native connector conformance package.
+Reusable V2-native connector conformance package.
 
-Owns:
+This package owns:
 
-- the stable `Jido.Integration.V2.Conformance` engine
-- profile definitions such as `:connector_foundation`
-- report rendering for human and JSON output
+- `Jido.Integration.V2.Conformance`
+- stable profile definitions such as `:connector_foundation`
+- human and JSON report rendering
 - suite modules for manifest, capability, runtime-fit, policy, fixture, and
-  ingress discipline checks
+  ingress checks
 
-The root workspace exposes this package through `mix jido.conformance`, but the
-implementation stays here so the repo root remains tooling-only.
+The root workspace exposes this package through `mix jido.conformance`, but
+the implementation stays here so the repo root remains tooling-only.
 
-## Current Profile Model
+## Current Stable Profile
 
-`connector_foundation` is the base profile for deterministic connector review.
-It locks a stable suite order that future generated packages and docs can rely
-on:
+`connector_foundation` is the current deterministic connector baseline.
+
+Suite order:
 
 1. `manifest_contract`
 2. `capability_contracts`
@@ -26,13 +26,28 @@ on:
 5. `deterministic_fixtures`
 6. `ingress_definition_discipline`
 
-Future async and webhook-routing profiles are expected to extend this model by
-adding suites, not by changing the task API.
+Future profiles should extend this model with more suites instead of changing
+the root task shape.
+
+## Connector Workflow
+
+Typical connector review loop:
+
+1. implement or update the connector package
+2. run package-local `mix test`
+3. run package-local `mix docs`
+4. from the workspace root, run:
+
+```bash
+mix jido.conformance <ConnectorModule>
+```
+
+5. finish with the root monorepo commands and `mix ci`
 
 ## Fixture Companion Module
 
-Connectors can publish deterministic conformance evidence without depending on
-this package directly by adding an optional companion module:
+Connectors can publish deterministic evidence without depending on this package
+directly by adding an optional companion module:
 
 ```elixir
 defmodule MyApp.Connectors.Example.Conformance do
@@ -66,15 +81,8 @@ end
 Trigger-capable connectors may also publish `ingress_definitions/0` from the
 same companion module.
 
-## Package Use
+## Direct Package Use
 
-Inside this monorepo, depend on `core/conformance` when another child package
-needs the engine directly:
-
-```elixir
-def deps do
-  [
-    {:jido_integration_v2_conformance, path: "../conformance"}
-  ]
-end
-```
+Inside this monorepo, depend on `core/conformance` only when another child
+package truly needs the engine directly. The more common path is still the root
+task.

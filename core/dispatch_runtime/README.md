@@ -31,6 +31,15 @@ The runtime exposes:
 Handlers stay explicit and host-controlled through
 `Jido.Integration.V2.DispatchRuntime.Handler`.
 
+## Minimal Host Flow
+
+1. start the runtime with a storage directory
+2. register a handler for the trigger id you expect to execute
+3. admit or fetch a `TriggerRecord`
+4. call `enqueue/3` or `enqueue/4`
+5. inspect state with `fetch_dispatch/2` or `list_dispatches/2`
+6. replay dead-lettered work with `replay/2`
+
 Hosted webhook routes typically arrive here from `core/webhook_router` after
 `core/ingress` has admitted the trigger into canonical control-plane truth.
 
@@ -81,3 +90,12 @@ For full BEAM restart recovery of both transport and control-plane truth, pair
 this package with durable control-plane stores such as `core/store_local` or
 `core/store_postgres`. With the default in-memory control-plane stores, only
 the dispatch transport record survives a full application restart.
+
+## Proof Surface
+
+Current proofs:
+
+- `core/dispatch_runtime/test/jido/integration/v2/dispatch_runtime_test.exs`
+- `apps/devops_incident_response`, which uses this package together with
+  `core/store_local` and `core/webhook_router` to prove dead-letter, replay,
+  and restart recovery

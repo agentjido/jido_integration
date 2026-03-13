@@ -241,9 +241,8 @@ defmodule Jido.Integration.V2.Auth do
           | {:error, :unknown_credential | :credential_subject_mismatch | :unknown_secret}
   def resolve_secret(%CredentialRef{} = credential_ref, secret_key) do
     with {:ok, credential} <- fetch_durable_credential(credential_ref.id),
-         :ok <- match_subject(credential_ref, credential),
-         {:ok, secret_value} <- fetch_secret_value(credential, secret_key) do
-      {:ok, secret_value}
+         :ok <- match_subject(credential_ref, credential) do
+      fetch_secret_value(credential, secret_key)
     end
   end
 

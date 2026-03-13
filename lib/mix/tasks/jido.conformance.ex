@@ -62,13 +62,11 @@ defmodule Mix.Tasks.Jido.Conformance do
 
   defp validate_invalid_options!(invalid) do
     formatted =
-      invalid
-      |> Enum.map(fn
+      Enum.map_join(invalid, ", ", fn
         {option, nil} when is_atom(option) -> Atom.to_string(option)
         {option, nil} -> to_string(option)
         {option, value} -> "#{option}=#{value}"
       end)
-      |> Enum.join(", ")
 
     Mix.raise("Invalid options: #{formatted}")
   end
@@ -138,16 +136,19 @@ defmodule Mix.Tasks.Jido.Conformance do
     with_project_build_path(build_path, fn ->
       Mix.Project.in_project(@loader_project, project_root, fn _project ->
         prepare_project!()
-
-        case loaded_connector_module(normalized_module_name) do
-          {:ok, module} ->
-            run_loaded_connector!(module, profile)
-
-          :error ->
-            Mix.raise("Module #{module_string} could not be loaded from #{project_path}")
-        end
+        run_project_connector!(normalized_module_name, module_string, project_path, profile)
       end)
     end)
+  end
+
+  defp run_project_connector!(normalized_module_name, module_string, project_path, profile) do
+    case loaded_connector_module(normalized_module_name) do
+      {:ok, module} ->
+        run_loaded_connector!(module, profile)
+
+      :error ->
+        Mix.raise("Module #{module_string} could not be loaded from #{project_path}")
+    end
   end
 
   defp prepare_project! do

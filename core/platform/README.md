@@ -1,45 +1,99 @@
 # Jido Integration V2 Platform
 
-Public facade package for the non-umbrella Jido Integration monorepo.
+Public facade package for the final V2 surface.
 
-Owns:
+This package owns:
 
 - the public app identity `:jido_integration_v2`
 - the stable `Jido.Integration.V2` facade module
 - the typed public invocation helper `Jido.Integration.V2.InvocationRequest`
-- connector and capability discovery through `connectors/0`,
-  `fetch_connector/1`, `fetch_capability/1`, and `capabilities/0`
-- connector contract integration tests that prove direct, session, and stream
-  execution through the public API
+- public connector and capability discovery
+- public auth lifecycle delegation
+- durable review and target lookup delegation
 
-Key public calls:
+## Public API Groups
 
-- `Jido.Integration.V2.invoke/1`
-- `Jido.Integration.V2.invoke/3`
-- `Jido.Integration.V2.connectors/0`
-- `Jido.Integration.V2.fetch_connector/1`
-- `Jido.Integration.V2.fetch_capability/1`
-- `Jido.Integration.V2.capabilities/0`
+Connector discovery:
 
-Dependency posture:
+- `connectors/0`
+- `capabilities/0`
+- `fetch_connector/1`
+- `fetch_capability/1`
+- `register_connector/1`
+
+Auth lifecycle:
+
+- `start_install/3`
+- `complete_install/2`
+- `fetch_install/1`
+- `connection_status/1`
+- `request_lease/2`
+- `rotate_connection/2`
+- `revoke_connection/2`
+
+Invocation:
+
+- `InvocationRequest.new!/1`
+- `invoke/1`
+- `invoke/3`
+
+Durable review and target truth:
+
+- `fetch_run/1`
+- `fetch_attempt/1`
+- `events/1`
+- `record_artifact/1`
+- `fetch_artifact/1`
+- `run_artifacts/1`
+- `announce_target/1`
+- `fetch_target/1`
+- `compatible_targets/1`
+
+## Design Boundary
+
+This package is the public facade, not the place where every runtime concern
+lives.
+
+It delegates into child packages that own the real behavior:
+
+- `core/auth`
+- `core/control_plane`
+- `core/contracts`
+
+Hosted webhook routing and async replay stay in separate package APIs:
+
+- `Jido.Integration.V2.WebhookRouter`
+- `Jido.Integration.V2.DispatchRuntime`
+
+## Dependency Posture
 
 - runtime dependencies stay in `core/*`
 - connectors remain opt-in and are pulled into this package only for tests
 - `core/store_local` and `core/store_postgres` remain explicit durability
-  dependencies, not mandatory runtime dependencies for consumers
+  choices, not mandatory runtime dependencies for facade consumers
+- packages and apps should still declare every child package whose modules they
+  reference directly
 
 ## Installation
 
-Inside this monorepo, depend on `core/platform` when a project wants the public
-facade:
+Inside this monorepo, depend on `core/platform` when a package wants the public
+facade. The exact relative `path:` depends on the caller location.
+
+App-style example:
 
 ```elixir
 def deps do
   [
-    {:jido_integration_v2, path: "../core/platform"}
+    {:jido_integration_v2, path: "../../core/platform"}
   ]
 end
 ```
 
-Projects should still declare explicit dependencies on any child packages whose
-modules they reference directly.
+## Proof Surface
+
+Current public-facade proofs:
+
+- `core/platform/test/jido/integration/v2_test.exs`
+- `apps/trading_ops`
+- `connectors/github` live acceptance, which drives the current auth and
+  invocation surface through `Jido.Integration.V2`

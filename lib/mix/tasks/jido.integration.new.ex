@@ -63,13 +63,11 @@ defmodule Mix.Tasks.Jido.Integration.New do
 
   defp validate_invalid_options!(invalid) do
     formatted =
-      invalid
-      |> Enum.map(fn
+      Enum.map_join(invalid, ", ", fn
         {option, nil} when is_atom(option) -> Atom.to_string(option)
         {option, nil} -> to_string(option)
         {option, value} -> "#{option}=#{value}"
       end)
-      |> Enum.join(", ")
 
     Mix.raise("Invalid options: #{formatted}")
   end
