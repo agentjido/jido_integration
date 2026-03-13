@@ -6,7 +6,7 @@ defmodule Jido.Integration.V2.IngressTest do
   alias Jido.Integration.V2.Ingress
   alias Jido.Integration.V2.Ingress.Definition
   alias Jido.Integration.V2.Manifest
-  alias Jido.Integration.V2.StorePostgres.Repo
+  alias Jido.Integration.V2.StorePostgres.TestSupport
 
   defmodule NoopHandler do
   end
@@ -140,7 +140,7 @@ defmodule Jido.Integration.V2.IngressTest do
              )
 
     assert checkpoint.cursor == "cursor-1"
-    restart_repo!()
+    :ok = TestSupport.restart_repo!()
 
     assert {:ok, duplicate} = Ingress.admit_poll(request, definition)
 
@@ -220,27 +220,4 @@ defmodule Jido.Integration.V2.IngressTest do
        do: :ok
 
   defp validate_tick(_payload), do: {:error, :invalid_tick}
-
-  defp restart_repo! do
-    repo_pid = Process.whereis(Repo)
-    ref = Process.monitor(repo_pid)
-    GenServer.stop(repo_pid, :normal)
-    assert_receive {:DOWN, ^ref, :process, ^repo_pid, _reason}, 5_000
-    wait_for_repo()
-  end
-
-  defp wait_for_repo(attempts \\ 40)
-
-  defp wait_for_repo(0), do: flunk("repo did not restart")
-
-  defp wait_for_repo(attempts) do
-    case Process.whereis(Repo) do
-      nil ->
-        Process.sleep(50)
-        wait_for_repo(attempts - 1)
-
-      _pid ->
-        :ok
-    end
-  end
 end

@@ -2,8 +2,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.ActionSupport do
   @moduledoc false
 
   alias Jido.Integration.V2.ArtifactBuilder
-  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Connectors.GitHub.Provider
+  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.RuntimeResult
 
   @connector_id "github"

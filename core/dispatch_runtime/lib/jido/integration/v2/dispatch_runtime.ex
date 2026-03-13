@@ -235,49 +235,12 @@ defmodule Jido.Integration.V2.DispatchRuntime do
 
   @impl true
   def handle_info({:run_dispatch, dispatch_id}, state) do
-    state = clear_timer(state, dispatch_id)
+    state =
+      state
+      |> clear_timer(dispatch_id)
+      |> run_dispatch(dispatch_id)
 
-    case Map.get(state.dispatches, dispatch_id) do
-      nil ->
-        {:noreply, state}
-
-      %Dispatch{} = dispatch ->
-        cond do
-          dispatch.status not in [:queued, :retry_scheduled] ->
-            {:noreply, state}
-
-          Map.has_key?(state.tasks, dispatch_id) ->
-            {:noreply, state}
-
-          not handler_registered?(state, dispatch.trigger.trigger_id) ->
-            {:noreply, state}
-
-          not due?(dispatch.available_at) ->
-            {:noreply, maybe_schedule_dispatch(state, dispatch)}
-
-          true ->
-            case ensure_run_bound(dispatch) do
-              {:ok, _status, bound_dispatch, _run} ->
-                running_dispatch = %{
-                  bound_dispatch
-                  | status: :running,
-                    attempts: bound_dispatch.attempts + 1,
-                    available_at: nil,
-                    updated_at: Contracts.now()
-                }
-
-                state =
-                  state
-                  |> put_dispatch(running_dispatch)
-                  |> start_dispatch_task(running_dispatch)
-
-                {:noreply, state}
-
-              {:error, _reason, failed_dispatch} ->
-                {:noreply, put_dispatch(state, failed_dispatch)}
-            end
-        end
-    end
+    {:noreply, state}
   end
 
   def handle_info({:dispatch_result, dispatch_id, attempt_number, {:ok, %{run: run}}}, state) do
@@ -358,40 +321,79 @@ defmodule Jido.Integration.V2.DispatchRuntime do
       run_id: dispatch.run_id
     }
 
-    with {:ok, execution_opts} <- handler_module.execution_opts(dispatch.trigger, context) do
-      ControlPlane.execute_run(dispatch.run_id, dispatch.attempts, execution_opts)
-    else
+    case handler_module.execution_opts(dispatch.trigger, context) do
+      {:ok, execution_opts} ->
+        ControlPlane.execute_run(dispatch.run_id, dispatch.attempts, execution_opts)
+
       {:error, reason} ->
-        {:error,
-         %{reason: reason, run: fetch_run!(dispatch.run_id), attempt: nil, policy_decision: nil}}
+        dispatch_execution_error(dispatch, reason)
 
       other ->
-        {:error,
-         %{
-           reason: {:invalid_execution_opts, other},
-           run: fetch_run!(dispatch.run_id),
-           attempt: nil,
-           policy_decision: nil
-         }}
+        dispatch_execution_error(dispatch, {:invalid_execution_opts, other})
     end
   rescue
     exception ->
-      {:error,
-       %{
-         reason: %{exception: Exception.message(exception), kind: :error},
-         run: fetch_run!(dispatch.run_id),
-         attempt: nil,
-         policy_decision: nil
-       }}
+      dispatch_execution_error(dispatch, %{exception: Exception.message(exception), kind: :error})
   catch
     kind, reason ->
-      {:error,
-       %{
-         reason: %{kind: kind, exception: inspect(reason)},
-         run: fetch_run!(dispatch.run_id),
-         attempt: nil,
-         policy_decision: nil
-       }}
+      dispatch_execution_error(dispatch, %{kind: kind, exception: inspect(reason)})
+  end
+
+  defp run_dispatch(state, dispatch_id) do
+    case Map.get(state.dispatches, dispatch_id) do
+      %Dispatch{} = dispatch -> maybe_run_dispatch(state, dispatch)
+      nil -> state
+    end
+  end
+
+  defp maybe_run_dispatch(state, %Dispatch{} = dispatch) do
+    dispatch_id = dispatch.dispatch_id
+
+    cond do
+      dispatch.status not in [:queued, :retry_scheduled] ->
+        state
+
+      Map.has_key?(state.tasks, dispatch_id) ->
+        state
+
+      not handler_registered?(state, dispatch.trigger.trigger_id) ->
+        state
+
+      not due?(dispatch.available_at) ->
+        maybe_schedule_dispatch(state, dispatch)
+
+      true ->
+        start_dispatch(state, dispatch)
+    end
+  end
+
+  defp start_dispatch(state, %Dispatch{} = dispatch) do
+    case ensure_run_bound(dispatch) do
+      {:ok, _status, bound_dispatch, _run} ->
+        running_dispatch = running_dispatch(bound_dispatch)
+
+        state
+        |> put_dispatch(running_dispatch)
+        |> start_dispatch_task(running_dispatch)
+
+      {:error, _reason, failed_dispatch} ->
+        put_dispatch(state, failed_dispatch)
+    end
+  end
+
+  defp running_dispatch(%Dispatch{} = dispatch) do
+    %{
+      dispatch
+      | status: :running,
+        attempts: dispatch.attempts + 1,
+        available_at: nil,
+        updated_at: Contracts.now()
+    }
+  end
+
+  defp dispatch_execution_error(%Dispatch{} = dispatch, reason) do
+    {:error,
+     %{reason: reason, run: fetch_run!(dispatch.run_id), attempt: nil, policy_decision: nil}}
   end
 
   defp handle_dispatch_failure(state, %Dispatch{} = dispatch, error) do

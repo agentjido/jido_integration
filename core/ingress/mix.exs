@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.Ingress.MixProject do
       app: :jido_integration_v2_ingress,
       version: "0.1.0",
       elixir: "~> 1.18",
+      consolidate_protocols: Mix.env() != :test,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: dialyzer(),

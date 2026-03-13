@@ -7,16 +7,16 @@ defmodule Jido.Integration.V2.Policy do
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.Gateway
   alias Jido.Integration.V2.Gateway.Policy, as: GatewayPolicy
-  alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.Policy.EnforceSandbox
   alias Jido.Integration.V2.Policy.RequireActor
   alias Jido.Integration.V2.Policy.RequireEnvironment
   alias Jido.Integration.V2.Policy.RequireOperation
-  alias Jido.Integration.V2.Policy.RespectPressure
   alias Jido.Integration.V2.Policy.RequireRuntimeClass
   alias Jido.Integration.V2.Policy.RequireScopes
   alias Jido.Integration.V2.Policy.RequireTenant
+  alias Jido.Integration.V2.Policy.RespectPressure
   alias Jido.Integration.V2.PolicyDecision
+  alias Jido.Integration.V2.Redaction
 
   @rules [
     RequireOperation,

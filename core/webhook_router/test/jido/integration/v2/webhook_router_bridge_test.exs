@@ -78,13 +78,15 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
         backoff_cap_ms: 20
       )
 
+    Process.unlink(runtime)
     assert :ok = DispatchRuntime.register_handler(runtime, "issues.opened", ExecuteTriggerHandler)
     {:ok, router} = WebhookRouter.start_link(name: nil, storage_dir: router_dir)
+    Process.unlink(router)
 
     on_exit(fn ->
       ControlPlane.reset!()
-      Process.alive?(runtime) && GenServer.stop(runtime, :normal, 5_000)
-      Process.alive?(router) && GenServer.stop(router, :normal, 5_000)
+      stop_process(runtime)
+      stop_process(router)
       File.rm_rf!(runtime_dir)
       File.rm_rf!(router_dir)
     end)
@@ -403,5 +405,20 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
     File.rm_rf!(path)
     File.mkdir_p!(path)
     path
+  end
+
+  defp stop_process(pid) when is_pid(pid) do
+    if Process.alive?(pid) do
+      try do
+        GenServer.stop(pid, :normal, 5_000)
+      catch
+        :exit, :noproc -> :ok
+        :exit, :shutdown -> :ok
+        :exit, {:noproc, _} -> :ok
+        :exit, {:shutdown, _} -> :ok
+      end
+    else
+      :ok
+    end
   end
 end

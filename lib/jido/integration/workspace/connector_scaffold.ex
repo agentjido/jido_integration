@@ -24,12 +24,19 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     |> Enum.uniq()
     |> Enum.each(&create_directory/1)
 
-    Enum.each(files, fn {template_name, relative_target_path} ->
-      copy_template(
-        template_path(template_name),
-        Path.join(context.package_root, relative_target_path),
-        Map.to_list(context)
-      )
+    Enum.each(files, fn
+      {:workspace_lockfile, relative_target_path} ->
+        File.cp!(
+          context.workspace_lockfile_path,
+          Path.join(context.package_root, relative_target_path)
+        )
+
+      {template_name, relative_target_path} ->
+        copy_template(
+          template_path(template_name),
+          Path.join(context.package_root, relative_target_path),
+          Map.to_list(context)
+        )
     end)
 
     context
@@ -82,7 +89,9 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
         relative_dep_path(package_root, Path.join(workspace_root, "core/conformance")),
       runtime_class: runtime_class,
       runtime_class_literal: inspect(runtime_class),
-      generated_on: Date.utc_today() |> Date.to_iso8601()
+      generated_on: Date.utc_today() |> Date.to_iso8601(),
+      workspace_lockfile_path: Path.join(workspace_root, "mix.lock"),
+      include_mix_lock: File.exists?(Path.join(workspace_root, "mix.lock"))
     }
 
     runtime_context =
@@ -424,7 +433,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
   end
 
   defp files(context) do
-    [
+    base_files = [
       {"formatter.exs.eex", ".formatter.exs"},
       {"gitignore.eex", ".gitignore"},
       {"README.md.eex", "README.md"},
@@ -436,6 +445,12 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       {"connector_test.exs.eex", context.test_file},
       {"conformance_test.exs.eex", context.conformance_test_file}
     ]
+
+    if context.include_mix_lock do
+      base_files ++ [{:workspace_lockfile, "mix.lock"}]
+    else
+      base_files
+    end
   end
 
   defp ensure_package_root_available!(context) do
@@ -477,6 +492,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     ArgumentError -> invalid_runtime_class!(runtime_class)
   end
 
+  @spec invalid_runtime_class!(term()) :: no_return()
   defp invalid_runtime_class!(runtime_class) do
     supported =
       @runtime_classes
