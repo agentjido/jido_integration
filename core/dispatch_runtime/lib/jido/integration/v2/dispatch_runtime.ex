@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.DispatchRuntime do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.DispatchRuntime.Dispatch
+  alias Jido.Integration.V2.DispatchRuntime.Telemetry
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
@@ -145,6 +146,12 @@ defmodule Jido.Integration.V2.DispatchRuntime do
 
         case ensure_run_bound(dispatch) do
           {:ok, status, bound_dispatch, run} ->
+            Telemetry.emit(
+              :enqueue,
+              %{count: 1},
+              dispatch_metadata(bound_dispatch, %{status: status})
+            )
+
             state =
               state
               |> put_dispatch(bound_dispatch)
@@ -159,6 +166,12 @@ defmodule Jido.Integration.V2.DispatchRuntime do
       %Dispatch{} = existing_dispatch ->
         case ensure_run_bound(existing_dispatch) do
           {:ok, _status, bound_dispatch, run} ->
+            Telemetry.emit(
+              :enqueue,
+              %{count: 1},
+              dispatch_metadata(bound_dispatch, %{status: :duplicate})
+            )
+
             state =
               state
               |> put_dispatch(bound_dispatch)
@@ -206,6 +219,12 @@ defmodule Jido.Integration.V2.DispatchRuntime do
           state
           |> put_dispatch(replayed_dispatch)
           |> maybe_schedule_dispatch(replayed_dispatch)
+
+        Telemetry.emit(
+          :replay,
+          %{attempts: dispatch.attempts},
+          dispatch_metadata(replayed_dispatch)
+        )
 
         {:reply, {:ok, replayed_dispatch}, state}
 
@@ -275,6 +294,12 @@ defmodule Jido.Integration.V2.DispatchRuntime do
             completed_at: Contracts.now(),
             updated_at: Contracts.now()
         }
+
+        Telemetry.emit(
+          :deliver,
+          %{attempt: attempt_number},
+          dispatch_metadata(completed_dispatch)
+        )
 
         {:noreply, put_dispatch(state, completed_dispatch)}
 
@@ -382,6 +407,12 @@ defmodule Jido.Integration.V2.DispatchRuntime do
           updated_at: Contracts.now()
       }
 
+      Telemetry.emit(
+        :dead_letter,
+        %{attempts: dispatch.attempts},
+        dispatch_metadata(dead_lettered_dispatch)
+      )
+
       put_dispatch(state, dead_lettered_dispatch)
     else
       delay_ms = backoff_delay(dispatch.attempts, state.backoff_base_ms, state.backoff_cap_ms)
@@ -393,6 +424,12 @@ defmodule Jido.Integration.V2.DispatchRuntime do
           last_error: error_snapshot(error_reason, :execution),
           updated_at: Contracts.now()
       }
+
+      Telemetry.emit(
+        :retry,
+        %{attempt: dispatch.attempts, backoff_ms: delay_ms},
+        dispatch_metadata(retry_dispatch)
+      )
 
       state
       |> put_dispatch(retry_dispatch)
@@ -581,8 +618,10 @@ defmodule Jido.Integration.V2.DispatchRuntime do
   end
 
   defp terminal_error?(:policy_denied), do: true
+  defp terminal_error?(:policy_shed), do: true
   defp terminal_error?(:run_completed), do: true
   defp terminal_error?(:run_denied), do: true
+  defp terminal_error?(:run_shed), do: true
   defp terminal_error?(_reason), do: false
 
   defp backoff_delay(attempts, base_ms, cap_ms) do
@@ -631,6 +670,43 @@ defmodule Jido.Integration.V2.DispatchRuntime do
 
     "dispatch-" <> Base.encode16(:crypto.hash(:sha256, hash_input), case: :lower)
   end
+
+  defp dispatch_metadata(%Dispatch{} = dispatch, extra \\ %{}) do
+    %{
+      dispatch_id: dispatch.dispatch_id,
+      run_id: dispatch.run_id,
+      status: dispatch.status,
+      attempts: dispatch.attempts,
+      max_attempts: dispatch.max_attempts,
+      dispatch_status: dispatch.status,
+      trigger: trigger_metadata(dispatch.trigger),
+      last_error: dispatch.last_error
+    }
+    |> maybe_put(:available_at, dispatch.available_at)
+    |> maybe_put(:completed_at, dispatch.completed_at)
+    |> maybe_put(:dead_lettered_at, dispatch.dead_lettered_at)
+    |> Map.merge(extra)
+  end
+
+  defp trigger_metadata(%TriggerRecord{} = trigger) do
+    %{
+      admission_id: trigger.admission_id,
+      source: trigger.source,
+      connector_id: trigger.connector_id,
+      trigger_id: trigger.trigger_id,
+      capability_id: trigger.capability_id,
+      tenant_id: trigger.tenant_id,
+      external_id: trigger.external_id,
+      dedupe_key: trigger.dedupe_key,
+      status: trigger.status,
+      run_id: trigger.run_id,
+      payload: trigger.payload,
+      signal: trigger.signal
+    }
+  end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   defp storage_path(opts) do
     opts

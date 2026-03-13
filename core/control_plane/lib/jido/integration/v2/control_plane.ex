@@ -221,8 +221,8 @@ defmodule Jido.Integration.V2.ControlPlane do
       {:error, reason} ->
         fail_before_attempt(run, reason)
 
-      %PolicyDecision{status: :denied} = decision ->
-        deny_run(run, decision)
+      %PolicyDecision{status: status} = decision when status in [:denied, :shed] ->
+        reject_run(run, decision)
     end
   end
 
@@ -250,8 +250,8 @@ defmodule Jido.Integration.V2.ControlPlane do
       {:error, reason} ->
         fail_before_attempt(run, reason)
 
-      %PolicyDecision{status: :denied} = decision ->
-        deny_run(run, decision)
+      %PolicyDecision{status: status} = decision when status in [:denied, :shed] ->
+        reject_run(run, decision)
     end
   end
 
@@ -266,7 +266,10 @@ defmodule Jido.Integration.V2.ControlPlane do
         runtime_class: capability.runtime_class,
         allowed_operations: Keyword.get(opts, :allowed_operations, []),
         sandbox: Keyword.get(opts, :sandbox, %{}),
-        metadata: %{opts: Enum.into(opts, %{})}
+        metadata: %{
+          opts: Enum.into(opts, %{}),
+          pressure: Keyword.get(opts, :pressure)
+        }
       })
 
     Policy.evaluate(capability, resolved_credential, input, gateway)
@@ -373,16 +376,21 @@ defmodule Jido.Integration.V2.ControlPlane do
      }}
   end
 
-  defp deny_run(run, decision) do
-    :ok = Stores.run_store().update_run(run.run_id, :denied, denial_snapshot(decision))
+  defp reject_run(run, decision) do
+    :ok =
+      Stores.run_store().update_run(
+        run.run_id,
+        rejection_run_status(decision),
+        rejection_snapshot(decision)
+      )
 
     :ok =
       append_specs(run.run_id, nil, [
-        %{type: "run.denied", payload: %{reasons: decision.reasons}},
+        %{type: rejection_event_type(decision), payload: %{reasons: decision.reasons}},
         %{
-          type: "audit.policy_denied",
+          type: rejection_audit_event_type(decision),
           stream: :control,
-          level: :error,
+          level: rejection_audit_level(decision),
           payload: Map.put(decision.audit_context, :reasons, decision.reasons),
           trace: %{trace_id: Map.get(decision.audit_context, :trace_id)}
         }
@@ -390,7 +398,7 @@ defmodule Jido.Integration.V2.ControlPlane do
 
     {:error,
      %{
-       reason: :policy_denied,
+       reason: rejection_error(decision),
        run: fetch_run!(run.run_id),
        attempt: nil,
        policy_decision: decision
@@ -578,6 +586,7 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   defp validate_execution_status(%Run{status: :completed}), do: {:error, :run_completed}
   defp validate_execution_status(%Run{status: :denied}), do: {:error, :run_denied}
+  defp validate_execution_status(%Run{status: :shed}), do: {:error, :run_shed}
 
   defp validate_target_selection(%Run{target_id: nil}, %Capability{}), do: :ok
 
@@ -691,7 +700,7 @@ defmodule Jido.Integration.V2.ControlPlane do
     end
   end
 
-  defp denial_snapshot(decision) do
+  defp rejection_snapshot(decision) do
     %{
       policy:
         decision.audit_context
@@ -699,4 +708,19 @@ defmodule Jido.Integration.V2.ControlPlane do
         |> Map.put(:status, decision.status)
     }
   end
+
+  defp rejection_run_status(%PolicyDecision{status: :denied}), do: :denied
+  defp rejection_run_status(%PolicyDecision{status: :shed}), do: :shed
+
+  defp rejection_error(%PolicyDecision{status: :denied}), do: :policy_denied
+  defp rejection_error(%PolicyDecision{status: :shed}), do: :policy_shed
+
+  defp rejection_event_type(%PolicyDecision{status: :denied}), do: "run.denied"
+  defp rejection_event_type(%PolicyDecision{status: :shed}), do: "run.shed"
+
+  defp rejection_audit_event_type(%PolicyDecision{status: :denied}), do: "audit.policy_denied"
+  defp rejection_audit_event_type(%PolicyDecision{status: :shed}), do: "audit.policy_shed"
+
+  defp rejection_audit_level(%PolicyDecision{status: :denied}), do: :error
+  defp rejection_audit_level(%PolicyDecision{status: :shed}), do: :warn
 end

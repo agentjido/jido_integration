@@ -7,6 +7,7 @@ Owns:
 - durable dispatch acceptance
 - explicit trigger-handler registration
 - worker scheduling and execution
+- package-owned `:telemetry` for live async lifecycle observation
 - retry and backoff timing
 - dead-letter transitions and replay
 - recovery of queued or in-flight transport work after runtime restart
@@ -33,6 +34,19 @@ Handlers stay explicit and host-controlled through
 Hosted webhook routes typically arrive here from `core/webhook_router` after
 `core/ingress` has admitted the trigger into canonical control-plane truth.
 
+## Telemetry
+
+This package owns these stable `:telemetry` families:
+
+- `[:jido, :integration, :dispatch_runtime, :enqueue]`
+- `[:jido, :integration, :dispatch_runtime, :deliver]`
+- `[:jido, :integration, :dispatch_runtime, :retry]`
+- `[:jido, :integration, :dispatch_runtime, :dead_letter]`
+- `[:jido, :integration, :dispatch_runtime, :replay]`
+
+Metadata is redacted through `Jido.Integration.V2.Redaction` before emission.
+Telemetry stays supplemental to durable `Event` records in the control plane.
+
 ## Lifecycle
 
 1. `enqueue/3` or `enqueue/4` persists a durable dispatch record keyed to the
@@ -46,6 +60,13 @@ Hosted webhook routes typically arrive here from `core/webhook_router` after
 5. Failures move the dispatch into `:retry_scheduled` with exponential backoff
    until `max_attempts` is exhausted, then into `:dead_lettered`.
 6. `replay/2` re-queues dead-lettered work so the next attempt number is used.
+
+## Pressure Split
+
+- `core/policy` may deny or shed work before any attempt exists
+- this package owns backoff timing once work has already been admitted
+- retry telemetry may include `backoff_ms`, but that is scheduler state, not a
+  policy verdict
 
 ## Recovery Model
 

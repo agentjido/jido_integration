@@ -9,7 +9,7 @@ defmodule Jido.Integration.V2.Contracts do
   @type sandbox_level :: :strict | :standard | :none
   @type approvals :: :none | :manual | :auto
   @type egress_policy :: :blocked | :restricted | :open
-  @type run_status :: :accepted | :running | :completed | :failed | :denied
+  @type run_status :: :accepted | :running | :completed | :failed | :denied | :shed
   @type attempt_status :: :accepted | :running | :completed | :failed
   @type trigger_source :: :webhook | :poll
   @type trigger_status :: :accepted | :rejected
@@ -267,7 +267,7 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec validate_run_status!(run_status()) :: run_status()
   def validate_run_status!(status)
-      when status in [:accepted, :running, :completed, :failed, :denied],
+      when status in [:accepted, :running, :completed, :failed, :denied, :shed],
       do: status
 
   def validate_run_status!(status) do

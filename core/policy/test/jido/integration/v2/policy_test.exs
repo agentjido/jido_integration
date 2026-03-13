@@ -107,6 +107,52 @@ defmodule Jido.Integration.V2.PolicyTest do
     assert decision.execution_policy.sandbox.allowed_tools == ["connector.echo"]
   end
 
+  test "returns a shed decision when the gateway metadata carries a pressure signal" do
+    decision =
+      Policy.evaluate(
+        capability(%{}),
+        credential(["echo:write"]),
+        %{},
+        request(%{
+          metadata: %{
+            pressure: %{
+              decision: :shed,
+              reason: "dispatch queue saturated",
+              scope: "tenant-1:github"
+            }
+          }
+        })
+      )
+
+    assert decision.status == :shed
+    assert decision.reasons == ["dispatch queue saturated"]
+    assert decision.audit_context.pressure.decision == :shed
+    assert decision.audit_context.pressure.reason == "dispatch queue saturated"
+    assert decision.audit_context.pressure.scope == "tenant-1:github"
+  end
+
+  test "deny reasons win over shed pressure signals" do
+    decision =
+      Policy.evaluate(
+        capability(%{}),
+        credential(["echo:read"]),
+        %{},
+        request(%{
+          metadata: %{
+            pressure: %{
+              decision: :shed,
+              reason: "dispatch queue saturated"
+            }
+          }
+        })
+      )
+
+    assert decision.status == :denied
+    assert "missing required scopes: echo:write" in decision.reasons
+    refute "dispatch queue saturated" in decision.reasons
+    assert decision.audit_context.pressure.reason == "dispatch queue saturated"
+  end
+
   defp capability(overrides) do
     attrs =
       %{

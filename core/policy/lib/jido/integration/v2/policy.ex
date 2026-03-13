@@ -7,10 +7,12 @@ defmodule Jido.Integration.V2.Policy do
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.Gateway
   alias Jido.Integration.V2.Gateway.Policy, as: GatewayPolicy
+  alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.Policy.EnforceSandbox
   alias Jido.Integration.V2.Policy.RequireActor
   alias Jido.Integration.V2.Policy.RequireEnvironment
   alias Jido.Integration.V2.Policy.RequireOperation
+  alias Jido.Integration.V2.Policy.RespectPressure
   alias Jido.Integration.V2.Policy.RequireRuntimeClass
   alias Jido.Integration.V2.Policy.RequireScopes
   alias Jido.Integration.V2.Policy.RequireTenant
@@ -23,7 +25,8 @@ defmodule Jido.Integration.V2.Policy do
     RequireEnvironment,
     RequireRuntimeClass,
     RequireScopes,
-    EnforceSandbox
+    EnforceSandbox,
+    RespectPressure
   ]
 
   @spec evaluate(Capability.t(), Credential.t(), map(), map()) :: PolicyDecision.t()
@@ -33,23 +36,48 @@ defmodule Jido.Integration.V2.Policy do
     execution_policy = execution_policy(contract, gateway)
     audit_context = audit_context(capability, gateway, execution_policy)
 
-    reasons =
-      @rules
-      |> Enum.flat_map(
-        &apply_rule(&1, capability, credential, input, %{gateway: gateway, contract: contract})
-      )
-      |> Enum.uniq()
+    results =
+      Enum.reduce(@rules, %{deny: [], shed: []}, fn rule, acc ->
+        case apply_rule(rule, capability, credential, input, %{
+               gateway: gateway,
+               contract: contract
+             }) do
+          {:deny, reasons} ->
+            Map.update!(acc, :deny, &(reasons ++ &1))
 
-    case reasons do
-      [] -> PolicyDecision.allow(execution_policy, audit_context)
-      _ -> PolicyDecision.deny(reasons, execution_policy, audit_context)
+          {:shed, reasons} ->
+            Map.update!(acc, :shed, &(reasons ++ &1))
+
+          :ok ->
+            acc
+        end
+      end)
+
+    deny_reasons = Enum.uniq(results.deny)
+    shed_reasons = Enum.uniq(results.shed)
+
+    cond do
+      deny_reasons != [] ->
+        PolicyDecision.deny(deny_reasons, execution_policy, audit_context)
+
+      shed_reasons != [] ->
+        %PolicyDecision{
+          status: :shed,
+          reasons: shed_reasons,
+          execution_policy: execution_policy,
+          audit_context: audit_context
+        }
+
+      true ->
+        PolicyDecision.allow(execution_policy, audit_context)
     end
   end
 
   defp apply_rule(rule, capability, credential, input, context) do
     case rule.evaluate(capability, credential, input, context) do
-      :ok -> []
-      {:deny, reasons} -> reasons
+      :ok -> :ok
+      {:deny, reasons} -> {:deny, reasons}
+      {:shed, reasons} -> {:shed, reasons}
     end
   end
 
@@ -93,8 +121,16 @@ defmodule Jido.Integration.V2.Policy do
       capability_id: capability.id,
       runtime_class: gateway.runtime_class,
       credential_ref_id: gateway.credential_ref && gateway.credential_ref.id,
+      pressure: pressure_snapshot(gateway.metadata),
       sandbox: execution_policy.sandbox,
       allowed_operations: gateway.allowed_operations
     }
+  end
+
+  defp pressure_snapshot(metadata) when is_map(metadata) do
+    case Map.get(metadata, :pressure, Map.get(metadata, "pressure")) do
+      pressure when is_map(pressure) -> Redaction.redact(pressure)
+      _other -> nil
+    end
   end
 end

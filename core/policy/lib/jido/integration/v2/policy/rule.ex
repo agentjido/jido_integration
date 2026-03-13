@@ -6,5 +6,6 @@ defmodule Jido.Integration.V2.Policy.Rule do
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Credential
 
-  @callback evaluate(Capability.t(), Credential.t(), map(), map()) :: :ok | {:deny, [String.t()]}
+  @callback evaluate(Capability.t(), Credential.t(), map(), map()) ::
+              :ok | {:deny, [String.t()]} | {:shed, [String.t()]}
 end

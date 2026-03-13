@@ -11,6 +11,7 @@ defmodule Jido.Integration.V2.WebhookRouter do
   alias Jido.Integration.V2.Ingress
   alias Jido.Integration.V2.Ingress.Definition
   alias Jido.Integration.V2.WebhookRouter.Route
+  alias Jido.Integration.V2.WebhookRouter.Telemetry
 
   @default_storage_dir Path.join(System.tmp_dir!(), "jido_integration_v2_webhook_router")
   @state_file "routes.bin"
@@ -103,9 +104,21 @@ defmodule Jido.Integration.V2.WebhookRouter do
   def route_webhook(server, request, opts \\ []) when is_map(request) do
     case resolve_route(server, lookup_from_request(request)) do
       {:ok, %Route{} = route} ->
+        Telemetry.emit(
+          :route_resolved,
+          %{count: 1},
+          %{route: route_metadata(route), request: request_metadata(request)}
+        )
+
         do_route_webhook(route, request, opts)
 
       {:error, reason} ->
+        Telemetry.emit(
+          :route_failed,
+          %{count: 1},
+          %{reason: reason, route: nil, request: request_metadata(request), trigger: nil}
+        )
+
         {:error, %{reason: reason, route: nil, trigger: nil}}
     end
   end
@@ -397,6 +410,17 @@ defmodule Jido.Integration.V2.WebhookRouter do
        }}
     else
       {:error, %{} = ingress_error} ->
+        Telemetry.emit(
+          :route_failed,
+          %{count: 1},
+          %{
+            reason: Map.fetch!(ingress_error, :reason),
+            route: route_metadata(route),
+            request: request_metadata(request),
+            trigger: trigger_metadata(Map.get(ingress_error, :trigger))
+          }
+        )
+
         {:error,
          %{
            reason: Map.fetch!(ingress_error, :reason),
@@ -405,6 +429,17 @@ defmodule Jido.Integration.V2.WebhookRouter do
          }}
 
       {:error, reason} ->
+        Telemetry.emit(
+          :route_failed,
+          %{count: 1},
+          %{
+            reason: reason,
+            route: route_metadata(route),
+            request: request_metadata(request),
+            trigger: nil
+          }
+        )
+
         {:error, %{reason: reason, route: route, trigger: nil}}
     end
   end
@@ -465,6 +500,20 @@ defmodule Jido.Integration.V2.WebhookRouter do
         %{}
     end
   end
+
+  defp route_metadata(%Route{} = route), do: Map.from_struct(route)
+
+  defp request_metadata(request) when is_map(request) do
+    request
+    |> Map.new()
+    |> Map.delete(:raw_body)
+    |> Map.delete("raw_body")
+  end
+
+  defp trigger_metadata(nil), do: nil
+
+  defp trigger_metadata(%_{} = trigger), do: Map.from_struct(trigger)
+  defp trigger_metadata(trigger) when is_map(trigger), do: Map.new(trigger)
 
   defp auth_module(opts), do: Keyword.get(opts, :auth_module, Auth)
   defp ingress_module(opts), do: Keyword.get(opts, :ingress_module, Ingress)

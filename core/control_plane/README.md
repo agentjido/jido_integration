@@ -23,9 +23,9 @@ The important current contract is:
 - accepted runs can be executed or retried later through `execute_run/3`
 - target truth is exposed through `announce_target/1`, `fetch_target/1`, and `compatible_targets/1`
 - target compatibility is explicit and negotiates protocol versions instead of hiding version checks inside runtimes
-- denied work becomes a denied run
-- policy denials append a separate `audit.policy_denied` event with actor, tenant, connector, runtime, and trace context
-- denied runs persist the admission snapshot inside durable run truth
+- denied or shed work becomes a denied or shed run before attempt creation
+- policy denials append `audit.policy_denied` while pressure shedding appends `audit.policy_shed`
+- denied and shed runs persist the admission snapshot inside durable run truth
 - trigger admission produces durable run truth without creating an execution attempt
 - async runtimes above the control plane should reuse `execute_run/3` instead of
   inventing parallel attempt or event ledgers

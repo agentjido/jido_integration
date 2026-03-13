@@ -8,8 +8,10 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
   alias Jido.Integration.V2.DispatchRuntime
   alias Jido.Integration.V2.DispatchRuntime.Dispatch
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.WebhookRouter
+  alias Jido.Integration.V2.WebhookRouter.Telemetry, as: WebhookTelemetry
 
   defmodule WebhookCapability do
     def run(%{trigger: trigger}, context) do
@@ -88,6 +90,119 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
     end)
 
     %{runtime: runtime, router: router}
+  end
+
+  test "emits redacted telemetry when a hosted webhook route resolves", %{
+    runtime: runtime,
+    router: router
+  } do
+    %{install_id: install_id, connection_id: connection_id, credential_ref: credential_ref} =
+      install_connection_with_webhook_secret()
+
+    assert {:ok, route} =
+             WebhookRouter.register_route(router, %{
+               connector_id: "github",
+               tenant_id: "tenant-1",
+               connection_id: connection_id,
+               install_id: install_id,
+               trigger_id: "issues.opened",
+               capability_id: "github.issue.ingest",
+               signal_type: "github.issue.opened",
+               signal_source: "/webhooks/github/issues.opened",
+               callback_topology: :dynamic_per_install,
+               delivery_id_headers: ["x-github-delivery"],
+               verification: %{
+                 algorithm: :sha256,
+                 signature_header: "x-hub-signature-256",
+                 secret_ref: %{credential_ref: credential_ref, secret_key: "webhook_secret"}
+               },
+               validator: {__MODULE__, :validate_issue_opened}
+             })
+
+    attach_telemetry!([WebhookTelemetry.event(:route_resolved)], "webhook-router-resolved")
+
+    request =
+      signed_request(install_id, "delivery-telemetry", %{action: "opened", access_token: "body"})
+      |> update_in([:headers], &Map.put(&1, "authorization", "Bearer webhook-secret"))
+
+    assert {:ok, result} =
+             WebhookRouter.route_webhook(router, request, dispatch_runtime: runtime)
+
+    assert result.route.route_id == route.route_id
+
+    assert_receive {:telemetry_event, event, %{count: 1}, metadata}, 1_000
+    assert event == WebhookTelemetry.event(:route_resolved)
+    assert metadata.route.route_id == route.route_id
+    assert metadata.request.headers["authorization"] == Redaction.redacted()
+    assert metadata.request.body.access_token == Redaction.redacted()
+    assert metadata.route.verification.secret_ref == Redaction.redacted()
+    refute inspect(metadata) =~ "webhook-secret"
+    refute inspect(metadata) =~ "super-secret"
+  end
+
+  test "emits failure telemetry for route lookup and signature errors", %{
+    runtime: runtime,
+    router: router
+  } do
+    attach_telemetry!([WebhookTelemetry.event(:route_failed)], "webhook-router-failed")
+
+    assert {:error, error} =
+             WebhookRouter.route_webhook(
+               router,
+               %{install_id: "install-missing", raw_body: "{}", body: %{}, headers: %{}},
+               dispatch_runtime: runtime
+             )
+
+    assert error.reason == :route_not_found
+
+    assert_receive {:telemetry_event, event, %{count: 1}, metadata}, 1_000
+    assert event == WebhookTelemetry.event(:route_failed)
+    assert metadata.reason == :route_not_found
+    assert is_nil(metadata.route)
+
+    %{install_id: install_id, connection_id: connection_id, credential_ref: credential_ref} =
+      install_connection_with_webhook_secret()
+
+    assert {:ok, route} =
+             WebhookRouter.register_route(router, %{
+               connector_id: "github",
+               tenant_id: "tenant-1",
+               connection_id: connection_id,
+               install_id: install_id,
+               trigger_id: "issues.opened",
+               capability_id: "github.issue.ingest",
+               signal_type: "github.issue.opened",
+               signal_source: "/webhooks/github/issues.opened",
+               callback_topology: :dynamic_per_install,
+               delivery_id_headers: ["x-github-delivery"],
+               verification: %{
+                 algorithm: :sha256,
+                 signature_header: "x-hub-signature-256",
+                 secret_ref: %{credential_ref: credential_ref, secret_key: "webhook_secret"}
+               },
+               validator: {__MODULE__, :validate_issue_opened}
+             })
+
+    bad_request =
+      signed_request(install_id, "delivery-invalid", %{action: "opened", client_secret: "bad"})
+      |> update_in([:headers], fn headers ->
+        headers
+        |> Map.put("authorization", "Bearer invalid-secret")
+        |> Map.put("x-hub-signature-256", "sha256=deadbeef")
+      end)
+
+    assert {:error, signature_error} =
+             WebhookRouter.route_webhook(router, bad_request, dispatch_runtime: runtime)
+
+    assert signature_error.reason == :signature_invalid
+
+    assert_receive {:telemetry_event, event, %{count: 1}, metadata}, 1_000
+    assert event == WebhookTelemetry.event(:route_failed)
+    assert metadata.reason == :signature_invalid
+    assert metadata.route.route_id == route.route_id
+    assert metadata.request.headers["authorization"] == Redaction.redacted()
+    assert metadata.request.body.client_secret == Redaction.redacted()
+    refute inspect(metadata) =~ "invalid-secret"
   end
 
   test "routes a signed webhook through auth secret lookup, ingress admission, and dispatch runtime",
@@ -258,6 +373,24 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
         Process.sleep(25)
         wait_for_dispatch(runtime, dispatch_id, predicate, attempts - 1)
     end
+  end
+
+  defp attach_telemetry!(events, prefix) do
+    handler_id = "#{prefix}-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach_many(
+        handler_id,
+        events,
+        &__MODULE__.handle_telemetry_event/4,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+  end
+
+  def handle_telemetry_event(event, measurements, metadata, test_pid) do
+    send(test_pid, {:telemetry_event, event, measurements, metadata})
   end
 
   defp tmp_dir!(prefix) do

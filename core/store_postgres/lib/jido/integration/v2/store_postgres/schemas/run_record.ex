@@ -10,7 +10,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.RunRecord do
   schema "runs" do
     field(:capability_id, :string)
     field(:runtime_class, Ecto.Enum, values: [:direct, :session, :stream])
-    field(:status, Ecto.Enum, values: [:accepted, :running, :completed, :failed, :denied])
+    field(:status, Ecto.Enum, values: [:accepted, :running, :completed, :failed, :denied, :shed])
     field(:input, :map)
     field(:credential_ref, :map)
     field(:target_id, :string)

@@ -9,6 +9,7 @@ Owns:
 - callback-topology metadata for hosted webhook paths
 - secret-ref resolution through `core/auth`
 - assembly of `Ingress.Definition`
+- package-owned `:telemetry` for route resolution and failures
 - handoff into `core/dispatch_runtime`
 
 `core/ingress` stays focused on normalization and durable trigger admission.
@@ -48,3 +49,13 @@ For hosted webhook requests:
 
 The package keeps route persistence local and file-backed so route registration
 can survive process restarts without pushing that state into `core/ingress`.
+
+## Telemetry
+
+This package owns these stable `:telemetry` families:
+
+- `[:jido, :integration, :webhook_router, :route, :resolved]`
+- `[:jido, :integration, :webhook_router, :route, :failed]`
+
+Metadata is redacted through `Jido.Integration.V2.Redaction` before emission.
+Raw webhook request bodies are intentionally omitted from the emitted metadata.
