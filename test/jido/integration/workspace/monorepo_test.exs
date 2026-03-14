@@ -23,6 +23,7 @@ defmodule Jido.Integration.Workspace.MonorepoTest do
              "connectors/codex_cli",
              "connectors/github",
              "connectors/market_data",
+             "connectors/notion",
              "apps/devops_incident_response",
              "apps/trading_ops"
            ]

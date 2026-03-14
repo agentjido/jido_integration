@@ -32,6 +32,21 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
     assert File.read!(output_path) =~ "\"deterministic_fixtures\""
   end
 
+  test "loads connector packages that depend on external path deps" do
+    output = run_task(["Jido.Integration.V2.Connectors.Notion"])
+
+    assert output =~ "Connector: notion"
+    assert output =~ "[PASS] deterministic_fixtures"
+  end
+
+  test "restores the original code path after loading a child package" do
+    original_path = :code.get_path()
+
+    run_task(["Jido.Integration.V2.Connectors.Notion"])
+
+    assert :code.get_path() == original_path
+  end
+
   test "raises on an invalid connector module" do
     assert_raise Mix.Error, ~r/could not be resolved to a child package/, fn ->
       run_task(["Does.Not.Exist"])

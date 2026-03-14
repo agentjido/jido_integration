@@ -68,6 +68,8 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     module_file = module_file(connector_module)
     module_root = Path.rootname(module_file)
 
+    workspace_lockfile_path = resolve_workspace_lockfile_path(workspace_root)
+
     base_context = %{
       connector_name: connector_name,
       connector_display_name: connector_display_name(connector_name),
@@ -90,8 +92,8 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       runtime_class: runtime_class,
       runtime_class_literal: inspect(runtime_class),
       generated_on: Date.utc_today() |> Date.to_iso8601(),
-      workspace_lockfile_path: Path.join(workspace_root, "mix.lock"),
-      include_mix_lock: File.exists?(Path.join(workspace_root, "mix.lock"))
+      workspace_lockfile_path: workspace_lockfile_path,
+      include_mix_lock: not is_nil(workspace_lockfile_path)
     }
 
     runtime_context =
@@ -446,7 +448,8 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       {"conformance_test.exs.eex", context.conformance_test_file}
     ]
 
-    if context.include_mix_lock do
+    if is_binary(context.workspace_lockfile_path) and
+         File.exists?(context.workspace_lockfile_path) do
       base_files ++ [{:workspace_lockfile, "mix.lock"}]
     else
       base_files
@@ -583,5 +586,14 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
 
   defp fixture_digest(value) do
     "sha256:" <> Base.encode16(:crypto.hash(:sha256, value), case: :lower)
+  end
+
+  defp resolve_workspace_lockfile_path(workspace_root) do
+    candidates = [
+      Path.join(workspace_root, "mix.lock"),
+      Path.join(Monorepo.root_dir(), "mix.lock")
+    ]
+
+    Enum.find(candidates, &File.exists?/1)
   end
 end

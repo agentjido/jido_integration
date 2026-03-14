@@ -42,6 +42,7 @@ Current core packages:
 Current connector packages:
 
 - `connectors/github`
+- `connectors/notion`
 - `connectors/codex_cli`
 - `connectors/market_data`
 

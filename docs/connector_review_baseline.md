@@ -8,6 +8,7 @@ Status: final V2 proof surface
 Connector runtime-family baseline:
 
 - direct: `connectors/github`
+- direct: `connectors/notion`
 - session: `connectors/codex_cli`
 - stream: `connectors/market_data`
 
@@ -15,6 +16,7 @@ Supporting proof surfaces:
 
 - repo-root conformance via `core/conformance`
 - package-local GitHub live acceptance in `connectors/github`
+- package-local Notion live acceptance in `connectors/notion`
 - cross-runtime operator proof in `apps/trading_ops`
 - hosted webhook and async recovery proof in `apps/devops_incident_response`
 
@@ -32,6 +34,8 @@ Supporting proof surfaces:
   secrets
 - policy posture remains explicit at the capability boundary through declared
   scopes, environment, runtime-class, and sandbox metadata
+- Notion OAuth control endpoints stay in install/auth flow rather than widening
+  the published invoke surface
 - connector conformance stays stable at the workspace root while deterministic
   evidence stays package-local through companion modules
 - hosted webhook routing, async dead-letter, replay, and restart recovery are
@@ -50,6 +54,15 @@ Deterministic connector capabilities:
 - `github.issue.close`
 - `github.comment.create`
 - `github.comment.update`
+- `notion.users.get_self`
+- `notion.search.search`
+- `notion.pages.create`
+- `notion.pages.retrieve`
+- `notion.pages.update`
+- `notion.blocks.list_children`
+- `notion.blocks.append_children`
+- `notion.data_sources.query`
+- `notion.comments.create`
 - `codex.exec.session`
 - `market.ticks.pull`
 
@@ -73,6 +86,7 @@ From the repo root:
 
 ```bash
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix jido.conformance Jido.Integration.V2.Connectors.Notion
 mix jido.conformance Jido.Integration.V2.Connectors.CodexCli
 mix jido.conformance Jido.Integration.V2.Connectors.MarketData
 mix monorepo.test
@@ -83,6 +97,7 @@ Package and app proof commands:
 
 ```bash
 cd connectors/github && mix test
+cd connectors/notion && mix test
 cd connectors/codex_cli && mix test
 cd connectors/market_data && mix test
 cd apps/trading_ops && mix test
@@ -95,6 +110,14 @@ Optional live acceptance remains package-local:
 cd connectors/github
 JIDO_INTEGRATION_V2_GITHUB_LIVE=1 \
 JIDO_INTEGRATION_V2_GITHUB_REPO=owner/repo \
+scripts/live_acceptance.sh read
+```
+
+```bash
+cd connectors/notion
+JIDO_INTEGRATION_V2_NOTION_LIVE=1 \
+JIDO_INTEGRATION_V2_NOTION_ACCESS_TOKEN="..." \
+JIDO_INTEGRATION_V2_NOTION_READ_PAGE_ID="..." \
 scripts/live_acceptance.sh read
 ```
 

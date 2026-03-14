@@ -1,5 +1,7 @@
 defmodule Jido.Integration.V2.Conformance.Profile do
-  @moduledoc false
+  @moduledoc """
+  Named conformance profile definitions.
+  """
 
   @type suite_id ::
           :manifest_contract

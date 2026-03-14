@@ -134,10 +134,31 @@ defmodule Mix.Tasks.Jido.Conformance do
     compile_project!(project_root, build_path)
 
     with_project_build_path(build_path, fn ->
-      Mix.Project.in_project(@loader_project, project_root, fn _project ->
-        prepare_project!()
-        run_project_connector!(normalized_module_name, module_string, project_path, profile)
+      with_restored_code_path(fn ->
+        load_project_connector!(
+          project_root,
+          build_path,
+          normalized_module_name,
+          module_string,
+          project_path,
+          profile
+        )
       end)
+    end)
+  end
+
+  defp load_project_connector!(
+         project_root,
+         build_path,
+         normalized_module_name,
+         module_string,
+         project_path,
+         profile
+       ) do
+    Mix.Project.in_project(@loader_project, project_root, fn _project ->
+      prepare_project!()
+      prepend_build_loadpaths!(build_path)
+      run_project_connector!(normalized_module_name, module_string, project_path, profile)
     end)
   end
 
@@ -157,8 +178,23 @@ defmodule Mix.Tasks.Jido.Conformance do
     Mix.Task.run("loadpaths")
   end
 
+  defp prepend_build_loadpaths!(build_path) do
+    build_path
+    |> Path.join("lib/*/ebin")
+    |> Path.wildcard()
+    |> Enum.map(&String.to_charlist/1)
+    |> Code.prepend_paths()
+
+    :ok
+  end
+
   defp compile_project!(project_root, build_path) do
-    env = [{"MIX_ENV", Atom.to_string(Mix.env())}, {"MIX_BUILD_PATH", build_path}]
+    env = [
+      {"MIX_ENV", Atom.to_string(Mix.env())},
+      {"MIX_BUILD_PATH", build_path},
+      {"MIX_DEPS_PATH", Path.join(project_root, "deps")},
+      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")}
+    ]
 
     case System.cmd("mix", ["compile", "--quiet"],
            cd: project_root,
@@ -187,6 +223,16 @@ defmodule Mix.Tasks.Jido.Conformance do
       fun.()
     after
       restore_env("MIX_BUILD_PATH", previous)
+    end
+  end
+
+  defp with_restored_code_path(fun) do
+    previous = :code.get_path()
+
+    try do
+      fun.()
+    after
+      :code.set_path(previous)
     end
   end
 

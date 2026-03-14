@@ -1,5 +1,7 @@
 defmodule Jido.Integration.V2.Conformance.CheckResult do
-  @moduledoc false
+  @moduledoc """
+  Result for one conformance check.
+  """
 
   @type status :: :passed | :failed
 

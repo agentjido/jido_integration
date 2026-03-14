@@ -34,6 +34,7 @@ jido_integration/
     webhook_router/         # hosted route lifecycle and ingress bridge
   connectors/
     github/                # direct GitHub connector + live acceptance runbook
+    notion/                # direct Notion connector + package-local live proofs
     codex_cli/             # session baseline connector
     market_data/           # stream baseline connector
   apps/
@@ -113,6 +114,15 @@ Runtime families proved in-tree:
   - `github.issue.close`
   - `github.comment.create`
   - `github.comment.update`
+  - `notion.users.get_self`
+  - `notion.search.search`
+  - `notion.pages.create`
+  - `notion.pages.retrieve`
+  - `notion.pages.update`
+  - `notion.blocks.list_children`
+  - `notion.blocks.append_children`
+  - `notion.data_sources.query`
+  - `notion.comments.create`
 - `:session`
   - `codex.exec.session`
 - `:stream`
@@ -134,6 +144,8 @@ The current surface also proves:
 
 - connectors execute through short-lived auth leases, not durable credential
   truth
+- Notion OAuth control flows stay in the auth/install lifecycle instead of the
+  normal invoke surface
 - `InvocationRequest` is the typed public invoke object
 - conformance runs from the root while connector evidence stays package-local
 - local durability, async queue state, and webhook route state are all explicit
@@ -162,6 +174,8 @@ Package and app runbooks:
 - `core/webhook_router/README.md`
 - `connectors/github/README.md`
 - `connectors/github/docs/live_acceptance.md`
+- `connectors/notion/README.md`
+- `connectors/notion/docs/live_acceptance.md`
 - `apps/trading_ops/README.md`
 - `apps/devops_incident_response/README.md`
 
@@ -182,6 +196,7 @@ mix quality
 mix docs.all
 mix ci
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix jido.conformance Jido.Integration.V2.Connectors.Notion
 mix jido.integration.new acme_crm --runtime-class direct
 ```
 

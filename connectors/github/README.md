@@ -106,12 +106,12 @@ Read the detailed runbook in [`docs/live_acceptance.md`](docs/live_acceptance.md
 
 The package defaults to the deterministic provider:
 
-- `Jido.Integration.V2.Connectors.GitHub.Provider.Deterministic`
+- `lib/jido/integration/v2/connectors/git_hub/provider/deterministic.ex`
 
 The live proof scripts switch the provider to:
 
-- `Jido.Integration.V2.Connectors.GitHub.Provider.Live`
-- `Jido.Integration.V2.Connectors.GitHub.Client.HTTP`
+- `lib/jido/integration/v2/connectors/git_hub/provider/live.ex`
+- `lib/jido/integration/v2/connectors/git_hub/client/http.ex`
 
 The live provider reads `access_token` from the short-lived credential lease,
 never from durable review truth.

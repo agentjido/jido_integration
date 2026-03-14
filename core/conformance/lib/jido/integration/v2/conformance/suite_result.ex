@@ -1,5 +1,7 @@
 defmodule Jido.Integration.V2.Conformance.SuiteResult do
-  @moduledoc false
+  @moduledoc """
+  Result for one conformance suite within a report.
+  """
 
   alias Jido.Integration.V2.Conformance.CheckResult
   alias Jido.Integration.V2.Conformance.Profile
