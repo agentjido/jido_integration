@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="Jido Integration V2 Dispatch Runtime v0.1.0">
+
+
+    <title>Jido Integration V2 Dispatch Runtime — Jido Integration V2 Dispatch Runtime v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-E0353709.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+Jido Integration V2 Dispatch Runtime
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of Jido Integration V2 Dispatch Runtime</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>Jido Integration V2 Dispatch Runtime</h1>
+
+<a href="readme.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+  </div>
+
+
+<p>Reusable async trigger runtime above <code class="inline">core/control_plane</code>.</p><p>Owns:</p><ul><li>durable dispatch acceptance</li><li>explicit trigger-handler registration</li><li>worker scheduling and execution</li><li>package-owned <code class="inline">:telemetry</code> for live async lifecycle observation</li><li>retry and backoff timing</li><li>dead-letter transitions and replay</li><li>recovery of queued or in-flight transport work after runtime restart</li><li>stable query APIs for current dispatch state</li></ul><p>The package does not recreate a repo-root runtime supervisor. Hosts start and
+name the runtime explicitly where they need it.</p><h2 id="api-surface" class="section-heading"><a href="#api-surface" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">API Surface</span></h2><p>The runtime exposes:</p><ul><li><code class="inline">start_link/1</code></li><li><code class="inline">register_handler/3</code></li><li><code class="inline">enqueue/3</code></li><li><code class="inline">enqueue/4</code></li><li><code class="inline">fetch_dispatch/2</code></li><li><code class="inline">list_dispatches/2</code></li><li><code class="inline">replay/2</code></li></ul><p>Handlers stay explicit and host-controlled through
+<a href="Jido.Integration.V2.DispatchRuntime.Handler.html"><code class="inline">Jido.Integration.V2.DispatchRuntime.Handler</code></a>.</p><h2 id="minimal-host-flow" class="section-heading"><a href="#minimal-host-flow" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Minimal Host Flow</span></h2><ol><li>start the runtime with a storage directory</li><li>register a handler for the trigger id you expect to execute</li><li>admit or fetch a <code class="inline">TriggerRecord</code></li><li>call <code class="inline">enqueue/3</code> or <code class="inline">enqueue/4</code></li><li>inspect state with <code class="inline">fetch_dispatch/2</code> or <code class="inline">list_dispatches/2</code></li><li>replay dead-lettered work with <code class="inline">replay/2</code></li></ol><p>Hosted webhook routes typically arrive here from <code class="inline">core/webhook_router</code> after
+<code class="inline">core/ingress</code> has admitted the trigger into canonical control-plane truth.</p><h2 id="telemetry" class="section-heading"><a href="#telemetry" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Telemetry</span></h2><p>This package owns these stable <code class="inline">:telemetry</code> families:</p><ul><li><code class="inline">[:jido, :integration, :dispatch_runtime, :enqueue]</code></li><li><code class="inline">[:jido, :integration, :dispatch_runtime, :deliver]</code></li><li><code class="inline">[:jido, :integration, :dispatch_runtime, :retry]</code></li><li><code class="inline">[:jido, :integration, :dispatch_runtime, :dead_letter]</code></li><li><code class="inline">[:jido, :integration, :dispatch_runtime, :replay]</code></li></ul><p>Metadata is redacted through <a href="https://hexdocs.pm/jido_integration_v2_contracts/0.1.0/Jido.Integration.V2.Redaction.html"><code class="inline">Jido.Integration.V2.Redaction</code></a> before emission.
+Telemetry stays supplemental to durable <code class="inline">Event</code> records in the control plane.</p><h2 id="lifecycle" class="section-heading"><a href="#lifecycle" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Lifecycle</span></h2><ol><li><code class="inline">enqueue/3</code> or <code class="inline">enqueue/4</code> persists a durable dispatch record keyed to the
+trigger dedupe scope.</li><li>The runtime binds that transport record to canonical control-plane truth by
+calling <code class="inline">ControlPlane.admit_trigger/2</code> unless the trigger is already bound
+to a <code class="inline">run_id</code>.</li><li>Once a handler is registered for the trigger id, a worker starts the next
+dispatch attempt and calls <code class="inline">ControlPlane.execute_run/3</code>.</li><li>Success marks the dispatch completed.</li><li>Failures move the dispatch into <code class="inline">:retry_scheduled</code> with exponential backoff
+until <code class="inline">max_attempts</code> is exhausted, then into <code class="inline">:dead_lettered</code>.</li><li><code class="inline">replay/2</code> re-queues dead-lettered work so the next attempt number is used.</li></ol><h2 id="pressure-split" class="section-heading"><a href="#pressure-split" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Pressure Split</span></h2><ul><li><code class="inline">core/policy</code> may deny or shed work before any attempt exists</li><li>this package owns backoff timing once work has already been admitted</li><li>retry telemetry may include <code class="inline">backoff_ms</code>, but that is scheduler state, not a
+policy verdict</li></ul><h2 id="recovery-model" class="section-heading"><a href="#recovery-model" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Recovery Model</span></h2><p>Dispatch transport state is file-backed by this package, so queued,
+retry-scheduled, and dead-lettered dispatches survive runtime process restarts.</p><p>In-flight work that loses the runtime process is recovered on a new attempt.
+The earlier control-plane attempt record remains as accepted evidence, and the
+recovered execution continues on the next deterministic <code class="inline">attempt_id</code>.</p><p>For full BEAM restart recovery of both transport and control-plane truth, pair
+this package with durable control-plane stores such as <code class="inline">core/store_local</code> or
+<code class="inline">core/store_postgres</code>. With the default in-memory control-plane stores, only
+the dispatch transport record survives a full application restart.</p><h2 id="proof-surface" class="section-heading"><a href="#proof-surface" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Proof Surface</span></h2><p>Current proofs:</p><ul><li><code class="inline">core/dispatch_runtime/test/jido/integration/v2/dispatch_runtime_test.exs</code></li><li><code class="inline">apps/devops_incident_response</code>, which uses this package together with
+<code class="inline">core/store_local</code> and <code class="inline">core/webhook_router</code> to prove dead-letter, replay,
+and restart recovery</li></ul>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+  </div>
+  <div class="bottom-actions-item">
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="Jido Integration V2 Dispatch Runtime.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

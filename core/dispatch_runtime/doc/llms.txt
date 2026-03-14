@@ -1,0 +1,18 @@
+# Jido Integration V2 Dispatch Runtime v0.1.0 - Table of Contents
+
+Async trigger dispatch runtime with retry, replay, and recovery
+
+## Pages
+
+- [Jido Integration V2 Dispatch Runtime](readme.md)
+
+## Modules
+
+- [Jido.Integration.V2.DispatchRuntime](Jido.Integration.V2.DispatchRuntime.md): Async trigger dispatch runtime with durable transport-state recovery.
+
+- [Jido.Integration.V2.DispatchRuntime.Dispatch](Jido.Integration.V2.DispatchRuntime.Dispatch.md): Durable transport-state record for async trigger execution.
+
+- [Jido.Integration.V2.DispatchRuntime.Handler](Jido.Integration.V2.DispatchRuntime.Handler.md): Host-controlled trigger handler registration for async dispatch execution.
+
+- [Jido.Integration.V2.DispatchRuntime.Telemetry](Jido.Integration.V2.DispatchRuntime.Telemetry.md): Package-owned `:telemetry` surface for async dispatch lifecycle observation.
+

@@ -18,7 +18,6 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert File.exists?(Path.join(package_root, ".gitignore"))
     assert File.exists?(Path.join(package_root, "README.md"))
     assert File.exists?(Path.join(package_root, "mix.exs"))
-    assert File.exists?(Path.join(package_root, "mix.lock"))
     assert File.exists?(Path.join(package_root, "test/test_helper.exs"))
 
     assert File.exists?(Path.join(package_root, "lib/jido/integration/v2/connectors/acme_crm.ex"))
@@ -169,6 +168,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       run_task([name, "--workspace-root", workspace_root, "--runtime-class", runtime_class])
       package_root = Path.join(workspace_root, "connectors/#{name}")
 
+      assert_mix!(workspace_root, package_root, ["deps.get"])
       assert_mix!(workspace_root, package_root, ["compile", "--warnings-as-errors"])
       assert_mix!(workspace_root, package_root, ["test"])
     end
@@ -177,11 +177,20 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   end
 
   defp run_task(args) do
+    reload_module!(Jido.Integration.Workspace.ConnectorScaffold)
+    reload_module!(Mix.Tasks.Jido.Integration.New)
     Mix.Task.reenable("jido.integration.new")
 
     capture_io(fn ->
       NewTask.run(args)
     end)
+  end
+
+  defp reload_module!(module) do
+    :code.purge(module)
+    :code.delete(module)
+    Code.ensure_loaded(module)
+    :ok
   end
 
   defp temp_workspace!(label) do
@@ -203,10 +212,19 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   end
 
   defp assert_mix!(workspace_root, project_root, args) do
+    project_lockfile = Path.join(project_root, "mix.lock")
+
+    lockfile_path =
+      if File.exists?(project_lockfile) do
+        project_lockfile
+      else
+        Path.join(workspace_root, "mix.lock")
+      end
+
     env = [
       {"MIX_DEPS_PATH", Path.join(workspace_root, "deps")},
       {"MIX_BUILD_PATH", Path.join(workspace_root, "_build")},
-      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")}
+      {"MIX_LOCKFILE", lockfile_path}
     ]
 
     case System.cmd("mix", args, cd: project_root, env: env, stderr_to_stdout: true) do

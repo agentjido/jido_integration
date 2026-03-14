@@ -1,5 +1,7 @@
 defmodule Jido.Integration.V2.Conformance.Report do
-  @moduledoc false
+  @moduledoc """
+  Structured result returned by the conformance runner.
+  """
 
   alias Jido.Integration.V2.Conformance.CheckResult
   alias Jido.Integration.V2.Conformance.SuiteResult

@@ -11,6 +11,7 @@ Example:
 
 ```bash
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix jido.conformance Jido.Integration.V2.Connectors.Notion
 ```
 
 ## Why It Exists
@@ -60,6 +61,10 @@ For a connector package under `connectors/<name>/`:
 5. run package-local `mix test` and `mix docs`
 6. run `mix jido.conformance <ConnectorModule>` from the workspace root
 7. finish with the root monorepo gates and `mix ci`
+
+For thin provider-SDK connectors such as `connectors/notion`, deterministic
+fixtures should run through the provider package's transport seam instead of a
+second handwritten fake provider layer.
 
 Conformance is part of connector review. It does not replace package-local
 tests, docs, or the root acceptance gate.

@@ -43,6 +43,7 @@ Durability tiers:
 Connector packages:
 
 - `connectors/github`
+- `connectors/notion`
 - `connectors/codex_cli`
 - `connectors/market_data`
 
