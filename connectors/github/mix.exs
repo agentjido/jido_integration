@@ -7,13 +7,17 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       dialyzer: dialyzer(),
       docs: docs(),
       name: "Jido Integration V2 GitHub Connector",
-      description: "Example direct connector package for the greenfield platform"
+      description: "Thin direct GitHub connector package backed by github_ex"
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib"]
+  defp elixirc_paths(_env), do: ["lib"]
 
   def application do
     [
@@ -23,10 +27,13 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
 
   defp deps do
     [
-      {:jido_action, path: "../../../jido_action"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
       {:jido_integration_v2_direct_runtime, path: "../../core/direct_runtime"},
-      {:jido_integration_v2, path: "../../core/platform", only: :dev},
+      {:jido_integration_v2_conformance,
+       path: "../../core/conformance", only: :test, runtime: false},
+      {:jido_integration_v2, path: "../../core/platform", only: [:dev, :test]},
+      {:pristine, path: "../../../pristine", runtime: false},
+      {:github_ex, path: "../../../github_ex"},
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
@@ -37,7 +44,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
   defp dialyzer do
     [
       plt_add_deps: :apps_direct,
-      plt_add_apps: [:mix]
+      plt_add_apps: [:mix, :pristine]
     ]
   end
 

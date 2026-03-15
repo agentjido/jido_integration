@@ -3,6 +3,8 @@ defmodule Jido.Integration.V2Test do
 
   alias Jido.Integration.V2.Connectors.CodexCli
   alias Jido.Integration.V2.Connectors.GitHub
+  alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
+  alias Jido.Integration.V2.Connectors.GitHub.Fixtures, as: GitHubFixtures
   alias Jido.Integration.V2.Connectors.MarketData
   alias Jido.Integration.V2.InvocationRequest
 
@@ -132,6 +134,26 @@ defmodule Jido.Integration.V2Test do
     event_type: "connector.market_data.batch.pulled",
     artifact_type: :log
   }
+
+  setup do
+    previous = Application.get_env(:jido_integration_v2_github, ClientFactory)
+
+    Application.put_env(
+      :jido_integration_v2_github,
+      ClientFactory,
+      GitHubFixtures.client_opts(nil)
+    )
+
+    on_exit(fn ->
+      if is_nil(previous) do
+        Application.delete_env(:jido_integration_v2_github, ClientFactory)
+      else
+        Application.put_env(:jido_integration_v2_github, ClientFactory, previous)
+      end
+    end)
+
+    :ok
+  end
 
   test "registers connectors and exposes direct, session, and stream capabilities" do
     register_connector!(@github.connector)

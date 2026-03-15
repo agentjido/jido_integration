@@ -3,11 +3,9 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
 
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Connectors.GitHub
+  alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
   alias Jido.Integration.V2.Connectors.GitHub.LiveEnv
   alias Jido.Integration.V2.Connectors.GitHub.LivePlan
-  alias Jido.Integration.V2.Connectors.GitHub.Provider
-  alias Jido.Integration.V2.Connectors.GitHub.Provider.Live, as: LiveProvider
-  alias Jido.Integration.V2.Connectors.GitHub.Client.HTTP
 
   @runtime_apps [
     :jido_integration_v2_auth,
@@ -161,19 +159,13 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
   end
 
   defp configure_live_provider!(spec) do
-    Application.put_env(:jido_integration_v2_github, Provider, implementation: LiveProvider)
-
-    Application.put_env(
-      :jido_integration_v2_github,
-      LiveProvider,
-      live_provider_opts(spec)
-    )
+    Application.put_env(:jido_integration_v2_github, ClientFactory, live_client_opts(spec))
   end
 
-  defp live_provider_opts(spec) do
-    [client: HTTP]
+  defp live_client_opts(spec) do
+    [transport: Pristine.Adapters.Transport.Finch]
     |> maybe_put(:base_url, spec.api_base_url)
-    |> maybe_put(:timeout, spec.timeout_ms)
+    |> maybe_put(:timeout_ms, spec.timeout_ms)
   end
 
   defp maybe_put(opts, _key, nil), do: opts

@@ -1,18 +1,19 @@
-defmodule Jido.Integration.V2.Connectors.Notion.ClientFactoryTest do
+defmodule Jido.Integration.V2.Connectors.GitHub.ClientFactoryTest do
   use ExUnit.Case, async: true
 
-  alias Jido.Integration.V2.Connectors.Notion.ClientFactory
-  alias Jido.Integration.V2.Connectors.Notion.Fixtures
-  alias Jido.Integration.V2.Connectors.Notion.FixtureTransport
+  alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
+  alias Jido.Integration.V2.Connectors.GitHub.FixtureTransport
+  alias Jido.Integration.V2.Connectors.GitHub.Fixtures
 
-  test "builds a Notion client from the lease payload and runtime overrides only" do
+  test "builds a GitHubEx client from the lease payload and runtime overrides only" do
     context =
-      Fixtures.execution_context("notion.pages.retrieve",
-        notion_client: %{
+      Fixtures.execution_context("github.issue.list",
+        github_client: %{
           transport: FixtureTransport,
           transport_opts: [test_pid: self()],
+          base_url: "https://ghe.example.test/api/v3",
+          timeout_ms: 20_000,
           auth: "shadow-token",
-          notion_version: "2025-09-03",
           typed_responses: true
         }
       )
@@ -21,7 +22,8 @@ defmodule Jido.Integration.V2.Connectors.Notion.ClientFactoryTest do
     assert client.auth == Fixtures.access_token()
     assert client.transport == FixtureTransport
     assert client.transport_opts[:test_pid] == self()
-    assert client.notion_version == "2025-09-03"
+    assert client.base_url == "https://ghe.example.test/api/v3"
+    assert client.timeout_ms == 20_000
     refute client.typed_responses
     assert ClientFactory.auth_binding(context) == Fixtures.auth_binding()
   end

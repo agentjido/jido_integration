@@ -8,6 +8,11 @@ This package keeps two separate quality surfaces:
 The live path exists to prove the current v2 auth and platform boundary against
 real GitHub state without contaminating default CI.
 
+For this package, "live" means the connector switches its lease-bound
+`GitHubEx.Client` configuration from the deterministic fixture transport to the
+real SDK transport. The HTTP lane still lives in `github_ex`, not in
+`jido_integration`.
+
 ## Before You Run It
 
 Prerequisites:

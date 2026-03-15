@@ -1,13 +1,13 @@
 # Jido Integration V2 GitHub Connector
 
-Deterministic direct GitHub connector package with package-local, opt-in live
-proofs.
+Thin direct GitHub connector package backed by `github_ex`, with deterministic
+offline tests and package-local, opt-in live proofs.
 
 Proves:
 
 - direct capability publishing against the shared `RuntimeResult` substrate
-- `Jido.Action`-backed execution for deterministic issue and comment operations
-- package-local provider and client abstractions with a deterministic default
+- `github_ex`-backed execution through one lease-bound SDK client factory
+- package-local deterministic tests through the SDK transport seam
 - connector-specific review events plus one durable artifact ref per run
 - lease-bound auth handling with redacted `auth_binding` digests
 - opt-in live auth, read, and write proofs through `Jido.Integration.V2`
@@ -33,10 +33,13 @@ stays honest.
 
 ## Deterministic CI
 
-Default package tests stay offline and deterministic.
+Default package tests stay offline and deterministic through the `github_ex`
+transport seam. There is no second handwritten GitHub HTTP client inside
+`jido_integration`.
 
 ```bash
 cd connectors/github
+mix compile --warnings-as-errors
 mix test
 ```
 
@@ -102,19 +105,28 @@ scripts/live_acceptance.sh write
 
 Read the detailed runbook in [`docs/live_acceptance.md`](docs/live_acceptance.md).
 
-## Provider Model
+## SDK Boundary
 
-The package defaults to the deterministic provider:
+Runtime requests build `GitHubEx.Client` instances only from Jido-issued
+credential leases.
 
-- `lib/jido/integration/v2/connectors/git_hub/provider/deterministic.ex`
+The connector owns:
 
-The live proof scripts switch the provider to:
+- capability catalog publication
+- lease-bound client construction
+- SDK method mapping from the public `repo` input shape
+- normalized runtime output, events, artifacts, and conformance fixtures
 
-- `lib/jido/integration/v2/connectors/git_hub/provider/live.ex`
-- `lib/jido/integration/v2/connectors/git_hub/client/http.ex`
+`github_ex` owns:
 
-The live provider reads `access_token` from the short-lived credential lease,
-never from durable review truth.
+- provider HTTP execution
+- auth header behavior
+- retry and rate-limit behavior
+- generated REST operation wrappers such as `GitHubEx.Issues.*`
+
+Live proofs override the connector client config to use the real SDK transport.
+Offline tests override the transport with fixture responses. Neither path moves
+provider HTTP logic back into `jido_integration`.
 
 ## Architecture Boundary
 
@@ -139,11 +151,19 @@ Successful runs emit:
 
 ## Files
 
+- capability catalog: `lib/jido/integration/v2/connectors/git_hub/capability_catalog.ex`
+- lease-bound client factory: `lib/jido/integration/v2/connectors/git_hub/client_factory.ex`
+- generic SDK operation handler: `lib/jido/integration/v2/connectors/git_hub/operation.ex`
+- deterministic fixture seam: `lib/jido/integration/v2/connectors/git_hub/fixtures.ex`
 - full live proof: `examples/github_live_all_acceptance.exs`
 - live auth proof: `examples/github_auth_lifecycle.exs`
 - live read proof: `examples/github_live_read_acceptance.exs`
 - live write proof: `examples/github_live_write_acceptance.exs`
 - live proof wrapper: `scripts/live_acceptance.sh`
 - deterministic tests: `test/jido/integration/v2/connectors/git_hub_test.exs`
+- operation tests: `test/jido/integration/v2/connectors/git_hub/operation_test.exs`
+- client factory tests:
+  `test/jido/integration/v2/connectors/git_hub/client_factory_test.exs`
+- conformance tests: `test/jido/integration/v2/connectors/git_hub/conformance_test.exs`
 - deterministic live gating tests:
   `test/jido/integration/v2/connectors/git_hub/live_env_test.exs`
