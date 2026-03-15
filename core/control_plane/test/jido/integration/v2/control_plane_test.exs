@@ -61,6 +61,128 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     end
   end
 
+  defmodule JidoSessionConnector do
+    @behaviour Jido.Integration.V2.Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "jido_session_test",
+        capabilities: [
+          Capability.new!(%{
+            id: "test.session.prompt",
+            connector: "jido_session_test",
+            runtime_class: :session,
+            kind: :session_operation,
+            transport_profile: :stdio,
+            handler: PassthroughAction,
+            metadata: %{
+              required_scopes: ["session:execute"],
+              runtime: %{
+                driver: "jido_session"
+              },
+              policy: %{
+                allowed_actor_ids: ["control-plane-test"],
+                allowed_tenant_ids: ["tenant-1"],
+                allowed_environments: [:prod],
+                allowed_runtime_classes: [:session],
+                sandbox: %{
+                  level: :strict,
+                  egress: :restricted,
+                  approvals: :manual,
+                  file_scope: "/srv/tenant-1/session",
+                  allowed_tools: ["test.session.prompt"]
+                }
+              }
+            }
+          })
+        ]
+      })
+    end
+  end
+
+  defmodule AsmStreamConnector do
+    @behaviour Jido.Integration.V2.Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "asm_stream_test",
+        capabilities: [
+          Capability.new!(%{
+            id: "test.asm.stream",
+            connector: "asm_stream_test",
+            runtime_class: :stream,
+            kind: :stream_operation,
+            transport_profile: :stdio,
+            handler: PassthroughAction,
+            metadata: %{
+              required_scopes: ["stream:execute"],
+              runtime: %{
+                driver: "asm",
+                provider: :claude,
+                options: %{
+                  driver: AsmScriptedDriver
+                }
+              },
+              policy: %{
+                allowed_actor_ids: ["control-plane-test"],
+                allowed_tenant_ids: ["tenant-1"],
+                allowed_environments: [:prod],
+                allowed_runtime_classes: [:stream],
+                sandbox: %{
+                  level: :standard,
+                  egress: :restricted,
+                  approvals: :auto,
+                  file_scope: "/srv/tenant-1/asm",
+                  allowed_tools: ["test.asm.stream"]
+                }
+              }
+            }
+          })
+        ]
+      })
+    end
+  end
+
+  defmodule AsmScriptedDriver do
+    @moduledoc false
+
+    alias ASM.Event
+    alias ASM.Message
+    alias ASM.Run
+
+    @spec start(map()) :: {:ok, pid()}
+    def start(%{} = context) do
+      {:ok, spawn(fn -> emit(context) end)}
+    end
+
+    defp emit(context) do
+      for {kind, payload} <- script() do
+        Run.Server.ingest_event(
+          context.run_pid,
+          %Event{
+            id: Event.generate_id(),
+            kind: kind,
+            run_id: context.run_id,
+            session_id: context.session_id,
+            provider: context.provider,
+            payload: payload,
+            timestamp: DateTime.utc_now()
+          }
+        )
+      end
+    end
+
+    defp script do
+      [
+        {:assistant_delta, %Message.Partial{content_type: :text, delta: "hello "}},
+        {:assistant_delta, %Message.Partial{content_type: :text, delta: "from control plane"}},
+        {:result, %Message.Result{stop_reason: :end_turn}}
+      ]
+    end
+  end
+
   defmodule LeakyAction do
     use Jido.Action,
       name: "leaky_action",
@@ -254,6 +376,123 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert audit_payload.capability_id == "test.echo"
     assert audit_payload.runtime_class == :direct
     assert audit_payload.reasons == ["missing required scopes: echo:write"]
+  end
+
+  test "routes session work through the jido_session harness driver selected by target metadata" do
+    credential_ref = install_connection!("tester", ["session:execute"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(JidoSessionConnector)
+
+    assert :ok =
+             ControlPlane.announce_target(
+               harness_target(
+                 "target-jido-session",
+                 "test.session.prompt",
+                 :session,
+                 "jido_session"
+               )
+             )
+
+    assert {:ok, first} =
+             ControlPlane.invoke(
+               "test.session.prompt",
+               %{prompt: "Draft a review packet"},
+               invoke_opts(
+                 credential_ref,
+                 allowed_operations: ["test.session.prompt"],
+                 sandbox: %{
+                   level: :strict,
+                   egress: :restricted,
+                   approvals: :manual,
+                   file_scope: "/srv/tenant-1/session",
+                   allowed_tools: ["test.session.prompt"]
+                 },
+                 target_id: "target-jido-session"
+               )
+             )
+
+    assert {:ok, second} =
+             ControlPlane.invoke(
+               "test.session.prompt",
+               %{prompt: "Turn it into a checklist"},
+               invoke_opts(
+                 credential_ref,
+                 allowed_operations: ["test.session.prompt"],
+                 sandbox: %{
+                   level: :strict,
+                   egress: :restricted,
+                   approvals: :manual,
+                   file_scope: "/srv/tenant-1/session",
+                   allowed_tools: ["test.session.prompt"]
+                 },
+                 target_id: "target-jido-session"
+               )
+             )
+
+    assert first.run.runtime_class == :session
+    assert first.attempt.runtime_ref_id == second.attempt.runtime_ref_id
+    assert first.output.text == "handled: Draft a review packet"
+    assert second.output.text == "handled: Turn it into a checklist"
+
+    assert Enum.any?(ControlPlane.events(second.run.run_id), fn event ->
+             event.session_id == second.attempt.runtime_ref_id and
+               event.runtime_ref_id == second.attempt.runtime_ref_id
+           end)
+  end
+
+  test "routes stream work through the asm harness driver selected by target metadata" do
+    credential_ref = install_connection!("tester", ["stream:execute"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(AsmStreamConnector)
+
+    assert :ok =
+             ControlPlane.announce_target(
+               harness_target("target-asm-stream", "test.asm.stream", :stream, "asm")
+             )
+
+    assert {:ok, first} =
+             ControlPlane.invoke(
+               "test.asm.stream",
+               %{prompt: "Stream the current status"},
+               invoke_opts(
+                 credential_ref,
+                 allowed_operations: ["test.asm.stream"],
+                 sandbox: %{
+                   level: :standard,
+                   egress: :restricted,
+                   approvals: :auto,
+                   file_scope: "/srv/tenant-1/asm",
+                   allowed_tools: ["test.asm.stream"]
+                 },
+                 target_id: "target-asm-stream"
+               )
+             )
+
+    assert {:ok, second} =
+             ControlPlane.invoke(
+               "test.asm.stream",
+               %{prompt: "Stream the next status"},
+               invoke_opts(
+                 credential_ref,
+                 allowed_operations: ["test.asm.stream"],
+                 sandbox: %{
+                   level: :standard,
+                   egress: :restricted,
+                   approvals: :auto,
+                   file_scope: "/srv/tenant-1/asm",
+                   allowed_tools: ["test.asm.stream"]
+                 },
+                 target_id: "target-asm-stream"
+               )
+             )
+
+    assert first.run.runtime_class == :stream
+    assert first.attempt.runtime_ref_id == second.attempt.runtime_ref_id
+    assert first.output.text == "hello from control plane"
+    assert second.output.text == "hello from control plane"
+
+    assert Enum.any?(ControlPlane.events(second.run.run_id), fn event ->
+             event.session_id == second.attempt.runtime_ref_id and
+               event.runtime_ref_id == second.attempt.runtime_ref_id
+           end)
   end
 
   test "records actor and tenant denials as durable truth before attempt creation" do
@@ -604,6 +843,28 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
       constraints: %{workspace_root: "/srv/tenant-1"},
       health: health,
       location: %{mode: :beam, region: "test", workspace_root: "/srv/tenant-1"}
+    })
+  end
+
+  defp harness_target(target_id, capability_id, runtime_class, driver_id) do
+    TargetDescriptor.new!(%{
+      target_id: target_id,
+      capability_id: capability_id,
+      runtime_class: runtime_class,
+      version: "1.0.0",
+      features: %{
+        feature_ids: [driver_id, capability_id],
+        runspec_versions: ["1.0.0"],
+        event_schema_versions: ["1.0.0"]
+      },
+      constraints: %{workspace_root: "/srv/tenant-1"},
+      health: :healthy,
+      location: %{mode: :beam, region: "test", workspace_root: "/srv/tenant-1"},
+      extensions: %{
+        "runtime" => %{
+          "driver" => driver_id
+        }
+      }
     })
   end
 end

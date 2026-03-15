@@ -1,12 +1,14 @@
 # Jido Integration V2 Session Kernel
 
-Executes sessioned capabilities through reusable provider-managed sessions.
+Compatibility bridge for sessioned capabilities that still expose the legacy
+provider contract.
 
-Current proof:
+Current responsibilities:
 
-- session reuse keyed by capability plus credential subject
-- provider-managed session lifecycle
-- generic `runtime_ref_id` recorded at the attempt layer
+- publish a Harness runtime driver for legacy session providers
+- preserve session reuse keyed by capability-specific provider logic
+- keep `runtime_ref_id` and `session_id` durable at the control-plane boundary
+- act as a temporary shim while permanent session mechanics live behind Harness
 
 ## Installation
 

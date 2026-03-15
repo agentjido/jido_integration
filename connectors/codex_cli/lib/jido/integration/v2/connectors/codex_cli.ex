@@ -23,6 +23,9 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
           handler: Provider,
           metadata: %{
             required_scopes: ["session:execute"],
+            runtime: %{
+              driver: "integration_session_bridge"
+            },
             policy: %{
               environment: %{allowed: [:prod]},
               sandbox: %{

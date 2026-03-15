@@ -16,17 +16,15 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
-  alias Jido.Integration.V2.DirectRuntime
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Gateway
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.Policy
   alias Jido.Integration.V2.PolicyDecision
+  alias Jido.Integration.V2.RuntimeRouter
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.RuntimeResult
-  alias Jido.Integration.V2.SessionKernel
-  alias Jido.Integration.V2.StreamRuntime
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
@@ -202,8 +200,7 @@ defmodule Jido.Integration.V2.ControlPlane do
     reset_store(Stores.run_store())
     reset_store(Stores.ingress_store())
     Auth.reset!()
-    SessionKernel.reset!()
-    StreamRuntime.reset!()
+    RuntimeRouter.reset!()
     :ok
   end
 
@@ -520,6 +517,7 @@ defmodule Jido.Integration.V2.ControlPlane do
       credential_ref: run.credential_ref,
       credential_lease: credential_lease,
       policy_decision: policy_decision,
+      target_descriptor: target_descriptor(run),
       policy_inputs: %{
         admission: policy_decision.audit_context,
         execution: policy_decision.execution_policy
@@ -528,16 +526,8 @@ defmodule Jido.Integration.V2.ControlPlane do
     }
   end
 
-  defp dispatch(%Capability{runtime_class: :direct} = capability, input, context) do
-    DirectRuntime.execute(capability, input, context)
-  end
-
-  defp dispatch(%Capability{runtime_class: :session} = capability, input, context) do
-    SessionKernel.execute(capability, input, context)
-  end
-
-  defp dispatch(%Capability{runtime_class: :stream} = capability, input, context) do
-    StreamRuntime.execute(capability, input, context)
+  defp dispatch(%Capability{} = capability, input, context) do
+    RuntimeRouter.execute(capability, input, context)
   end
 
   defp anonymous_credential do
@@ -723,4 +713,13 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   defp rejection_audit_level(%PolicyDecision{status: :denied}), do: :error
   defp rejection_audit_level(%PolicyDecision{status: :shed}), do: :warn
+
+  defp target_descriptor(%Run{target_id: nil}), do: nil
+
+  defp target_descriptor(%Run{target_id: target_id}) do
+    case fetch_target(target_id) do
+      {:ok, descriptor} -> descriptor
+      :error -> nil
+    end
+  end
 end

@@ -23,6 +23,9 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
           handler: Provider,
           metadata: %{
             required_scopes: ["market:read"],
+            runtime: %{
+              driver: "integration_stream_bridge"
+            },
             policy: %{
               environment: %{allowed: [:prod]},
               sandbox: %{

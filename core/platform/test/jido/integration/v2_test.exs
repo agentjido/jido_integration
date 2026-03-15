@@ -325,6 +325,11 @@ defmodule Jido.Integration.V2Test do
     assert second.output.workspace == "/workspaces/codex_cli"
     assert second.output.approval_mode == :manual
 
+    assert Enum.any?(V2.events(second.run.run_id), fn event ->
+             event.session_id == second.attempt.runtime_ref_id and
+               event.runtime_ref_id == second.attempt.runtime_ref_id
+           end)
+
     assert_review_surface!(first, @codex_cli, %{access_token: "codex_test"}, ["codex_test"])
     assert_review_surface!(second, @codex_cli, %{access_token: "codex_test"}, ["codex_test"])
   end
@@ -436,6 +441,11 @@ defmodule Jido.Integration.V2Test do
     assert Enum.map(first.output.items, & &1.seq) == [1, 2]
     assert Enum.map(second.output.items, & &1.seq) == [3, 4]
     assert Enum.all?(second.output.items, &(&1.venue == "CME"))
+
+    assert Enum.any?(V2.events(second.run.run_id), fn event ->
+             event.session_id == second.attempt.runtime_ref_id and
+               event.runtime_ref_id == second.attempt.runtime_ref_id
+           end)
 
     assert_review_surface!(first, @market_data, %{api_key: "market_demo"}, ["market_demo"])
   end

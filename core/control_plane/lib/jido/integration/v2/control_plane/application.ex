@@ -9,7 +9,8 @@ defmodule Jido.Integration.V2.ControlPlane.Application do
   def start(_type, _args) do
     children = [
       {Jido.Integration.V2.ControlPlane.Registry, []},
-      {Jido.Integration.V2.ControlPlane.RunLedger, []}
+      {Jido.Integration.V2.ControlPlane.RunLedger, []},
+      {Jido.Integration.V2.HarnessRuntime.SessionStore, []}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

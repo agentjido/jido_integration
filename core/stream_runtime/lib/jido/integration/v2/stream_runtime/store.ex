@@ -20,6 +20,10 @@ defmodule Jido.Integration.V2.StreamRuntime.Store do
     Agent.update(__MODULE__, fn state -> Map.put(state, key, stream) end)
   end
 
+  def delete(key) do
+    Agent.update(__MODULE__, fn state -> Map.delete(state, key) end)
+  end
+
   def reset! do
     Agent.update(__MODULE__, fn _ -> %{} end)
   end

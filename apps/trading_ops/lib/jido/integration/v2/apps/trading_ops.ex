@@ -260,7 +260,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
           @market_target_id,
           "market.ticks.pull",
           :stream,
-          "stream-runtime",
+          "integration_stream_bridge",
           "/srv/trading_ops/feeds"
         ),
       analyst:
@@ -268,7 +268,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
           @analyst_target_id,
           "codex.exec.session",
           :session,
-          "session-kernel",
+          "integration_session_bridge",
           "/srv/trading_ops/analyst"
         ),
       operator:
@@ -289,6 +289,12 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
   end
 
   defp target_descriptor(target_id, capability_id, runtime_class, feature_id, workspace_root) do
+    runtime_extensions =
+      case runtime_class do
+        :direct -> %{}
+        _other -> %{"runtime" => %{"driver" => feature_id}}
+      end
+
     TargetDescriptor.new!(%{
       target_id: target_id,
       capability_id: capability_id,
@@ -301,7 +307,8 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
       },
       constraints: %{workspace_root: workspace_root},
       health: :healthy,
-      location: %{mode: :beam, workspace_root: workspace_root, region: "test"}
+      location: %{mode: :beam, workspace_root: workspace_root, region: "test"},
+      extensions: runtime_extensions
     })
   end
 

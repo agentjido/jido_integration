@@ -20,6 +20,10 @@ defmodule Jido.Integration.V2.SessionKernel.SessionStore do
     Agent.update(__MODULE__, fn state -> Map.put(state, key, session) end)
   end
 
+  def delete(key) do
+    Agent.update(__MODULE__, fn state -> Map.delete(state, key) end)
+  end
+
   def reset! do
     Agent.update(__MODULE__, fn _ -> %{} end)
   end
