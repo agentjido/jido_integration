@@ -527,6 +527,7 @@ defmodule Jido.Integration.V2.DispatchRuntime do
 
   defp persist_dispatches(%{storage_path: storage_path, dispatches: dispatches} = state) do
     tmp_path = "#{storage_path}.tmp"
+    File.mkdir_p!(Path.dirname(storage_path))
     File.write!(tmp_path, :erlang.term_to_binary(dispatches), [:binary])
 
     case File.rename(tmp_path, storage_path) do

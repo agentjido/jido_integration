@@ -1,6 +1,10 @@
 defmodule Jido.Integration.V2.Connectors.MarketData do
   @moduledoc """
   Example stream connector package.
+
+  It preserves the legacy `integration_stream_bridge` proof path as a migration
+  shim while the control plane consolidates on real Harness-backed runtime
+  families.
   """
 
   @behaviour Jido.Integration.V2.Connector

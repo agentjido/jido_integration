@@ -374,56 +374,84 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
   @spec response_for_request(map(), map()) :: {:ok, Response.t()}
   def response_for_request(request, _context \\ %{}) do
     uri = URI.parse(request.url)
+    segments = path_segments(uri.path)
 
-    case {request.method, path_segments(uri.path)} do
-      {:get, ["repos", owner, repo, "issues"]} ->
-        repo = repo_name(owner, repo)
-        params = URI.decode_query(uri.query || "")
-        state = Map.get(params, "state", "open")
-        page = parse_positive_integer(Map.get(params, "page")) || 1
-        per_page = parse_positive_integer(Map.get(params, "per_page")) || 30
-        sdk_response(list_issues_body(repo, state, page, per_page))
-
-      {:get, ["repos", owner, repo, "issues", issue_number]} ->
-        repo = repo_name(owner, repo)
-        issue_number = String.to_integer(issue_number)
-        sdk_response(fetch_issue_body(repo, issue_number))
-
-      {:post, ["repos", owner, repo, "issues"]} ->
-        repo = repo_name(owner, repo)
-        body = decode_request_body(request)
-        sdk_response(create_issue_body(repo, body))
-
-      {:patch, ["repos", owner, repo, "issues", issue_number]} ->
-        repo = repo_name(owner, repo)
-        issue_number = String.to_integer(issue_number)
-        body = decode_request_body(request)
-        sdk_response(update_issue_body(repo, issue_number, body))
-
-      {:post, ["repos", owner, repo, "issues", issue_number, "labels"]} ->
-        repo = repo_name(owner, repo)
-        issue_number = String.to_integer(issue_number)
-        body = decode_request_body(request)
-        sdk_response(label_issue_body(repo, issue_number, body))
-
-      {:post, ["repos", owner, repo, "issues", issue_number, "comments"]} ->
-        repo = repo_name(owner, repo)
-        issue_number = String.to_integer(issue_number)
-        body = decode_request_body(request)
-        sdk_response(create_comment_body(repo, issue_number, body))
-
-      {:patch, ["repos", owner, repo, "issues", "comments", comment_id]} ->
-        repo = repo_name(owner, repo)
-        comment_id = String.to_integer(comment_id)
-        body = decode_request_body(request)
-        sdk_response(update_comment_body(repo, comment_id, body))
-
-      _other ->
-        sdk_response(
-          %{"message" => "missing github fixture for #{request.method} #{uri.path}"},
-          404
-        )
+    case request.method do
+      :get -> response_for_get(request, uri, segments)
+      :post -> response_for_post(request, uri, segments)
+      :patch -> response_for_patch(request, uri, segments)
+      _other -> missing_fixture_response(request, uri)
     end
+  end
+
+  defp response_for_get(_request, uri, ["repos", owner, repo, "issues"]) do
+    repo = repo_name(owner, repo)
+    params = URI.decode_query(uri.query || "")
+    state = Map.get(params, "state", "open")
+    page = parse_positive_integer(Map.get(params, "page")) || 1
+    per_page = parse_positive_integer(Map.get(params, "per_page")) || 30
+    sdk_response(list_issues_body(repo, state, page, per_page))
+  end
+
+  defp response_for_get(_request, _uri, ["repos", owner, repo, "issues", issue_number]) do
+    repo = repo_name(owner, repo)
+    issue_number = String.to_integer(issue_number)
+    sdk_response(fetch_issue_body(repo, issue_number))
+  end
+
+  defp response_for_get(request, uri, _segments), do: missing_fixture_response(request, uri)
+
+  defp response_for_post(request, _uri, ["repos", owner, repo, "issues"]) do
+    repo = repo_name(owner, repo)
+    body = decode_request_body(request)
+    sdk_response(create_issue_body(repo, body))
+  end
+
+  defp response_for_post(request, _uri, ["repos", owner, repo, "issues", issue_number, "labels"]) do
+    repo = repo_name(owner, repo)
+    issue_number = String.to_integer(issue_number)
+    body = decode_request_body(request)
+    sdk_response(label_issue_body(repo, issue_number, body))
+  end
+
+  defp response_for_post(
+         request,
+         _uri,
+         ["repos", owner, repo, "issues", issue_number, "comments"]
+       ) do
+    repo = repo_name(owner, repo)
+    issue_number = String.to_integer(issue_number)
+    body = decode_request_body(request)
+    sdk_response(create_comment_body(repo, issue_number, body))
+  end
+
+  defp response_for_post(request, uri, _segments), do: missing_fixture_response(request, uri)
+
+  defp response_for_patch(request, _uri, ["repos", owner, repo, "issues", issue_number]) do
+    repo = repo_name(owner, repo)
+    issue_number = String.to_integer(issue_number)
+    body = decode_request_body(request)
+    sdk_response(update_issue_body(repo, issue_number, body))
+  end
+
+  defp response_for_patch(
+         request,
+         _uri,
+         ["repos", owner, repo, "issues", "comments", comment_id]
+       ) do
+    repo = repo_name(owner, repo)
+    comment_id = String.to_integer(comment_id)
+    body = decode_request_body(request)
+    sdk_response(update_comment_body(repo, comment_id, body))
+  end
+
+  defp response_for_patch(request, uri, _segments), do: missing_fixture_response(request, uri)
+
+  defp missing_fixture_response(request, uri) do
+    sdk_response(
+      %{"message" => "missing github fixture for #{request.method} #{uri.path}"},
+      404
+    )
   end
 
   @spec not_found_response() :: (map(), map() -> {:ok, Response.t()})

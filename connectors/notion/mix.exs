@@ -27,14 +27,14 @@ defmodule Jido.Integration.V2.Connectors.Notion.MixProject do
 
   defp deps do
     [
-      {:jido_action, path: "../../../jido_action"},
+      {:jido_action, "~> 2.1"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
       {:jido_integration_v2_direct_runtime, path: "../../core/direct_runtime"},
       {:jido_integration_v2_conformance,
        path: "../../core/conformance", only: :test, runtime: false},
       {:jido_integration_v2, path: "../../core/platform", only: [:dev, :test]},
-      {:pristine, path: "../../../pristine", runtime: false},
-      {:notion_sdk, path: "../../../notion_sdk"},
+      {:pristine, "~> 0.1.0", runtime: false},
+      {:notion_sdk, "~> 0.1.0"},
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

@@ -11,7 +11,8 @@ defmodule <%= @connector_module %>Test do
     assert capability.kind == <%= @capability_kind_literal %>
     assert capability.transport_profile == <%= @transport_profile_literal %>
     assert capability.metadata.required_scopes == ["<%= @required_scope %>"]
-    assert capability.metadata.policy.environment.allowed == <%= @environment_allowed_literal %>
+<%= if @include_runtime_metadata do %>    assert capability.metadata.runtime.driver == "<%= @runtime_driver_id %>"
+<% end %>    assert capability.metadata.policy.environment.allowed == <%= @environment_allowed_literal %>
     assert capability.metadata.policy.sandbox.allowed_tools == <%= @allowed_tools_literal %>
 <%= if @session_runtime do %>    assert capability.metadata.policy.sandbox.file_scope == <%= @sandbox_file_scope_literal %>
 <% end %>  end

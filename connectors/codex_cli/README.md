@@ -2,6 +2,11 @@
 
 Session baseline connector package.
 
+This package still targets the `integration_session_bridge` compatibility shim.
+That is deliberate for deterministic fixture coverage, but it is not the final
+runtime model. New external session connectors should move toward explicit
+Harness runtime-family routing through the integration-owned `asm` bridge.
+
 Proves:
 
 - session-class capability publishing against the shared `RuntimeResult` substrate

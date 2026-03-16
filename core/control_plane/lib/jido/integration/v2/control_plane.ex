@@ -22,9 +22,9 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.Policy
   alias Jido.Integration.V2.PolicyDecision
-  alias Jido.Integration.V2.RuntimeRouter
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.RuntimeResult
+  alias Jido.Integration.V2.RuntimeRouter
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord

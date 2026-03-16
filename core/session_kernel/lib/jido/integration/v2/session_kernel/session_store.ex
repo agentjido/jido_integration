@@ -24,6 +24,24 @@ defmodule Jido.Integration.V2.SessionKernel.SessionStore do
     Agent.update(__MODULE__, fn state -> Map.delete(state, key) end)
   end
 
+  def delete_session(session_id) do
+    Agent.update(__MODULE__, fn state ->
+      Enum.reduce(state, %{}, fn
+        {{:session_id, ^session_id}, _session}, acc ->
+          acc
+
+        {{:reuse_key, _reuse_key}, %{session_id: ^session_id}}, acc ->
+          acc
+
+        {_key, %{session_id: ^session_id}}, acc ->
+          acc
+
+        {key, session}, acc ->
+          Map.put(acc, key, session)
+      end)
+    end)
+  end
+
   def reset! do
     Agent.update(__MODULE__, fn _ -> %{} end)
   end

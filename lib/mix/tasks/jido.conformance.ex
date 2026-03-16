@@ -131,7 +131,9 @@ defmodule Mix.Tasks.Jido.Conformance do
     project_root = Path.expand(project_path, Monorepo.root_dir())
     build_path = project_build_path(project_root)
 
+    deps_get_project!(project_root, build_path)
     compile_project!(project_root, build_path)
+    hydrate_dependency_priv!(project_root, build_path)
 
     with_project_build_path(build_path, fn ->
       with_restored_code_path(fn ->
@@ -188,13 +190,30 @@ defmodule Mix.Tasks.Jido.Conformance do
     :ok
   end
 
+  defp deps_get_project!(project_root, build_path) do
+    env = project_command_env(project_root, build_path)
+
+    case System.cmd("mix", ["deps.get"],
+           cd: project_root,
+           env: env,
+           stderr_to_stdout: true
+         ) do
+      {_, 0} ->
+        :ok
+
+      {output, exit_code} ->
+        Mix.raise("""
+        Could not fetch dependencies for #{project_root} during conformance.
+
+        mix deps.get exited with #{exit_code}
+
+        #{output}
+        """)
+    end
+  end
+
   defp compile_project!(project_root, build_path) do
-    env = [
-      {"MIX_ENV", Atom.to_string(Mix.env())},
-      {"MIX_BUILD_PATH", build_path},
-      {"MIX_DEPS_PATH", Path.join(project_root, "deps")},
-      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")}
-    ]
+    env = project_command_env(project_root, build_path)
 
     case System.cmd("mix", ["compile", "--quiet"],
            cd: project_root,
@@ -212,6 +231,39 @@ defmodule Mix.Tasks.Jido.Conformance do
 
         #{output}
         """)
+    end
+  end
+
+  defp hydrate_dependency_priv!(project_root, build_path) do
+    deps_root = Path.join(project_root, "deps")
+    build_lib_root = Path.join(build_path, "lib")
+
+    if File.dir?(deps_root) and File.dir?(build_lib_root) do
+      deps_root
+      |> Path.join("*")
+      |> Path.wildcard()
+      |> Enum.each(&copy_dependency_priv!(&1, build_lib_root))
+    end
+
+    :ok
+  end
+
+  defp copy_dependency_priv!(dep_root, build_lib_root) do
+    app_name = Path.basename(dep_root)
+    source_priv = Path.join(dep_root, "priv")
+    target_priv = Path.join([build_lib_root, app_name, "priv"])
+
+    cond do
+      not File.dir?(source_priv) ->
+        :ok
+
+      File.dir?(target_priv) ->
+        :ok
+
+      true ->
+        File.mkdir_p!(Path.dirname(target_priv))
+        File.cp_r!(source_priv, target_priv)
+        :ok
     end
   end
 
@@ -238,6 +290,15 @@ defmodule Mix.Tasks.Jido.Conformance do
 
   defp project_build_path(project_root) do
     Path.join(project_root, "_build/#{Mix.env()}")
+  end
+
+  defp project_command_env(project_root, build_path) do
+    [
+      {"MIX_ENV", Atom.to_string(Mix.env())},
+      {"MIX_BUILD_PATH", build_path},
+      {"MIX_DEPS_PATH", Path.join(project_root, "deps")},
+      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")}
+    ]
   end
 
   defp restore_env(key, nil), do: System.delete_env(key)

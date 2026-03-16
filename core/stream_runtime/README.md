@@ -9,3 +9,7 @@ Current responsibilities:
 - preserve stream reuse keyed by capability-specific provider logic
 - keep `runtime_ref_id` and `session_id` durable at the control-plane boundary
 - act as a temporary shim while permanent stream execution routes through Harness
+
+New stream connectors should not treat this package as the final architecture.
+Use explicit runtime metadata and migrate away from this bridge as real
+Harness-backed runtime families take over stream-class routing.

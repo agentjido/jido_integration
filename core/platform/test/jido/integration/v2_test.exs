@@ -1,5 +1,5 @@
 defmodule Jido.Integration.V2Test do
-  use Jido.Integration.V2.ConnectorContractCase
+  use Jido.Integration.V2.ConnectorContractCase, async: false
 
   alias Jido.Integration.V2.Connectors.CodexCli
   alias Jido.Integration.V2.Connectors.GitHub

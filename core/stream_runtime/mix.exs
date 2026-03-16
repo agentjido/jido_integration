@@ -11,7 +11,7 @@ defmodule Jido.Integration.V2.StreamRuntime.MixProject do
       dialyzer: dialyzer(),
       docs: docs(),
       name: "Jido Integration V2 Stream Runtime",
-      description: "Pull-oriented stream runtime for feed and protocol capabilities"
+      description: "Migration shim for legacy stream providers behind Harness runtime routing"
     ]
   end
 

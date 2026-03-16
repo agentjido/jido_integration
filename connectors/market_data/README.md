@@ -2,6 +2,11 @@
 
 Stream baseline connector package.
 
+This package still targets the `integration_stream_bridge` compatibility shim.
+That keeps the migration proof around for feed-style fixtures, but it should be
+treated as temporary architecture rather than the target model for new runtime
+composition work.
+
 Proves:
 
 - stream-class capability publishing against the shared `RuntimeResult` substrate

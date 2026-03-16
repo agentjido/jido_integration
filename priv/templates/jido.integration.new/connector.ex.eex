@@ -23,7 +23,10 @@ defmodule <%= @connector_module %> do
           handler: <%= @handler_alias %>,
           metadata: %{
             required_scopes: ["<%= @required_scope %>"],
-            policy: %{
+<%= if @include_runtime_metadata do %>            runtime: %{
+              driver: "<%= @runtime_driver_id %>"
+            },
+<% end %>            policy: %{
               environment: %{allowed: <%= @environment_allowed_literal %>},
               sandbox: %{
                 level: <%= @sandbox_level_literal %>,

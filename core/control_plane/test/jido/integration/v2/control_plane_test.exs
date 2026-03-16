@@ -9,8 +9,10 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
+  alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.Redaction
+  alias Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
@@ -122,7 +124,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                 driver: "asm",
                 provider: :claude,
                 options: %{
-                  driver: AsmScriptedDriver
+                  driver: Jido.Integration.V2.ControlPlaneTest.AsmScriptedDriver
                 }
               },
               policy: %{
@@ -239,6 +241,10 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   setup do
     ControlPlane.reset!()
     :ok
+  end
+
+  test "asm resolves to the integration-owned harness bridge module" do
+    assert {:ok, HarnessDriver} = HarnessRuntime.driver_module("asm")
   end
 
   test "lists connectors deterministically and fetches connectors and capabilities by id" do

@@ -55,7 +55,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert mix_content =~
              "{:jido_integration_v2_conformance, path: \"../../core/conformance\", only: :test, runtime: false}"
 
-    assert mix_content =~ "{:jido_action, path: \"../../jido_action\", override: true}"
+    assert mix_content =~ "{:jido_action, \"~> 2.1\"}"
     refute mix_content =~ "jido_integration_workspace"
 
     connector_content =
@@ -110,6 +110,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert session_connector =~ "kind: :session_operation"
     assert session_connector =~ "transport_profile: :stdio"
     assert session_connector =~ "handler: Provider"
+    assert session_connector =~ "driver: \"integration_session_bridge\""
     assert session_connector =~ "file_scope: \"/workspaces/assistant_cli\""
 
     stream_workspace_root = temp_workspace!("stream")
@@ -141,6 +142,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert stream_connector =~ "kind: :stream_read"
     assert stream_connector =~ "transport_profile: :poll"
     assert stream_connector =~ "handler: Provider"
+    assert stream_connector =~ "driver: \"integration_stream_bridge\""
 
     stream_provider =
       File.read!(
@@ -203,11 +205,6 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     File.rm_rf!(root)
     File.mkdir_p!(Path.join(root, "connectors"))
     File.ln_s!(Path.join(Monorepo.root_dir(), "core"), Path.join(root, "core"))
-    File.ln_s!(Path.expand("../jido_action", Monorepo.root_dir()), Path.join(root, "jido_action"))
-    File.ln_s!(Path.expand("../jido_signal", Monorepo.root_dir()), Path.join(root, "jido_signal"))
-    File.ln_s!(Path.join(Monorepo.root_dir(), "deps"), Path.join(root, "deps"))
-    File.ln_s!(Path.join(Monorepo.root_dir(), "mix.lock"), Path.join(root, "mix.lock"))
-
     root
   end
 

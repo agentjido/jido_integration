@@ -10,6 +10,10 @@ Current responsibilities:
 - keep `runtime_ref_id` and `session_id` durable at the control-plane boundary
 - act as a temporary shim while permanent session mechanics live behind Harness
 
+New session connectors should not treat this package as the final architecture.
+Use explicit runtime metadata and move toward the real runtime families
+(`asm` or `jido_session`) as those routes become available.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed

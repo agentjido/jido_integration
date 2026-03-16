@@ -8,15 +8,15 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   alias Jido.Integration.V2.HarnessRuntime.SessionStore
 
   @default_driver_ids %{
-    session: "integration_session_bridge",
-    stream: "integration_stream_bridge"
+    session: "asm",
+    stream: "asm"
   }
 
-  @driver_modules %{
+  @builtin_driver_modules %{
+    "asm" => Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver,
+    "jido_session" => Jido.Session.HarnessDriver,
     "integration_session_bridge" => Jido.Integration.V2.SessionKernel.HarnessDriver,
-    "integration_stream_bridge" => Jido.Integration.V2.StreamRuntime.HarnessDriver,
-    "asm" => ASM.JidoHarness.Driver,
-    "jido_session" => Jido.Session.HarnessDriver
+    "integration_stream_bridge" => Jido.Integration.V2.StreamRuntime.HarnessDriver
   }
 
   @type resolution :: %{
@@ -56,6 +56,16 @@ defmodule Jido.Integration.V2.HarnessRuntime do
     end)
 
     SessionStore.reset!()
+  end
+
+  @spec driver_modules() :: %{optional(String.t()) => module()}
+  def driver_modules do
+    Map.merge(@builtin_driver_modules, configured_driver_modules())
+  end
+
+  @spec driver_module(atom() | String.t()) :: {:ok, module()} | :error
+  def driver_module(driver_id) when is_atom(driver_id) or is_binary(driver_id) do
+    Map.fetch(driver_modules(), normalize_driver_id(driver_id))
   end
 
   defp resolve_driver(capability, input, context) do
@@ -110,18 +120,16 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   end
 
   defp resolve_driver_module(driver_value) when is_atom(driver_value) do
-    driver_id =
-      driver_value
-      |> Atom.to_string()
+    driver_id = Atom.to_string(driver_value)
 
-    case Map.fetch(@driver_modules, driver_id) do
+    case Map.fetch(driver_modules(), driver_id) do
       {:ok, module} -> {:ok, driver_id, module}
       :error -> {:error, {:unknown_runtime_driver, driver_value}}
     end
   end
 
   defp resolve_driver_module(driver_value) when is_binary(driver_value) do
-    case Map.fetch(@driver_modules, driver_value) do
+    case Map.fetch(driver_modules(), driver_value) do
       {:ok, module} -> {:ok, driver_value, module}
       :error -> {:error, {:unknown_runtime_driver, driver_value}}
     end
@@ -415,12 +423,10 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   end
 
   defp workspace_root(context) do
-    cond do
-      match?(%TargetDescriptor{}, context[:target_descriptor]) ->
-        Contracts.get(context.target_descriptor.location, :workspace_root)
-
-      true ->
-        get_in(context, [:policy_inputs, :execution, :sandbox, :file_scope])
+    if match?(%TargetDescriptor{}, context[:target_descriptor]) do
+      Contracts.get(context.target_descriptor.location, :workspace_root)
+    else
+      get_in(context, [:policy_inputs, :execution, :sandbox, :file_scope])
     end
   end
 
@@ -501,6 +507,24 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   defp normalize_optional_atom(value) when is_atom(value), do: value
   defp normalize_optional_atom(value) when is_binary(value), do: String.to_atom(value)
 
+  defp configured_driver_modules do
+    :jido_integration_v2_control_plane
+    |> Application.get_env(:runtime_drivers, %{})
+    |> Enum.reduce(%{}, fn
+      {driver_id, module}, acc when is_atom(driver_id) and is_atom(module) ->
+        Map.put(acc, Atom.to_string(driver_id), module)
+
+      {driver_id, module}, acc when is_binary(driver_id) and is_atom(module) ->
+        Map.put(acc, driver_id, module)
+
+      _, acc ->
+        acc
+    end)
+  end
+
+  defp normalize_driver_id(driver_id) when is_atom(driver_id), do: Atom.to_string(driver_id)
+  defp normalize_driver_id(driver_id) when is_binary(driver_id), do: driver_id
+
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, _key, []), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put_new(opts, key, value)
@@ -510,10 +534,8 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   defp maybe_put_map(map, key, value), do: Map.put(map, key, value)
 
   defp safe_stop_session(driver_module, session) do
-    try do
-      driver_module.stop_session(session)
-    rescue
-      _error -> :ok
-    end
+    driver_module.stop_session(session)
+  rescue
+    _error -> :ok
   end
 end

@@ -28,6 +28,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       {:jido_integration_v2_auth, path: "../auth"},
       {:jido_integration_v2_policy, path: "../policy"},
       {:jido_integration_v2_direct_runtime, path: "../direct_runtime"},
+      {:jido_integration_v2_runtime_asm_bridge, path: "../runtime_asm_bridge"},
       {:jido_integration_v2_session_kernel, path: "../session_kernel"},
       {:jido_integration_v2_stream_runtime, path: "../stream_runtime"},
       {:jido_harness, path: "../../../jido_harness"},

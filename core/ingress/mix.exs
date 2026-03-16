@@ -26,7 +26,7 @@ defmodule Jido.Integration.V2.Ingress.MixProject do
     [
       {:jido_integration_v2_contracts, path: "../contracts"},
       {:jido_integration_v2_control_plane, path: "../control_plane"},
-      {:jido_signal, path: "../../../jido_signal"},
+      {:jido_signal, "~> 2.0"},
       {:jido_integration_v2_store_postgres, path: "../store_postgres", only: :test},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

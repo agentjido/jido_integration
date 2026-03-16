@@ -34,6 +34,7 @@ Current core packages:
 - `core/ingress`
 - `core/policy`
 - `core/direct_runtime`
+- `core/runtime_asm_bridge`
 - `core/session_kernel`
 - `core/store_local`
 - `core/store_postgres`

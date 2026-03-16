@@ -449,6 +449,13 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
       )
 
     Process.unlink(runtime)
+
+    on_exit(fn ->
+      if Process.alive?(runtime) do
+        stop_runtime(runtime)
+      end
+    end)
+
     {:ok, runtime}
   end
 

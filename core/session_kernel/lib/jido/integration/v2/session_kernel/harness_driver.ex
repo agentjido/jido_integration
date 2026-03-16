@@ -47,17 +47,15 @@ defmodule Jido.Integration.V2.SessionKernel.HarnessDriver do
   def start_session(opts) when is_list(opts) do
     capability = Keyword.fetch!(opts, :capability)
     context = Keyword.fetch!(opts, :context)
-    provider = capability.handler
+    reuse_key = provider_reuse_key(capability, context)
 
-    with {:ok, session} <- provider.open_session(capability, context),
-         :ok <- store_session(session) do
+    with {:ok, session} <- fetch_or_open_session(capability, context, reuse_key) do
       {:ok,
        SessionHandle.new!(%{
          session_id: session.session_id,
          runtime_id: @runtime_id,
          provider: nil,
          status: :ready,
-         driver_ref: session.session_id,
          metadata: %{"capability_id" => capability.id}
        })}
     end
@@ -65,15 +63,17 @@ defmodule Jido.Integration.V2.SessionKernel.HarnessDriver do
 
   @impl true
   def stop_session(%SessionHandle{session_id: session_id}) do
-    SessionStore.delete(storage_key(session_id))
+    SessionStore.delete_session(session_id)
     :ok
   end
 
   @impl true
   def stream_run(%SessionHandle{} = session, %RunRequest{} = _request, opts) when is_list(opts) do
-    with {:ok, runtime_result, run_status} <- execute_runtime(session, opts) do
-      {:ok, run_handle(session, opts, run_status), runtime_events(runtime_result, session, opts)}
-    else
+    case execute_runtime(session, opts) do
+      {:ok, runtime_result, run_status} ->
+        {:ok, run_handle(session, opts, run_status),
+         runtime_events(runtime_result, session, opts)}
+
       {:error, _reason, runtime_result} ->
         {:ok, run_handle(session, opts, :failed), runtime_events(runtime_result, session, opts)}
 
@@ -130,7 +130,7 @@ defmodule Jido.Integration.V2.SessionKernel.HarnessDriver do
           runtime_result =
             output
             |> normalize_runtime_result(updated_session.session_id, lifecycle)
-            |> store_session!(updated_session)
+            |> store_session!(updated_session, capability, context)
 
           {:ok, runtime_result, :completed}
 
@@ -160,7 +160,7 @@ defmodule Jido.Integration.V2.SessionKernel.HarnessDriver do
                 }
               ]
             })
-            |> store_session!(updated_session)
+            |> store_session!(updated_session, capability, context)
 
           {:error, reason, runtime_result}
       end
@@ -326,8 +326,8 @@ defmodule Jido.Integration.V2.SessionKernel.HarnessDriver do
     :ok
   end
 
-  defp store_session!(%RuntimeResult{} = runtime_result, updated_session) do
-    :ok = store_session(updated_session)
+  defp store_session!(%RuntimeResult{} = runtime_result, updated_session, capability, context) do
+    :ok = store_session(updated_session, provider_reuse_key(capability, context))
     runtime_result
   end
 
@@ -339,6 +339,33 @@ defmodule Jido.Integration.V2.SessionKernel.HarnessDriver do
   end
 
   defp storage_key(session_id), do: {:session_id, session_id}
+  defp reuse_storage_key(reuse_key), do: {:reuse_key, reuse_key}
+
+  defp store_session(session, reuse_key) do
+    :ok = store_session(session)
+    SessionStore.put(reuse_storage_key(reuse_key), session)
+    :ok
+  end
+
+  defp fetch_or_open_session(capability, context, reuse_key) do
+    provider = capability.handler
+
+    case SessionStore.fetch(reuse_storage_key(reuse_key)) do
+      {:ok, existing_session} ->
+        :ok = store_session(existing_session, reuse_key)
+        {:ok, existing_session}
+
+      :error ->
+        with {:ok, session} <- provider.open_session(capability, context),
+             :ok <- store_session(session, reuse_key) do
+          {:ok, session}
+        end
+    end
+  end
+
+  defp provider_reuse_key(%Capability{handler: provider} = capability, context) do
+    provider.reuse_key(capability, context)
+  end
 
   defp maybe_drop_failure_reason(metadata, nil) do
     update_in(metadata, ["jido_integration"], &Map.delete(&1, "failure_reason"))

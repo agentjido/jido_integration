@@ -48,17 +48,15 @@ defmodule Jido.Integration.V2.StreamRuntime.HarnessDriver do
     capability = Keyword.fetch!(opts, :capability)
     context = Keyword.fetch!(opts, :context)
     input = Keyword.fetch!(opts, :input)
-    provider = capability.handler
+    reuse_key = provider_reuse_key(capability, input, context)
 
-    with {:ok, stream} <- provider.open_stream(capability, input, context),
-         :ok <- store_stream(stream) do
+    with {:ok, stream} <- fetch_or_open_stream(capability, input, context, reuse_key) do
       {:ok,
        SessionHandle.new!(%{
          session_id: stream.stream_id,
          runtime_id: @runtime_id,
          provider: nil,
          status: :ready,
-         driver_ref: stream.stream_id,
          metadata: %{"capability_id" => capability.id}
        })}
     end
@@ -66,15 +64,17 @@ defmodule Jido.Integration.V2.StreamRuntime.HarnessDriver do
 
   @impl true
   def stop_session(%SessionHandle{session_id: session_id}) do
-    Store.delete(storage_key(session_id))
+    Store.delete_stream(session_id)
     :ok
   end
 
   @impl true
   def stream_run(%SessionHandle{} = session, %RunRequest{} = _request, opts) when is_list(opts) do
-    with {:ok, runtime_result, run_status} <- execute_runtime(session, opts) do
-      {:ok, run_handle(session, opts, run_status), runtime_events(runtime_result, session, opts)}
-    else
+    case execute_runtime(session, opts) do
+      {:ok, runtime_result, run_status} ->
+        {:ok, run_handle(session, opts, run_status),
+         runtime_events(runtime_result, session, opts)}
+
       {:error, _reason, runtime_result} ->
         {:ok, run_handle(session, opts, :failed), runtime_events(runtime_result, session, opts)}
 
@@ -131,7 +131,7 @@ defmodule Jido.Integration.V2.StreamRuntime.HarnessDriver do
           runtime_result =
             output
             |> normalize_runtime_result(updated_stream.stream_id, lifecycle)
-            |> store_stream!(updated_stream)
+            |> store_stream!(updated_stream, capability, input, context)
 
           {:ok, runtime_result, :completed}
 
@@ -161,7 +161,7 @@ defmodule Jido.Integration.V2.StreamRuntime.HarnessDriver do
                 }
               ]
             })
-            |> store_stream!(updated_stream)
+            |> store_stream!(updated_stream, capability, input, context)
 
           {:error, reason, runtime_result}
       end
@@ -326,8 +326,14 @@ defmodule Jido.Integration.V2.StreamRuntime.HarnessDriver do
     :ok
   end
 
-  defp store_stream!(%RuntimeResult{} = runtime_result, updated_stream) do
-    :ok = store_stream(updated_stream)
+  defp store_stream!(
+         %RuntimeResult{} = runtime_result,
+         updated_stream,
+         capability,
+         input,
+         context
+       ) do
+    :ok = store_stream(updated_stream, provider_reuse_key(capability, input, context))
     runtime_result
   end
 
@@ -339,6 +345,33 @@ defmodule Jido.Integration.V2.StreamRuntime.HarnessDriver do
   end
 
   defp storage_key(stream_id), do: {:stream_id, stream_id}
+  defp reuse_storage_key(reuse_key), do: {:reuse_key, reuse_key}
+
+  defp store_stream(stream, reuse_key) do
+    :ok = store_stream(stream)
+    Store.put(reuse_storage_key(reuse_key), stream)
+    :ok
+  end
+
+  defp fetch_or_open_stream(capability, input, context, reuse_key) do
+    provider = capability.handler
+
+    case Store.fetch(reuse_storage_key(reuse_key)) do
+      {:ok, existing_stream} ->
+        :ok = store_stream(existing_stream, reuse_key)
+        {:ok, existing_stream}
+
+      :error ->
+        with {:ok, stream} <- provider.open_stream(capability, input, context),
+             :ok <- store_stream(stream, reuse_key) do
+          {:ok, stream}
+        end
+    end
+  end
+
+  defp provider_reuse_key(%Capability{handler: provider} = capability, input, context) do
+    provider.reuse_key(capability, input, context)
+  end
 
   defp maybe_drop_failure_reason(metadata, nil) do
     update_in(metadata, ["jido_integration"], &Map.delete(&1, "failure_reason"))

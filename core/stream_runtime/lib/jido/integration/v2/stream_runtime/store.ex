@@ -24,6 +24,24 @@ defmodule Jido.Integration.V2.StreamRuntime.Store do
     Agent.update(__MODULE__, fn state -> Map.delete(state, key) end)
   end
 
+  def delete_stream(stream_id) do
+    Agent.update(__MODULE__, fn state ->
+      Enum.reduce(state, %{}, fn
+        {{:stream_id, ^stream_id}, _stream}, acc ->
+          acc
+
+        {{:reuse_key, _reuse_key}, %{stream_id: ^stream_id}}, acc ->
+          acc
+
+        {_key, %{stream_id: ^stream_id}}, acc ->
+          acc
+
+        {key, stream}, acc ->
+          Map.put(acc, key, stream)
+      end)
+    end)
+  end
+
   def reset! do
     Agent.update(__MODULE__, fn _ -> %{} end)
   end

@@ -1,6 +1,10 @@
 defmodule Jido.Integration.V2.Connectors.CodexCli do
   @moduledoc """
   Example session connector package.
+
+  It keeps the legacy `integration_session_bridge` path alive as a migration
+  fixture while the control plane moves new external runtimes onto the
+  integration-owned ASM bridge.
   """
 
   @behaviour Jido.Integration.V2.Connector

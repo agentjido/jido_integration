@@ -11,7 +11,7 @@ defmodule Jido.Integration.V2.SessionKernel.MixProject do
       dialyzer: dialyzer(),
       docs: docs(),
       name: "Jido Integration V2 Session Kernel",
-      description: "Reusable session runtime for interactive and resumable capabilities"
+      description: "Migration shim for legacy session providers behind Harness runtime routing"
     ]
   end
 

@@ -53,6 +53,11 @@ It covers:
 - durable target ids on runs, attempts, and events
 - durable review artifacts for each runtime family
 
+Package tests keep the direct GitHub step offline by forcing the connector's
+client factory onto the deterministic fixture transport in
+`test/test_helper.exs`. Live GitHub proof remains package-local to
+`connectors/github`.
+
 ## Run
 
 From the package directory:

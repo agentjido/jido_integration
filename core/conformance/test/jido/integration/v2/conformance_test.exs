@@ -152,6 +152,10 @@ defmodule Jido.Integration.V2.ConformanceTest do
     assert fixture_suite.status == :failed
 
     assert Enum.any?(runtime_suite.checks, fn check ->
+             check.id == "broken.session.exec.runtime_driver_declared"
+           end)
+
+    assert Enum.any?(runtime_suite.checks, fn check ->
              check.id == "broken.session.exec.runtime_contract"
            end)
 

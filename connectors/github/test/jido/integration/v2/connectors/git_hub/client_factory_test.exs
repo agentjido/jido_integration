@@ -2,8 +2,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.ClientFactoryTest do
   use ExUnit.Case, async: true
 
   alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
-  alias Jido.Integration.V2.Connectors.GitHub.FixtureTransport
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures
+  alias Jido.Integration.V2.Connectors.GitHub.FixtureTransport
 
   test "builds a GitHubEx client from the lease payload and runtime overrides only" do
     context =

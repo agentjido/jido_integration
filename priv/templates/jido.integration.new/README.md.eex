@@ -9,6 +9,15 @@ This package starts with:
 - a runtime-class-appropriate handler/provider skeleton
 - a deterministic conformance companion module
 - package-local tests that prove the scaffold passes the baseline conformance flow
+<%= if Keyword.get(assigns, :migration_runtime_shim, false) do %>
+
+For `<%= Atom.to_string(@runtime_class) %>` capabilities, the generated
+`runtime.driver` points to the migration shim `<%= @runtime_driver_id %>`.
+Treat that as a bridge, not the final architecture. New production connectors
+should move to the real Harness-backed runtime families (`asm` for external
+runtimes or `jido_session` for internal runtimes) once their runtime
+composition is available.
+<% end %>
 
 ## Commands
 

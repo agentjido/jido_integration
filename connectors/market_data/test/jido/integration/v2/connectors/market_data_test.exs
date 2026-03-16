@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.Connectors.MarketDataTest do
     assert %Manifest{connector: "market_data", capabilities: [capability]} = MarketData.manifest()
     assert capability.runtime_class == :stream
     assert capability.id == "market.ticks.pull"
+    assert capability.metadata.runtime.driver == "integration_stream_bridge"
     assert capability.metadata.required_scopes == ["market:read"]
     assert capability.metadata.policy.environment.allowed == [:prod]
     assert capability.metadata.policy.sandbox.egress == :blocked
