@@ -138,6 +138,21 @@ defmodule Jido.Integration.V2 do
   defdelegate invoke(capability_id, input, opts \\ []), to: ControlPlane
 
   @doc """
+  Re-execute an existing run as a new attempt through the control plane.
+  """
+  @spec execute_run(String.t(), pos_integer(), keyword()) ::
+          {:ok, %{run: Run.t(), attempt: Jido.Integration.V2.Attempt.t(), output: map()}}
+          | {:error,
+             %{
+               reason: term(),
+               run: Run.t(),
+               attempt: Jido.Integration.V2.Attempt.t() | nil,
+               policy_decision: Jido.Integration.V2.PolicyDecision.t() | nil
+             }}
+          | {:error, :unknown_run | {:unknown_capability, String.t()}}
+  defdelegate execute_run(run_id, attempt_number, opts \\ []), to: ControlPlane
+
+  @doc """
   Fetch a previously recorded run.
   """
   @spec fetch_run(String.t()) :: {:ok, Run.t()} | :error
