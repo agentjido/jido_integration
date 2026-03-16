@@ -1,6 +1,7 @@
 defmodule Jido.Integration.V2.WebhookRouterRouteStoreTest do
   use ExUnit.Case, async: false
 
+  alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.WebhookRouter
 
@@ -153,14 +154,9 @@ defmodule Jido.Integration.V2.WebhookRouterRouteStoreTest do
   end
 
   defp tmp_dir! do
-    path =
-      Path.join(
-        System.tmp_dir!(),
-        "jido_webhook_router_route_store_test_#{System.unique_integer([:positive])}"
-      )
+    path = TestTmpDir.create!("jido_webhook_router_route_store_test")
 
-    File.rm_rf!(path)
-    File.mkdir_p!(path)
+    on_exit(fn -> TestTmpDir.cleanup!(path) end)
     path
   end
 end

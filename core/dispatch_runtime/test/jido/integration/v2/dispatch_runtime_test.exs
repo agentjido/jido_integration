@@ -1,6 +1,7 @@
 defmodule Jido.Integration.V2.DispatchRuntimeTest do
   use ExUnit.Case, async: false
 
+  alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.ControlPlane
@@ -512,15 +513,7 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
   end
 
   defp tmp_dir! do
-    path =
-      Path.join(
-        System.tmp_dir!(),
-        "jido_dispatch_runtime_test_#{System.unique_integer([:positive])}"
-      )
-
-    File.rm_rf!(path)
-    File.mkdir_p!(path)
-    path
+    TestTmpDir.create!("jido_dispatch_runtime_test")
   end
 
   defp attach_telemetry!(events, prefix) do

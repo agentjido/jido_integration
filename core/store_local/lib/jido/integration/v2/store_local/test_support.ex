@@ -1,6 +1,7 @@
 defmodule Jido.Integration.V2.StoreLocal.TestSupport do
   @moduledoc false
 
+  alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.StoreLocal
 
@@ -30,21 +31,12 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
 
   @spec tmp_dir!() :: String.t()
   def tmp_dir! do
-    dir =
-      Path.join(
-        System.tmp_dir!(),
-        "jido_integration_v2_store_local_tests/#{System.unique_integer([:positive])}"
-      )
-
-    File.rm_rf!(dir)
-    File.mkdir_p!(dir)
-    dir
+    TestTmpDir.create!("jido_integration_v2_store_local_tests")
   end
 
   @spec cleanup!(String.t()) :: :ok
   def cleanup!(dir) do
-    File.rm_rf!(dir)
-    :ok
+    TestTmpDir.cleanup!(dir)
   end
 
   defp ensure_started! do

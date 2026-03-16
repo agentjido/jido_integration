@@ -3,6 +3,7 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
 
   import ExUnit.CaptureIO
 
+  alias Jido.Integration.TestTmpDir
   alias Mix.Tasks.Jido.Conformance, as: ConformanceTask
 
   test "prints a human-readable conformance report by default" do
@@ -68,13 +69,9 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   end
 
   defp temp_dir!(label) do
-    path =
-      Path.join(
-        System.tmp_dir!(),
-        "jido_integration_#{label}_#{System.unique_integer([:positive, :monotonic])}"
-      )
+    path = TestTmpDir.create!("jido_integration_#{label}")
 
-    File.mkdir_p!(path)
+    on_exit(fn -> TestTmpDir.cleanup!(path) end)
     path
   end
 end

@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
+  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.CredentialRef
 
   using do
@@ -50,7 +51,7 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
   end
 
   def install_connection!(connector_id, tenant_id, subject, scopes, secret) do
-    now = ~U[2026-03-09 12:00:00Z]
+    now = Contracts.now()
 
     assert {:ok, %{install: %Install{} = install, connection: %Connection{} = connection}} =
              V2.start_install(connector_id, tenant_id, %{

@@ -25,6 +25,7 @@ defmodule Jido.Integration.Workspace.MixProject do
   defp deps do
     [
       {:jido_integration_v2_conformance, path: "core/conformance"},
+      {:jido_integration_v2_contracts, path: "core/contracts"},
       {:jason, "~> 1.4", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

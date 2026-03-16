@@ -3,6 +3,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
   import ExUnit.CaptureIO
 
+  alias Jido.Integration.TestTmpDir
   alias Jido.Integration.Workspace.Monorepo
   alias Mix.Tasks.Jido.Integration.New, as: NewTask
 
@@ -196,13 +197,9 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   end
 
   defp temp_workspace!(label) do
-    root =
-      Path.join(
-        System.tmp_dir!(),
-        "jido_integration_new_#{label}_#{System.unique_integer([:positive, :monotonic])}"
-      )
+    root = TestTmpDir.create!("jido_integration_new_#{label}")
 
-    File.rm_rf!(root)
+    on_exit(fn -> TestTmpDir.cleanup!(root) end)
     File.mkdir_p!(Path.join(root, "connectors"))
     File.ln_s!(Path.join(Monorepo.root_dir(), "core"), Path.join(root, "core"))
     root

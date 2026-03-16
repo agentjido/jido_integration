@@ -1,16 +1,13 @@
 defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
   use ExUnit.Case, async: false
 
+  alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.Apps.DevopsIncidentResponse
 
   setup do
-    runtime_root =
-      Path.join(
-        System.tmp_dir!(),
-        "jido_devops_incident_response_test_#{System.unique_integer([:positive])}"
-      )
+    runtime_root = TestTmpDir.create!("jido_devops_incident_response_test")
 
-    on_exit(fn -> File.rm_rf!(runtime_root) end)
+    on_exit(fn -> TestTmpDir.cleanup!(runtime_root) end)
 
     %{runtime_root: runtime_root}
   end

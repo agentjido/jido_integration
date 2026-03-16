@@ -92,7 +92,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
   def bootstrap_reference_stack(attrs \\ %{}) do
     tenant_id = Map.get(attrs, :tenant_id, "tenant-trading-ops")
     actor_id = Map.get(attrs, :actor_id, "trading-ops-operator")
-    now = Map.get(attrs, :now, ~U[2026-03-09 13:00:00Z])
+    now = Map.get(attrs, :now, Contracts.now())
 
     register_connectors()
     targets = announce_reference_targets()
@@ -352,7 +352,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
   end
 
   defp market_signal_request(tenant_id, attrs) do
-    now = Map.get(attrs, :observed_at, ~U[2026-03-09 13:00:00Z])
+    now = Map.get(attrs, :observed_at, Contracts.now())
 
     %{
       tenant_id: tenant_id,

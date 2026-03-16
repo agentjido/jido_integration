@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
   async dispatch, replay, and restart recovery into one recoverable workflow.
   """
 
+  alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2, as: V2
   alias Jido.Integration.V2.Apps.DevopsIncidentResponse.ExecuteTriggerHandler
   alias Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector
@@ -413,10 +414,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
   end
 
   defp default_runtime_root do
-    Path.join(
-      System.tmp_dir!(),
-      "jido_devops_incident_response/#{System.unique_integer([:positive])}"
-    )
+    TestTmpDir.create!("jido_devops_incident_response")
   end
 
   defp default_delivery_id do

@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
@@ -780,7 +781,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   defp install_connection!(subject, scopes, secret) do
-    now = ~U[2026-03-09 12:00:00Z]
+    now = Contracts.now()
 
     assert {:ok, %{install: %Install{} = install, connection: %Connection{} = connection}} =
              Auth.start_install("test", "tenant-1", %{

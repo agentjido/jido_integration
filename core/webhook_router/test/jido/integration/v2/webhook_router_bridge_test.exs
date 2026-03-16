@@ -1,6 +1,7 @@
 defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
   use ExUnit.Case, async: false
 
+  alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Capability
@@ -396,15 +397,7 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
   end
 
   defp tmp_dir!(prefix) do
-    path =
-      Path.join(
-        System.tmp_dir!(),
-        "jido_webhook_router_bridge_test_#{prefix}_#{System.unique_integer([:positive])}"
-      )
-
-    File.rm_rf!(path)
-    File.mkdir_p!(path)
-    path
+    TestTmpDir.create!(["jido_webhook_router_bridge_test", prefix])
   end
 
   defp stop_process(pid) when is_pid(pid) do
