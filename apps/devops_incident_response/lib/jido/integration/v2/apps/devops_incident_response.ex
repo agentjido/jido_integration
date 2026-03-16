@@ -19,6 +19,8 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
   @capability_id "github.issue.ingest"
   @signal_type "github.issue.opened"
   @signal_source "/webhooks/github/issues.opened"
+  @wait_poll_ms 25
+  @default_wait_attempts 200
 
   @type install_view :: %{
           install: Jido.Integration.V2.Auth.Install.t(),
@@ -201,58 +203,65 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
 
   @spec wait_for_dispatch(runtime(), String.t(), (Dispatch.t() -> boolean()), non_neg_integer()) ::
           Dispatch.t()
-  def wait_for_dispatch(runtime, dispatch_id, predicate, attempts \\ 80)
+  def wait_for_dispatch(runtime, dispatch_id, predicate, attempts \\ @default_wait_attempts)
       when is_map(runtime) and is_binary(dispatch_id) and is_function(predicate, 1) do
-    do_wait_for_dispatch(runtime.dispatch_runtime, dispatch_id, predicate, attempts)
+    do_wait_for_dispatch(runtime.dispatch_runtime, dispatch_id, predicate, attempts, :missing)
   end
 
   @spec wait_for_run(runtime(), String.t(), (Run.t() -> boolean()), non_neg_integer()) :: Run.t()
-  def wait_for_run(_runtime, run_id, predicate, attempts \\ 80)
+  def wait_for_run(_runtime, run_id, predicate, attempts \\ @default_wait_attempts)
       when is_binary(run_id) and is_function(predicate, 1) do
-    do_wait_for_run(run_id, predicate, attempts)
+    do_wait_for_run(run_id, predicate, attempts, :missing)
   end
 
   def validate_issue_opened(%{action: "opened"}), do: :ok
   def validate_issue_opened(%{"action" => "opened"}), do: :ok
   def validate_issue_opened(_payload), do: {:error, :missing_action}
 
-  defp do_wait_for_dispatch(_dispatch_runtime, dispatch_id, _predicate, 0) do
-    raise "dispatch #{dispatch_id} did not reach the expected state"
+  defp do_wait_for_dispatch(_dispatch_runtime, dispatch_id, _predicate, 0, last_seen) do
+    raise "dispatch #{dispatch_id} did not reach the expected state; last seen: #{inspect(last_seen)}"
   end
 
-  defp do_wait_for_dispatch(dispatch_runtime, dispatch_id, predicate, attempts) do
+  defp do_wait_for_dispatch(dispatch_runtime, dispatch_id, predicate, attempts, _last_seen) do
     case DispatchRuntime.fetch_dispatch(dispatch_runtime, dispatch_id) do
       {:ok, %Dispatch{} = dispatch} ->
         if predicate.(dispatch) do
           dispatch
         else
-          Process.sleep(25)
-          do_wait_for_dispatch(dispatch_runtime, dispatch_id, predicate, attempts - 1)
+          Process.sleep(@wait_poll_ms)
+
+          do_wait_for_dispatch(
+            dispatch_runtime,
+            dispatch_id,
+            predicate,
+            attempts - 1,
+            dispatch.status
+          )
         end
 
       :error ->
-        Process.sleep(25)
-        do_wait_for_dispatch(dispatch_runtime, dispatch_id, predicate, attempts - 1)
+        Process.sleep(@wait_poll_ms)
+        do_wait_for_dispatch(dispatch_runtime, dispatch_id, predicate, attempts - 1, :missing)
     end
   end
 
-  defp do_wait_for_run(run_id, _predicate, 0) do
-    raise "run #{run_id} did not reach the expected state"
+  defp do_wait_for_run(run_id, _predicate, 0, last_seen) do
+    raise "run #{run_id} did not reach the expected state; last seen: #{inspect(last_seen)}"
   end
 
-  defp do_wait_for_run(run_id, predicate, attempts) do
+  defp do_wait_for_run(run_id, predicate, attempts, _last_seen) do
     case V2.fetch_run(run_id) do
       {:ok, %Run{} = run} ->
         if predicate.(run) do
           run
         else
-          Process.sleep(25)
-          do_wait_for_run(run_id, predicate, attempts - 1)
+          Process.sleep(@wait_poll_ms)
+          do_wait_for_run(run_id, predicate, attempts - 1, run.status)
         end
 
       :error ->
-        Process.sleep(25)
-        do_wait_for_run(run_id, predicate, attempts - 1)
+        Process.sleep(@wait_poll_ms)
+        do_wait_for_run(run_id, predicate, attempts - 1, :missing)
     end
   end
 
