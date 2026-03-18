@@ -1,6 +1,10 @@
 defmodule Jido.Integration.V2.HarnessRuntime do
   @moduledoc """
   Routes session and stream capabilities through the Harness Session Control IR.
+
+  Target Harness driver ids for new architecture work are `asm` and
+  `jido_session`. The integration-owned bridge ids remain available only as
+  compatibility shims while older fixtures are retired.
   """
 
   alias Jido.Harness.{ExecutionResult, RunRequest, SessionHandle}
@@ -12,12 +16,17 @@ defmodule Jido.Integration.V2.HarnessRuntime do
     stream: "asm"
   }
 
-  @builtin_driver_modules %{
+  @target_driver_modules %{
     "asm" => Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver,
-    "jido_session" => Jido.Session.HarnessDriver,
+    "jido_session" => Jido.Session.HarnessDriver
+  }
+
+  @compatibility_driver_modules %{
     "integration_session_bridge" => Jido.Integration.V2.SessionKernel.HarnessDriver,
     "integration_stream_bridge" => Jido.Integration.V2.StreamRuntime.HarnessDriver
   }
+  @target_driver_ids @target_driver_modules |> Map.keys() |> Enum.sort()
+  @compatibility_driver_ids @compatibility_driver_modules |> Map.keys() |> Enum.sort()
 
   @type resolution :: %{
           driver_id: String.t(),
@@ -60,8 +69,22 @@ defmodule Jido.Integration.V2.HarnessRuntime do
 
   @spec driver_modules() :: %{optional(String.t()) => module()}
   def driver_modules do
-    Map.merge(@builtin_driver_modules, configured_driver_modules())
+    @target_driver_modules
+    |> Map.merge(@compatibility_driver_modules)
+    |> Map.merge(configured_driver_modules())
   end
+
+  @doc """
+  Returns the only Harness driver ids that new runtime-boundary work should target.
+  """
+  @spec target_driver_ids() :: [String.t()]
+  def target_driver_ids, do: @target_driver_ids
+
+  @doc """
+  Returns the legacy bridge driver ids that remain for compatibility only.
+  """
+  @spec compatibility_driver_ids() :: [String.t()]
+  def compatibility_driver_ids, do: @compatibility_driver_ids
 
   @spec driver_module(atom() | String.t()) :: {:ok, module()} | :error
   def driver_module(driver_id) when is_atom(driver_id) or is_binary(driver_id) do

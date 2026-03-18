@@ -59,6 +59,8 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     runtime_class =
       resolve_runtime_class!(Keyword.get(opts, :runtime_class, @default_runtime_class))
 
+    ensure_scaffoldable_runtime_class!(runtime_class, connector_name)
+
     connector_module =
       normalize_module_name(Keyword.get(opts, :module, default_module_name(connector_name)))
 
@@ -212,237 +214,6 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     }
   end
 
-  defp runtime_context(
-         :session,
-         connector_name,
-         connector_module,
-         module_root,
-         package_root,
-         workspace_root
-       ) do
-    capability_id = "#{connector_name}.session.prompt"
-    required_scope = "#{connector_name}:session"
-    run_id = "run-#{connector_name}-session"
-    attempt_id = "#{run_id}:1"
-    handler_module = connector_module <> ".Provider"
-    access_token = "session-demo-token"
-
-    %{
-      runtime_dep_path:
-        relative_dep_path(package_root, Path.join(workspace_root, "core/session_kernel")),
-      jido_action_dep_path: nil,
-      handler_module: handler_module,
-      handler_alias: "Provider",
-      handler_file: Path.join(module_root, "provider.ex"),
-      handler_behaviour: "Jido.Integration.V2.SessionKernel.Provider",
-      handler_template: "handler_session.ex.eex",
-      package_description: "Scaffolded session connector package for the greenfield platform",
-      capability_id: capability_id,
-      capability_kind_literal: ":session_operation",
-      transport_profile_literal: ":stdio",
-      required_scope: required_scope,
-      environment_allowed_literal: "[:dev, :test]",
-      sandbox_level_literal: ":strict",
-      sandbox_egress_literal: ":restricted",
-      sandbox_approvals_literal: ":manual",
-      sandbox_file_scope_literal: inspect("/workspaces/#{connector_name}"),
-      allowed_tools_literal: inspect([capability_id]),
-      manifest_test_name: "publishes a session capability manifest",
-      runtime_dependency_app: :jido_integration_v2_session_kernel,
-      direct_runtime: false,
-      session_runtime: true,
-      stream_runtime: false,
-      fixture_input_literal: inspect(%{prompt: "REVIEW THE RUNBOOK"}, pretty: true),
-      fixture_context_literal:
-        inspect(%{run_id: run_id, attempt_id: attempt_id}, pretty: true, limit: :infinity),
-      fixture_credential_ref_literal:
-        inspect(
-          %{id: "cred-#{connector_name}", subject: "operator", scopes: [required_scope]},
-          pretty: true,
-          limit: :infinity
-        ),
-      fixture_credential_lease_literal:
-        inspect(
-          %{
-            lease_id: "lease-#{connector_name}",
-            credential_ref_id: "cred-#{connector_name}",
-            subject: "operator",
-            scopes: [required_scope],
-            payload: %{access_token: access_token},
-            issued_at: ~U[2026-03-12 00:00:00Z],
-            expires_at: ~U[2026-03-12 00:05:00Z]
-          },
-          pretty: true,
-          limit: :infinity
-        ),
-      fixture_expect_output_literal:
-        inspect(
-          %{
-            reply: "#{connector_name}(operator) turn 1: review the runbook",
-            turn: 1,
-            workspace: "/workspaces/#{connector_name}",
-            auth_binding: fixture_digest(access_token)
-          },
-          pretty: true,
-          limit: :infinity
-        ),
-      fixture_event_types_literal:
-        inspect(
-          [
-            "attempt.started",
-            "session.started",
-            "connector.#{connector_name}.session.turn.completed",
-            "attempt.completed"
-          ],
-          pretty: true,
-          limit: :infinity
-        ),
-      fixture_artifact_types_literal: "[:event_log]",
-      fixture_artifact_keys_literal:
-        inspect(
-          ["#{connector_name}/#{run_id}/#{attempt_id}/turn_1.term"],
-          pretty: true,
-          limit: :infinity
-        ),
-      conformance_event_type: "connector.#{connector_name}.session.turn.completed",
-      fixture_auth_binding: fixture_digest(access_token),
-      include_runtime_metadata: true,
-      runtime_driver_id: "integration_session_bridge",
-      migration_runtime_shim: true,
-      publish_ingress_definitions: false,
-      ingress_definitions_literal: "[]",
-      fixture_run_id: run_id,
-      fixture_attempt_id: attempt_id
-    }
-  end
-
-  defp runtime_context(
-         :stream,
-         connector_name,
-         connector_module,
-         module_root,
-         package_root,
-         workspace_root
-       ) do
-    capability_id = "#{connector_name}.stream.pull"
-    required_scope = "#{connector_name}:read"
-    run_id = "run-#{connector_name}-stream"
-    attempt_id = "#{run_id}:1"
-    handler_module = connector_module <> ".Provider"
-    api_key = "stream-demo-key"
-
-    %{
-      runtime_dep_path:
-        relative_dep_path(package_root, Path.join(workspace_root, "core/stream_runtime")),
-      jido_action_dep_path: nil,
-      handler_module: handler_module,
-      handler_alias: "Provider",
-      handler_file: Path.join(module_root, "provider.ex"),
-      handler_behaviour: "Jido.Integration.V2.StreamRuntime.Provider",
-      handler_template: "handler_stream.ex.eex",
-      package_description: "Scaffolded stream connector package for feed-style capabilities",
-      capability_id: capability_id,
-      capability_kind_literal: ":stream_read",
-      transport_profile_literal: ":poll",
-      required_scope: required_scope,
-      environment_allowed_literal: "[:dev, :test]",
-      sandbox_level_literal: ":standard",
-      sandbox_egress_literal: ":blocked",
-      sandbox_approvals_literal: ":auto",
-      sandbox_file_scope_literal: "nil",
-      allowed_tools_literal: inspect([capability_id]),
-      manifest_test_name: "publishes a stream capability manifest",
-      runtime_dependency_app: :jido_integration_v2_stream_runtime,
-      direct_runtime: false,
-      session_runtime: false,
-      stream_runtime: true,
-      fixture_input_literal: inspect(%{symbol: "ACME", limit: 1}, pretty: true),
-      fixture_context_literal:
-        inspect(%{run_id: run_id, attempt_id: attempt_id}, pretty: true, limit: :infinity),
-      fixture_credential_ref_literal:
-        inspect(
-          %{id: "cred-#{connector_name}", subject: "operator", scopes: [required_scope]},
-          pretty: true,
-          limit: :infinity
-        ),
-      fixture_credential_lease_literal:
-        inspect(
-          %{
-            lease_id: "lease-#{connector_name}",
-            credential_ref_id: "cred-#{connector_name}",
-            subject: "operator",
-            scopes: [required_scope],
-            payload: %{api_key: api_key},
-            issued_at: ~U[2026-03-12 00:00:00Z],
-            expires_at: ~U[2026-03-12 00:05:00Z]
-          },
-          pretty: true,
-          limit: :infinity
-        ),
-      fixture_expect_output_literal:
-        inspect(
-          %{
-            symbol: "ACME",
-            venue: "demo",
-            cursor: 1,
-            items: [
-              %{
-                seq: 1,
-                symbol: "ACME",
-                venue: "demo",
-                bid: 5_001,
-                ask: 5_002
-              }
-            ],
-            auth_binding: fixture_digest(api_key)
-          },
-          pretty: true,
-          limit: :infinity
-        ),
-      fixture_event_types_literal:
-        inspect(
-          [
-            "attempt.started",
-            "stream.started",
-            "connector.#{connector_name}.stream.batch.pulled",
-            "attempt.completed"
-          ],
-          pretty: true,
-          limit: :infinity
-        ),
-      fixture_artifact_types_literal: "[:log]",
-      fixture_artifact_keys_literal:
-        inspect(
-          ["#{connector_name}/#{run_id}/#{attempt_id}/batch_1.term"],
-          pretty: true,
-          limit: :infinity
-        ),
-      conformance_event_type: "connector.#{connector_name}.stream.batch.pulled",
-      fixture_auth_binding: fixture_digest(api_key),
-      include_runtime_metadata: true,
-      runtime_driver_id: "integration_stream_bridge",
-      migration_runtime_shim: true,
-      publish_ingress_definitions: true,
-      ingress_definitions_literal:
-        inspect(
-          [
-            %{
-              source: :poll,
-              connector_id: connector_name,
-              trigger_id: "#{connector_name}.stream.pull.poll",
-              capability_id: capability_id,
-              signal_type: "connector.#{connector_name}.stream.poll",
-              signal_source: "/connectors/#{connector_name}/poll"
-            }
-          ],
-          pretty: true,
-          limit: :infinity
-        ),
-      fixture_run_id: run_id,
-      fixture_attempt_id: attempt_id
-    }
-  end
-
   defp files(context) do
     base_files = [
       {"formatter.exs.eex", ".formatter.exs"},
@@ -511,6 +282,32 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       |> Enum.map_join(", ", &Atom.to_string/1)
 
     Mix.raise("Invalid runtime class: #{runtime_class}. Must be one of: #{supported}")
+  end
+
+  @spec ensure_scaffoldable_runtime_class!(runtime_class(), String.t()) :: :ok | no_return()
+  defp ensure_scaffoldable_runtime_class!(:direct, _connector_name), do: :ok
+
+  defp ensure_scaffoldable_runtime_class!(runtime_class, connector_name)
+       when runtime_class in [:session, :stream] do
+    runtime_label = runtime_class |> Atom.to_string() |> String.capitalize()
+
+    legacy_bridge =
+      case runtime_class do
+        :session -> "integration_session_bridge"
+        :stream -> "integration_stream_bridge"
+      end
+
+    Mix.raise("""
+    #{runtime_label} connector scaffolds are intentionally disabled in Phase 0.
+
+    New runtime-boundary work must not generate the legacy `#{legacy_bridge}` path.
+    Compose `#{connector_name}` manually against the real Harness target kernels instead:
+
+    - `asm`
+    - `jido_session`
+
+    The workspace scaffold currently supports direct connectors only.
+    """)
   end
 
   defp normalize_module_name(module_name) do

@@ -5,7 +5,9 @@ Stream baseline connector package.
 This package still targets the `integration_stream_bridge` compatibility shim.
 That keeps the migration proof around for feed-style fixtures, but it should be
 treated as temporary architecture rather than the target model for new runtime
-composition work.
+composition work. Treat this package as a migration fixture, not as a template
+for new connector work. New runtime-boundary work must target Harness through
+`asm` or `jido_session` instead of extending this shim.
 
 Proves:
 

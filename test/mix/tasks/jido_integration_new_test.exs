@@ -71,112 +71,54 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert connector_content =~ "Manifest.new!("
   end
 
-  test "supports session and stream runtime scaffolds, including module overrides" do
+  test "rejects session and stream scaffolds until real Harness target-kernel generators exist" do
     session_workspace_root = temp_workspace!("session")
 
-    run_task([
-      "assistant_cli",
-      "--workspace-root",
-      session_workspace_root,
-      "--runtime-class",
-      "session",
-      "--module",
-      "Generated.Connectors.AssistantCli"
-    ])
+    assert_raise Mix.Error,
+                 ~r/Session connector scaffolds are intentionally disabled in Phase 0/,
+                 fn ->
+                   run_task([
+                     "assistant_cli",
+                     "--workspace-root",
+                     session_workspace_root,
+                     "--runtime-class",
+                     "session",
+                     "--module",
+                     "Generated.Connectors.AssistantCli"
+                   ])
+                 end
 
-    session_package_root = Path.join(session_workspace_root, "connectors/assistant_cli")
-
-    session_mix = File.read!(Path.join(session_package_root, "mix.exs"))
-
-    assert session_mix =~
-             "{:jido_integration_v2_session_kernel, path: \"../../core/session_kernel\", override: true}"
-
-    refute session_mix =~ "jido_integration_v2_direct_runtime"
-    refute session_mix =~ "jido_integration_v2_stream_runtime"
-    refute session_mix =~ "{:jido_action"
-
-    assert File.exists?(
-             Path.join(session_package_root, "lib/generated/connectors/assistant_cli.ex")
-           )
-
-    assert File.exists?(
-             Path.join(session_package_root, "lib/generated/connectors/assistant_cli/provider.ex")
-           )
-
-    session_connector =
-      File.read!(Path.join(session_package_root, "lib/generated/connectors/assistant_cli.ex"))
-
-    assert session_connector =~ "defmodule Generated.Connectors.AssistantCli do"
-    assert session_connector =~ "runtime_class: :session"
-    assert session_connector =~ "kind: :session_operation"
-    assert session_connector =~ "transport_profile: :stdio"
-    assert session_connector =~ "handler: Provider"
-    assert session_connector =~ "driver: \"integration_session_bridge\""
-    assert session_connector =~ "file_scope: \"/workspaces/assistant_cli\""
+    refute File.exists?(Path.join(session_workspace_root, "connectors/assistant_cli"))
 
     stream_workspace_root = temp_workspace!("stream")
 
-    run_task([
-      "price_feed",
-      "--workspace-root",
-      stream_workspace_root,
-      "--runtime-class",
-      "stream"
-    ])
+    assert_raise Mix.Error,
+                 ~r/Stream connector scaffolds are intentionally disabled in Phase 0/,
+                 fn ->
+                   run_task([
+                     "price_feed",
+                     "--workspace-root",
+                     stream_workspace_root,
+                     "--runtime-class",
+                     "stream"
+                   ])
+                 end
 
-    stream_package_root = Path.join(stream_workspace_root, "connectors/price_feed")
-    stream_mix = File.read!(Path.join(stream_package_root, "mix.exs"))
-
-    assert stream_mix =~
-             "{:jido_integration_v2_stream_runtime, path: \"../../core/stream_runtime\", override: true}"
-
-    refute stream_mix =~ "jido_integration_v2_direct_runtime"
-    refute stream_mix =~ "jido_integration_v2_session_kernel"
-    refute stream_mix =~ "{:jido_action"
-
-    stream_connector =
-      File.read!(
-        Path.join(stream_package_root, "lib/jido/integration/v2/connectors/price_feed.ex")
-      )
-
-    assert stream_connector =~ "runtime_class: :stream"
-    assert stream_connector =~ "kind: :stream_read"
-    assert stream_connector =~ "transport_profile: :poll"
-    assert stream_connector =~ "handler: Provider"
-    assert stream_connector =~ "driver: \"integration_stream_bridge\""
-
-    stream_provider =
-      File.read!(
-        Path.join(
-          stream_package_root,
-          "lib/jido/integration/v2/connectors/price_feed/provider.ex"
-        )
-      )
-
-    assert stream_provider =~ "@behaviour Jido.Integration.V2.StreamRuntime.Provider"
-    assert stream_provider =~ "def reuse_key"
-    assert stream_provider =~ "def open_stream"
-    assert stream_provider =~ "def pull"
+    refute File.exists?(Path.join(stream_workspace_root, "connectors/price_feed"))
   end
 
   @tag timeout: 180_000
   test "generated packages compile, test, build docs, and pass baseline conformance" do
     workspace_root = temp_workspace!("validation")
 
-    for {name, runtime_class} <- [
-          {"acme_direct", "direct"},
-          {"acme_session", "session"},
-          {"acme_stream", "stream"}
-        ] do
-      run_task([name, "--workspace-root", workspace_root, "--runtime-class", runtime_class])
-      package_root = Path.join(workspace_root, "connectors/#{name}")
+    run_task(["acme_direct", "--workspace-root", workspace_root, "--runtime-class", "direct"])
+    package_root = Path.join(workspace_root, "connectors/acme_direct")
 
-      assert_mix!(workspace_root, package_root, ["deps.get"])
-      assert_mix!(workspace_root, package_root, ["compile", "--warnings-as-errors"])
-      assert_mix!(workspace_root, package_root, ["test"])
-    end
+    assert_mix!(workspace_root, package_root, ["deps.get"])
+    assert_mix!(workspace_root, package_root, ["compile", "--warnings-as-errors"])
+    assert_mix!(workspace_root, package_root, ["test"])
 
-    assert_mix!(workspace_root, Path.join(workspace_root, "connectors/acme_direct"), ["docs"])
+    assert_mix!(workspace_root, package_root, ["docs"])
   end
 
   defp run_task(args) do

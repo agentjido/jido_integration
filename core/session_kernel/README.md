@@ -10,9 +10,12 @@ Current responsibilities:
 - keep `runtime_ref_id` and `session_id` durable at the control-plane boundary
 - act as a temporary shim while permanent session mechanics live behind Harness
 
+This package is compatibility-only in Phase 0. The workspace scaffold no longer
+generates new packages against this bridge.
+
 New session connectors should not treat this package as the final architecture.
-Use explicit runtime metadata and move toward the real runtime families
-(`asm` or `jido_session`) as those routes become available.
+Compose them manually against the real Harness target kernels (`asm` or
+`jido_session`) instead of deepening this shim.
 
 ## Installation
 

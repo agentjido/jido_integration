@@ -7,13 +7,22 @@ defmodule Mix.Tasks.Jido.Integration.New do
   ## Usage
 
       mix jido.integration.new github
-      mix jido.integration.new codex_cli --runtime-class session
-      mix jido.integration.new market_data --runtime-class stream
       mix jido.integration.new custom_ai --module MyApp.Connectors.CustomAi
+
+  Phase 0 runtime-boundary note:
+
+  - direct connector scaffolds are available
+  - `session` and `stream` remain valid runtime classes, but the workspace
+    scaffold intentionally does not generate them while the old
+    `integration_session_bridge` and `integration_stream_bridge` paths are
+    frozen
+  - new non-direct runtime work must target Harness through `asm` or
+    `jido_session` explicitly instead of deepening the bridge packages
 
   ## Options
 
-  - `--runtime-class` - `direct`, `session`, or `stream` (default: `direct`)
+  - `--runtime-class` - `direct`, `session`, or `stream` (default: `direct`);
+    only `direct` is scaffoldable in Phase 0
   - `--module` - fully qualified connector module override
   - `--path` - package output path relative to the workspace root
   - `--package-name` - human-readable package name override used in docs and `mix.exs`

@@ -4,8 +4,9 @@ Session baseline connector package.
 
 This package still targets the `integration_session_bridge` compatibility shim.
 That is deliberate for deterministic fixture coverage, but it is not the final
-runtime model. New external session connectors should move toward explicit
-Harness runtime-family routing through the integration-owned `asm` bridge.
+runtime model. Treat this package as a migration fixture, not as a template for
+new connector work. New runtime-boundary work must target Harness through
+`asm` or `jido_session` instead of extending this shim.
 
 Proves:
 
