@@ -13,6 +13,10 @@ defmodule Jido.Integration.V2 do
   - deterministic connector discovery through `connectors/0`
   - connector and capability lookup through `fetch_connector/1` and
     `fetch_capability/1`
+
+  Public invocation binds auth through `connection_id` when a capability
+  requires a durable connection. Credential resolution and lease issuance stay
+  behind the auth and control-plane seam.
   """
 
   alias Jido.Integration.V2.ArtifactRef
@@ -125,6 +129,9 @@ defmodule Jido.Integration.V2 do
 
   @doc """
   Invoke a capability through the control plane.
+
+  Public callers bind auth with `:connection_id` when the capability requires
+  a durable connection.
   """
   @spec invoke(String.t(), map(), keyword()) ::
           {:ok, %{run: Run.t(), attempt: Jido.Integration.V2.Attempt.t(), output: map()}}

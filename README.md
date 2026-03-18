@@ -144,6 +144,8 @@ The current surface also proves:
 
 - connectors execute through short-lived auth leases, not durable credential
   truth
+- public invocation binds auth through `connection_id`; `credential_ref`
+  remains internal execution plumbing
 - Notion OAuth control flows stay in the auth/install lifecycle instead of the
   normal invoke surface
 - `InvocationRequest` is the typed public invoke object

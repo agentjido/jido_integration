@@ -37,6 +37,10 @@ Invocation:
 - `invoke/1`
 - `invoke/3`
 
+Public invocation uses `connection_id` as the consumer-facing auth binding when
+the capability requires a durable connection. Credential refs stay behind the
+auth and control-plane seam.
+
 Durable review and target truth:
 
 - `fetch_run/1`

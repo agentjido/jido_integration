@@ -198,7 +198,7 @@ defmodule Jido.Integration.V2Test do
     register_connector!(@github.connector)
     github_spec = github_spec("github.issue.create")
 
-    credential_ref =
+    connection_id =
       install_connection!(
         @github.connector_id,
         @github.tenant_id,
@@ -210,12 +210,12 @@ defmodule Jido.Integration.V2Test do
     request =
       InvocationRequest.new!(%{
         capability_id: "github.issue.create",
+        connection_id: connection_id,
         input: %{
           repo: "agentjido/jido_integration_v2",
           title: "Ship the platform package",
           body: "Direct runtime slice"
         },
-        credential_ref: credential_ref,
         actor_id: "connector-contract",
         tenant_id: @github.tenant_id,
         environment: @github.environment,
@@ -238,7 +238,7 @@ defmodule Jido.Integration.V2Test do
   test "direct GitHub capabilities emit reviewable events and durable artifacts through a lease" do
     register_connector!(@github.connector)
 
-    credential_ref =
+    connection_id =
       install_connection!(
         @github.connector_id,
         @github.tenant_id,
@@ -254,7 +254,7 @@ defmodule Jido.Integration.V2Test do
                V2.invoke(
                  capability_spec.capability_id,
                  capability_spec.input,
-                 invoke_opts(capability_spec.capability_id, credential_ref, spec)
+                 invoke_opts(capability_spec.capability_id, connection_id, spec)
                )
 
       assert result.run.runtime_class == :direct
@@ -287,7 +287,7 @@ defmodule Jido.Integration.V2Test do
     register_connector!(@github.connector)
     github_spec = github_spec("github.issue.create")
 
-    credential_ref =
+    connection_id =
       install_connection!(
         @github.connector_id,
         @github.tenant_id,
@@ -300,7 +300,7 @@ defmodule Jido.Integration.V2Test do
              V2.invoke(
                "github.issue.create",
                %{repo: "agentjido/jido_integration_v2", title: "Denied"},
-               invoke_opts("github.issue.create", credential_ref, github_spec)
+               invoke_opts("github.issue.create", connection_id, github_spec)
              )
 
     assert error.reason == :policy_denied
@@ -314,10 +314,10 @@ defmodule Jido.Integration.V2Test do
            ]
   end
 
-  test "session connector reuses the runtime for the same credential and persists review artifacts" do
+  test "session connector reuses the runtime for the same connection and persists review artifacts" do
     register_connector!(@codex_cli.connector)
 
-    credential_ref =
+    connection_id =
       install_connection!(
         @codex_cli.connector_id,
         @codex_cli.tenant_id,
@@ -330,14 +330,14 @@ defmodule Jido.Integration.V2Test do
              V2.invoke(
                @codex_cli.capability_id,
                %{prompt: "Draft a calmer stop-loss summary"},
-               invoke_opts(@codex_cli.capability_id, credential_ref, @codex_cli)
+               invoke_opts(@codex_cli.capability_id, connection_id, @codex_cli)
              )
 
     assert {:ok, second} =
              V2.invoke(
                @codex_cli.capability_id,
                %{prompt: "Now turn it into a checklist"},
-               invoke_opts(@codex_cli.capability_id, credential_ref, @codex_cli)
+               invoke_opts(@codex_cli.capability_id, connection_id, @codex_cli)
              )
 
     assert first.run.runtime_class == :session
@@ -356,10 +356,10 @@ defmodule Jido.Integration.V2Test do
     assert_review_surface!(second, @codex_cli, %{access_token: "codex_test"}, ["codex_test"])
   end
 
-  test "session connector does not reuse a runtime across different credential refs for the same subject" do
+  test "session connector does not reuse a runtime across different connections for the same subject" do
     register_connector!(@codex_cli.connector)
 
-    first_credential =
+    first_connection_id =
       install_connection!(
         @codex_cli.connector_id,
         @codex_cli.tenant_id,
@@ -368,7 +368,7 @@ defmodule Jido.Integration.V2Test do
         %{access_token: "codex_a"}
       )
 
-    second_credential =
+    second_connection_id =
       install_connection!(
         @codex_cli.connector_id,
         @codex_cli.tenant_id,
@@ -381,14 +381,14 @@ defmodule Jido.Integration.V2Test do
              V2.invoke(
                @codex_cli.capability_id,
                %{prompt: "Summarize risk"},
-               invoke_opts(@codex_cli.capability_id, first_credential, @codex_cli)
+               invoke_opts(@codex_cli.capability_id, first_connection_id, @codex_cli)
              )
 
     assert {:ok, second} =
              V2.invoke(
                @codex_cli.capability_id,
                %{prompt: "Summarize risk"},
-               invoke_opts(@codex_cli.capability_id, second_credential, @codex_cli)
+               invoke_opts(@codex_cli.capability_id, second_connection_id, @codex_cli)
              )
 
     refute first.attempt.runtime_ref_id == second.attempt.runtime_ref_id
@@ -397,7 +397,7 @@ defmodule Jido.Integration.V2Test do
   test "session connector denies work when sandbox policy is weaker than required" do
     register_connector!(@codex_cli.connector)
 
-    credential_ref =
+    connection_id =
       install_connection!(
         @codex_cli.connector_id,
         @codex_cli.tenant_id,
@@ -412,7 +412,7 @@ defmodule Jido.Integration.V2Test do
                %{prompt: "Denied"},
                invoke_opts(
                  @codex_cli.capability_id,
-                 credential_ref,
+                 connection_id,
                  @codex_cli,
                  sandbox: %{
                    level: :standard,
@@ -430,10 +430,10 @@ defmodule Jido.Integration.V2Test do
     assert "sandbox tool allowlist is missing: codex.exec.session" in error.policy_decision.reasons
   end
 
-  test "stream connector reuses stream state per credential and symbol" do
+  test "stream connector reuses stream state per connection and symbol" do
     register_connector!(@market_data.connector)
 
-    credential_ref =
+    connection_id =
       install_connection!(
         @market_data.connector_id,
         @market_data.tenant_id,
@@ -446,14 +446,14 @@ defmodule Jido.Integration.V2Test do
              V2.invoke(
                @market_data.capability_id,
                %{symbol: "ES", limit: 2, venue: "CME"},
-               invoke_opts(@market_data.capability_id, credential_ref, @market_data)
+               invoke_opts(@market_data.capability_id, connection_id, @market_data)
              )
 
     assert {:ok, second} =
              V2.invoke(
                @market_data.capability_id,
                %{symbol: "ES", limit: 2, venue: "CME"},
-               invoke_opts(@market_data.capability_id, credential_ref, @market_data)
+               invoke_opts(@market_data.capability_id, connection_id, @market_data)
              )
 
     assert first.run.runtime_class == :stream
@@ -472,10 +472,10 @@ defmodule Jido.Integration.V2Test do
     assert_review_surface!(first, @market_data, %{api_key: "market_demo"}, ["market_demo"])
   end
 
-  test "stream connector does not reuse stream state across different credential refs for the same subject" do
+  test "stream connector does not reuse stream state across different connections for the same subject" do
     register_connector!(@market_data.connector)
 
-    first_credential =
+    first_connection_id =
       install_connection!(
         @market_data.connector_id,
         @market_data.tenant_id,
@@ -484,7 +484,7 @@ defmodule Jido.Integration.V2Test do
         %{api_key: "market_a"}
       )
 
-    second_credential =
+    second_connection_id =
       install_connection!(
         @market_data.connector_id,
         @market_data.tenant_id,
@@ -497,14 +497,14 @@ defmodule Jido.Integration.V2Test do
              V2.invoke(
                @market_data.capability_id,
                %{symbol: "ES", limit: 1},
-               invoke_opts(@market_data.capability_id, first_credential, @market_data)
+               invoke_opts(@market_data.capability_id, first_connection_id, @market_data)
              )
 
     assert {:ok, second} =
              V2.invoke(
                @market_data.capability_id,
                %{symbol: "ES", limit: 1},
-               invoke_opts(@market_data.capability_id, second_credential, @market_data)
+               invoke_opts(@market_data.capability_id, second_connection_id, @market_data)
              )
 
     refute first.attempt.runtime_ref_id == second.attempt.runtime_ref_id
@@ -513,7 +513,7 @@ defmodule Jido.Integration.V2Test do
   test "stream connector denies work outside its allowed environment" do
     register_connector!(@market_data.connector)
 
-    credential_ref =
+    connection_id =
       install_connection!(
         @market_data.connector_id,
         @market_data.tenant_id,
@@ -528,7 +528,7 @@ defmodule Jido.Integration.V2Test do
                %{symbol: "ES", limit: 1},
                invoke_opts(
                  @market_data.capability_id,
-                 credential_ref,
+                 connection_id,
                  @market_data,
                  environment: :dev
                )

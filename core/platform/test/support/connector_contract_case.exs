@@ -7,7 +7,6 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Contracts
-  alias Jido.Integration.V2.CredentialRef
 
   using do
     quote do
@@ -69,7 +68,7 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
             %{
               install: %Install{install_id: ^install_id},
               connection: %Connection{connection_id: ^connection_id},
-              credential_ref: %CredentialRef{} = credential_ref
+              credential_ref: %Jido.Integration.V2.CredentialRef{}
             }} =
              V2.complete_install(install.install_id, %{
                subject: subject,
@@ -79,12 +78,12 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
                now: now
              })
 
-    credential_ref
+    connection_id
   end
 
-  def invoke_opts(capability_id, credential_ref, spec, overrides \\ []) do
+  def invoke_opts(capability_id, connection_id, spec, overrides \\ []) do
     defaults = [
-      credential_ref: credential_ref,
+      connection_id: connection_id,
       actor_id: Keyword.get(overrides, :actor_id, "connector-contract"),
       tenant_id: spec.tenant_id,
       environment: spec.environment,

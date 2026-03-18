@@ -33,7 +33,7 @@ Current hardening guarantees:
 - `Gateway` is the shared admission plus execution-policy request shape used before dispatch
 - `Gateway.Policy` is the normalized capability-side security contract for actor, tenant, environment, runtime, operation, and sandbox checks
 - `PolicyDecision` can allow work, deny it, or shed it before attempt creation
-- `InvocationRequest` is the typed public invoke helper that normalizes stable facade fields and derives the requested capability allowlist by default
+- `InvocationRequest` is the typed public invoke helper that normalizes stable facade fields, uses `connection_id` as the public auth binding, and derives the requested capability allowlist by default
 - `CredentialRef` remains durable while `CredentialLease` is the short-lived execution boundary
 - `Credential` carries durable subject/scope/auth metadata plus secret-bearing fields that are meant to stay behind auth APIs
 - `CredentialLease` carries only the execution-time payload needed for a bounded lease lifetime
@@ -57,9 +57,9 @@ Current hardening guarantees:
 
 `InvocationRequest`
 
-- stores the stable public invoke fields such as `capability_id`, `input`,
-  actor/tenant/environment identity, sandbox posture, and optional target
-  selection
+- stores the stable public invoke fields such as `capability_id`,
+  optional `connection_id`, `input`, actor/tenant/environment identity,
+  sandbox posture, and optional target selection
 - keeps non-reserved extension opts explicit so callers can pass additional
   runtime context without collapsing back to an untyped map wrapper
 - exposes `to_opts/1` so `invoke/1` and `invoke/3` can share one normalized

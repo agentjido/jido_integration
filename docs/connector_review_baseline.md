@@ -26,7 +26,8 @@ Supporting proof surfaces:
   `Jido.Integration.V2.connectors/0`, `fetch_connector/1`, and
   `fetch_capability/1`
 - public invocation can be expressed either as `invoke/3` or through the typed
-  `InvocationRequest` helper
+  `InvocationRequest` helper, with `connection_id` as the public auth binding
+  when auth is required
 - direct, session, and stream connectors all emit runtime-specific
   `RuntimeResult` evidence while keeping durable review truth in the control
   plane

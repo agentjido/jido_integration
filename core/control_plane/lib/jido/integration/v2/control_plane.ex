@@ -69,12 +69,14 @@ defmodule Jido.Integration.V2.ControlPlane do
                policy_decision: PolicyDecision.t() | nil
              }}
   def invoke(capability_id, input, opts \\ []) do
-    with {:ok, capability} <- fetch_capability(capability_id) do
-      credential_ref = Keyword.get(opts, :credential_ref, anonymous_credential())
-      run = build_run(capability, input, credential_ref, opts)
+    reject_public_credential_ref!(opts)
+
+    with {:ok, capability} <- fetch_capability(capability_id),
+         {:ok, auth_binding} <- resolve_invoke_auth(capability, opts) do
+      run = build_run(capability, input, auth_binding.credential_ref, opts)
 
       :ok = Stores.run_store().put_run(run)
-      continue_invoke(capability, run, input, opts)
+      continue_invoke(capability, run, input, opts, auth_binding)
     end
   end
 
@@ -204,15 +206,17 @@ defmodule Jido.Integration.V2.ControlPlane do
     :ok
   end
 
-  defp continue_invoke(capability, run, input, opts) do
-    credential_ref = run.credential_ref
-
+  defp continue_invoke(capability, run, input, opts, auth_binding) do
     with :ok <- validate_target_selection(run, capability),
-         {:ok, resolved_credential} <- resolve_credential(credential_ref),
          %PolicyDecision{status: :allowed} = policy_decision <-
-           evaluate_policy(capability, resolved_credential, credential_ref, input, opts),
-         {:ok, credential_lease} <-
-           issue_credential_lease(credential_ref, capability) do
+           evaluate_policy(
+             capability,
+             auth_binding.credential,
+             auth_binding.credential_ref,
+             input,
+             opts
+           ),
+         {:ok, credential_lease} <- issue_invoke_lease(capability, auth_binding, opts) do
       execute_admitted_run(capability, run, input, opts, policy_decision, credential_lease)
     else
       {:error, reason} ->
@@ -530,8 +534,52 @@ defmodule Jido.Integration.V2.ControlPlane do
     RuntimeRouter.execute(capability, input, context)
   end
 
+  defp resolve_invoke_auth(capability, opts) do
+    case Keyword.get(opts, :connection_id) do
+      nil ->
+        {:ok, anonymous_auth_binding(capability)}
+
+      connection_id ->
+        connection_id = Contracts.validate_non_empty_string!(connection_id, "connection_id")
+
+        Auth.resolve_connection_binding(connection_id)
+    end
+  end
+
+  defp anonymous_auth_binding(_capability) do
+    credential_ref = anonymous_credential()
+    {:ok, credential} = resolve_credential(credential_ref)
+
+    %{
+      credential_ref: credential_ref,
+      credential: credential,
+      connection_id: nil
+    }
+  end
+
+  defp issue_invoke_lease(
+         capability,
+         %{connection: %{connection_id: connection_id}},
+         opts
+       ) do
+    Auth.request_lease(connection_id, %{
+      actor_id: Keyword.get(opts, :actor_id),
+      required_scopes: Capability.required_scopes(capability)
+    })
+  end
+
+  defp issue_invoke_lease(capability, %{credential_ref: credential_ref}, _opts) do
+    issue_credential_lease(credential_ref, capability)
+  end
+
   defp anonymous_credential do
     CredentialRef.new!(%{id: "cred-anon", subject: "anonymous", scopes: []})
+  end
+
+  defp reject_public_credential_ref!(opts) do
+    if Keyword.has_key?(opts, :credential_ref) do
+      raise ArgumentError, "credential_ref is not part of the public invoke contract"
+    end
   end
 
   defp issue_credential_lease(

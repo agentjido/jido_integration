@@ -88,6 +88,9 @@ Invocation surface:
 - `invoke/1`
 - `invoke/3`
 
+Public invoke requests use `connection_id` as the consumer-facing auth binding
+when the capability requires auth. Anonymous capabilities may omit it.
+
 Durable review surface:
 
 - `fetch_run/1`

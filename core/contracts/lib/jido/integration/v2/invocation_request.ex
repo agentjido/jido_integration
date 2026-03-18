@@ -4,14 +4,16 @@ defmodule Jido.Integration.V2.InvocationRequest do
 
   The request keeps the stable control-plane invoke fields explicit while still
   allowing non-reserved extension opts to flow through to runtime context.
+
+  When a capability requires auth, the public binding is `connection_id`.
+  Credential refs remain internal auth and execution plumbing.
   """
 
   alias Jido.Integration.V2.Contracts
-  alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Gateway
 
   @reserved_extension_keys [
-    :credential_ref,
+    :connection_id,
     :actor_id,
     :tenant_id,
     :environment,
@@ -26,7 +28,7 @@ defmodule Jido.Integration.V2.InvocationRequest do
   @enforce_keys [:capability_id]
   defstruct [
     :capability_id,
-    :credential_ref,
+    :connection_id,
     :actor_id,
     :tenant_id,
     :environment,
@@ -49,7 +51,7 @@ defmodule Jido.Integration.V2.InvocationRequest do
   @type t :: %__MODULE__{
           capability_id: String.t(),
           input: map(),
-          credential_ref: CredentialRef.t() | nil,
+          connection_id: String.t() | nil,
           actor_id: String.t() | nil,
           tenant_id: String.t() | nil,
           environment: atom() | String.t() | nil,
@@ -67,6 +69,7 @@ defmodule Jido.Integration.V2.InvocationRequest do
 
   def new!(attrs) when is_map(attrs) or is_list(attrs) do
     attrs = Map.new(attrs)
+    reject_credential_ref!(attrs)
 
     capability_id =
       Contracts.validate_non_empty_string!(
@@ -77,7 +80,7 @@ defmodule Jido.Integration.V2.InvocationRequest do
     struct!(__MODULE__, %{
       capability_id: capability_id,
       input: normalize_input(Contracts.get(attrs, :input, %{})),
-      credential_ref: normalize_credential_ref(Contracts.get(attrs, :credential_ref)),
+      connection_id: optional_string(Contracts.get(attrs, :connection_id), "connection_id"),
       actor_id: optional_string(Contracts.get(attrs, :actor_id), "actor_id"),
       tenant_id: optional_string(Contracts.get(attrs, :tenant_id), "tenant_id"),
       environment: normalize_environment(Contracts.get(attrs, :environment)),
@@ -103,7 +106,7 @@ defmodule Jido.Integration.V2.InvocationRequest do
   @spec to_opts(t()) :: keyword()
   def to_opts(%__MODULE__{} = request) do
     [
-      {:credential_ref, request.credential_ref},
+      {:connection_id, request.connection_id},
       {:actor_id, request.actor_id},
       {:tenant_id, request.tenant_id},
       {:environment, request.environment},
@@ -122,14 +125,6 @@ defmodule Jido.Integration.V2.InvocationRequest do
 
   defp normalize_input(input) do
     raise ArgumentError, "input must be a map, got: #{inspect(input)}"
-  end
-
-  defp normalize_credential_ref(nil), do: nil
-  defp normalize_credential_ref(%CredentialRef{} = credential_ref), do: credential_ref
-
-  defp normalize_credential_ref(credential_ref) do
-    raise ArgumentError,
-          "credential_ref must be a CredentialRef, got: #{inspect(credential_ref)}"
   end
 
   defp optional_string(nil, _field_name), do: nil
@@ -189,5 +184,11 @@ defmodule Jido.Integration.V2.InvocationRequest do
 
   defp normalize_extensions(extensions) do
     raise ArgumentError, "extensions must be a keyword list, got: #{inspect(extensions)}"
+  end
+
+  defp reject_credential_ref!(attrs) do
+    if Map.has_key?(attrs, :credential_ref) or Map.has_key?(attrs, "credential_ref") do
+      raise ArgumentError, "credential_ref is not part of the public invocation contract"
+    end
   end
 end

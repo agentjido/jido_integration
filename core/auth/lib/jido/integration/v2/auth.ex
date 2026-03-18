@@ -21,6 +21,12 @@ defmodule Jido.Integration.V2.Auth do
              {:ok, %{optional(:secret) => map(), optional(:expires_at) => DateTime.t() | nil}}
              | {:error, term()})
 
+  @type connection_binding :: %{
+          connection: Connection.t(),
+          credential_ref: CredentialRef.t(),
+          credential: Credential.t()
+        }
+
   @spec start_install(String.t(), String.t(), map()) ::
           {:ok, %{install: Install.t(), connection: Connection.t(), session_state: map()}}
           | {:error, term()}
@@ -173,6 +179,42 @@ defmodule Jido.Integration.V2.Auth do
 
       :ok = Stores.lease_store().store_lease(lease_record)
       {:ok, materialize_lease(lease_record, refreshed_credential)}
+    end
+  end
+
+  @spec resolve_connection_binding(String.t(), map()) ::
+          {:ok, connection_binding()}
+          | {:error,
+             :unknown_connection
+             | :unknown_credential
+             | :credential_subject_mismatch
+             | :credential_expired
+             | :connection_installing
+             | :connection_disabled
+             | :connection_revoked
+             | :reauth_required}
+  def resolve_connection_binding(connection_id, context \\ %{}) when is_binary(connection_id) do
+    context = Map.new(context)
+    now = now(context)
+
+    with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
+         :ok <- ensure_connection_available(connection),
+         {:ok, credential} <- fetch_durable_credential(connection.credential_ref_id),
+         :ok <-
+           ensure_subject_match(
+             connection.subject,
+             credential.subject,
+             :credential_subject_mismatch
+           ),
+         {:ok, refreshed_connection, refreshed_credential} <-
+           maybe_refresh(connection, credential, now),
+         credential_ref <- build_credential_ref(refreshed_credential, refreshed_connection, nil) do
+      {:ok,
+       %{
+         connection: refreshed_connection,
+         credential_ref: credential_ref,
+         credential: Credential.sanitized(refreshed_credential)
+       }}
     end
   end
 

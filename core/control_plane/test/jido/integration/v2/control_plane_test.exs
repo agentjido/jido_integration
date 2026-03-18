@@ -266,12 +266,12 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "registers a manifest and records a completed run" do
-    credential_ref = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
     assert [%Capability{id: "test.echo"}] = ControlPlane.capabilities()
 
     assert {:ok, result} =
-             ControlPlane.invoke("test.echo", %{value: "ok"}, invoke_opts(credential_ref))
+             ControlPlane.invoke("test.echo", %{value: "ok"}, invoke_opts(connection_id))
 
     assert result.run.status == :completed
     assert result.output == %{value: "ok"}
@@ -292,7 +292,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "persists an explicit target selection through run, attempt, and event truth" do
-    credential_ref = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
     assert :ok = ControlPlane.announce_target(echo_target("target-echo"))
 
@@ -300,7 +300,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
              ControlPlane.invoke(
                "test.echo",
                %{value: "ok"},
-               invoke_opts(credential_ref, target_id: "target-echo")
+               invoke_opts(connection_id, target_id: "target-echo")
              )
 
     assert result.run.target_id == "target-echo"
@@ -312,7 +312,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "fails before attempt creation when the selected target is incompatible" do
-    credential_ref = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
 
     assert :ok =
@@ -322,7 +322,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
              ControlPlane.invoke(
                "test.echo",
                %{value: "nope"},
-               invoke_opts(credential_ref, target_id: "target-stream")
+               invoke_opts(connection_id, target_id: "target-stream")
              )
 
     assert error.reason == {:target_incompatible, "target-stream", :runtime_class_mismatch}
@@ -333,14 +333,14 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "records a denied run without creating an attempt" do
-    credential_ref = install_connection!("tester", ["echo:read"], %{access_token: "test"})
+    connection_id = install_connection!("tester", ["echo:read"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
 
     assert {:error, error} =
              ControlPlane.invoke(
                "test.echo",
                %{value: "nope"},
-               invoke_opts(credential_ref, trace_id: "trace-policy-scope-denial")
+               invoke_opts(connection_id, trace_id: "trace-policy-scope-denial")
              )
 
     assert error.reason == :policy_denied
@@ -386,7 +386,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "routes session work through the jido_session harness driver selected by target metadata" do
-    credential_ref = install_connection!("tester", ["session:execute"], %{access_token: "test"})
+    connection_id = install_connection!("tester", ["session:execute"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(JidoSessionConnector)
 
     assert :ok =
@@ -404,7 +404,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                "test.session.prompt",
                %{prompt: "Draft a review packet"},
                invoke_opts(
-                 credential_ref,
+                 connection_id,
                  allowed_operations: ["test.session.prompt"],
                  sandbox: %{
                    level: :strict,
@@ -422,7 +422,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                "test.session.prompt",
                %{prompt: "Turn it into a checklist"},
                invoke_opts(
-                 credential_ref,
+                 connection_id,
                  allowed_operations: ["test.session.prompt"],
                  sandbox: %{
                    level: :strict,
@@ -447,7 +447,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "routes stream work through the asm harness driver selected by target metadata" do
-    credential_ref = install_connection!("tester", ["stream:execute"], %{access_token: "test"})
+    connection_id = install_connection!("tester", ["stream:execute"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(AsmStreamConnector)
 
     assert :ok =
@@ -460,7 +460,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                "test.asm.stream",
                %{prompt: "Stream the current status"},
                invoke_opts(
-                 credential_ref,
+                 connection_id,
                  allowed_operations: ["test.asm.stream"],
                  sandbox: %{
                    level: :standard,
@@ -478,7 +478,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                "test.asm.stream",
                %{prompt: "Stream the next status"},
                invoke_opts(
-                 credential_ref,
+                 connection_id,
                  allowed_operations: ["test.asm.stream"],
                  sandbox: %{
                    level: :standard,
@@ -503,7 +503,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "records actor and tenant denials as durable truth before attempt creation" do
-    credential_ref = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
 
     assert {:error, error} =
@@ -511,7 +511,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                "test.echo",
                %{value: "nope"},
                invoke_opts(
-                 credential_ref,
+                 connection_id,
                  actor_id: nil,
                  tenant_id: "tenant-2",
                  trace_id: "trace-policy-actor-tenant-denial"
@@ -544,7 +544,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "records a shed run without creating an attempt" do
-    credential_ref = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
 
     assert {:error, error} =
@@ -552,7 +552,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                "test.echo",
                %{value: "later"},
                invoke_opts(
-                 credential_ref,
+                 connection_id,
                  trace_id: "trace-policy-shed",
                  pressure: %{
                    decision: :shed,
@@ -597,7 +597,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "redacts credential lease material from durable run attempt and event truth" do
-    credential_ref =
+    connection_id =
       install_connection!("leaky-user", ["echo:write"], %{
         access_token: "gho_never_persist_me",
         refresh_token: "ghr_never_persist_me"
@@ -606,7 +606,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert :ok = ControlPlane.register_connector(LeakyConnector)
 
     assert {:ok, result} =
-             ControlPlane.invoke("leaky.echo", %{value: "ok"}, invoke_opts(credential_ref))
+             ControlPlane.invoke("leaky.echo", %{value: "ok"}, invoke_opts(connection_id))
 
     assert {:ok, stored_run} = ControlPlane.fetch_run(result.run.run_id)
     assert {:ok, stored_attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
@@ -799,7 +799,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
             %{
               install: %Install{install_id: ^install_id},
               connection: %Connection{connection_id: ^connection_id},
-              credential_ref: %CredentialRef{} = credential_ref
+              credential_ref: %CredentialRef{}
             }} =
              Auth.complete_install(install.install_id, %{
                subject: subject,
@@ -809,12 +809,12 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                now: now
              })
 
-    credential_ref
+    connection_id
   end
 
-  defp invoke_opts(credential_ref, overrides \\ []) do
+  defp invoke_opts(connection_id, overrides \\ []) do
     defaults = [
-      credential_ref: credential_ref,
+      connection_id: connection_id,
       actor_id: "control-plane-test",
       tenant_id: "tenant-1",
       environment: :prod,
