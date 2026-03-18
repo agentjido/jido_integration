@@ -311,6 +311,17 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
            end)
   end
 
+  test "requires connection_id for capabilities with durable auth scopes" do
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    assert {:error, :connection_required} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "ok"},
+               Keyword.drop(invoke_opts("connection-unused"), [:connection_id])
+             )
+  end
+
   test "fails before attempt creation when the selected target is incompatible" do
     connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)

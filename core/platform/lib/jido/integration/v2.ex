@@ -118,6 +118,7 @@ defmodule Jido.Integration.V2 do
   """
   @spec invoke(InvocationRequest.t()) ::
           {:ok, %{run: Run.t(), attempt: Jido.Integration.V2.Attempt.t(), output: map()}}
+          | {:error, ControlPlane.invoke_preflight_error()}
           | {:error,
              %{
                reason: term(),
@@ -135,6 +136,7 @@ defmodule Jido.Integration.V2 do
   """
   @spec invoke(String.t(), map(), keyword()) ::
           {:ok, %{run: Run.t(), attempt: Jido.Integration.V2.Attempt.t(), output: map()}}
+          | {:error, ControlPlane.invoke_preflight_error()}
           | {:error,
              %{
                reason: term(),

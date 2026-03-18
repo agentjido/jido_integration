@@ -101,11 +101,31 @@ defmodule Jido.Integration.V2.InvocationRequestTest do
                    })
                  end
 
+    assert_raise ArgumentError,
+                 ~r/credential_ref is not part of the public invocation contract/,
+                 fn ->
+                   InvocationRequest.new!(%{
+                     capability_id: "github.issue.create",
+                     extensions: [credential_ref: %{id: "cred-1", subject: "desk-operator"}]
+                   })
+                 end
+
     assert_raise ArgumentError, ~r/extensions must not redefine reserved invoke fields/, fn ->
       InvocationRequest.new!(%{
         capability_id: "github.issue.create",
         extensions: [connection_id: "connection-1"]
       })
     end
+  end
+
+  test "to_opts rejects credential_ref extensions on manually constructed requests" do
+    assert_raise ArgumentError,
+                 ~r/credential_ref is not part of the public invocation contract/,
+                 fn ->
+                   InvocationRequest.to_opts(%InvocationRequest{
+                     capability_id: "github.issue.create",
+                     extensions: [credential_ref: %{id: "cred-1", subject: "desk-operator"}]
+                   })
+                 end
   end
 end

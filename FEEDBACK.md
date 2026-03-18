@@ -149,8 +149,7 @@ The current experience is closer to:
 
 - register the connector
 - manage install and connection state directly through `Jido.Integration.V2`
-- obtain or pass credential references
-- call `invoke/3` yourself
+- pass `connection_id` into `invoke/3` yourself
 - build app-owned trigger handling around ingress and dispatch
 
 That is a strong platform API. It is not yet an agent-authoring API.

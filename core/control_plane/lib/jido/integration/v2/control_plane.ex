@@ -29,6 +29,18 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
 
+  @type invoke_preflight_error ::
+          :unknown_capability
+          | :connection_required
+          | :unknown_connection
+          | :unknown_credential
+          | :credential_subject_mismatch
+          | :credential_expired
+          | :connection_installing
+          | :connection_disabled
+          | :connection_revoked
+          | :reauth_required
+
   @spec register_connector(module()) :: :ok | {:error, term()}
   def register_connector(connector) do
     Registry.register_manifest(connector.manifest())
@@ -48,6 +60,7 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   @spec invoke(InvocationRequest.t()) ::
           {:ok, %{run: Run.t(), attempt: Attempt.t(), output: map()}}
+          | {:error, invoke_preflight_error()}
           | {:error,
              %{
                reason: term(),
@@ -61,6 +74,7 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   @spec invoke(String.t(), map(), keyword()) ::
           {:ok, %{run: Run.t(), attempt: Attempt.t(), output: map()}}
+          | {:error, invoke_preflight_error()}
           | {:error,
              %{
                reason: term(),
@@ -537,7 +551,11 @@ defmodule Jido.Integration.V2.ControlPlane do
   defp resolve_invoke_auth(capability, opts) do
     case Keyword.get(opts, :connection_id) do
       nil ->
-        {:ok, anonymous_auth_binding(capability)}
+        if auth_connection_required?(capability) do
+          {:error, :connection_required}
+        else
+          {:ok, anonymous_auth_binding(capability)}
+        end
 
       connection_id ->
         connection_id = Contracts.validate_non_empty_string!(connection_id, "connection_id")
@@ -555,6 +573,10 @@ defmodule Jido.Integration.V2.ControlPlane do
       credential: credential,
       connection_id: nil
     }
+  end
+
+  defp auth_connection_required?(%Capability{} = capability) do
+    Capability.required_scopes(capability) != []
   end
 
   defp issue_invoke_lease(

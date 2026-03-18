@@ -105,6 +105,8 @@ defmodule Jido.Integration.V2.InvocationRequest do
 
   @spec to_opts(t()) :: keyword()
   def to_opts(%__MODULE__{} = request) do
+    reject_extension_credential_ref!(request.extensions)
+
     [
       {:connection_id, request.connection_id},
       {:actor_id, request.actor_id},
@@ -168,6 +170,8 @@ defmodule Jido.Integration.V2.InvocationRequest do
       raise ArgumentError, "extensions must be a keyword list, got: #{inspect(extensions)}"
     end
 
+    reject_extension_credential_ref!(extensions)
+
     reserved_keys =
       extensions
       |> Keyword.keys()
@@ -184,6 +188,12 @@ defmodule Jido.Integration.V2.InvocationRequest do
 
   defp normalize_extensions(extensions) do
     raise ArgumentError, "extensions must be a keyword list, got: #{inspect(extensions)}"
+  end
+
+  defp reject_extension_credential_ref!(extensions) do
+    if Keyword.has_key?(extensions, :credential_ref) do
+      raise ArgumentError, "credential_ref is not part of the public invocation contract"
+    end
   end
 
   defp reject_credential_ref!(attrs) do

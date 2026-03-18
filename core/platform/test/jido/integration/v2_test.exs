@@ -314,6 +314,21 @@ defmodule Jido.Integration.V2Test do
            ]
   end
 
+  test "invoke requires connection_id for auth-scoped capabilities" do
+    register_connector!(@github.connector)
+    github_spec = github_spec("github.issue.create")
+
+    assert {:error, :connection_required} =
+             V2.invoke(
+               "github.issue.create",
+               %{repo: "agentjido/jido_integration_v2", title: "Denied"},
+               Keyword.drop(
+                 invoke_opts("github.issue.create", "connection-unused", github_spec),
+                 [:connection_id]
+               )
+             )
+  end
+
   test "session connector reuses the runtime for the same connection and persists review artifacts" do
     register_connector!(@codex_cli.connector)
 
