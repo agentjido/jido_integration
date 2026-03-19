@@ -246,7 +246,7 @@ These are shortcuts for the corresponding `mix monorepo.*` commands above.
 
 The repo no longer carries its own monorepo runner implementation. The
 `monorepo.*` commands are root aliases to the generic `mix blitz.workspace
-<task>` runner from the sibling `../blitz` library.
+<task>` runner from the `blitz` Hex package.
 
 Workspace policy now lives in the root `mix.exs` under `:blitz_workspace`:
 

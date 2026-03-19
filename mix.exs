@@ -25,7 +25,7 @@ defmodule Jido.Integration.Workspace.MixProject do
 
   defp deps do
     [
-      {:blitz, path: "../blitz"},
+      {:blitz, "~> 0.1.0", runtime: false},
       {:jido_integration_v2_conformance, path: "core/conformance"},
       {:jido_integration_v2_contracts, path: "core/contracts"},
       {:jason, "~> 1.4", runtime: false},
@@ -67,7 +67,7 @@ defmodule Jido.Integration.Workspace.MixProject do
   defp dialyzer do
     [
       plt_add_deps: :apps_direct,
-      plt_add_apps: [:mix]
+      plt_add_apps: [:mix, :blitz]
     ]
   end
 
