@@ -40,6 +40,9 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
   @spec auth_binding() :: String.t()
   def auth_binding, do: ArtifactBuilder.digest(@access_token)
 
+  @spec data_source_id() :: String.t()
+  def data_source_id, do: @data_source_id
+
   @spec credential_ref() :: CredentialRef.t()
   def credential_ref do
     CredentialRef.new!(credential_ref_attrs())
@@ -154,7 +157,24 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
     }
   end
 
-  def input_for("notion.data_sources.query"), do: %{data_source_id: @data_source_id, page_size: 1}
+  def input_for("notion.data_sources.query") do
+    %{
+      data_source_id: @data_source_id,
+      filter: %{
+        property: "Status",
+        status: %{
+          equals: "Published"
+        }
+      },
+      sorts: [
+        %{
+          property: "Title",
+          direction: "ascending"
+        }
+      ],
+      page_size: 1
+    }
+  end
 
   def input_for("notion.comments.create") do
     %{
@@ -209,6 +229,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
       "archived" => false,
       "in_trash" => false,
       "url" => "https://www.notion.so/#{@page_id}",
+      "parent" => %{"type" => "data_source_id", "data_source_id" => @data_source_id},
       "properties" => %{
         "Title" => %{
           "id" => "title",
@@ -227,6 +248,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
       "id" => @page_id,
       "archived" => false,
       "in_trash" => false,
+      "parent" => %{"type" => "data_source_id", "data_source_id" => @data_source_id},
       "last_edited_by" => %{"object" => "user", "id" => "00000000-0000-0000-0000-000000000001"},
       "properties" => %{
         "Title" => %{
@@ -268,11 +290,53 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
         %{
           "object" => "page",
           "id" => @page_id,
-          "parent" => %{"data_source_id" => @data_source_id}
+          "parent" => %{"data_source_id" => @data_source_id},
+          "properties" => %{
+            "Status" => %{
+              "id" => "status",
+              "type" => "status",
+              "status" => %{"name" => "Published"}
+            },
+            "Title" => %{
+              "id" => "title",
+              "type" => "title",
+              "title" => [
+                %{"type" => "text", "plain_text" => "Deterministic publish page"}
+              ]
+            }
+          }
         }
       ],
       "next_cursor" => nil,
       "has_more" => false
+    }
+  end
+
+  def output_data("notion.data_sources.retrieve") do
+    %{
+      "object" => "data_source",
+      "id" => @data_source_id,
+      "title" => [
+        %{"type" => "text", "plain_text" => "Publishing Queue"}
+      ],
+      "properties" => %{
+        "Status" => %{
+          "id" => "status",
+          "name" => "Status",
+          "type" => "status",
+          "status" => %{
+            "options" => [
+              %{"id" => "status-published", "name" => "Published"}
+            ]
+          }
+        },
+        "Title" => %{
+          "id" => "title",
+          "name" => "Title",
+          "type" => "title",
+          "title" => %{}
+        }
+      }
     }
   end
 
@@ -292,6 +356,9 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
   def request_url("notion.pages.create"), do: "#{@base_url}/v1/pages"
   def request_url("notion.pages.retrieve"), do: "#{@base_url}/v1/pages/#{@page_id}"
   def request_url("notion.pages.update"), do: "#{@base_url}/v1/pages/#{@page_id}"
+
+  def request_url("notion.data_sources.retrieve"),
+    do: "#{@base_url}/v1/data_sources/#{@data_source_id}"
 
   def request_url("notion.blocks.list_children"),
     do: "#{@base_url}/v1/blocks/#{@block_id}/children"
@@ -385,6 +452,9 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
   defp capability_id_for_request(:post, "/v1/pages"), do: "notion.pages.create"
   defp capability_id_for_request(:get, "/v1/pages/#{@page_id}"), do: "notion.pages.retrieve"
   defp capability_id_for_request(:patch, "/v1/pages/#{@page_id}"), do: "notion.pages.update"
+
+  defp capability_id_for_request(:get, "/v1/data_sources/#{@data_source_id}"),
+    do: "notion.data_sources.retrieve"
 
   defp capability_id_for_request(:get, "/v1/blocks/#{@block_id}/children"),
     do: "notion.blocks.list_children"

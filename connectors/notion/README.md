@@ -72,8 +72,41 @@ Current A0 classification:
 - `notion.comments.create`: `:static`
 
 That keeps the authored-spec spine honest about which payload regions are known
-to depend on late-bound data-source metadata while the runtime enrichment path
-remains future work.
+to depend on late-bound data-source metadata.
+
+## Runtime Enrichment
+
+Phase 3 keeps the published A0 invoke surface stable while making the
+late-bound path explicit at runtime.
+
+For the late-bound operations, the connector now:
+
+- resolves schema context through `notion_sdk` at invocation time
+- uses `NotionSDK.DataSources.retrieve/2` as the source of truth for the
+  governing data-source schema
+- uses `NotionSDK.Pages.retrieve/2` when a page id must be dereferenced to find
+  that governing data source first
+- validates late-bound input regions before the provider write or query call
+- leaves `output.data` provider-shaped while attaching a deterministic
+  `schema_context` summary to connector events and artifact metadata
+
+Current runtime behavior by operation:
+
+- `notion.pages.create`
+  resolves `parent.data_source_id`, validates `properties`, then invokes
+  `NotionSDK.Pages.create/2`
+- `notion.pages.retrieve`
+  retrieves the page first, resolves its parent data source when present, then
+  annotates the runtime result with that schema context
+- `notion.pages.update`
+  retrieves the page, resolves its parent data source, validates
+  input `properties`, then invokes `NotionSDK.Pages.update/2`
+- `notion.data_sources.query`
+  resolves the target data source, validates `filter` and `sorts`, then invokes
+  `NotionSDK.DataSources.query/2`
+
+The connector does not introduce a durable schema cache. Each invocation keeps
+schema truth provider-local and runtime-local.
 
 ## Permission Model
 
@@ -174,10 +207,19 @@ The generic operation handler:
 
 - reads `sdk_module` and `sdk_function` from capability metadata
 - builds the SDK client from the lease payload
+- resolves late-bound schema context inside the connector when the authored
+  operation metadata requires it
+- validates schema-sensitive input regions for `pages.create`, `pages.update`,
+  and `data_sources.query` before the provider call
 - keeps runtime output map-first
 - normalizes provider failures into the Jido error taxonomy
+- normalizes connector preflight validation failures into the same taxonomy with
+  the distinct `notion.preflight_validation` code
 - emits redacted `auth_binding` digests instead of raw tokens in output and
   event payloads
+- records deterministic `schema_context` summaries in connector event payloads
+  and artifact metadata without turning generated consumers into runtime schema
+  resolvers
 
 Provider inventory beyond the published runtime slice stays in the local
 catalog metadata and at the `notion_sdk` boundary. It does not automatically

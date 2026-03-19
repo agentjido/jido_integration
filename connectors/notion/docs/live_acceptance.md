@@ -81,6 +81,8 @@ What it proves:
   surface
 - `notion.users.get_self` runs live through `Jido.Integration.V2.invoke/3`
 - `notion.pages.retrieve` runs through the same path
+- `notion.pages.retrieve` resolves parent data-source schema context when the
+  target page belongs to a data source
 - result output, events, and artifact refs stay token-safe
 
 If you already know the provider metadata, you can also pass these optional
@@ -110,6 +112,10 @@ What it proves:
 - `notion.pages.update`
 - `notion.blocks.append_children`
 - `notion.comments.create`
+- `notion.pages.create` validates page `properties` against the parent
+  data-source schema before the provider write
+- `notion.pages.update` resolves the page parent data source, validates page
+  `properties`, and then performs the provider update
 - cleanup by archiving the created page with `notion.pages.update`
 
 The write proof assumes the parent data source has a title property named
@@ -164,6 +170,10 @@ Optional install metadata:
 ## Validation Boundary
 
 These live proofs are package-local and opt-in by design.
+
+They also prove the connector-owned late-bound schema path against real Notion
+metadata without introducing a durable cache. The connector resolves schema
+truth from the live provider on each invocation that needs it.
 
 They are not part of:
 

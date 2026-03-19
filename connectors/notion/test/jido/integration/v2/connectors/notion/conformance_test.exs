@@ -11,6 +11,18 @@ defmodule Jido.Integration.V2.Connectors.Notion.ConformanceTest do
              Fixtures.published_capability_ids()
   end
 
+  test "uses late-bound fixture inputs that exercise schema resolution for the published Notion A0 slice" do
+    fixtures = Map.new(Notion.Conformance.fixtures(), &{&1.capability_id, &1})
+
+    assert get_in(fixtures["notion.pages.create"], [:input, :parent, "data_source_id"]) ==
+             Fixtures.data_source_id()
+
+    assert get_in(fixtures["notion.pages.update"], [:input, :properties, "Title"]) != nil
+
+    assert get_in(fixtures["notion.data_sources.query"], [:input, :filter, :property]) == "Status"
+    assert get_in(fixtures["notion.data_sources.query"], [:input, :sorts]) != nil
+  end
+
   test "passes connector foundation conformance with the package-local fixture seam" do
     assert {:ok, report} =
              Conformance.run(

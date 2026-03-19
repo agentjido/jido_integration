@@ -86,6 +86,22 @@ defmodule Jido.Integration.V2.Connectors.Notion.ErrorMapper do
     }
   end
 
+  @spec preflight_validation(String.t(), keyword()) :: map()
+  def preflight_validation(message, opts \\ []) when is_binary(message) and is_list(opts) do
+    %{
+      code: "notion.preflight_validation",
+      class: "invalid_request",
+      retryability: :terminal,
+      message: message,
+      upstream_context:
+        %{
+          phase: :preflight
+        }
+        |> maybe_put(:issues, Redaction.redact(Keyword.get(opts, :issues)))
+        |> maybe_put(:schema_context, Redaction.redact(Keyword.get(opts, :schema_context)))
+    }
+  end
+
   defp error_message(%NotionSDK.Error{code: :object_not_found}) do
     "Notion could not find the target, or the integration is not shared to it"
   end
@@ -159,4 +175,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.ErrorMapper do
         nil
     end
   end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 end

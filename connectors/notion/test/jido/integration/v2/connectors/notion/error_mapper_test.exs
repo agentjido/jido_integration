@@ -46,4 +46,48 @@ defmodule Jido.Integration.V2.Connectors.Notion.ErrorMapperTest do
     assert mapped.upstream_context.reason.access_token == Redaction.redacted()
     assert mapped.upstream_context.reason.nested.refresh_token == Redaction.redacted()
   end
+
+  test "maps connector preflight validation failures into a distinct invalid-request taxonomy" do
+    mapped =
+      ErrorMapper.preflight_validation(
+        "Notion rejected notion.pages.create during connector preflight schema validation",
+        issues: [
+          %{
+            kind: :data_source_properties,
+            path: ["properties", "Bogus"],
+            property: "Bogus",
+            source: :parent_data_source
+          }
+        ],
+        schema_context: %{
+          context_source: :parent_data_source,
+          data_source_id: "data-source-123",
+          property_names: ["Title"]
+        }
+      )
+
+    assert mapped.code == "notion.preflight_validation"
+    assert mapped.class == "invalid_request"
+    assert mapped.retryability == :terminal
+
+    assert mapped.message ==
+             "Notion rejected notion.pages.create during connector preflight schema validation"
+
+    assert mapped.upstream_context.phase == :preflight
+
+    assert mapped.upstream_context.issues == [
+             %{
+               kind: :data_source_properties,
+               path: ["properties", "Bogus"],
+               property: "Bogus",
+               source: :parent_data_source
+             }
+           ]
+
+    assert mapped.upstream_context.schema_context == %{
+             context_source: :parent_data_source,
+             data_source_id: "data-source-123",
+             property_names: ["Title"]
+           }
+  end
 end
