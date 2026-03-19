@@ -193,24 +193,28 @@ defmodule Mix.Tasks.Jido.Conformance do
   end
 
   defp deps_get_project!(project_root, build_path) do
-    env = project_command_env(project_root, build_path)
+    if File.dir?(Path.join(project_root, "deps")) do
+      :ok
+    else
+      env = project_command_env(project_root, build_path)
 
-    case System.cmd("mix", ["deps.get"],
-           cd: project_root,
-           env: env,
-           stderr_to_stdout: true
-         ) do
-      {_, 0} ->
-        :ok
+      case System.cmd("mix", ["deps.get"],
+             cd: project_root,
+             env: env,
+             stderr_to_stdout: true
+           ) do
+        {_, 0} ->
+          :ok
 
-      {output, exit_code} ->
-        Mix.raise("""
-        Could not fetch dependencies for #{project_root} during conformance.
+        {output, exit_code} ->
+          Mix.raise("""
+          Could not fetch dependencies for #{project_root} during conformance.
 
-        mix deps.get exited with #{exit_code}
+          mix deps.get exited with #{exit_code}
 
-        #{output}
-        """)
+          #{output}
+          """)
+      end
     end
   end
 
@@ -299,7 +303,9 @@ defmodule Mix.Tasks.Jido.Conformance do
       {"MIX_ENV", Atom.to_string(Mix.env())},
       {"MIX_BUILD_PATH", build_path},
       {"MIX_DEPS_PATH", Path.join(project_root, "deps")},
-      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")}
+      {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")},
+      {"HEX_HOME", Path.join(project_root, "_build/hex")},
+      {"HEX_API_KEY", nil}
     ]
   end
 

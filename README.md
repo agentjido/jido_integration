@@ -243,3 +243,12 @@ mix mr.docs
 ```
 
 These are shortcuts for the corresponding `mix monorepo.*` commands above.
+
+The `mix monorepo.*` tasks now fan out across the workspace in parallel through
+the sibling `../blitz` library. Pass `--max-concurrency N` or set
+`JIDO_MONOREPO_MAX_CONCURRENCY` to override the task-specific concurrency caps.
+
+For `mix monorepo.test` and `mix ci`, each package test run gets its own
+isolated Postgres database name derived from the base
+`JIDO_INTEGRATION_V2_DB_NAME`. That keeps DB-backed package tests parallel
+without cross-package resets colliding in the shared store.

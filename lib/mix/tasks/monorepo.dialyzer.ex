@@ -2,12 +2,12 @@ defmodule Mix.Tasks.Monorepo.Dialyzer do
   use Mix.Task
 
   @moduledoc """
-  Run Dialyzer for the workspace root and every child project.
+  Run Dialyzer for the workspace root and every child project in parallel.
   """
 
   alias Jido.Integration.Workspace.Monorepo
 
-  @shortdoc "Run Dialyzer for the root app and every child package"
+  @shortdoc "Run Dialyzer for the root app and every child package in parallel"
 
   @impl Mix.Task
   def run(args) do

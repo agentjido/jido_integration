@@ -7,6 +7,13 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   alias Jido.Integration.Workspace.Monorepo
   alias Mix.Tasks.Jido.Integration.New, as: NewTask
 
+  @mix_sandbox_boot """
+  :code.purge(Mix.Sync.PubSub)
+  :code.delete(Mix.Sync.PubSub)
+  :code.load_abs(~c"/tmp/mix_override/Elixir.Mix.Sync.PubSub")
+  Mix.CLI.main()
+  """
+
   test "generates a direct connector package under connectors/<name> by default" do
     workspace_root = temp_workspace!("default")
 
@@ -158,10 +165,6 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       File.cp!(Path.join(source_hex_home, "cache.ets"), Path.join(hex_home, "cache.ets"))
     end
 
-    if File.exists?(Path.join(source_hex_home, "hex.config")) do
-      File.cp!(Path.join(source_hex_home, "hex.config"), Path.join(hex_home, "hex.config"))
-    end
-
     if File.exists?(Path.join(source_hex_home, "packages")) do
       File.ln_s!(Path.join(source_hex_home, "packages"), Path.join(hex_home, "packages"))
     end
@@ -183,10 +186,16 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       {"MIX_DEPS_PATH", Path.join(Monorepo.root_dir(), "deps")},
       {"MIX_BUILD_PATH", Path.join(workspace_root, "_build")},
       {"MIX_LOCKFILE", lockfile_path},
-      {"HEX_HOME", Path.join(workspace_root, ".hex")}
+      {"HEX_HOME", Path.join(workspace_root, ".hex")},
+      {"HEX_API_KEY", nil},
+      {"MIX_OS_CONCURRENCY_LOCK", "0"}
     ]
 
-    case System.cmd("/tmp/mix_sandbox", args, cd: project_root, env: env, stderr_to_stdout: true) do
+    case System.cmd("elixir", ["-e", @mix_sandbox_boot, "--" | args],
+           cd: project_root,
+           env: env,
+           stderr_to_stdout: true
+         ) do
       {output, 0} ->
         output
 

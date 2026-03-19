@@ -51,5 +51,31 @@ defmodule Jido.Integration.Workspace.MonorepoTest do
 
     assert compile_env["MIX_BUILD_PATH"] ==
              Path.expand("core/contracts/_build/dev", Monorepo.root_dir())
+
+    assert test_env["JIDO_INTEGRATION_V2_DB_NAME"] ==
+             Monorepo.test_database_name("connectors/github")
+
+    refute Map.has_key?(compile_env, "JIDO_INTEGRATION_V2_DB_NAME")
+  end
+
+  test "extracts runner arguments without disturbing mix task arguments" do
+    assert Monorepo.split_runner_args(["--max-concurrency", "4", "--strict"]) ==
+             {["--strict"], [max_concurrency: 4]}
+
+    assert Monorepo.split_runner_args(["-j", "2", "--seed", "0"]) ==
+             {["--seed", "0"], [max_concurrency: 2]}
+
+    assert Monorepo.split_runner_args(["--max-concurrency=3", "--check-formatted"]) ==
+             {["--check-formatted"], [max_concurrency: 3]}
+  end
+
+  test "derives stable, package-specific test database names" do
+    assert Monorepo.test_database_name(".") == "jido_integration_v2_test_workspace_cdb4ee2a"
+
+    assert Monorepo.test_database_name("core/dispatch_runtime") ==
+             "jido_integration_v2_test_core_dispatch_runtime_7510d0e3"
+
+    assert Monorepo.test_database_name("apps/trading_ops") ==
+             "jido_integration_v2_test_apps_trading_ops_57fc89c1"
   end
 end
