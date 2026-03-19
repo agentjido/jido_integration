@@ -87,6 +87,14 @@ Current hardening guarantees:
   - `:defined` for concrete schemas
   - `:dynamic` for future runtime-resolved schemas
   - `:passthrough` only with an explicit justification, and never for a projected common surface
+- may also carry authored late-bound schema metadata inside `metadata`:
+  - `schema_strategy` to classify static versus late-bound behavior
+  - `schema_context_source` to identify the governing lookup source
+  - `schema_slots` entries with `surface`, `path`, `kind`, and `source`
+- expose `OperationSpec.schema_strategy/1`, `schema_context_source/1`,
+  `schema_slots/1`, and `late_bound_schema?/1` so connector-owned runtime
+  enrichment can stay on the authored-contract spine without widening the
+  public generated consumer surface
 
 `ConsumerProjection`
 

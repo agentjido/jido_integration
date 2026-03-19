@@ -8,6 +8,8 @@ defmodule Jido.Integration.V2.OperationSpec do
 
   @consumer_surface_modes [:common, :connector_local]
   @schema_policy_modes [:defined, :dynamic, :passthrough]
+  @schema_strategies [:static, :late_bound_input, :late_bound_output, :late_bound_input_output]
+  @late_bound_schema_strategies [:late_bound_input, :late_bound_output, :late_bound_input_output]
 
   @consumer_surface_schema Contracts.strict_object!(
                              mode:
@@ -78,6 +80,15 @@ defmodule Jido.Integration.V2.OperationSpec do
 
   @type consumer_surface_mode :: :common | :connector_local
   @type schema_policy_mode :: :defined | :dynamic | :passthrough
+  @type schema_strategy ::
+          :static | :late_bound_input | :late_bound_output | :late_bound_input_output
+  @type schema_surface :: :input | :output
+  @type schema_slot :: %{
+          surface: schema_surface(),
+          path: [String.t()],
+          kind: atom(),
+          source: atom()
+        }
   @type t :: unquote(Zoi.type_spec(@schema))
 
   @enforce_keys Zoi.Struct.enforce_keys(@schema)
@@ -131,6 +142,29 @@ defmodule Jido.Integration.V2.OperationSpec do
     Contracts.get(consumer_surface, :action_name)
   end
 
+  @spec schema_strategy(t()) :: schema_strategy() | nil
+  def schema_strategy(%__MODULE__{metadata: metadata}) do
+    Contracts.get(metadata, :schema_strategy)
+  end
+
+  @spec schema_context_source(t()) :: atom() | nil
+  def schema_context_source(%__MODULE__{metadata: metadata}) do
+    Contracts.get(metadata, :schema_context_source)
+  end
+
+  @spec schema_slots(t()) :: [schema_slot()]
+  def schema_slots(%__MODULE__{metadata: metadata}) do
+    case Contracts.get(metadata, :schema_slots, []) do
+      slots when is_list(slots) -> slots
+      _other -> []
+    end
+  end
+
+  @spec late_bound_schema?(t()) :: boolean()
+  def late_bound_schema?(%__MODULE__{} = operation_spec) do
+    schema_strategy(operation_spec) in @late_bound_schema_strategies
+  end
+
   defp validate(%__MODULE__{} = operation_spec) do
     operation_spec = %__MODULE__{
       operation_spec
@@ -138,7 +172,8 @@ defmodule Jido.Integration.V2.OperationSpec do
     }
 
     with :ok <- validate_consumer_surface(operation_spec),
-         :ok <- validate_schema_policy(operation_spec) do
+         :ok <- validate_schema_policy(operation_spec),
+         :ok <- validate_schema_metadata(operation_spec) do
       {:ok, operation_spec}
     end
   end
@@ -237,9 +272,176 @@ defmodule Jido.Integration.V2.OperationSpec do
     end
   end
 
+  defp validate_schema_metadata(%__MODULE__{} = operation_spec) do
+    strategy = schema_strategy(operation_spec)
+    context_source = schema_context_source(operation_spec)
+    raw_slots = Contracts.get(operation_spec.metadata, :schema_slots)
+    slots_declared? = schema_slots_declared?(operation_spec.metadata)
+
+    with :ok <-
+           validate_schema_metadata_shape(strategy, context_source, slots_declared?, raw_slots) do
+      validate_schema_metadata_strategy(strategy, context_source, schema_slots(operation_spec))
+    end
+  end
+
+  defp validate_schema_metadata_shape(nil, nil, false, _raw_slots), do: :ok
+
+  defp validate_schema_metadata_shape(nil, _context_source, _slots_declared?, _raw_slots) do
+    error("operation.metadata.schema_strategy is required when schema metadata is declared")
+  end
+
+  defp validate_schema_metadata_shape(_strategy, _context_source, true, raw_slots)
+       when not is_list(raw_slots) do
+    error("operation.metadata.schema_slots must be a list when schema metadata is declared")
+  end
+
+  defp validate_schema_metadata_shape(strategy, _context_source, _slots_declared?, _raw_slots)
+       when strategy not in @schema_strategies do
+    error("operation.metadata.schema_strategy must be one of #{inspect(@schema_strategies)}")
+  end
+
+  defp validate_schema_metadata_shape(_strategy, _context_source, _slots_declared?, _raw_slots),
+    do: :ok
+
+  defp validate_schema_metadata_strategy(nil, _context_source, _slots), do: :ok
+
+  defp validate_schema_metadata_strategy(:static, context_source, slots) do
+    validate_static_schema_metadata(context_source, slots)
+  end
+
+  defp validate_schema_metadata_strategy(strategy, context_source, slots)
+       when strategy in @late_bound_schema_strategies do
+    validate_late_bound_schema_metadata(strategy, context_source, slots)
+  end
+
+  defp validate_static_schema_metadata(context_source, slots) do
+    cond do
+      context_source not in [nil, :none] ->
+        error("operation.metadata.schema_context_source must be :none for static operations")
+
+      slots != [] ->
+        error("operation.metadata.schema_slots must be empty for static operations")
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_late_bound_schema_metadata(strategy, context_source, slots) do
+    cond do
+      not present_atom?(context_source) ->
+        error(
+          "operation.metadata.schema_context_source must be an atom when late-bound schema metadata is declared"
+        )
+
+      not is_list(slots) or slots == [] ->
+        error(
+          "operation.metadata.schema_slots must be a non-empty list when late-bound schema metadata is declared"
+        )
+
+      true ->
+        case validate_schema_slots(slots) do
+          :ok -> validate_schema_slot_surfaces(strategy, slots)
+          {:error, _error} = error -> error
+        end
+    end
+  end
+
+  defp validate_schema_slot_surfaces(strategy, slots) do
+    surfaces = normalize_schema_slot_surfaces(slots)
+
+    case strategy do
+      :late_bound_input ->
+        validate_exact_schema_slot_surfaces(
+          surfaces,
+          [:input],
+          "operation.metadata.schema_slots surfaces must all be :input for :late_bound_input"
+        )
+
+      :late_bound_output ->
+        validate_exact_schema_slot_surfaces(
+          surfaces,
+          [:output],
+          "operation.metadata.schema_slots surfaces must all be :output for :late_bound_output"
+        )
+
+      :late_bound_input_output ->
+        validate_input_output_schema_slot_surfaces(surfaces)
+    end
+  end
+
+  defp validate_exact_schema_slot_surfaces(surfaces, expected_surfaces, _message)
+       when surfaces == expected_surfaces,
+       do: :ok
+
+  defp validate_exact_schema_slot_surfaces(_surfaces, _expected_surfaces, message),
+    do: error(message)
+
+  defp validate_input_output_schema_slot_surfaces(surfaces) do
+    if Enum.all?([:input, :output], &(&1 in surfaces)) do
+      :ok
+    else
+      error(
+        "operation.metadata.schema_slots must include both :input and :output for :late_bound_input_output"
+      )
+    end
+  end
+
+  defp validate_schema_slots(slots) do
+    Enum.reduce_while(Enum.with_index(slots), :ok, fn {slot, index}, :ok ->
+      case validate_schema_slot(slot, index) do
+        :ok -> {:cont, :ok}
+        {:error, _error} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_schema_slot(slot, index) when is_map(slot) do
+    cond do
+      Contracts.get(slot, :surface) not in [:input, :output] ->
+        error("operation.metadata.schema_slots[#{index}].surface must be :input or :output")
+
+      not valid_path?(Contracts.get(slot, :path)) ->
+        error(
+          "operation.metadata.schema_slots[#{index}].path must be a non-empty list of strings"
+        )
+
+      not present_atom?(Contracts.get(slot, :kind)) ->
+        error("operation.metadata.schema_slots[#{index}].kind must be an atom")
+
+      not present_atom?(Contracts.get(slot, :source)) ->
+        error("operation.metadata.schema_slots[#{index}].source must be an atom")
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_schema_slot(_slot, index) do
+    error("operation.metadata.schema_slots[#{index}] must be a map")
+  end
+
+  defp normalize_schema_slot_surfaces(slots) do
+    slots
+    |> Enum.map(&Contracts.get(&1, :surface))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp schema_slots_declared?(metadata) do
+    Map.has_key?(metadata, :schema_slots) or Map.has_key?(metadata, "schema_slots")
+  end
+
   defp passthrough_mode?(:passthrough), do: true
   defp passthrough_mode?(_mode), do: false
 
+  defp valid_path?(value) when is_list(value) do
+    value != [] and Enum.all?(value, &present_string?/1)
+  end
+
+  defp valid_path?(_value), do: false
+
+  defp present_atom?(value), do: is_atom(value)
   defp present_string?(value), do: is_binary(value) and byte_size(String.trim(value)) > 0
 
   defp error(message), do: {:error, ArgumentError.exception(message)}

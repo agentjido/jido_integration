@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
   alias Jido.Integration.V2.Connectors.Notion
   alias Jido.Integration.V2.Connectors.Notion.Operation
   alias Jido.Integration.V2.Connectors.Notion.OperationCatalog
+  alias Jido.Integration.V2.OperationSpec
 
   @published_capability_ids [
     "notion.users.get_self",
@@ -17,6 +18,99 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
     "notion.data_sources.query",
     "notion.comments.create"
   ]
+  @schema_contracts %{
+    "notion.users.get_self" => %{
+      strategy: :static,
+      context_source: :none,
+      slots: []
+    },
+    "notion.search.search" => %{
+      strategy: :static,
+      context_source: :none,
+      slots: []
+    },
+    "notion.pages.create" => %{
+      strategy: :late_bound_input,
+      context_source: :parent_data_source,
+      slots: [
+        %{
+          surface: :input,
+          path: ["properties"],
+          kind: :data_source_properties,
+          source: :parent_data_source
+        }
+      ]
+    },
+    "notion.pages.retrieve" => %{
+      strategy: :late_bound_output,
+      context_source: :page_parent_data_source,
+      slots: [
+        %{
+          surface: :output,
+          path: ["properties"],
+          kind: :data_source_properties,
+          source: :page_parent_data_source
+        }
+      ]
+    },
+    "notion.pages.update" => %{
+      strategy: :late_bound_input_output,
+      context_source: :page_parent_data_source,
+      slots: [
+        %{
+          surface: :input,
+          path: ["properties"],
+          kind: :data_source_properties,
+          source: :page_parent_data_source
+        },
+        %{
+          surface: :output,
+          path: ["properties"],
+          kind: :data_source_properties,
+          source: :page_parent_data_source
+        }
+      ]
+    },
+    "notion.blocks.list_children" => %{
+      strategy: :static,
+      context_source: :none,
+      slots: []
+    },
+    "notion.blocks.append_children" => %{
+      strategy: :static,
+      context_source: :none,
+      slots: []
+    },
+    "notion.data_sources.query" => %{
+      strategy: :late_bound_input_output,
+      context_source: :data_source,
+      slots: [
+        %{
+          surface: :input,
+          path: ["filter"],
+          kind: :data_source_filter,
+          source: :data_source
+        },
+        %{
+          surface: :input,
+          path: ["sorts"],
+          kind: :data_source_sorts,
+          source: :data_source
+        },
+        %{
+          surface: :output,
+          path: ["results", "*", "properties"],
+          kind: :data_source_properties,
+          source: :data_source
+        }
+      ]
+    },
+    "notion.comments.create" => %{
+      strategy: :static,
+      context_source: :none,
+      slots: []
+    }
+  }
 
   setup do
     V2.reset!()
@@ -102,6 +196,26 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
              assert Code.ensure_loaded?(entry.sdk_module)
              function_exported?(entry.sdk_module, entry.sdk_function, 2)
            end)
+  end
+
+  test "classifies the published A0 slice for static versus late-bound schema behavior" do
+    manifest = Notion.manifest()
+
+    operations = Map.new(manifest.operations, &{&1.operation_id, &1})
+    capabilities = Map.new(manifest.capabilities, &{&1.id, &1})
+
+    Enum.each(@schema_contracts, fn {operation_id, expected} ->
+      operation = Map.fetch!(operations, operation_id)
+      capability = Map.fetch!(capabilities, operation_id)
+
+      assert OperationSpec.schema_strategy(operation) == expected.strategy
+      assert OperationSpec.schema_context_source(operation) == expected.context_source
+      assert OperationSpec.schema_slots(operation) == expected.slots
+
+      assert capability.metadata.schema_strategy == expected.strategy
+      assert capability.metadata.schema_context_source == expected.context_source
+      assert capability.metadata.schema_slots == expected.slots
+    end)
   end
 
   test "normalizes notion_sdk priv dirs for package and root-task loading" do

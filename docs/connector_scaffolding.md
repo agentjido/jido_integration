@@ -102,6 +102,9 @@ After generation:
    verification secret or `secret_requirements`.
    Declare `consumer_surface` explicitly on every authored operation or trigger.
    Declare `schema_policy` explicitly on every authored operation or trigger.
+   If a connector keeps passthrough payloads but knows some regions are
+   late-bound, encode that authored truth in `OperationSpec.metadata`
+   with `schema_strategy`, `schema_context_source`, and `schema_slots`.
 2. implement the action or provider logic inside the generated package
 3. declare every child-package dependency explicitly in that connector package
 4. update the companion fixtures so conformance reflects the real behavior

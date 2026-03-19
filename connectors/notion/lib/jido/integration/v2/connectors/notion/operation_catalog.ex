@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
   @moduledoc false
 
   alias Jido.Integration.V2.Connectors.Notion.Operation
+  alias Jido.Integration.V2.Connectors.Notion.SchemaContract
   alias Jido.Integration.V2.OperationSpec
 
   @notion_sdk_source_path Path.expand("../../../../../../../../../notion_sdk", __DIR__)
@@ -143,13 +144,17 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
           name: String.replace(entry.operation_id, ".", "_")
         }
       },
-      metadata: %{
-        sdk_module: entry.sdk_module,
-        sdk_function: entry.sdk_function,
-        event_suffix: entry.event_suffix,
-        artifact_slug: entry.artifact_slug,
-        rollout_phase: entry.rollout_phase
-      }
+      metadata:
+        Map.merge(
+          %{
+            sdk_module: entry.sdk_module,
+            sdk_function: entry.sdk_function,
+            event_suffix: entry.event_suffix,
+            artifact_slug: entry.artifact_slug,
+            rollout_phase: entry.rollout_phase
+          },
+          SchemaContract.metadata_for(entry.operation_id)
+        )
     })
   end
 

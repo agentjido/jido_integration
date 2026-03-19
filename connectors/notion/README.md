@@ -39,9 +39,41 @@ generated common consumer surface. In this connector they are marked
   surfaces
 - they carry an explicit passthrough `schema_policy` justification because the
   current Notion runtime slice preserves the SDK-shaped payload boundary
+- they now also carry authored schema-contract metadata in
+  `OperationSpec.metadata` so the connector can distinguish static operations
+  from late-bound schema-sensitive ones without widening the published A0
+  surface
 
 This is the architecture stress test for large SDKs: the catalog can track wide
 Notion inventory without implying wrapper parity.
+
+## Authored Schema Classification
+
+The Phase 3 authored contract now classifies the published A0 slice with these
+metadata keys on each authored operation:
+
+- `schema_strategy`
+- `schema_context_source`
+- `schema_slots`
+
+Each `schema_slots` entry identifies the affected `surface` (`:input` or
+`:output`), the payload `path`, the late-bound `kind`, and the lookup `source`.
+
+Current A0 classification:
+
+- `notion.users.get_self`: `:static`
+- `notion.search.search`: `:static`
+- `notion.pages.create`: `:late_bound_input`
+- `notion.pages.retrieve`: `:late_bound_output`
+- `notion.pages.update`: `:late_bound_input_output`
+- `notion.blocks.list_children`: `:static`
+- `notion.blocks.append_children`: `:static`
+- `notion.data_sources.query`: `:late_bound_input_output`
+- `notion.comments.create`: `:static`
+
+That keeps the authored-spec spine honest about which payload regions are known
+to depend on late-bound data-source metadata while the runtime enrichment path
+remains future work.
 
 ## Permission Model
 
