@@ -103,6 +103,18 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
 
     assert {:error, _reason} =
              Zoi.parse(
+               OperationCatalog.fetch_operation!("github.issue.fetch").input_schema,
+               %{repo: "agentjido/jido_integration_v2/extra", issue_number: 42}
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.issue.fetch").input_schema,
+               %{repo: "agentjido/jido_integration_v2", issue_number: 0}
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
                OperationCatalog.fetch_operation!("github.issue.create").input_schema,
                %{repo: "agentjido/jido_integration_v2"}
              )
@@ -111,6 +123,24 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
              Zoi.parse(
                OperationCatalog.fetch_operation!("github.comment.update").input_schema,
                %{repo: "agentjido/jido_integration_v2", comment_id: 901}
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.comment.update").input_schema,
+               %{repo: "agentjido/jido_integration_v2", comment_id: 0, body: "Edited comment"}
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.issue.list").input_schema,
+               %{repo: "agentjido/jido_integration_v2", per_page: 0, page: 1}
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.issue.list").input_schema,
+               %{repo: "agentjido/jido_integration_v2", per_page: 2, page: -1}
              )
 
     assert OperationCatalog.fetch!("github.issue.close").sdk_function == :update

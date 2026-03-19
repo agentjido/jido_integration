@@ -70,6 +70,19 @@ defmodule Jido.Integration.V2.Connectors.GitHub.ErrorMapper do
     }
   end
 
+  def from_reason({:invalid_input, field, value}) do
+    %{
+      code: "github.invalid_input",
+      class: "invalid_request",
+      retryability: :terminal,
+      message: "GitHub input #{field} must be a positive integer",
+      upstream_context: %{
+        field: field,
+        value: Redaction.redact(value)
+      }
+    }
+  end
+
   def from_reason(reason) do
     %{
       code: "github.internal",

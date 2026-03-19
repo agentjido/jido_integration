@@ -7,6 +7,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.RuntimeResult
 
+  @repo_regex ~r/\A[^\/\s]+\/[^\/\s]+\z/
+
   @spec run(map(), map()) :: {:ok, RuntimeResult.t()} | {:error, map(), RuntimeResult.t()}
   def run(input, context) when is_map(input) and is_map(context) do
     metadata = Map.fetch!(context.capability, :metadata)
@@ -67,14 +69,17 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
   end
 
   defp sdk_params(:issue_list, input) do
-    with {:ok, repo_params} <- repo_params(input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_optional_positive_integer(input, :per_page),
+         :ok <- validate_optional_positive_integer(input, :page) do
       {:ok,
        Map.merge(repo_params, take_present(input, [:state, :per_page, :page, :request_opts]))}
     end
   end
 
   defp sdk_params(:issue_fetch, input) do
-    with {:ok, repo_params} <- repo_params(input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :issue_number) do
       {:ok, Map.merge(repo_params, take_present(input, [:issue_number, :request_opts]))}
     end
   end
@@ -90,7 +95,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
   end
 
   defp sdk_params(:issue_update, input) do
-    with {:ok, repo_params} <- repo_params(input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :issue_number) do
       {:ok,
        Map.merge(
          repo_params,
@@ -108,13 +114,15 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
   end
 
   defp sdk_params(:issue_label, input) do
-    with {:ok, repo_params} <- repo_params(input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :issue_number) do
       {:ok, Map.merge(repo_params, take_present(input, [:issue_number, :labels, :request_opts]))}
     end
   end
 
   defp sdk_params(:issue_close, input) do
-    with {:ok, repo_params} <- repo_params(input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :issue_number) do
       {:ok,
        Map.merge(
          repo_params,
@@ -125,13 +133,15 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
   end
 
   defp sdk_params(:comment_create, input) do
-    with {:ok, repo_params} <- repo_params(input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :issue_number) do
       {:ok, Map.merge(repo_params, take_present(input, [:issue_number, :body, :request_opts]))}
     end
   end
 
   defp sdk_params(:comment_update, input) do
-    with {:ok, repo_params} <- repo_params(input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :comment_id) do
       {:ok, Map.merge(repo_params, take_present(input, [:comment_id, :body, :request_opts]))}
     end
   end
@@ -294,12 +304,11 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
   defp repo_params(input) do
     case repo_value(input) do
       repo when is_binary(repo) ->
-        case String.split(repo, "/", parts: 2) do
-          [owner, repo] when owner != "" and repo != "" ->
-            {:ok, %{owner: owner, repo: repo}}
-
-          _other ->
-            {:error, {:invalid_repo, repo}}
+        if repo =~ @repo_regex do
+          [owner, repo_name] = String.split(repo, "/", parts: 2)
+          {:ok, %{owner: owner, repo: repo_name}}
+        else
+          {:error, {:invalid_repo, repo}}
         end
 
       other ->
@@ -331,6 +340,29 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
       true ->
         :error
     end
+  end
+
+  defp validate_required_positive_integer(input, field) do
+    case fetch_input(input, field) do
+      {:ok, value} ->
+        validate_positive_integer(field, value)
+
+      :error ->
+        {:error, {:invalid_input, field, nil}}
+    end
+  end
+
+  defp validate_optional_positive_integer(input, field) do
+    case fetch_input(input, field) do
+      {:ok, value} -> validate_positive_integer(field, value)
+      :error -> :ok
+    end
+  end
+
+  defp validate_positive_integer(_field, value) when is_integer(value) and value > 0, do: :ok
+
+  defp validate_positive_integer(field, value) do
+    {:error, {:invalid_input, field, value}}
   end
 
   defp normalize_labels(labels) when is_list(labels) do

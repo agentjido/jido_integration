@@ -119,6 +119,57 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationTest do
              Fixtures.access_token()
   end
 
+  test "rejects malformed repo shapes and non-positive numeric inputs before calling github_ex" do
+    issue_fetch = fetch_capability!("github.issue.fetch")
+
+    assert {:error, mapped_error, _result} =
+             DirectRuntime.execute(
+               issue_fetch,
+               %{repo: "agentjido/jido_integration_v2/extra", issue_number: 42},
+               Fixtures.execution_context("github.issue.fetch",
+                 github_client: Fixtures.client_opts(self())
+               )
+             )
+
+    assert mapped_error.code == "github.invalid_repo"
+    assert mapped_error.class == "invalid_request"
+
+    refute_receive {:transport_request, _request, _context}
+
+    assert {:error, mapped_error, _result} =
+             DirectRuntime.execute(
+               issue_fetch,
+               %{repo: "agentjido/jido_integration_v2", issue_number: 0},
+               Fixtures.execution_context("github.issue.fetch",
+                 github_client: Fixtures.client_opts(self())
+               )
+             )
+
+    assert mapped_error.code == "github.invalid_input"
+    assert mapped_error.class == "invalid_request"
+    assert mapped_error.upstream_context.field == :issue_number
+    assert mapped_error.upstream_context.value == 0
+
+    refute_receive {:transport_request, _request, _context}
+
+    issue_list = fetch_capability!("github.issue.list")
+
+    assert {:error, mapped_error, _result} =
+             DirectRuntime.execute(
+               issue_list,
+               %{repo: "agentjido/jido_integration_v2", page: 0, per_page: 2},
+               Fixtures.execution_context("github.issue.list",
+                 github_client: Fixtures.client_opts(self())
+               )
+             )
+
+    assert mapped_error.code == "github.invalid_input"
+    assert mapped_error.upstream_context.field == :page
+    assert mapped_error.upstream_context.value == 0
+
+    refute_receive {:transport_request, _request, _context}
+  end
+
   defp fetch_capability!(capability_id) do
     Enum.find(GitHub.manifest().capabilities, &(&1.id == capability_id)) ||
       raise "missing capability #{capability_id}"

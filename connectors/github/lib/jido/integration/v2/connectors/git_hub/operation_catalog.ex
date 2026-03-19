@@ -4,6 +4,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   alias Jido.Integration.V2.Connectors.GitHub.Operation
   alias Jido.Integration.V2.OperationSpec
 
+  @repo_regex ~r/\A[^\/\s]+\/[^\/\s]+\z/
+
   @permission_bundle ["repo"]
   @policy_defaults %{
     environment: %{allowed: [:prod, :staging]},
@@ -471,6 +473,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
 
   defp repo_schema do
     Zoi.string(description: "Repository in owner/repo form")
+    |> Zoi.regex(@repo_regex, message: "Repository must be in owner/repo form")
   end
 
   defp request_opts_schema do
@@ -478,7 +481,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   end
 
   defp positive_integer_schema do
-    Zoi.integer()
+    Zoi.integer() |> Zoi.min(1)
   end
 
   defp string_list_schema do

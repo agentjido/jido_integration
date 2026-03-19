@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Connectors.GitHub.Generated.Actions.IssueFetch
+  alias Jido.Integration.V2.Connectors.GitHub.Generated.Actions.IssueList
   alias Jido.Integration.V2.Connectors.GitHub.Generated.Plugin, as: GeneratedPlugin
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures
   alias Jido.Integration.V2.ConsumerProjection
@@ -78,6 +79,18 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
 
     assert {:error, _reason} =
              Zoi.parse(IssueFetch.schema(), %{repo: "widgets"})
+
+    assert {:error, _reason} =
+             Zoi.parse(IssueFetch.schema(), %{repo: "acme/widgets/extra", issue_number: 7})
+
+    assert {:error, _reason} =
+             Zoi.parse(IssueFetch.schema(), %{repo: "acme/widgets", issue_number: 0})
+
+    assert {:error, _reason} =
+             Zoi.parse(IssueList.schema(), %{repo: "acme/widgets", page: 0, per_page: 2})
+
+    assert {:error, _reason} =
+             Zoi.parse(IssueList.schema(), %{repo: "acme/widgets", page: 1, per_page: -1})
 
     assert %InvocationRequest{
              capability_id: "github.issue.fetch",
