@@ -103,13 +103,18 @@ defmodule Mix.Tasks.Jido.Conformance do
   defp run_conformance!(module_string, profile) do
     normalized_module_name = normalize_module_name(module_string)
 
-    case loaded_connector_module(normalized_module_name) do
-      {:ok, module} ->
-        run_loaded_connector!(module, profile)
+    case resolve_project_path(module_string) do
+      {:ok, project_path} ->
+        run_in_project!(project_path, module_string, normalized_module_name, profile)
 
       :error ->
-        project_path = resolve_project_path!(module_string)
-        run_in_project!(project_path, module_string, normalized_module_name, profile)
+        case loaded_connector_module(normalized_module_name) do
+          {:ok, module} ->
+            run_loaded_connector!(module, profile)
+
+          :error ->
+            Mix.raise("Module #{module_string} could not be resolved to a child package")
+        end
     end
   end
 
@@ -322,15 +327,12 @@ defmodule Mix.Tasks.Jido.Conformance do
     end
   end
 
-  defp resolve_project_path!(module_string) do
+  defp resolve_project_path(module_string) do
     declaration = "defmodule " <> normalize_module_name(module_string)
 
     case Enum.find(Blitz.MixWorkspace.package_paths(), &project_defines_module?(&1, declaration)) do
-      nil ->
-        Mix.raise("Module #{module_string} could not be resolved to a child package")
-
-      project_path ->
-        project_path
+      nil -> :error
+      project_path -> {:ok, project_path}
     end
   end
 

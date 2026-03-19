@@ -218,16 +218,16 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
     end)
   end
 
-  test "normalizes notion_sdk priv dirs for package and root-task loading" do
+  test "normalizes notion_sdk priv dirs for direct inputs and the loaded sdk app" do
     assert OperationCatalog.inventory_path("/tmp/notion_sdk_priv") ==
              "/tmp/notion_sdk_priv/upstream/parity_inventory.json"
 
     assert OperationCatalog.inventory_path(~c"/tmp/notion_sdk_priv") ==
              "/tmp/notion_sdk_priv/upstream/parity_inventory.json"
 
-    assert OperationCatalog.inventory_path({:error, :bad_name}) ==
-             Mix.Project.deps_paths()
-             |> Map.fetch!(:notion_sdk)
-             |> Path.join("priv/upstream/parity_inventory.json")
+    assert OperationCatalog.inventory_path()
+           |> String.ends_with?("/notion_sdk/priv/upstream/parity_inventory.json")
+
+    assert File.exists?(OperationCatalog.inventory_path())
   end
 end

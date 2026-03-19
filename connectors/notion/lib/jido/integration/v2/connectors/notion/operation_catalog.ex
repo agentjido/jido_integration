@@ -5,7 +5,6 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
   alias Jido.Integration.V2.Connectors.Notion.SchemaContract
   alias Jido.Integration.V2.OperationSpec
 
-  @notion_sdk_source_path Path.expand("../../../../../../../../../notion_sdk", __DIR__)
   @connector_id "notion"
   @published_operation_ids [
     "notion.users.get_self",
@@ -216,13 +215,11 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
     |> Map.fetch!("operations")
   end
 
-  @spec inventory_path(String.t() | charlist()) :: String.t()
+  @spec inventory_path(String.t() | charlist() | {:error, atom()}) :: String.t()
   def inventory_path(priv_dir \\ :code.priv_dir(:notion_sdk))
 
-  def inventory_path({:error, _reason}) do
-    notion_sdk_priv_dir()
-    |> inventory_path()
-  end
+  def inventory_path({:error, reason}),
+    do: raise("notion_sdk priv dir unavailable: #{inspect(reason)}")
 
   def inventory_path(priv_dir) when is_binary(priv_dir),
     do: Path.join(priv_dir, "upstream/parity_inventory.json")
@@ -234,17 +231,5 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
     event_suffix
     |> String.split(".")
     |> Enum.map_join(" ", &String.capitalize/1)
-  end
-
-  defp notion_sdk_priv_dir do
-    case Mix.Project.get() do
-      nil ->
-        Path.join(@notion_sdk_source_path, "priv")
-
-      _project ->
-        Mix.Project.deps_paths()
-        |> Map.get(:notion_sdk, @notion_sdk_source_path)
-        |> Path.join("priv")
-    end
   end
 end

@@ -33,7 +33,7 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
     assert File.read!(output_path) =~ "\"deterministic_fixtures\""
   end
 
-  test "loads connector packages that depend on external path deps" do
+  test "loads connector packages that depend on package-local external deps" do
     output = run_task(["Jido.Integration.V2.Connectors.Notion"])
 
     assert output =~ "Connector: notion"

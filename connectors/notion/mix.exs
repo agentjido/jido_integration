@@ -35,7 +35,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.MixProject do
       {:jido_integration_v2, path: "../../core/platform", only: [:dev, :test]},
       {:zoi, "~> 0.17"},
       {:pristine, "~> 0.1.0", runtime: false},
-      {:notion_sdk, "~> 0.1.0"},
+      {:notion_sdk, github: "nshkrdotcom/notion_sdk", branch: "main"},
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
