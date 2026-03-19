@@ -4,13 +4,15 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
   alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Auth
-  alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.AuthSpec
+  alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.DispatchRuntime
   alias Jido.Integration.V2.DispatchRuntime.Dispatch
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.Run
+  alias Jido.Integration.V2.TriggerSpec
   alias Jido.Integration.V2.WebhookRouter
   alias Jido.Integration.V2.WebhookRouter.Telemetry, as: WebhookTelemetry
 
@@ -34,16 +36,46 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
     def manifest do
       Manifest.new!(%{
         connector: "github",
-        capabilities: [
-          Capability.new!(%{
-            id: "github.issue.ingest",
-            connector: "github",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :oauth2,
+            install: %{required: false},
+            reauth: %{supported: false},
+            requested_scopes: [],
+            lease_fields: ["access_token"],
+            secret_names: ["webhook_secret"]
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Webhook Router Test",
+            description: "Hosted webhook router test connector",
+            category: "test",
+            tags: ["webhook"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [],
+        triggers: [
+          TriggerSpec.new!(%{
+            trigger_id: "github.issue.ingest",
+            name: "issue_ingest",
+            display_name: "Issue ingest",
+            description: "Receives hosted webhook issue events",
             runtime_class: :direct,
-            kind: :trigger,
-            transport_profile: :webhook,
-            handler: WebhookCapability
+            delivery_mode: :webhook,
+            handler: WebhookCapability,
+            config_schema: Zoi.map(description: "Webhook route config"),
+            signal_schema: Zoi.map(description: "Webhook route signal"),
+            permissions: %{required_scopes: []},
+            checkpoint: %{},
+            dedupe: %{},
+            verification: %{secret_name: "webhook_secret"},
+            jido: %{sensor: %{name: "github_issue_ingest"}}
           })
-        ]
+        ],
+        runtime_families: [:direct]
       })
     end
   end

@@ -1,48 +1,124 @@
 defmodule Jido.Integration.V2.IngressTest do
   use ExUnit.Case, async: false
 
-  alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.AuthSpec
+  alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.Ingress
   alias Jido.Integration.V2.Ingress.Definition
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.StorePostgres.TestSupport
+  alias Jido.Integration.V2.TriggerSpec
 
   defmodule NoopHandler do
   end
 
-  defmodule TestConnector do
+  defmodule GitHubConnector do
     @behaviour Jido.Integration.V2.Connector
 
     @impl true
     def manifest do
       Manifest.new!(%{
         connector: "github",
-        capabilities: [
-          Capability.new!(%{
-            id: "github.issue.ingest",
-            connector: "github",
-            runtime_class: :direct,
-            kind: :trigger,
-            transport_profile: :webhook,
-            handler: NoopHandler
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :oauth2,
+            install: %{required: false},
+            reauth: %{supported: false},
+            requested_scopes: [],
+            lease_fields: ["access_token"],
+            secret_names: ["webhook_secret"]
           }),
-          Capability.new!(%{
-            id: "market.tick.ingest",
-            connector: "market_data",
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "GitHub Ingress Test",
+            description: "Webhook ingress test connector",
+            category: "test",
+            tags: ["webhook"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [],
+        triggers: [
+          TriggerSpec.new!(%{
+            trigger_id: "github.issue.ingest",
+            name: "issue_ingest",
+            display_name: "Issue ingest",
+            description: "Receives webhook issue events",
             runtime_class: :direct,
-            kind: :trigger,
-            transport_profile: :poll,
-            handler: NoopHandler
+            delivery_mode: :webhook,
+            handler: NoopHandler,
+            config_schema: Zoi.map(description: "Webhook config"),
+            signal_schema: Zoi.map(description: "Webhook signal"),
+            permissions: %{required_scopes: []},
+            checkpoint: %{},
+            dedupe: %{},
+            verification: %{secret_name: "webhook_secret"},
+            jido: %{sensor: %{name: "github_issue_ingest"}}
           })
-        ]
+        ],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
+  defmodule MarketDataConnector do
+    @behaviour Jido.Integration.V2.Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "market_data",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :api_token,
+            install: %{required: false},
+            reauth: %{supported: false},
+            requested_scopes: [],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Market Data Ingress Test",
+            description: "Polling ingress test connector",
+            category: "test",
+            tags: ["poll"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [],
+        triggers: [
+          TriggerSpec.new!(%{
+            trigger_id: "market.tick.ingest",
+            name: "tick_ingest",
+            display_name: "Tick ingest",
+            description: "Receives poll tick events",
+            runtime_class: :direct,
+            delivery_mode: :poll,
+            handler: NoopHandler,
+            config_schema: Zoi.map(description: "Poll config"),
+            signal_schema: Zoi.map(description: "Poll signal"),
+            permissions: %{required_scopes: []},
+            checkpoint: %{},
+            dedupe: %{},
+            verification: %{},
+            jido: %{sensor: %{name: "market_tick_ingest"}}
+          })
+        ],
+        runtime_families: [:direct]
       })
     end
   end
 
   setup do
     ControlPlane.reset!()
-    assert :ok = ControlPlane.register_connector(TestConnector)
+    assert :ok = ControlPlane.register_connector(GitHubConnector)
+    assert :ok = ControlPlane.register_connector(MarketDataConnector)
     :ok
   end
 

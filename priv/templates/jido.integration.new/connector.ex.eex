@@ -5,40 +5,75 @@ defmodule <%= @connector_module %> do
 
   @behaviour Jido.Integration.V2.Connector
 
-  alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.AuthSpec
+  alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.OperationSpec
   alias <%= @handler_module %>
 
   @impl true
   def manifest do
     Manifest.new!(%{
       connector: "<%= @connector_name %>",
-      capabilities: [
-        Capability.new!(%{
-          id: "<%= @capability_id %>",
-          connector: "<%= @connector_name %>",
+      auth:
+        AuthSpec.new!(%{
+          binding_kind: :connection_id,
+          auth_type: :api_token,
+          install: %{required: true},
+          reauth: %{supported: false},
+          requested_scopes: ["<%= @required_scope %>"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        }),
+      catalog:
+        CatalogSpec.new!(%{
+          display_name: "<%= @connector_display_name %>",
+          description: "Scaffolded <%= Atom.to_string(@runtime_class) %> connector package",
+          category: "developer_tools",
+          tags: ["<%= @connector_name %>", "<%= Atom.to_string(@runtime_class) %>"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        }),
+      operations: [
+        OperationSpec.new!(%{
+          operation_id: "<%= @operation_id %>",
+          name: "sample_perform",
+          display_name: "Sample perform",
+          description: "Placeholder authored operation for the scaffolded connector",
           runtime_class: <%= @runtime_class_literal %>,
-          kind: <%= @capability_kind_literal %>,
-          transport_profile: <%= @transport_profile_literal %>,
+          transport_mode: :action,
           handler: <%= @handler_alias %>,
-          metadata: %{
-            required_scopes: ["<%= @required_scope %>"],
-<%= if @include_runtime_metadata do %>            runtime: %{
-              driver: "<%= @runtime_driver_id %>"
-            },
-<% end %>            policy: %{
-              environment: %{allowed: <%= @environment_allowed_literal %>},
-              sandbox: %{
-                level: <%= @sandbox_level_literal %>,
-                egress: <%= @sandbox_egress_literal %>,
-                approvals: <%= @sandbox_approvals_literal %>,
-<%= if @session_runtime do %>                file_scope: <%= @sandbox_file_scope_literal %>,
-<% end %>                allowed_tools: <%= @allowed_tools_literal %>
-              }
+          input_schema:
+            Zoi.object(%{
+              message: Zoi.string()
+            }),
+          output_schema:
+            Zoi.object(%{
+              message: Zoi.string(),
+              handled_by: Zoi.string(),
+              auth_binding: Zoi.string()
+            }),
+          permissions: %{required_scopes: ["<%= @required_scope %>"]},
+<%= if @include_runtime_metadata do %>          runtime: %{
+            driver: "<%= @runtime_driver_id %>"
+          },
+<% end %>          policy: %{
+            environment: %{allowed: <%= @environment_allowed_literal %>},
+            sandbox: %{
+              level: <%= @sandbox_level_literal %>,
+              egress: <%= @sandbox_egress_literal %>,
+              approvals: <%= @sandbox_approvals_literal %>,
+<%= if @session_runtime do %>              file_scope: <%= @sandbox_file_scope_literal %>,
+<% end %>              allowed_tools: <%= @allowed_tools_literal %>
             }
-          }
+          },
+          upstream: %{transport: :action},
+          jido: %{action: %{name: "<%= @connector_name %>_sample_perform"}}
         })
-      ]
+      ],
+      triggers: [],
+      runtime_families: [<%= @runtime_class_literal %>]
     })
   end
 end

@@ -67,13 +67,13 @@ defmodule Jido.Integration.V2.ControlPlane.Registry do
   defp drop_manifest_capabilities(capabilities, nil), do: capabilities
 
   defp drop_manifest_capabilities(capabilities, %Manifest{} = manifest) do
-    Enum.reduce(manifest.capabilities, capabilities, fn capability, acc ->
+    Enum.reduce(Manifest.capabilities(manifest), capabilities, fn capability, acc ->
       Map.delete(acc, capability.id)
     end)
   end
 
   defp put_manifest_capabilities(capabilities, %Manifest{} = manifest) do
-    Enum.reduce(manifest.capabilities, capabilities, fn capability, acc ->
+    Enum.reduce(Manifest.capabilities(manifest), capabilities, fn capability, acc ->
       Map.put(acc, capability.id, capability)
     end)
   end

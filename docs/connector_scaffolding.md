@@ -57,7 +57,8 @@ explicit `path:` deps only for the child packages it actually needs.
 Generated files include:
 
 - package-local `mix.exs`, `mix.lock`, `.formatter.exs`, and `.gitignore`
-- a connector module that publishes `Manifest` and `Capability`
+- a connector module that authors `AuthSpec`, `CatalogSpec`, and `OperationSpec`
+- a derived executable capability projection through `Manifest`
 - a direct-runtime action skeleton
 - a `<ConnectorModule>.Conformance` companion module with deterministic fixtures
 - package-local tests, including a baseline conformance test
@@ -79,11 +80,11 @@ dependency surface as the existing child packages.
 
 After generation:
 
-1. replace the placeholder capability contract with the real connector surface
+1. replace the placeholder authored auth, catalog, and operation contract with the real connector surface
 2. implement the action or provider logic inside the generated package
 3. declare every child-package dependency explicitly in that connector package
 4. update the companion fixtures so conformance reflects the real behavior
-5. update the package README with the real capability inventory and validation
+5. update the package README with the real operation and trigger inventory plus validation
    commands
 6. add any package-local examples, scripts, or live acceptance proofs inside
    that connector package

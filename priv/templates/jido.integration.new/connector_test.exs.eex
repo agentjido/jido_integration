@@ -3,17 +3,26 @@ defmodule <%= @connector_module %>Test do
 
   test "<%= @manifest_test_name %>" do
     manifest = <%= @connector_module %>.manifest()
+    [operation] = manifest.operations
     [capability] = manifest.capabilities
 
     assert manifest.connector == "<%= @connector_name %>"
-    assert capability.id == "<%= @capability_id %>"
+    assert manifest.auth.binding_kind == :connection_id
+    assert manifest.auth.auth_type == :api_token
+    assert manifest.catalog.display_name == "<%= @connector_display_name %>"
+    assert manifest.runtime_families == [<%= @runtime_class_literal %>]
+    assert operation.operation_id == "<%= @operation_id %>"
+    assert capability.id == operation.operation_id
     assert capability.runtime_class == <%= @runtime_class_literal %>
-    assert capability.kind == <%= @capability_kind_literal %>
-    assert capability.transport_profile == <%= @transport_profile_literal %>
+    assert capability.kind == :operation
+    assert capability.transport_profile == :action
     assert capability.metadata.required_scopes == ["<%= @required_scope %>"]
 <%= if @include_runtime_metadata do %>    assert capability.metadata.runtime.driver == "<%= @runtime_driver_id %>"
 <% end %>    assert capability.metadata.policy.environment.allowed == <%= @environment_allowed_literal %>
     assert capability.metadata.policy.sandbox.allowed_tools == <%= @allowed_tools_literal %>
+    assert capability.metadata.input_schema |> is_struct()
+    assert capability.metadata.output_schema |> is_struct()
+    assert capability.metadata.jido.action.name == "<%= @connector_name %>_sample_perform"
 <%= if @session_runtime do %>    assert capability.metadata.policy.sandbox.file_scope == <%= @sandbox_file_scope_literal %>
 <% end %>  end
 end

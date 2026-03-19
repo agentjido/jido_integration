@@ -1,7 +1,6 @@
 defmodule Jido.Integration.V2.ConformanceTest do
   use ExUnit.Case, async: false
 
-  alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Conformance
   alias Jido.Integration.V2.Connector
   alias Jido.Integration.V2.Connectors.GitHub
@@ -18,29 +17,53 @@ defmodule Jido.Integration.V2.ConformanceTest do
     def manifest do
       Manifest.new!(%{
         connector: "broken_session",
-        capabilities: [
-          Capability.new!(%{
-            id: "broken.session.exec",
-            connector: "broken_session",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :api_token,
+          install: %{required: false},
+          reauth: %{supported: false},
+          requested_scopes: ["session:execute"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        },
+        catalog: %{
+          display_name: "Broken Session",
+          description: "Broken conformance connector",
+          category: "test",
+          tags: ["broken"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [
+          %{
+            operation_id: "broken.session.exec",
+            name: "session_exec",
+            display_name: "Broken session exec",
+            description: "Exercises runtime fit failures",
             runtime_class: :session,
-            kind: :session_operation,
-            transport_profile: :stdio,
+            transport_mode: :stdio,
             handler: BrokenSessionHandler,
-            metadata: %{
-              required_scopes: ["session:execute"],
-              policy: %{
-                environment: %{allowed: [:prod]},
-                sandbox: %{
-                  level: :strict,
-                  egress: :restricted,
-                  approvals: :manual,
-                  file_scope: "/srv/broken",
-                  allowed_tools: ["broken.session.exec"]
-                }
+            input_schema: Zoi.map(),
+            output_schema: Zoi.map(),
+            permissions: %{required_scopes: ["session:execute"]},
+            runtime: %{},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :strict,
+                egress: :restricted,
+                approvals: :manual,
+                file_scope: "/srv/broken",
+                allowed_tools: ["broken.session.exec"]
               }
-            }
-          })
-        ]
+            },
+            upstream: %{protocol: :stdio},
+            jido: %{action: %{name: "broken_session_exec"}}
+          }
+        ],
+        triggers: [],
+        runtime_families: [:session]
       })
     end
   end
@@ -56,28 +79,53 @@ defmodule Jido.Integration.V2.ConformanceTest do
     def manifest do
       Manifest.new!(%{
         connector: "trigger_connector",
-        capabilities: [
-          Capability.new!(%{
-            id: "trigger.event.ingest",
-            connector: "trigger_connector",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :api_token,
+          install: %{required: false},
+          reauth: %{supported: false},
+          requested_scopes: ["trigger:ingest"],
+          lease_fields: ["token"],
+          secret_names: ["webhook_secret"]
+        },
+        catalog: %{
+          display_name: "Trigger Connector",
+          description: "Webhook conformance connector",
+          category: "test",
+          tags: ["trigger"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [],
+        triggers: [
+          %{
+            trigger_id: "trigger.event.ingest",
+            name: "event_ingest",
+            display_name: "Event ingest",
+            description: "Accepts a webhook payload",
             runtime_class: :direct,
-            kind: :trigger,
-            transport_profile: :webhook,
+            delivery_mode: :webhook,
             handler: TriggerHandler,
-            metadata: %{
-              required_scopes: ["trigger:ingest"],
-              policy: %{
-                environment: %{allowed: [:prod]},
-                sandbox: %{
-                  level: :standard,
-                  egress: :restricted,
-                  approvals: :auto,
-                  allowed_tools: ["trigger.event.ingest"]
-                }
+            config_schema: Zoi.map(),
+            signal_schema: Zoi.map(),
+            permissions: %{required_scopes: ["trigger:ingest"]},
+            checkpoint: %{strategy: :cursor},
+            dedupe: %{strategy: :event_id},
+            verification: %{secret_name: "webhook_secret"},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["trigger.event.ingest"]
               }
-            }
-          })
-        ]
+            },
+            jido: %{sensor: %{name: "trigger_event_ingest"}}
+          }
+        ],
+        runtime_families: [:direct]
       })
     end
   end
@@ -121,6 +169,9 @@ defmodule Jido.Integration.V2.ConformanceTest do
 
     assert report.status == :passed
 
+    manifest_suite = Enum.find(report.suite_results, &(&1.id == :manifest_contract))
+    capability_suite = Enum.find(report.suite_results, &(&1.id == :capability_contracts))
+
     assert Enum.map(report.suite_results, & &1.id) == [
              :manifest_contract,
              :capability_contracts,
@@ -130,6 +181,8 @@ defmodule Jido.Integration.V2.ConformanceTest do
              :ingress_definition_discipline
            ]
 
+    assert manifest_suite.status == :passed
+    assert capability_suite.status == :passed
     assert Enum.find(report.suite_results, &(&1.id == :deterministic_fixtures)).status == :passed
 
     assert Enum.find(report.suite_results, &(&1.id == :ingress_definition_discipline)).status ==

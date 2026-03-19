@@ -1,12 +1,12 @@
-defmodule Jido.Integration.V2.Connectors.Notion.CapabilityCatalog do
+defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
   @moduledoc false
 
-  alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Connectors.Notion.Operation
+  alias Jido.Integration.V2.OperationSpec
 
   @notion_sdk_source_path Path.expand("../../../../../../../../../notion_sdk", __DIR__)
   @connector_id "notion"
-  @published_capability_ids [
+  @published_operation_ids [
     "notion.users.get_self",
     "notion.search.search",
     "notion.pages.create",
@@ -65,7 +65,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.CapabilityCatalog do
 
   @type entry :: %{
           artifact_slug: String.t(),
-          capability_id: String.t(),
+          operation_id: String.t(),
           event_suffix: String.t(),
           method: String.t(),
           path: String.t(),
@@ -85,49 +85,59 @@ defmodule Jido.Integration.V2.Connectors.Notion.CapabilityCatalog do
 
   @spec published_entries() :: [entry()]
   def published_entries do
-    Enum.map(@published_capability_ids, &fetch!/1)
+    Enum.map(@published_operation_ids, &fetch!/1)
   end
 
   @spec fetch!(String.t()) :: entry()
-  def fetch!(capability_id) when is_binary(capability_id) do
-    Enum.find(entries(), &(&1.capability_id == capability_id)) ||
-      raise KeyError, key: capability_id, term: __MODULE__
+  def fetch!(operation_id) when is_binary(operation_id) do
+    Enum.find(entries(), &(&1.operation_id == operation_id)) ||
+      raise KeyError, key: operation_id, term: __MODULE__
   end
 
-  @spec published_capabilities() :: [Capability.t()]
-  def published_capabilities do
+  @spec published_operations() :: [OperationSpec.t()]
+  def published_operations do
     published_entries()
-    |> Enum.map(&capability/1)
-    |> Enum.sort_by(& &1.id)
+    |> Enum.map(&operation_spec/1)
+    |> Enum.sort_by(& &1.operation_id)
   end
 
-  defp capability(entry) do
-    Capability.new!(%{
-      id: entry.capability_id,
-      connector: @connector_id,
+  defp operation_spec(entry) do
+    OperationSpec.new!(%{
+      operation_id: entry.operation_id,
+      name: entry.event_suffix,
+      display_name: display_name(entry.event_suffix),
+      description: "Notion API projection for #{entry.operation_id}",
       runtime_class: :direct,
-      kind: :operation,
-      transport_profile: :sdk,
+      transport_mode: :sdk,
       handler: Operation,
+      input_schema: Zoi.map(description: "Input payload for #{entry.operation_id}"),
+      output_schema: Zoi.map(description: "Output payload for #{entry.operation_id}"),
+      permissions: %{
+        permission_bundle: entry.permission_bundle,
+        required_scopes: entry.permission_bundle
+      },
+      policy:
+        put_in(
+          @policy_defaults,
+          [:sandbox, :allowed_tools],
+          [entry.operation_id]
+        ),
+      upstream: %{
+        method: entry.method,
+        path: entry.path,
+        reference_page: entry.reference_page
+      },
+      jido: %{
+        action: %{
+          name: String.replace(entry.operation_id, ".", "_")
+        }
+      },
       metadata: %{
         sdk_module: entry.sdk_module,
         sdk_function: entry.sdk_function,
-        permission_bundle: entry.permission_bundle,
-        required_scopes: entry.permission_bundle,
         event_suffix: entry.event_suffix,
         artifact_slug: entry.artifact_slug,
-        rollout_phase: entry.rollout_phase,
-        upstream: %{
-          method: entry.method,
-          path: entry.path,
-          reference_page: entry.reference_page
-        },
-        policy:
-          put_in(
-            @policy_defaults,
-            [:sandbox, :allowed_tools],
-            [entry.capability_id]
-          )
+        rollout_phase: entry.rollout_phase
       }
     })
   end
@@ -136,18 +146,18 @@ defmodule Jido.Integration.V2.Connectors.Notion.CapabilityCatalog do
     module_name = Map.fetch!(operation, "module")
     function_name = Map.fetch!(operation, "function")
     key = module_name <> "." <> function_name
-    capability_suffix = capability_namespace(module_name) <> ".#{function_name}"
-    capability_id = @connector_id <> "." <> capability_suffix
+    operation_suffix = operation_namespace(module_name) <> ".#{function_name}"
+    operation_id = @connector_id <> "." <> operation_suffix
 
     %{
-      capability_id: capability_id,
+      operation_id: operation_id,
       sdk_module: Module.concat(NotionSDK, module_name),
       sdk_function: function_atom(function_name),
       permission_bundle: Map.fetch!(@permission_overrides, key),
-      event_suffix: capability_suffix,
-      artifact_slug: String.replace(capability_suffix, ".", "_"),
-      rollout_phase: rollout_phase(capability_id),
-      published?: capability_id in @published_capability_ids,
+      event_suffix: operation_suffix,
+      artifact_slug: String.replace(operation_suffix, ".", "_"),
+      rollout_phase: rollout_phase(operation_id),
+      published?: operation_id in @published_operation_ids,
       method: Map.fetch!(operation, "method"),
       path: Map.fetch!(operation, "path"),
       reference_page: Map.get(operation, "reference_page")
@@ -155,11 +165,11 @@ defmodule Jido.Integration.V2.Connectors.Notion.CapabilityCatalog do
   end
 
   defp rollout_phase("notion.oauth." <> _rest), do: :auth_control
-  defp rollout_phase(capability_id) when capability_id in @published_capability_ids, do: :a0
-  defp rollout_phase(_capability_id), do: :a1
+  defp rollout_phase(operation_id) when operation_id in @published_operation_ids, do: :a0
+  defp rollout_phase(_operation_id), do: :a1
 
-  defp capability_namespace("OAuth"), do: "oauth"
-  defp capability_namespace(module_name), do: Macro.underscore(module_name)
+  defp operation_namespace("OAuth"), do: "oauth"
+  defp operation_namespace(module_name), do: Macro.underscore(module_name)
 
   defp function_atom("append_children"), do: :append_children
   defp function_atom("complete"), do: :complete
@@ -203,6 +213,12 @@ defmodule Jido.Integration.V2.Connectors.Notion.CapabilityCatalog do
 
   def inventory_path(priv_dir) when is_list(priv_dir),
     do: inventory_path(List.to_string(priv_dir))
+
+  defp display_name(event_suffix) do
+    event_suffix
+    |> String.split(".")
+    |> Enum.map_join(" ", &String.capitalize/1)
+  end
 
   defp notion_sdk_priv_dir do
     case Mix.Project.get() do

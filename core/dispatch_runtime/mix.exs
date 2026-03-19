@@ -25,6 +25,7 @@ defmodule Jido.Integration.V2.DispatchRuntime.MixProject do
     [
       {:jido_integration_v2_contracts, path: "../contracts"},
       {:jido_integration_v2_control_plane, path: "../control_plane"},
+      {:zoi, "~> 0.17"},
       {:telemetry, "~> 1.0"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

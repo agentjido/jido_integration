@@ -2,8 +2,8 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
   use ExUnit.Case, async: true
 
   alias Jido.Integration.V2.Connectors.GitHub
-  alias Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog
   alias Jido.Integration.V2.Connectors.GitHub.Operation
+  alias Jido.Integration.V2.Connectors.GitHub.OperationCatalog
 
   @published_capability_ids [
     "github.comment.create",
@@ -27,12 +27,21 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     "github.issue.update" => {GitHubEx.Issues, :update, ["github.api.issue.update"]}
   }
 
-  test "publishes the A0 direct capability slice as a thin github_ex-backed manifest" do
+  test "publishes the A0 direct catalog slice as authored operation specs plus derived capabilities" do
     manifest = GitHub.manifest()
 
     assert manifest.connector == "github"
+    assert manifest.auth.binding_kind == :connection_id
+    assert manifest.auth.auth_type == :oauth2
+    assert manifest.catalog.display_name == "GitHub"
+    assert manifest.catalog.publication == :public
+    assert manifest.runtime_families == [:direct]
     assert manifest.metadata.provider_sdk == :github_ex
     assert manifest.metadata.published_slice == :a0_issue_workflows
+
+    assert Enum.map(manifest.operations, & &1.operation_id) ==
+             Enum.sort(@published_capability_ids)
+
     assert Enum.map(manifest.capabilities, & &1.id) == Enum.sort(@published_capability_ids)
 
     Enum.each(manifest.capabilities, fn capability ->
@@ -46,10 +55,13 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
       assert capability.metadata.sdk_function == sdk_function
       assert capability.metadata.permission_bundle == ["repo"]
       assert capability.metadata.required_scopes == ["repo"]
+      assert capability.metadata.input_schema |> is_struct()
+      assert capability.metadata.output_schema |> is_struct()
       assert capability.metadata.rollout_phase == :a0
       assert capability.metadata.event_type |> is_binary()
       assert capability.metadata.failure_event_type |> is_binary()
       assert capability.metadata.artifact_slug |> is_binary()
+      assert capability.metadata.jido.action.name |> is_binary()
       assert capability.metadata.policy.environment.allowed == [:prod, :staging]
       assert capability.metadata.policy.sandbox.level == :standard
       assert capability.metadata.policy.sandbox.egress == :restricted
@@ -58,16 +70,16 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     end)
   end
 
-  test "builds one central capability catalog for the published github_ex issue surface" do
-    entries = CapabilityCatalog.entries()
+  test "builds one authored operation catalog for the published github_ex issue surface" do
+    entries = OperationCatalog.entries()
 
-    assert Enum.map(CapabilityCatalog.published_entries(), & &1.capability_id) ==
+    assert Enum.map(OperationCatalog.published_entries(), & &1.operation_id) ==
              @published_capability_ids
 
     assert Enum.all?(entries, & &1.published?)
 
-    assert CapabilityCatalog.fetch!("github.issue.close").sdk_function == :update
-    assert CapabilityCatalog.fetch!("github.issue.label").sdk_function == :add_labels
+    assert OperationCatalog.fetch!("github.issue.close").sdk_function == :update
+    assert OperationCatalog.fetch!("github.issue.label").sdk_function == :add_labels
 
     assert Enum.all?(entries, fn entry ->
              assert Code.ensure_loaded?(entry.sdk_module)

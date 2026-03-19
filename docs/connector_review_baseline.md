@@ -25,6 +25,8 @@ Supporting proof surfaces:
 - connector discovery is public and deterministic through
   `Jido.Integration.V2.connectors/0`, `fetch_connector/1`, and
   `fetch_capability/1`
+- connector manifests are authored through explicit auth, catalog, operation,
+  and trigger contracts, with executable capabilities derived from that source
 - public invocation can be expressed either as `invoke/3` or through the typed
   `InvocationRequest` helper, with `connection_id` as the public auth binding
   when auth is required

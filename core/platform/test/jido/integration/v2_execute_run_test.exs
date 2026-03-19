@@ -2,8 +2,10 @@ defmodule Jido.Integration.V2ExecuteRunTest do
   use ExUnit.Case, async: false
 
   alias Jido.Integration.V2
-  alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.AuthSpec
+  alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.OperationSpec
 
   defmodule RetryHandler do
     def run(input, context) do
@@ -25,16 +27,53 @@ defmodule Jido.Integration.V2ExecuteRunTest do
     def manifest do
       Manifest.new!(%{
         connector: "platform_retry",
-        capabilities: [
-          Capability.new!(%{
-            id: "platform.retry.echo",
-            connector: "platform_retry",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :none,
+            install: %{required: false},
+            reauth: %{supported: false},
+            requested_scopes: [],
+            lease_fields: [],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Platform Retry",
+            description: "Retry test connector",
+            category: "test",
+            tags: ["retry"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "platform.retry.echo",
+            name: "retry_echo",
+            display_name: "Retry echo",
+            description: "Retries a direct operation",
             runtime_class: :direct,
-            kind: :operation,
-            transport_profile: :action,
-            handler: RetryHandler
+            transport_mode: :action,
+            handler: RetryHandler,
+            input_schema: Zoi.map(description: "Retry input"),
+            output_schema: Zoi.map(description: "Retry output"),
+            permissions: %{required_scopes: []},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["platform.retry.echo"]
+              }
+            },
+            upstream: %{transport: :action},
+            jido: %{action: %{name: "platform_retry_echo"}}
           })
-        ]
+        ],
+        triggers: [],
+        runtime_families: [:direct]
       })
     end
   end

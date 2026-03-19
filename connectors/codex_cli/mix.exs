@@ -25,6 +25,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.MixProject do
     [
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
       {:jido_integration_v2_session_kernel, path: "../../core/session_kernel"},
+      {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

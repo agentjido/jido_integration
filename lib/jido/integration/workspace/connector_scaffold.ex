@@ -137,6 +137,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       handler_behaviour: "Jido.Action",
       handler_template: "handler_direct.ex.eex",
       package_description: "Scaffolded direct connector package for the greenfield platform",
+      operation_id: capability_id,
       capability_id: capability_id,
       capability_kind_literal: ":operation",
       transport_profile_literal: ":action",
@@ -147,7 +148,8 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       sandbox_approvals_literal: ":auto",
       sandbox_file_scope_literal: "nil",
       allowed_tools_literal: inspect([capability_id]),
-      manifest_test_name: "publishes a direct capability manifest",
+      manifest_test_name:
+        "publishes an authored direct manifest and derived executable capability",
       runtime_dependency_app: :jido_integration_v2_direct_runtime,
       direct_runtime: true,
       session_runtime: false,

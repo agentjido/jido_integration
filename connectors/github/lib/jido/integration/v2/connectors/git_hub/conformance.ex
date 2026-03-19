@@ -1,8 +1,8 @@
 defmodule Jido.Integration.V2.Connectors.GitHub.Conformance do
   @moduledoc false
 
-  alias Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures
+  alias Jido.Integration.V2.Connectors.GitHub.OperationCatalog
 
   @repo "acme/platform"
   @subject "octo-user"
@@ -13,7 +13,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Conformance do
   @spec fixtures() :: [map()]
   def fixtures do
     Enum.map(Fixtures.published_capability_ids(), fn capability_id ->
-      entry = CapabilityCatalog.fetch!(capability_id)
+      entry = OperationCatalog.fetch!(capability_id)
       input = conformance_input(capability_id)
 
       %{

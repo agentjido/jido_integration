@@ -5,7 +5,8 @@ workspace root.
 
 This package starts with:
 
-- one placeholder capability published through `Manifest` and `Capability`
+- one authored manifest contract built from `AuthSpec`, `CatalogSpec`, and `OperationSpec`
+- one derived executable capability projected from that authored operation
 - a runtime-class-appropriate handler/provider skeleton
 - a deterministic conformance companion module
 - package-local tests that prove the scaffold passes the baseline conformance flow
@@ -40,6 +41,6 @@ mix jido.conformance <%= @connector_module %>
 The scaffold is intentionally honest and minimal. Replace these placeholders as
 you turn it into a real connector:
 
-1. capability id, scopes, and policy metadata in `[<%= @module_file %>]`
+1. auth, catalog, operation ids, schemas, scopes, and policy metadata in `[<%= @module_file %>]`
 2. handler/provider logic in `[<%= @handler_file %>]`
 3. deterministic fixture expectations in `[<%= @conformance_file %>]`

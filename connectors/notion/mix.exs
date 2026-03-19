@@ -33,6 +33,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.MixProject do
       {:jido_integration_v2_conformance,
        path: "../../core/conformance", only: :test, runtime: false},
       {:jido_integration_v2, path: "../../core/platform", only: [:dev, :test]},
+      {:zoi, "~> 0.17"},
       {:pristine, "~> 0.1.0", runtime: false},
       {:notion_sdk, "~> 0.1.0"},
       {:jason, "~> 1.4"},

@@ -3,12 +3,14 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
 
   alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.Attempt
-  alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.AuthSpec
+  alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.DispatchRuntime
   alias Jido.Integration.V2.DispatchRuntime.Dispatch
   alias Jido.Integration.V2.DispatchRuntime.Telemetry, as: DispatchTelemetry
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.TriggerRecord
@@ -55,17 +57,53 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     def manifest do
       Manifest.new!(%{
         connector: "dispatch_test",
-        capabilities: [
-          Capability.new!(%{
-            id: "dispatch_test.async.echo",
-            connector: "dispatch_test",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :api_token,
+            install: %{required: false},
+            reauth: %{supported: false},
+            requested_scopes: [],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Dispatch Test",
+            description: "Async dispatch runtime test connector",
+            category: "test",
+            tags: ["dispatch"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "dispatch_test.async.echo",
+            name: "async_echo",
+            display_name: "Async echo",
+            description: "Dispatch runtime test operation",
             runtime_class: :direct,
-            kind: :operation,
-            transport_profile: :async_trigger,
+            transport_mode: :async_trigger,
             handler: ScriptedCapability,
-            metadata: %{}
+            input_schema: Zoi.map(description: "Dispatch input"),
+            output_schema: Zoi.map(description: "Dispatch output"),
+            permissions: %{required_scopes: []},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["dispatch_test.async.echo"]
+              }
+            },
+            upstream: %{transport: :async_trigger},
+            jido: %{action: %{name: "dispatch_test_async_echo"}}
           })
-        ]
+        ],
+        triggers: [],
+        runtime_families: [:direct]
       })
     end
   end
@@ -79,7 +117,14 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
        [
          actor_id: "dispatch-runtime-test",
          tenant_id: trigger.tenant_id,
+         environment: :prod,
          allowed_operations: [trigger.capability_id],
+         sandbox: %{
+           level: :standard,
+           egress: :restricted,
+           approvals: :auto,
+           allowed_tools: ["dispatch_test.async.echo"]
+         },
          aggregator_id: "dispatch_runtime_test",
          aggregator_epoch: attempt,
          trace_id: "dispatch-runtime-attempt-#{attempt}"

@@ -22,6 +22,7 @@ defmodule Jido.Integration.V2.Contracts do
   @type transport_mode :: :inline | :chunked | :object_store
   @type access_control :: :run_scoped | :tenant_scoped | :public_read
   @type target_health :: :healthy | :degraded | :unavailable
+  @type zoi_schema :: term()
   @type payload_ref :: %{
           store: String.t(),
           key: String.t(),
@@ -418,6 +419,51 @@ defmodule Jido.Integration.V2.Contracts do
 
   def validate_target_mode!(mode) do
     raise ArgumentError, "invalid target mode: #{inspect(mode)}"
+  end
+
+  @spec validate_module!(term(), String.t()) :: module()
+  def validate_module!(value, _field_name) when is_atom(value) do
+    value
+  end
+
+  def validate_module!(value, field_name) do
+    raise ArgumentError, "#{field_name} must be a module, got: #{inspect(value)}"
+  end
+
+  @spec validate_map!(term(), String.t()) :: map()
+  def validate_map!(value, _field_name) when is_map(value), do: value
+
+  def validate_map!(value, field_name) do
+    raise ArgumentError, "#{field_name} must be a map, got: #{inspect(value)}"
+  end
+
+  @spec validate_zoi_schema!(term(), String.t()) :: zoi_schema()
+  def validate_zoi_schema!(value, field_name) do
+    if zoi_schema?(value) do
+      value
+    else
+      raise ArgumentError, "#{field_name} must be a Zoi schema, got: #{inspect(value)}"
+    end
+  end
+
+  @spec zoi_schema?(term()) :: boolean()
+  def zoi_schema?(value) do
+    is_struct(value) and Zoi.Type.impl_for(value) != nil
+  rescue
+    _ -> false
+  end
+
+  @spec normalize_atomish!(term(), String.t()) :: atom()
+  def normalize_atomish!(value, _field_name) when is_atom(value), do: value
+
+  def normalize_atomish!(value, field_name) when is_binary(value) do
+    value
+    |> validate_non_empty_string!(field_name)
+    |> String.to_atom()
+  end
+
+  def normalize_atomish!(value, field_name) do
+    raise ArgumentError, "#{field_name} must be an atom or string, got: #{inspect(value)}"
   end
 
   defp validate_enum_string!(value, valid_values, field_name) when is_binary(value) do

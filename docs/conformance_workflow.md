@@ -21,7 +21,7 @@ giving the repo one canonical connector acceptance command.
 
 It exists to prove that a connector:
 
-- publishes a valid manifest and capabilities
+- publishes a valid authored manifest contract and derived executable capabilities
 - fits the declared runtime family
 - declares policy posture explicitly
 - can execute deterministic fixtures through lease-only auth context
@@ -54,13 +54,14 @@ change the root task shape.
 For a connector package under `connectors/<name>/`:
 
 1. implement or update the connector `manifest/0`
-2. keep runtime handlers in the connector package and declare explicit child
+2. author auth, catalog, operation, and trigger entries in that manifest rather than hand-writing executable capabilities
+3. keep runtime handlers in the connector package and declare explicit child
    deps in that package `mix.exs`
-3. add or update deterministic tests in the connector package
-4. add or update the optional `<ConnectorModule>.Conformance` companion module
-5. run package-local `mix test` and `mix docs`
-6. run `mix jido.conformance <ConnectorModule>` from the workspace root
-7. finish with the root monorepo gates and `mix ci`
+4. add or update deterministic tests in the connector package
+5. add or update the optional `<ConnectorModule>.Conformance` companion module
+6. run package-local `mix test` and `mix docs`
+7. run `mix jido.conformance <ConnectorModule>` from the workspace root
+8. finish with the root monorepo gates and `mix ci`
 
 For thin provider-SDK connectors such as `connectors/notion`, deterministic
 fixtures should run through the provider package's transport seam instead of a
@@ -103,9 +104,9 @@ Each fixture map should declare:
 ## How To Read Failures
 
 - `manifest_contract`
-  - fix connector id stability, metadata completeness, or capability ownership
+  - fix connector id stability, authored auth/catalog/operation/trigger completeness, or derived capability ownership
 - `capability_contracts`
-  - fix missing ids, invalid policy metadata, or malformed capability structs
+  - fix authored operation or trigger ids, projection drift, invalid policy metadata, or malformed derived capability structs
 - `runtime_class_fit`
   - fix handler modules so they match `direct`, `session`, or `stream`
 - `policy_contract`
@@ -114,7 +115,7 @@ Each fixture map should declare:
   - fix provider determinism, expected output/events/artifacts, or auth lease
     assumptions
 - `ingress_definition_discipline`
-  - keep trigger definitions explicit and aligned with published capabilities
+  - keep trigger definitions explicit and aligned with the derived trigger capability surface
 
 ## Output Modes
 

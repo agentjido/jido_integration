@@ -6,11 +6,12 @@ defmodule Jido.Integration.V2.Conformance.Suites.PolicyContract do
   alias Jido.Integration.V2.Conformance.SuiteSupport
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Gateway.Policy
+  alias Jido.Integration.V2.Manifest
 
   @spec run(map()) :: SuiteResult.t()
   def run(%{manifest: manifest}) do
     checks =
-      Enum.flat_map(manifest.capabilities, fn capability ->
+      Enum.flat_map(Manifest.capabilities(manifest), fn capability ->
         metadata = capability.metadata
         policy = Contracts.get(metadata, :policy, %{})
         sandbox = Contracts.get(policy, :sandbox, %{})

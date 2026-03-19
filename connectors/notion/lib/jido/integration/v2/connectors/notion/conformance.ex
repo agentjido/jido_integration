@@ -1,8 +1,8 @@
 defmodule Jido.Integration.V2.Connectors.Notion.Conformance do
   @moduledoc false
 
-  alias Jido.Integration.V2.Connectors.Notion.CapabilityCatalog
   alias Jido.Integration.V2.Connectors.Notion.Fixtures
+  alias Jido.Integration.V2.Connectors.Notion.OperationCatalog
 
   @spec fixtures() :: [map()]
   def fixtures do
@@ -10,7 +10,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.Conformance do
   end
 
   defp fixture_for(capability_id) do
-    entry = CapabilityCatalog.fetch!(capability_id)
+    entry = OperationCatalog.fetch!(capability_id)
     context = Fixtures.conformance_context()
 
     %{

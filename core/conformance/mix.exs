@@ -29,6 +29,7 @@ defmodule Jido.Integration.V2.Conformance.MixProject do
       {:jido_integration_v2_stream_runtime, path: "../stream_runtime"},
       {:jido_integration_v2_ingress, path: "../ingress"},
       {:jido_integration_v2_github, path: "../../connectors/github", only: :test},
+      {:zoi, "~> 0.17"},
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

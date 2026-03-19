@@ -112,7 +112,7 @@ credential leases.
 
 The connector owns:
 
-- capability catalog publication
+- authored operation catalog publication
 - lease-bound client construction
 - SDK method mapping from the public `repo` input shape
 - normalized runtime output, events, artifacts, and conformance fixtures
@@ -151,7 +151,7 @@ Successful runs emit:
 
 ## Files
 
-- capability catalog: `lib/jido/integration/v2/connectors/git_hub/capability_catalog.ex`
+- operation catalog: `lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex`
 - lease-bound client factory: `lib/jido/integration/v2/connectors/git_hub/client_factory.ex`
 - generic SDK operation handler: `lib/jido/integration/v2/connectors/git_hub/operation.ex`
 - deterministic fixture seam: `lib/jido/integration/v2/connectors/git_hub/fixtures.ex`

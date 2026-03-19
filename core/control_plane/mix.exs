@@ -34,6 +34,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       {:jido_harness, path: "../../../jido_harness"},
       {:agent_session_manager, path: "../../../agent_session_manager"},
       {:jido_session, path: "../../../jido_session"},
+      {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

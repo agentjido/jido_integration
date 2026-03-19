@@ -3,8 +3,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.ConformanceTest do
 
   alias Jido.Integration.V2.Conformance
   alias Jido.Integration.V2.Connectors.GitHub
-  alias Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures
+  alias Jido.Integration.V2.Connectors.GitHub.OperationCatalog
 
   test "publishes deterministic conformance fixtures for the full A0 slice" do
     assert Enum.map(GitHub.Conformance.fixtures(), & &1.capability_id) ==
@@ -27,7 +27,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.ConformanceTest do
     assert deterministic_suite.status == :passed
 
     assert Enum.map(GitHub.Conformance.fixtures(), fn fixture ->
-             entry = CapabilityCatalog.fetch!(fixture.capability_id)
+             entry = OperationCatalog.fetch!(fixture.capability_id)
 
              {fixture.capability_id, ["attempt.started", entry.event_type, "attempt.completed"]}
            end) ==

@@ -49,6 +49,9 @@ jido_integration/
 - `Jido.Integration.V2` exposes typed invocation, connector discovery, auth
   lifecycle calls, durable review lookups, and target lookup through a single
   public surface.
+- connector packages author rich manifests in `core/contracts`; executable
+  capabilities remain available as a derived projection for runtime lookup and
+  invocation.
 - `core/conformance` owns reusable connector review logic behind the root
   `mix jido.conformance` task.
 - `core/dispatch_runtime` and `core/webhook_router` stay as child packages.

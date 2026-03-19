@@ -3,8 +3,8 @@ defmodule Jido.Integration.V2.Connectors.Notion.ConformanceTest do
 
   alias Jido.Integration.V2.Conformance
   alias Jido.Integration.V2.Connectors.Notion
-  alias Jido.Integration.V2.Connectors.Notion.CapabilityCatalog
   alias Jido.Integration.V2.Connectors.Notion.Fixtures
+  alias Jido.Integration.V2.Connectors.Notion.OperationCatalog
 
   test "publishes deterministic conformance fixtures for the full A0 slice" do
     assert Enum.map(Notion.Conformance.fixtures(), & &1.capability_id) ==
@@ -27,7 +27,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.ConformanceTest do
     assert deterministic_suite.status == :passed
 
     assert Enum.map(Notion.Conformance.fixtures(), fn fixture ->
-             entry = CapabilityCatalog.fetch!(fixture.capability_id)
+             entry = OperationCatalog.fetch!(fixture.capability_id)
 
              {fixture.capability_id,
               [

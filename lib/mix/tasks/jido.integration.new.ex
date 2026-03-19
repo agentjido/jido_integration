@@ -59,7 +59,7 @@ defmodule Mix.Tasks.Jido.Integration.New do
     #{Enum.map_join(ConnectorScaffold.generated_relative_paths(context), "\n", &"  #{&1}")}
 
     Next steps:
-      1. Replace the placeholder capability and provider logic with the real connector contract.
+      1. Replace the placeholder authored manifest entries and provider logic with the real connector contract.
       2. Update #{Path.relative_to(Path.join(context.package_root, context.conformance_file), context.workspace_root)} so the deterministic fixture matches the real behavior.
       3. Run: cd #{context.package_root_relative} && mix deps.get
       4. Run: cd #{context.package_root_relative} && mix test

@@ -50,6 +50,8 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert mix_content =~
              "{:jido_integration_v2_contracts, path: \"../../core/contracts\", override: true}"
 
+    assert mix_content =~ "{:zoi, \"~> 0.17\"}"
+
     assert mix_content =~
              "{:jido_integration_v2_direct_runtime, path: \"../../core/direct_runtime\", override: true}"
 
@@ -63,12 +65,14 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       File.read!(Path.join(package_root, "lib/jido/integration/v2/connectors/acme_crm.ex"))
 
     assert connector_content =~ "defmodule Jido.Integration.V2.Connectors.AcmeCrm do"
-    assert connector_content =~ "runtime_class: :direct"
-    assert connector_content =~ "kind: :operation"
-    assert connector_content =~ "transport_profile: :action"
-    assert connector_content =~ "handler: Perform"
-    assert connector_content =~ "Capability.new!("
     assert connector_content =~ "Manifest.new!("
+    assert connector_content =~ "AuthSpec.new!("
+    assert connector_content =~ "CatalogSpec.new!("
+    assert connector_content =~ "OperationSpec.new!("
+    assert connector_content =~ "runtime_families: [:direct]"
+    assert Regex.match?(~r/input_schema:\s+Zoi\.object/s, connector_content)
+    assert Regex.match?(~r/output_schema:\s+Zoi\.object/s, connector_content)
+    refute connector_content =~ "Capability.new!("
   end
 
   test "rejects session and stream scaffolds until real Harness target-kernel generators exist" do

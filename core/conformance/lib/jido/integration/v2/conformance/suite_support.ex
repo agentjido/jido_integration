@@ -18,8 +18,18 @@ defmodule Jido.Integration.V2.Conformance.SuiteSupport do
   @spec fetch_capability(Manifest.t(), String.t()) :: Capability.t() | nil
   def fetch_capability(manifest, capability_id) do
     manifest
-    |> Map.get(:capabilities, [])
+    |> Manifest.capabilities()
     |> Enum.find(&(&1.id == capability_id))
+  end
+
+  @spec fetch_operation(Manifest.t(), String.t()) :: term() | nil
+  def fetch_operation(manifest, operation_id) do
+    Manifest.fetch_operation(manifest, operation_id)
+  end
+
+  @spec fetch_trigger(Manifest.t(), String.t()) :: term() | nil
+  def fetch_trigger(manifest, trigger_id) do
+    Manifest.fetch_trigger(manifest, trigger_id)
   end
 
   @spec declared?(map(), atom()) :: boolean()

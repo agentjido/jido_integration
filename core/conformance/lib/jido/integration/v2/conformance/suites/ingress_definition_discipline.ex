@@ -5,10 +5,11 @@ defmodule Jido.Integration.V2.Conformance.Suites.IngressDefinitionDiscipline do
   alias Jido.Integration.V2.Conformance.SuiteResult
   alias Jido.Integration.V2.Conformance.SuiteSupport
   alias Jido.Integration.V2.Ingress.Definition
+  alias Jido.Integration.V2.Manifest
 
   @spec run(map()) :: SuiteResult.t()
   def run(%{manifest: manifest, ingress_definitions: raw_definitions}) do
-    trigger_capabilities = Enum.filter(manifest.capabilities, &trigger_capability?/1)
+    trigger_capabilities = Enum.filter(Manifest.capabilities(manifest), &trigger_capability?/1)
 
     case trigger_capabilities do
       [] ->

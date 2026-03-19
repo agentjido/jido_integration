@@ -1,10 +1,9 @@
-defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
+defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   @moduledoc false
 
-  alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Connectors.GitHub.Operation
+  alias Jido.Integration.V2.OperationSpec
 
-  @connector_id "github"
   @permission_bundle ["repo"]
   @policy_defaults %{
     environment: %{allowed: [:prod, :staging]},
@@ -17,7 +16,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
 
   @entries [
     %{
-      capability_id: "github.comment.create",
+      operation_id: "github.comment.create",
       sdk_module: GitHubEx.Issues,
       sdk_function: :create_comment,
       operation: :comment_create,
@@ -32,7 +31,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
       published?: true
     },
     %{
-      capability_id: "github.comment.update",
+      operation_id: "github.comment.update",
       sdk_module: GitHubEx.Issues,
       sdk_function: :update_comment,
       operation: :comment_update,
@@ -47,7 +46,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
       published?: true
     },
     %{
-      capability_id: "github.issue.close",
+      operation_id: "github.issue.close",
       sdk_module: GitHubEx.Issues,
       sdk_function: :update,
       operation: :issue_close,
@@ -62,7 +61,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
       published?: true
     },
     %{
-      capability_id: "github.issue.create",
+      operation_id: "github.issue.create",
       sdk_module: GitHubEx.Issues,
       sdk_function: :create,
       operation: :issue_create,
@@ -77,7 +76,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
       published?: true
     },
     %{
-      capability_id: "github.issue.fetch",
+      operation_id: "github.issue.fetch",
       sdk_module: GitHubEx.Issues,
       sdk_function: :get,
       operation: :issue_fetch,
@@ -92,7 +91,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
       published?: true
     },
     %{
-      capability_id: "github.issue.label",
+      operation_id: "github.issue.label",
       sdk_module: GitHubEx.Issues,
       sdk_function: :add_labels,
       operation: :issue_label,
@@ -107,7 +106,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
       published?: true
     },
     %{
-      capability_id: "github.issue.list",
+      operation_id: "github.issue.list",
       sdk_module: GitHubEx.Issues,
       sdk_function: :list_for_repo,
       operation: :issue_list,
@@ -122,7 +121,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
       published?: true
     },
     %{
-      capability_id: "github.issue.update",
+      operation_id: "github.issue.update",
       sdk_module: GitHubEx.Issues,
       sdk_function: :update,
       operation: :issue_update,
@@ -142,7 +141,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
           actor_field: atom(),
           allowed_tools: [String.t()],
           artifact_slug: String.t(),
-          capability_id: String.t(),
+          operation_id: String.t(),
           event_type: String.t(),
           failure_event_type: String.t(),
           method: String.t(),
@@ -156,9 +155,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
         }
 
   @spec entries() :: [entry()]
-  def entries do
-    Enum.map(@entries, &Map.put(&1, :permission_bundle, @permission_bundle))
-  end
+  def entries, do: Enum.map(@entries, &Map.put(&1, :permission_bundle, @permission_bundle))
 
   @spec published_entries() :: [entry()]
   def published_entries do
@@ -166,48 +163,65 @@ defmodule Jido.Integration.V2.Connectors.GitHub.CapabilityCatalog do
   end
 
   @spec fetch!(String.t()) :: entry()
-  def fetch!(capability_id) when is_binary(capability_id) do
-    Enum.find(entries(), &(&1.capability_id == capability_id)) ||
-      raise KeyError, key: capability_id, term: __MODULE__
+  def fetch!(operation_id) when is_binary(operation_id) do
+    Enum.find(entries(), &(&1.operation_id == operation_id)) ||
+      raise KeyError, key: operation_id, term: __MODULE__
   end
 
-  @spec published_capabilities() :: [Capability.t()]
-  def published_capabilities do
+  @spec published_operations() :: [OperationSpec.t()]
+  def published_operations do
     published_entries()
-    |> Enum.map(&capability/1)
-    |> Enum.sort_by(& &1.id)
+    |> Enum.map(&operation_spec/1)
+    |> Enum.sort_by(& &1.operation_id)
   end
 
-  defp capability(entry) do
-    Capability.new!(%{
-      id: entry.capability_id,
-      connector: @connector_id,
+  defp operation_spec(entry) do
+    OperationSpec.new!(%{
+      operation_id: entry.operation_id,
+      name: Atom.to_string(entry.operation),
+      display_name: display_name(entry.operation_id),
+      description: "GitHub API projection for #{entry.operation_id}",
       runtime_class: :direct,
-      kind: :operation,
-      transport_profile: :sdk,
+      transport_mode: :sdk,
       handler: Operation,
+      input_schema: Zoi.map(description: "Input payload for #{entry.operation_id}"),
+      output_schema: Zoi.map(description: "Output payload for #{entry.operation_id}"),
+      permissions: %{
+        permission_bundle: entry.permission_bundle,
+        required_scopes: entry.permission_bundle
+      },
+      policy:
+        put_in(
+          @policy_defaults,
+          [:sandbox, :allowed_tools],
+          entry.allowed_tools
+        ),
+      upstream: %{
+        method: entry.method,
+        path: entry.path
+      },
+      jido: %{
+        action: %{
+          name: String.replace(entry.operation_id, ".", "_")
+        }
+      },
       metadata: %{
         operation: entry.operation,
         sdk_module: entry.sdk_module,
         sdk_function: entry.sdk_function,
         actor_field: entry.actor_field,
-        permission_bundle: entry.permission_bundle,
-        required_scopes: entry.permission_bundle,
         event_type: entry.event_type,
         failure_event_type: entry.failure_event_type,
         artifact_slug: entry.artifact_slug,
-        rollout_phase: entry.rollout_phase,
-        upstream: %{
-          method: entry.method,
-          path: entry.path
-        },
-        policy:
-          put_in(
-            @policy_defaults,
-            [:sandbox, :allowed_tools],
-            entry.allowed_tools
-          )
+        rollout_phase: entry.rollout_phase
       }
     })
+  end
+
+  defp display_name(operation_id) do
+    operation_id
+    |> String.split(".")
+    |> Enum.drop(1)
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 end

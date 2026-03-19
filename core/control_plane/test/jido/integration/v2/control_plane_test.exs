@@ -5,13 +5,16 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
+  alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver
   alias Jido.Integration.V2.TargetDescriptor
@@ -34,32 +37,57 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     def manifest do
       Manifest.new!(%{
         connector: "test",
-        capabilities: [
-          Capability.new!(%{
-            id: "test.echo",
-            connector: "test",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :api_token,
+            install: %{required: true},
+            reauth: %{supported: false},
+            requested_scopes: ["echo:write"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Test",
+            description: "Control plane direct test connector",
+            category: "test",
+            tags: ["control_plane"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "test.echo",
+            name: "echo",
+            display_name: "Echo",
+            description: "Echoes the provided value",
             runtime_class: :direct,
-            kind: :operation,
-            transport_profile: :action,
+            transport_mode: :action,
             handler: PassthroughAction,
-            metadata: %{
-              required_scopes: ["echo:write"],
-              policy: %{
-                allowed_actor_ids: ["control-plane-test"],
-                allowed_tenant_ids: ["tenant-1"],
-                allowed_environments: [:prod],
-                allowed_runtime_classes: [:direct],
-                sandbox: %{
-                  level: :strict,
-                  egress: :restricted,
-                  approvals: :auto,
-                  file_scope: "/srv/tenant-1",
-                  allowed_tools: ["connector.echo"]
-                }
+            input_schema: Zoi.map(description: "Echo input"),
+            output_schema: Zoi.map(description: "Echo output"),
+            permissions: %{required_scopes: ["echo:write"]},
+            policy: %{
+              allowed_actor_ids: ["control-plane-test"],
+              allowed_tenant_ids: ["tenant-1"],
+              allowed_environments: [:prod],
+              allowed_runtime_classes: [:direct],
+              sandbox: %{
+                level: :strict,
+                egress: :restricted,
+                approvals: :auto,
+                file_scope: "/srv/tenant-1",
+                allowed_tools: ["connector.echo"]
               }
-            }
+            },
+            upstream: %{transport: :action},
+            jido: %{action: %{name: "test_echo"}}
           })
-        ]
+        ],
+        triggers: [],
+        runtime_families: [:direct]
       })
     end
   end
@@ -71,35 +99,60 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     def manifest do
       Manifest.new!(%{
         connector: "jido_session_test",
-        capabilities: [
-          Capability.new!(%{
-            id: "test.session.prompt",
-            connector: "jido_session_test",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :api_token,
+            install: %{required: true},
+            reauth: %{supported: false},
+            requested_scopes: ["session:execute"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Jido Session Test",
+            description: "Control plane session test connector",
+            category: "test",
+            tags: ["session"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "test.session.prompt",
+            name: "session_prompt",
+            display_name: "Session prompt",
+            description: "Prompts a session runtime",
             runtime_class: :session,
-            kind: :session_operation,
-            transport_profile: :stdio,
+            transport_mode: :stdio,
             handler: PassthroughAction,
-            metadata: %{
-              required_scopes: ["session:execute"],
-              runtime: %{
-                driver: "jido_session"
-              },
-              policy: %{
-                allowed_actor_ids: ["control-plane-test"],
-                allowed_tenant_ids: ["tenant-1"],
-                allowed_environments: [:prod],
-                allowed_runtime_classes: [:session],
-                sandbox: %{
-                  level: :strict,
-                  egress: :restricted,
-                  approvals: :manual,
-                  file_scope: "/srv/tenant-1/session",
-                  allowed_tools: ["test.session.prompt"]
-                }
+            input_schema: Zoi.map(description: "Session input"),
+            output_schema: Zoi.map(description: "Session output"),
+            permissions: %{required_scopes: ["session:execute"]},
+            runtime: %{
+              driver: "jido_session"
+            },
+            policy: %{
+              allowed_actor_ids: ["control-plane-test"],
+              allowed_tenant_ids: ["tenant-1"],
+              allowed_environments: [:prod],
+              allowed_runtime_classes: [:session],
+              sandbox: %{
+                level: :strict,
+                egress: :restricted,
+                approvals: :manual,
+                file_scope: "/srv/tenant-1/session",
+                allowed_tools: ["test.session.prompt"]
               }
-            }
+            },
+            upstream: %{transport: :stdio},
+            jido: %{action: %{name: "test_session_prompt"}}
           })
-        ]
+        ],
+        triggers: [],
+        runtime_families: [:session]
       })
     end
   end
@@ -111,39 +164,64 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     def manifest do
       Manifest.new!(%{
         connector: "asm_stream_test",
-        capabilities: [
-          Capability.new!(%{
-            id: "test.asm.stream",
-            connector: "asm_stream_test",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :api_token,
+            install: %{required: true},
+            reauth: %{supported: false},
+            requested_scopes: ["stream:execute"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "ASM Stream Test",
+            description: "Control plane stream test connector",
+            category: "test",
+            tags: ["stream"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "test.asm.stream",
+            name: "asm_stream",
+            display_name: "ASM stream",
+            description: "Streams through ASM",
             runtime_class: :stream,
-            kind: :stream_operation,
-            transport_profile: :stdio,
+            transport_mode: :stdio,
             handler: PassthroughAction,
-            metadata: %{
-              required_scopes: ["stream:execute"],
-              runtime: %{
-                driver: "asm",
-                provider: :claude,
-                options: %{
-                  driver: Jido.Integration.V2.ControlPlaneTest.AsmScriptedDriver
-                }
-              },
-              policy: %{
-                allowed_actor_ids: ["control-plane-test"],
-                allowed_tenant_ids: ["tenant-1"],
-                allowed_environments: [:prod],
-                allowed_runtime_classes: [:stream],
-                sandbox: %{
-                  level: :standard,
-                  egress: :restricted,
-                  approvals: :auto,
-                  file_scope: "/srv/tenant-1/asm",
-                  allowed_tools: ["test.asm.stream"]
-                }
+            input_schema: Zoi.map(description: "Stream input"),
+            output_schema: Zoi.map(description: "Stream output"),
+            permissions: %{required_scopes: ["stream:execute"]},
+            runtime: %{
+              driver: "asm",
+              provider: :claude,
+              options: %{
+                driver: Jido.Integration.V2.ControlPlaneTest.AsmScriptedDriver
               }
-            }
+            },
+            policy: %{
+              allowed_actor_ids: ["control-plane-test"],
+              allowed_tenant_ids: ["tenant-1"],
+              allowed_environments: [:prod],
+              allowed_runtime_classes: [:stream],
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                file_scope: "/srv/tenant-1/asm",
+                allowed_tools: ["test.asm.stream"]
+              }
+            },
+            upstream: %{transport: :stdio},
+            jido: %{action: %{name: "test_asm_stream"}}
           })
-        ]
+        ],
+        triggers: [],
+        runtime_families: [:stream]
       })
     end
   end
@@ -209,32 +287,57 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     def manifest do
       Manifest.new!(%{
         connector: "leaky",
-        capabilities: [
-          Capability.new!(%{
-            id: "leaky.echo",
-            connector: "leaky",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :api_token,
+            install: %{required: true},
+            reauth: %{supported: false},
+            requested_scopes: ["echo:write"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Leaky",
+            description: "Control plane redaction test connector",
+            category: "test",
+            tags: ["redaction"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "leaky.echo",
+            name: "leaky_echo",
+            display_name: "Leaky echo",
+            description: "Echoes through a leaky action",
             runtime_class: :direct,
-            kind: :operation,
-            transport_profile: :action,
+            transport_mode: :action,
             handler: LeakyAction,
-            metadata: %{
-              required_scopes: ["echo:write"],
-              policy: %{
-                allowed_actor_ids: ["control-plane-test"],
-                allowed_tenant_ids: ["tenant-1"],
-                allowed_environments: [:prod],
-                allowed_runtime_classes: [:direct],
-                sandbox: %{
-                  level: :strict,
-                  egress: :restricted,
-                  approvals: :auto,
-                  file_scope: "/srv/tenant-1",
-                  allowed_tools: ["connector.echo"]
-                }
+            input_schema: Zoi.map(description: "Leaky input"),
+            output_schema: Zoi.map(description: "Leaky output"),
+            permissions: %{required_scopes: ["echo:write"]},
+            policy: %{
+              allowed_actor_ids: ["control-plane-test"],
+              allowed_tenant_ids: ["tenant-1"],
+              allowed_environments: [:prod],
+              allowed_runtime_classes: [:direct],
+              sandbox: %{
+                level: :strict,
+                egress: :restricted,
+                approvals: :auto,
+                file_scope: "/srv/tenant-1",
+                allowed_tools: ["connector.echo"]
               }
-            }
+            },
+            upstream: %{transport: :action},
+            jido: %{action: %{name: "leaky_echo"}}
           })
-        ]
+        ],
+        triggers: [],
+        runtime_families: [:direct]
       })
     end
   end
