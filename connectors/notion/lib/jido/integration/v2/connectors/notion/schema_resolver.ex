@@ -84,11 +84,8 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaResolver do
   end
 
   defp resolve_page_parent_data_source(metadata, client, params, page) when is_map(page) do
-    case data_source_id_from_page(page) do
-      nil ->
-        {:ok, nil}
-
-      data_source_id ->
+    case parent_reference_from_page(page) do
+      {:data_source, data_source_id} ->
         fetch_data_source_context(
           metadata,
           client,
@@ -97,6 +94,32 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaResolver do
           page_id_from_page(page, params),
           [:page, :data_source]
         )
+
+      {:database, database_id} ->
+        resolve_database_backed_page_parent(metadata, client, params, page, database_id)
+
+      :none ->
+        {:ok, nil}
+    end
+  end
+
+  defp resolve_database_backed_page_parent(metadata, client, params, page, database_id) do
+    with {:ok, database} <- NotionSDK.Databases.retrieve(client, %{"database_id" => database_id}),
+         data_source_id when is_binary(data_source_id) <- database_data_source_id(database) do
+      fetch_data_source_context(
+        metadata,
+        client,
+        data_source_id,
+        :page_parent_data_source,
+        page_id_from_page(page, params),
+        [:page, :database, :data_source]
+      )
+    else
+      nil ->
+        {:ok, nil}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -159,10 +182,31 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaResolver do
   defp path_get(_map, []), do: nil
   defp path_get(_map, _path), do: nil
 
-  defp data_source_id_from_page(page) do
-    page
-    |> Contracts.get(:parent, %{})
-    |> Contracts.get(:data_source_id)
+  defp parent_reference_from_page(page) do
+    parent = Contracts.get(page, :parent, %{})
+
+    cond do
+      is_binary(Contracts.get(parent, :data_source_id)) ->
+        {:data_source, Contracts.get(parent, :data_source_id)}
+
+      is_binary(Contracts.get(parent, :database_id)) ->
+        {:database, Contracts.get(parent, :database_id)}
+
+      true ->
+        :none
+    end
+  end
+
+  defp database_data_source_id(database) do
+    database
+    |> Contracts.get(:data_sources, [])
+    |> Enum.map(&Contracts.get(&1, :id))
+    |> Enum.filter(&(is_binary(&1) and &1 != ""))
+    |> Enum.uniq()
+    |> case do
+      [data_source_id] -> data_source_id
+      _other -> nil
+    end
   end
 
   defp page_id_from_page(page, params) do

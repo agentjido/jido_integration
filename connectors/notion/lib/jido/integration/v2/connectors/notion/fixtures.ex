@@ -16,6 +16,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
   @base_url "https://api.notion.com"
   @page_id "00000000-0000-0000-0000-000000000010"
   @created_page_id "00000000-0000-0000-0000-000000000011"
+  @database_id "00000000-0000-0000-0000-000000000019"
   @data_source_id "00000000-0000-0000-0000-000000000020"
   @block_id "00000000-0000-0000-0000-000000000030"
   @comment_id "00000000-0000-0000-0000-000000000040"
@@ -42,6 +43,9 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
 
   @spec data_source_id() :: String.t()
   def data_source_id, do: @data_source_id
+
+  @spec database_id() :: String.t()
+  def database_id, do: @database_id
 
   @spec credential_ref() :: CredentialRef.t()
   def credential_ref do
@@ -340,6 +344,22 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
     }
   end
 
+  def output_data("notion.databases.retrieve") do
+    %{
+      "object" => "database",
+      "id" => @database_id,
+      "title" => [
+        %{"type" => "text", "plain_text" => "Publishing Queue Database"}
+      ],
+      "data_sources" => [
+        %{
+          "id" => @data_source_id,
+          "name" => "Publishing Queue"
+        }
+      ]
+    }
+  end
+
   def output_data("notion.comments.create") do
     %{
       "object" => "comment",
@@ -359,6 +379,9 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
 
   def request_url("notion.data_sources.retrieve"),
     do: "#{@base_url}/v1/data_sources/#{@data_source_id}"
+
+  def request_url("notion.databases.retrieve"),
+    do: "#{@base_url}/v1/databases/#{@database_id}"
 
   def request_url("notion.blocks.list_children"),
     do: "#{@base_url}/v1/blocks/#{@block_id}/children"
@@ -455,6 +478,9 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
 
   defp capability_id_for_request(:get, "/v1/data_sources/#{@data_source_id}"),
     do: "notion.data_sources.retrieve"
+
+  defp capability_id_for_request(:get, "/v1/databases/#{@database_id}"),
+    do: "notion.databases.retrieve"
 
   defp capability_id_for_request(:get, "/v1/blocks/#{@block_id}/children"),
     do: "notion.blocks.list_children"

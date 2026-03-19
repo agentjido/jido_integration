@@ -86,6 +86,8 @@ For the late-bound operations, the connector now:
   governing data-source schema
 - uses `NotionSDK.Pages.retrieve/2` when a page id must be dereferenced to find
   that governing data source first
+- falls back through `NotionSDK.Databases.retrieve/2` when a retrieved page
+  still reports a legacy `database_id` parent with a single child data source
 - validates late-bound input regions before the provider write or query call
 - leaves `output.data` provider-shaped while attaching a deterministic
   `schema_context` summary to connector events and artifact metadata
@@ -96,11 +98,14 @@ Current runtime behavior by operation:
   resolves `parent.data_source_id`, validates `properties`, then invokes
   `NotionSDK.Pages.create/2`
 - `notion.pages.retrieve`
-  retrieves the page first, resolves its parent data source when present, then
-  annotates the runtime result with that schema context
+  retrieves the page first, resolves its parent data source when present, and
+  falls back through the page's legacy database parent when that database has a
+  single child data source, then annotates the runtime result with that schema
+  context
 - `notion.pages.update`
-  retrieves the page, resolves its parent data source, validates
-  input `properties`, then invokes `NotionSDK.Pages.update/2`
+  retrieves the page, resolves its parent data source or single-child legacy
+  database parent, validates input `properties`, then invokes
+  `NotionSDK.Pages.update/2`
 - `notion.data_sources.query`
   resolves the target data source, validates `filter` and `sorts`, then invokes
   `NotionSDK.DataSources.query/2`

@@ -82,7 +82,8 @@ What it proves:
 - `notion.users.get_self` runs live through `Jido.Integration.V2.invoke/3`
 - `notion.pages.retrieve` runs through the same path
 - `notion.pages.retrieve` resolves parent data-source schema context when the
-  target page belongs to a data source
+  target page belongs to a data source, including the legacy database-parent
+  fallback when that database exposes a single child data source
 - result output, events, and artifact refs stay token-safe
 
 If you already know the provider metadata, you can also pass these optional
@@ -115,7 +116,8 @@ What it proves:
 - `notion.pages.create` validates page `properties` against the parent
   data-source schema before the provider write
 - `notion.pages.update` resolves the page parent data source, validates page
-  `properties`, and then performs the provider update
+  `properties`, and falls back through a single-child legacy database parent
+  before performing the provider update
 - cleanup by archiving the created page with `notion.pages.update`
 
 The write proof assumes the parent data source has a title property named

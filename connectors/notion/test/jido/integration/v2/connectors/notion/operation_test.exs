@@ -228,6 +228,67 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationTest do
     assert artifact.metadata.schema_context == connector_event.payload.schema_context
   end
 
+  test "resolves a legacy database parent before notion.pages.update preflight validation" do
+    capability = fetch_capability!("notion.pages.update")
+    update_url = Fixtures.request_url("notion.pages.update")
+
+    input =
+      Fixtures.input_for("notion.pages.update")
+      |> put_in([:properties, "Bogus"], %{"rich_text" => [%{"plain_text" => "nope"}]})
+
+    assert {:error, mapped_error, result} =
+             DirectRuntime.execute(
+               capability,
+               input,
+               execution_context("notion.pages.update",
+                 response: &legacy_database_parent_response/2
+               )
+             )
+
+    assert_receive {:transport_request, page_request, _context}
+    assert page_request.method == :get
+    assert page_request.url == Fixtures.request_url("notion.pages.retrieve")
+
+    assert_receive {:transport_request, database_request, _context}
+    assert database_request.method == :get
+    assert database_request.url == Fixtures.request_url("notion.databases.retrieve")
+
+    assert_receive {:transport_request, schema_request, _context}
+    assert schema_request.method == :get
+    assert schema_request.url == Fixtures.request_url("notion.data_sources.retrieve")
+
+    refute_receive {:transport_request, %{url: ^update_url}, _context}
+
+    assert mapped_error.code == "notion.preflight_validation"
+    assert mapped_error.class == "invalid_request"
+    assert mapped_error.retryability == :terminal
+    assert mapped_error.upstream_context.phase == :preflight
+
+    assert mapped_error.upstream_context.issues == [
+             %{
+               kind: :data_source_properties,
+               path: ["properties", "Bogus"],
+               property: "Bogus",
+               source: :page_parent_data_source
+             }
+           ]
+
+    assert mapped_error.upstream_context.schema_context == %{
+             context_source: :page_parent_data_source,
+             data_source_id: Fixtures.data_source_id(),
+             property_names: ["Status", "Title"],
+             resolved_via: [:page, :database, :data_source],
+             slot_kinds: [:data_source_properties],
+             source_page_id: "00000000-0000-0000-0000-000000000010"
+           }
+
+    assert Enum.map(result.events, & &1.type) == [
+             "attempt.started",
+             "connector.notion.pages.update.failed",
+             "attempt.failed"
+           ]
+  end
+
   test "annotates notion.pages.retrieve with resolved parent data-source schema context" do
     capability = fetch_capability!("notion.pages.retrieve")
     input = Fixtures.input_for("notion.pages.retrieve")
@@ -253,6 +314,46 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationTest do
              slot_kinds: [:data_source_properties],
              source_page_id: "00000000-0000-0000-0000-000000000010"
            }
+  end
+
+  test "annotates notion.pages.retrieve when the page resolves through a legacy database parent" do
+    capability = fetch_capability!("notion.pages.retrieve")
+    input = Fixtures.input_for("notion.pages.retrieve")
+
+    assert {:ok, result} =
+             DirectRuntime.execute(
+               capability,
+               input,
+               execution_context("notion.pages.retrieve",
+                 response: &legacy_database_parent_response/2
+               )
+             )
+
+    assert_receive {:transport_request, page_request, _context}
+    assert page_request.method == :get
+    assert page_request.url == Fixtures.request_url("notion.pages.retrieve")
+
+    assert_receive {:transport_request, database_request, _context}
+    assert database_request.method == :get
+    assert database_request.url == Fixtures.request_url("notion.databases.retrieve")
+
+    assert_receive {:transport_request, schema_request, _context}
+    assert schema_request.method == :get
+    assert schema_request.url == Fixtures.request_url("notion.data_sources.retrieve")
+
+    connector_event = Enum.at(result.events, 1)
+
+    assert connector_event.payload.schema_context == %{
+             context_source: :page_parent_data_source,
+             data_source_id: Fixtures.data_source_id(),
+             property_names: ["Status", "Title"],
+             resolved_via: [:page, :database, :data_source],
+             slot_kinds: [:data_source_properties],
+             source_page_id: "00000000-0000-0000-0000-000000000010"
+           }
+
+    assert [artifact] = result.artifacts
+    assert artifact.metadata.schema_context == connector_event.payload.schema_context
   end
 
   test "resolves schema before notion.data_sources.query and validates late-bound filter and sorts" do
@@ -338,9 +439,40 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationTest do
     )
   end
 
+  defp legacy_database_parent_response(request, _context) do
+    case {request.method, request.url} do
+      {:get, page_url} ->
+        if page_url == Fixtures.request_url("notion.pages.retrieve") do
+          ok_response(legacy_database_parent_page())
+        else
+          Fixtures.response_for_request(request)
+        end
+
+      _other ->
+        Fixtures.response_for_request(request)
+    end
+  end
+
+  defp legacy_database_parent_page do
+    Fixtures.output_data("notion.pages.retrieve")
+    |> Map.put("parent", %{
+      "type" => "database_id",
+      "database_id" => Fixtures.database_id()
+    })
+  end
+
   defp fetch_capability!(capability_id) do
     Enum.find(Notion.manifest().capabilities, &(&1.id == capability_id)) ||
       raise "missing capability #{capability_id}"
+  end
+
+  defp ok_response(body) do
+    {:ok,
+     %Pristine.Core.Response{
+       status: 200,
+       headers: %{"content-type" => "application/json"},
+       body: Jason.encode!(body)
+     }}
   end
 
   defp runtime_summary(result) do
