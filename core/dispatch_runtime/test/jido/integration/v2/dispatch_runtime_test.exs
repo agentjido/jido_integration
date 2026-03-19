@@ -142,6 +142,31 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     end
   end
 
+  defmodule BlockingExecuteTriggerHandler do
+    @behaviour Jido.Integration.V2.DispatchRuntime.Handler
+
+    @impl true
+    def execution_opts(trigger, %{attempt: attempt}) do
+      test_pid = get_in(trigger.payload, ["test_pid"])
+      block_ref = get_in(trigger.payload, ["block_ref"])
+
+      case {is_pid(test_pid), is_reference(block_ref)} do
+        {true, true} ->
+          send(test_pid, {:execution_opts_called, attempt, block_ref})
+
+          receive do
+            {:continue_execution_opts, ^block_ref} ->
+              ExecuteTriggerHandler.execution_opts(trigger, %{attempt: attempt})
+          after
+            5_000 -> {:error, :execution_opts_block_timeout}
+          end
+
+        _other ->
+          ExecuteTriggerHandler.execution_opts(trigger, %{attempt: attempt})
+      end
+    end
+  end
+
   setup do
     storage_dir = tmp_dir!()
     ControlPlane.reset!()
@@ -460,6 +485,8 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
       wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :running))
 
     assert running_dispatch.attempts == 1
+    run_id = run.run_id
+    assert_receive {:capability_attempt, ^run_id, 1}, 1_000
 
     kill_runtime(runtime)
 
@@ -476,6 +503,55 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
 
     assert {:ok, %Attempt{attempt: 2, status: :completed}} =
              ControlPlane.fetch_attempt("#{run.run_id}:2")
+  end
+
+  test "recovery re-runs the same attempt when the runtime dies before admission completes", %{
+    storage_dir: storage_dir
+  } do
+    block_ref = make_ref()
+
+    {:ok, runtime} = start_runtime(storage_dir)
+
+    assert :ok =
+             DispatchRuntime.register_handler(
+               runtime,
+               "desk.alert",
+               BlockingExecuteTriggerHandler
+             )
+
+    trigger =
+      trigger_fixture("delivery-restart-before-admission", %{
+        "test_pid" => self(),
+        "block_ref" => block_ref,
+        "value" => "after-restart"
+      })
+
+    assert {:ok, %{dispatch: dispatch, run: run}} =
+             DispatchRuntime.enqueue(runtime, trigger, max_attempts: 3)
+
+    running_dispatch =
+      wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :running))
+
+    assert running_dispatch.attempts == 1
+    assert_receive {:execution_opts_called, 1, ^block_ref}, 1_000
+
+    kill_runtime(runtime)
+
+    run_id = run.run_id
+
+    refute_received {:capability_attempt, ^run_id, 1}
+    assert :error = ControlPlane.fetch_attempt("#{run_id}:1")
+
+    {:ok, restarted} = start_runtime(storage_dir)
+    assert :ok = DispatchRuntime.register_handler(restarted, "desk.alert", ExecuteTriggerHandler)
+
+    completed_dispatch =
+      wait_for_dispatch(restarted, dispatch.dispatch_id, &(&1.status == :completed))
+
+    assert completed_dispatch.attempts == 1
+
+    assert {:ok, %Attempt{attempt: 1, status: :completed}} =
+             ControlPlane.fetch_attempt("#{run_id}:1")
   end
 
   defp start_runtime(storage_dir, opts \\ []) do

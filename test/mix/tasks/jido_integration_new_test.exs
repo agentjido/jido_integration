@@ -4,7 +4,6 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   import ExUnit.CaptureIO
 
   alias Jido.Integration.TestTmpDir
-  alias Jido.Integration.Workspace.Monorepo
   alias Mix.Tasks.Jido.Integration.New, as: NewTask
 
   @mix_sandbox_boot """
@@ -157,8 +156,8 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     on_exit(fn -> TestTmpDir.cleanup!(root) end)
     File.mkdir_p!(Path.join(root, "connectors"))
-    File.ln_s!(Path.join(Monorepo.root_dir(), "core"), Path.join(root, "core"))
-    File.ln_s!(Path.join(Monorepo.root_dir(), "mix.lock"), Path.join(root, "mix.lock"))
+    File.ln_s!(Path.join(Blitz.MixWorkspace.root_dir(), "core"), Path.join(root, "core"))
+    File.ln_s!(Path.join(Blitz.MixWorkspace.root_dir(), "mix.lock"), Path.join(root, "mix.lock"))
     File.mkdir_p!(hex_home)
 
     if File.exists?(Path.join(source_hex_home, "cache.ets")) do
@@ -183,7 +182,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       end
 
     env = [
-      {"MIX_DEPS_PATH", Path.join(Monorepo.root_dir(), "deps")},
+      {"MIX_DEPS_PATH", Path.join(Blitz.MixWorkspace.root_dir(), "deps")},
       {"MIX_BUILD_PATH", Path.join(workspace_root, "_build")},
       {"MIX_LOCKFILE", lockfile_path},
       {"HEX_HOME", Path.join(workspace_root, ".hex")},

@@ -645,13 +645,7 @@ defmodule Jido.Integration.V2.DispatchRuntime do
       next_dispatch =
         case dispatch.status do
           :running ->
-            %{
-              dispatch
-              | status: :queued,
-                available_at: now,
-                last_error: error_snapshot(:runtime_restarted, :recovery),
-                updated_at: now
-            }
+            recover_running_dispatch(dispatch, now)
 
           _other ->
             dispatch
@@ -660,6 +654,30 @@ defmodule Jido.Integration.V2.DispatchRuntime do
       {dispatch_id, next_dispatch}
     end)
   end
+
+  defp recover_running_dispatch(%Dispatch{} = dispatch, now) do
+    {attempts, reason} =
+      case admitted_attempt?(dispatch) do
+        true -> {dispatch.attempts, :runtime_restarted}
+        false -> {max(dispatch.attempts - 1, 0), :runtime_restarted_before_attempt_admitted}
+      end
+
+    %{
+      dispatch
+      | status: :queued,
+        attempts: attempts,
+        available_at: now,
+        last_error: error_snapshot(reason, :recovery),
+        updated_at: now
+    }
+  end
+
+  defp admitted_attempt?(%Dispatch{run_id: run_id, attempts: attempts})
+       when is_binary(run_id) and attempts > 0 do
+    match?({:ok, _attempt}, ControlPlane.fetch_attempt("#{run_id}:#{attempts}"))
+  end
+
+  defp admitted_attempt?(%Dispatch{}), do: false
 
   defp dispatch_id(%TriggerRecord{} = trigger) do
     hash_input =

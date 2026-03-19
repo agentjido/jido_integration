@@ -9,6 +9,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
+      blitz_workspace: blitz_workspace(),
       dialyzer: dialyzer(),
       docs: docs(),
       name: "Jido Integration Workspace",
@@ -35,8 +36,18 @@ defmodule Jido.Integration.Workspace.MixProject do
   end
 
   defp aliases do
+    monorepo_aliases = [
+      "monorepo.deps.get": ["blitz.workspace deps_get"],
+      "monorepo.format": ["blitz.workspace format"],
+      "monorepo.compile": ["blitz.workspace compile"],
+      "monorepo.test": ["blitz.workspace test"],
+      "monorepo.credo": ["blitz.workspace credo"],
+      "monorepo.dialyzer": ["blitz.workspace dialyzer"],
+      "monorepo.docs": ["blitz.workspace docs"]
+    ]
+
     mr_aliases =
-      ~w[compile test format credo dialyzer docs deps.get]
+      ~w[deps.get format compile test credo dialyzer docs]
       |> Enum.map(fn task -> {:"mr.#{task}", ["monorepo.#{task}"]} end)
 
     [
@@ -50,7 +61,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       ],
       quality: ["monorepo.credo --strict", "monorepo.dialyzer"],
       "docs.all": ["monorepo.docs"]
-    ] ++ mr_aliases
+    ] ++ monorepo_aliases ++ mr_aliases
   end
 
   defp dialyzer do
@@ -75,6 +86,62 @@ defmodule Jido.Integration.Workspace.MixProject do
         "docs/webhook_routing.md",
         "docs/reference_apps.md",
         "docs/observability_and_pressure_semantics.md"
+      ]
+    ]
+  end
+
+  def blitz_workspace_test_env(%{project_path: project_path}) do
+    base_name =
+      System.get_env(
+        "JIDO_INTEGRATION_V2_DB_BASE_NAME",
+        System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_test")
+      )
+
+    [
+      {"JIDO_INTEGRATION_V2_DB_BASE_NAME", base_name},
+      {"JIDO_INTEGRATION_V2_DB_NAME",
+       Blitz.MixWorkspace.hashed_project_name(base_name, project_path, max_bytes: 63)}
+    ]
+  end
+
+  defp blitz_workspace do
+    [
+      root: __DIR__,
+      projects: [".", "core/*", "connectors/*", "apps/*"],
+      isolation: [
+        deps_path: true,
+        build_path: true,
+        lockfile: true,
+        hex_home: "_build/hex",
+        unset_env: ["HEX_API_KEY"]
+      ],
+      parallelism: [
+        env: "JIDO_MONOREPO_MAX_CONCURRENCY",
+        multiplier: :auto,
+        base: [
+          deps_get: 3,
+          format: 4,
+          compile: 2,
+          test: 2,
+          credo: 2,
+          dialyzer: 1,
+          docs: 1
+        ],
+        overrides: []
+      ],
+      tasks: [
+        deps_get: [args: ["deps.get"], preflight?: false],
+        format: [args: ["format"]],
+        compile: [args: ["compile", "--warnings-as-errors"]],
+        test: [
+          args: ["test"],
+          mix_env: "test",
+          color: true,
+          env: &__MODULE__.blitz_workspace_test_env/1
+        ],
+        credo: [args: ["credo"]],
+        dialyzer: [args: ["dialyzer", "--force-check"]],
+        docs: [args: ["docs"]]
       ]
     ]
   end

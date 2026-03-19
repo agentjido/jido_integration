@@ -18,7 +18,6 @@ defmodule Mix.Tasks.Jido.Conformance do
   alias Jido.Integration.V2.Conformance
   alias Jido.Integration.V2.Conformance.Renderer
   alias Jido.Integration.V2.Conformance.Report
-  alias Jido.Integration.Workspace.Monorepo
 
   @shortdoc "Run v2-native connector conformance from the repo root"
 
@@ -130,7 +129,7 @@ defmodule Mix.Tasks.Jido.Conformance do
   end
 
   defp run_in_project!(project_path, module_string, normalized_module_name, profile) do
-    project_root = Path.expand(project_path, Monorepo.root_dir())
+    project_root = Path.expand(project_path, Blitz.MixWorkspace.root_dir())
     build_path = project_build_path(project_root)
 
     deps_get_project!(project_root, build_path)
@@ -326,7 +325,7 @@ defmodule Mix.Tasks.Jido.Conformance do
   defp resolve_project_path!(module_string) do
     declaration = "defmodule " <> normalize_module_name(module_string)
 
-    case Enum.find(Monorepo.package_paths(), &project_defines_module?(&1, declaration)) do
+    case Enum.find(Blitz.MixWorkspace.package_paths(), &project_defines_module?(&1, declaration)) do
       nil ->
         Mix.raise("Module #{module_string} could not be resolved to a child package")
 
@@ -336,7 +335,7 @@ defmodule Mix.Tasks.Jido.Conformance do
   end
 
   defp project_defines_module?(project_path, declaration) do
-    root = Monorepo.root_dir()
+    root = Blitz.MixWorkspace.root_dir()
     pattern = Path.join(root, project_path <> "/lib/**/*.ex")
 
     pattern

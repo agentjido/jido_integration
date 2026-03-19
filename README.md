@@ -244,11 +244,28 @@ mix mr.docs
 
 These are shortcuts for the corresponding `mix monorepo.*` commands above.
 
-The `mix monorepo.*` tasks now fan out across the workspace in parallel through
-the sibling `../blitz` library. Pass `--max-concurrency N` or set
-`JIDO_MONOREPO_MAX_CONCURRENCY` to override the task-specific concurrency caps.
+The repo no longer carries its own monorepo runner implementation. The
+`monorepo.*` commands are root aliases to the generic `mix blitz.workspace
+<task>` runner from the sibling `../blitz` library.
+
+Workspace policy now lives in the root `mix.exs` under `:blitz_workspace`:
+
+- project discovery comes from the configured `projects` list
+- task behavior comes from the configured `tasks` list
+- concurrency weights come from `parallelism.base`
+- the default machine scaler comes from `parallelism.multiplier: :auto`
+- optional per-task overrides still let the repo pin exceptional tasks
+- `--max-concurrency N` and `JIDO_MONOREPO_MAX_CONCURRENCY` still override the
+  current invocation directly
+
+The intended model is:
+
+- task weight lives in `base`
+- machine size lives in `multiplier`
+- hard per-run overrides still win when you need them
 
 For `mix monorepo.test` and `mix ci`, each package test run gets its own
 isolated Postgres database name derived from the base
 `JIDO_INTEGRATION_V2_DB_NAME`. That keeps DB-backed package tests parallel
-without cross-package resets colliding in the shared store.
+without cross-package resets colliding in the shared store, and the child
+`mix test` processes run with `--color` so ExUnit ANSI output is preserved.

@@ -3,8 +3,6 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
 
   import Mix.Generator
 
-  alias Jido.Integration.Workspace.Monorepo
-
   @runtime_classes [:direct, :session, :stream]
   @default_runtime_class :direct
 
@@ -54,7 +52,9 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
 
   defp build_context(connector_name, opts) do
     connector_name = normalize_connector_name!(connector_name)
-    workspace_root = opts |> Keyword.get(:workspace_root, Monorepo.root_dir()) |> Path.expand()
+
+    workspace_root =
+      opts |> Keyword.get(:workspace_root, Blitz.MixWorkspace.root_dir()) |> Path.expand()
 
     runtime_class =
       resolve_runtime_class!(Keyword.get(opts, :runtime_class, @default_runtime_class))
@@ -399,7 +399,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
   defp resolve_workspace_lockfile_path(workspace_root) do
     candidates = [
       Path.join(workspace_root, "mix.lock"),
-      Path.join(Monorepo.root_dir(), "mix.lock")
+      Path.join(Blitz.MixWorkspace.root_dir(), "mix.lock")
     ]
 
     Enum.find(candidates, &File.exists?/1)

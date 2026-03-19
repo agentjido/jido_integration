@@ -1,10 +1,8 @@
-defmodule Jido.Integration.Workspace.MonorepoTest do
+defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
   use ExUnit.Case, async: true
 
-  alias Jido.Integration.Workspace.Monorepo
-
   test "enumerates the tooling-root projects in stable order" do
-    assert Monorepo.project_paths() == [
+    assert Blitz.MixWorkspace.project_paths() == [
              ".",
              "core/auth",
              "core/conformance",
@@ -30,52 +28,87 @@ defmodule Jido.Integration.Workspace.MonorepoTest do
            ]
   end
 
-  test "builds mix args for each supported task" do
-    assert Monorepo.mix_args(:compile, []) == ["compile", "--warnings-as-errors"]
-    assert Monorepo.mix_args(:test, ["--seed", "0"]) == ["test", "--seed", "0"]
-    assert Monorepo.mix_args(:format, ["--check-formatted"]) == ["format", "--check-formatted"]
+  test "builds task args for each supported workspace task" do
+    assert Blitz.MixWorkspace.task_args(Mix.Project.config(), :compile, []) == [
+             "compile",
+             "--warnings-as-errors"
+           ]
+
+    assert Blitz.MixWorkspace.task_args(Mix.Project.config(), :test, ["--seed", "0"]) == [
+             "test",
+             "--color",
+             "--seed",
+             "0"
+           ]
+
+    assert Blitz.MixWorkspace.task_args(Mix.Project.config(), :format, ["--check-formatted"]) == [
+             "format",
+             "--check-formatted"
+           ]
   end
 
   test "uses env-specific build paths for child commands" do
-    test_env = Map.new(Monorepo.command_env("connectors/github", :test))
-    compile_env = Map.new(Monorepo.command_env("core/contracts", :compile))
+    test_env =
+      Map.new(Blitz.MixWorkspace.command_env(Mix.Project.config(), "connectors/github", :test))
+
+    compile_env =
+      Map.new(Blitz.MixWorkspace.command_env(Mix.Project.config(), "core/contracts", :compile))
 
     assert test_env["MIX_DEPS_PATH"] ==
-             Path.expand("connectors/github/deps", Monorepo.root_dir())
+             Path.expand("connectors/github/deps", Blitz.MixWorkspace.root_dir())
 
     assert test_env["MIX_BUILD_PATH"] ==
-             Path.expand("connectors/github/_build/test", Monorepo.root_dir())
+             Path.expand("connectors/github/_build/test", Blitz.MixWorkspace.root_dir())
 
     assert test_env["MIX_LOCKFILE"] ==
-             Path.expand("connectors/github/mix.lock", Monorepo.root_dir())
+             Path.expand("connectors/github/mix.lock", Blitz.MixWorkspace.root_dir())
 
     assert compile_env["MIX_BUILD_PATH"] ==
-             Path.expand("core/contracts/_build/dev", Monorepo.root_dir())
+             Path.expand("core/contracts/_build/dev", Blitz.MixWorkspace.root_dir())
 
     assert test_env["JIDO_INTEGRATION_V2_DB_NAME"] ==
-             Monorepo.test_database_name("connectors/github")
+             Blitz.MixWorkspace.hashed_project_name(
+               "jido_integration_v2_test",
+               "connectors/github",
+               max_bytes: 63
+             )
 
     refute Map.has_key?(compile_env, "JIDO_INTEGRATION_V2_DB_NAME")
   end
 
   test "extracts runner arguments without disturbing mix task arguments" do
-    assert Monorepo.split_runner_args(["--max-concurrency", "4", "--strict"]) ==
+    assert Blitz.MixWorkspace.split_runner_args(["--max-concurrency", "4", "--strict"]) ==
              {["--strict"], [max_concurrency: 4]}
 
-    assert Monorepo.split_runner_args(["-j", "2", "--seed", "0"]) ==
+    assert Blitz.MixWorkspace.split_runner_args(["-j", "2", "--seed", "0"]) ==
              {["--seed", "0"], [max_concurrency: 2]}
 
-    assert Monorepo.split_runner_args(["--max-concurrency=3", "--check-formatted"]) ==
+    assert Blitz.MixWorkspace.split_runner_args(["--max-concurrency=3", "--check-formatted"]) ==
              {["--check-formatted"], [max_concurrency: 3]}
   end
 
-  test "derives stable, package-specific test database names" do
-    assert Monorepo.test_database_name(".") == "jido_integration_v2_test_workspace_cdb4ee2a"
+  test "uses auto machine scaling for workspace parallelism by default" do
+    workspace_config = Mix.Project.config()[:blitz_workspace]
 
-    assert Monorepo.test_database_name("core/dispatch_runtime") ==
+    assert workspace_config[:parallelism][:multiplier] == :auto
+  end
+
+  test "derives stable, package-specific test database names" do
+    assert Blitz.MixWorkspace.hashed_project_name("jido_integration_v2_test", ".", max_bytes: 63) ==
+             "jido_integration_v2_test_workspace_cdb4ee2a"
+
+    assert Blitz.MixWorkspace.hashed_project_name(
+             "jido_integration_v2_test",
+             "core/dispatch_runtime",
+             max_bytes: 63
+           ) ==
              "jido_integration_v2_test_core_dispatch_runtime_7510d0e3"
 
-    assert Monorepo.test_database_name("apps/trading_ops") ==
+    assert Blitz.MixWorkspace.hashed_project_name(
+             "jido_integration_v2_test",
+             "apps/trading_ops",
+             max_bytes: 63
+           ) ==
              "jido_integration_v2_test_apps_trading_ops_57fc89c1"
   end
 end
