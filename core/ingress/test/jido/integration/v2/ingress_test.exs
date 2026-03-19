@@ -56,6 +56,16 @@ defmodule Jido.Integration.V2.IngressTest do
             checkpoint: %{},
             dedupe: %{},
             verification: %{secret_name: "webhook_secret"},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Ingress webhook proofs stay connector-local"
+            },
+            schema_policy: %{
+              config: :passthrough,
+              signal: :passthrough,
+              justification:
+                "Ingress tests preserve webhook payload passthrough because these triggers are not projected common consumer surfaces"
+            },
             jido: %{sensor: %{name: "github_issue_ingest"}}
           })
         ],
@@ -107,6 +117,16 @@ defmodule Jido.Integration.V2.IngressTest do
             checkpoint: %{},
             dedupe: %{},
             verification: %{},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Ingress polling proofs stay connector-local"
+            },
+            schema_policy: %{
+              config: :passthrough,
+              signal: :passthrough,
+              justification:
+                "Ingress tests preserve polling payload passthrough because these triggers are not projected common consumer surfaces"
+            },
             jido: %{sensor: %{name: "market_tick_ingest"}}
           })
         ],

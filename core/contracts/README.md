@@ -26,6 +26,7 @@ Public structs and behaviours for the greenfield platform:
 
 Current hardening guarantees:
 
+- the authored catalog and projection structs now follow the canonical `@schema Zoi.struct(__MODULE__, ...)` pattern with derived `@type`, `@enforce_keys`, `defstruct`, `schema/0`, `new/1`, and `new!/1`
 - `ArtifactRef` is a first-class public object with explicit checksum, transport, payload reference, retention, and redaction metadata
 - `TargetDescriptor` is a first-class public object with explicit capability identity, runtime class, semantic version, health, location, and compatibility negotiation inputs
 - `Run` is the durable work record and can carry artifact refs plus an optional target id
@@ -37,7 +38,12 @@ Current hardening guarantees:
 - `Gateway.Policy` is the normalized capability-side security contract for actor, tenant, environment, runtime, operation, and sandbox checks
 - `PolicyDecision` can allow work, deny it, or shed it before attempt creation
 - `InvocationRequest` is the typed public invoke helper that normalizes stable facade fields, uses `connection_id` as the public auth binding, and derives the requested capability allowlist by default
-- `ConsumerProjection` derives deterministic action and plugin projection rules from the authored manifest without reintroducing handwritten capability catalogs, and rejects duplicate projected action names or module collisions within one connector
+- `OperationSpec` and `TriggerSpec` now distinguish three layers explicitly:
+  - provider inventory in connector-local catalogs
+  - runtime-published manifest entries
+  - projected common consumer surfaces through `consumer_surface`
+- `schema_policy` is explicit on authored operations and triggers so placeholder schemas cannot silently leak into published or projected surfaces
+- `ConsumerProjection` derives deterministic action and plugin projection rules only from authored entries marked as normalized common consumer surfaces, and rejects duplicate projected action names or module collisions within one connector
 - `GeneratedAction` and `GeneratedPlugin` project those rules into the current real `Jido.Action` and `Jido.Plugin` APIs
 - generated actions build typed `InvocationRequest` structs and call the fixed `Jido.Integration.V2.invoke/1` facade path rather than honoring a caller-supplied invoker module
 - `CredentialRef` remains durable while `CredentialLease` is the short-lived execution boundary
@@ -70,6 +76,24 @@ Current hardening guarantees:
   runtime context without collapsing back to an untyped map wrapper
 - exposes `to_opts/1` so `invoke/1` and `invoke/3` can share one normalized
   request shape
+
+`OperationSpec` and `TriggerSpec`
+
+- use canonical Zoi-backed struct derivation
+- carry explicit `consumer_surface` metadata:
+  - `:common` means the entry projects into generated consumer surfaces
+  - `:connector_local` means the entry is a stable runtime capability but not a generated common surface
+- carry explicit `schema_policy` metadata:
+  - `:defined` for concrete schemas
+  - `:dynamic` for future runtime-resolved schemas
+  - `:passthrough` only with an explicit justification, and never for a projected common surface
+
+`ConsumerProjection`
+
+- projects only authored entries whose `consumer_surface.mode == :common`
+- derives generated action names from normalized surface semantics, not raw provider operation ids
+- keeps provider operation ids stable as internal/runtime-facing capability ids
+- leaves provider-specific long-tail inventory at the connector or SDK boundary instead of auto-projecting it into `Jido.Action` or `Jido.Plugin`
 
 ## Installation
 

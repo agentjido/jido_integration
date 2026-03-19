@@ -72,6 +72,16 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
             checkpoint: %{},
             dedupe: %{},
             verification: %{secret_name: "webhook_secret"},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Webhook router proofs stay connector-local"
+            },
+            schema_policy: %{
+              config: :passthrough,
+              signal: :passthrough,
+              justification:
+                "Webhook router tests preserve payload passthrough because these triggers are not projected common consumer surfaces"
+            },
             jido: %{sensor: %{name: "github_issue_ingest"}}
           })
         ],

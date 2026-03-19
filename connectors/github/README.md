@@ -15,7 +15,7 @@ Proves:
 
 ## Capability Surface
 
-The connector publishes these direct capabilities:
+The connector publishes these direct runtime capabilities:
 
 - `github.issue.list`
 - `github.issue.fetch`
@@ -28,7 +28,23 @@ The connector publishes these direct capabilities:
 
 All direct capabilities currently require the GitHub `repo` scope.
 
-The same authored operation specs now also project into:
+These runtime capability ids stay provider-facing on purpose. They are the
+stable internal routing ids used by the control plane, conformance layer, and
+connector review surface.
+
+The generated consumer surface is a separate, curated common layer. The same
+authored operation specs project into these normalized action names:
+
+- `work_item_list`
+- `work_item_fetch`
+- `work_item_create`
+- `work_item_update`
+- `work_item_label_add`
+- `work_item_close`
+- `comment_create`
+- `comment_update`
+
+That common layer now projects into:
 
 - the derived executable entry catalog used by the runtime and conformance seam
 - generated actions under `lib/jido/integration/v2/connectors/git_hub/generated/actions.ex`
@@ -41,9 +57,16 @@ request contract. The generated surface does not expose a caller-supplied
 invoker override seam.
 
 The authored A0 slice lives in rich `OperationSpec` records inside
-`lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex`. The older
-entry shape is now derived from those specs for the runtime handler,
-deterministic fixtures, and connector conformance coverage.
+`lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex`. Those specs
+now declare both:
+
+- the provider-facing runtime capability id
+- the normalized `consumer_surface` metadata that decides whether and how the
+  operation projects into generated consumer surfaces
+
+This package does not auto-project arbitrary `github_ex` methods. The current
+common surface is intentionally limited to issue and comment workflows that are
+meaningfully reusable across providers.
 
 The generated plugin uses the real `Jido.Plugin` `actions:` and
 `subscriptions/2` surface. In this phase its subscriptions remain empty.

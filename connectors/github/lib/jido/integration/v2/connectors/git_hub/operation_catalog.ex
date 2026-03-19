@@ -414,6 +414,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
     operation_id = Keyword.fetch!(opts, :operation_id)
     allowed_tools = Keyword.fetch!(opts, :allowed_tools)
     metadata = Keyword.fetch!(opts, :metadata)
+    consumer_surface = common_consumer_surface(operation_id)
 
     OperationSpec.new!(%{
       operation_id: operation_id,
@@ -436,9 +437,11 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
           allowed_tools
         ),
       upstream: Keyword.fetch!(opts, :upstream),
+      consumer_surface: consumer_surface,
+      schema_policy: %{input: :defined, output: :defined},
       jido: %{
         action: %{
-          name: String.replace(operation_id, ".", "_")
+          name: consumer_surface.action_name
         }
       },
       metadata: metadata
@@ -467,6 +470,34 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   defp published?(%OperationSpec{} = operation) do
     Map.get(operation.metadata, :publication) == :public
   end
+
+  defp common_consumer_surface("github.issue.list"),
+    do: %{mode: :common, normalized_id: "work_item.list", action_name: "work_item_list"}
+
+  defp common_consumer_surface("github.issue.fetch"),
+    do: %{mode: :common, normalized_id: "work_item.fetch", action_name: "work_item_fetch"}
+
+  defp common_consumer_surface("github.issue.create"),
+    do: %{mode: :common, normalized_id: "work_item.create", action_name: "work_item_create"}
+
+  defp common_consumer_surface("github.issue.update"),
+    do: %{mode: :common, normalized_id: "work_item.update", action_name: "work_item_update"}
+
+  defp common_consumer_surface("github.issue.label"),
+    do: %{
+      mode: :common,
+      normalized_id: "work_item.label_add",
+      action_name: "work_item_label_add"
+    }
+
+  defp common_consumer_surface("github.issue.close"),
+    do: %{mode: :common, normalized_id: "work_item.close", action_name: "work_item_close"}
+
+  defp common_consumer_surface("github.comment.create"),
+    do: %{mode: :common, normalized_id: "comment.create", action_name: "comment_create"}
+
+  defp common_consumer_surface("github.comment.update"),
+    do: %{mode: :common, normalized_id: "comment.update", action_name: "comment_update"}
 
   defp strict_object(fields) do
     Contracts.strict_object!(fields)

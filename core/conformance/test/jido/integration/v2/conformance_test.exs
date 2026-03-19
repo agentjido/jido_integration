@@ -65,6 +65,16 @@ defmodule Jido.Integration.V2.ConformanceTest do
               }
             },
             upstream: %{protocol: :stdio},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Session runtime proofs stay connector-local in conformance"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Runtime-fit conformance keeps this session proof connector connector-local"
+            },
             jido: %{action: %{name: "broken_session_exec"}}
           }
         ],
@@ -119,6 +129,15 @@ defmodule Jido.Integration.V2.ConformanceTest do
             checkpoint: %{strategy: :cursor},
             dedupe: %{strategy: :event_id},
             verification: %{secret_name: "webhook_secret"},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Trigger delivery stays above the connector package"
+            },
+            schema_policy: %{
+              config: :passthrough,
+              signal: :passthrough,
+              justification: "Ingress conformance keeps this trigger connector connector-local"
+            },
             policy: %{
               environment: %{allowed: [:prod]},
               sandbox: %{
@@ -170,8 +189,14 @@ defmodule Jido.Integration.V2.ConformanceTest do
                  runtime_class: :direct,
                  transport_mode: :sdk,
                  handler: TriggerHandler,
-                 input_schema: Zoi.map(),
-                 output_schema: Zoi.map(),
+                 input_schema:
+                   Zoi.object(%{
+                     issue_id: Zoi.string()
+                   }),
+                 output_schema:
+                   Zoi.object(%{
+                     issue_id: Zoi.string()
+                   }),
                  permissions: %{required_scopes: ["issues:write"]},
                  policy: %{
                    environment: %{allowed: [:prod]},
@@ -183,6 +208,12 @@ defmodule Jido.Integration.V2.ConformanceTest do
                    }
                  },
                  upstream: %{method: "POST", path: "/issues"},
+                 consumer_surface: %{
+                   mode: :common,
+                   normalized_id: "work_item.update",
+                   action_name: "work_item_update"
+                 },
+                 schema_policy: %{input: :defined, output: :defined},
                  jido: %{action: %{name: "drifted_issue_write"}}
                })
 
@@ -192,13 +223,24 @@ defmodule Jido.Integration.V2.ConformanceTest do
                runtime_class: :direct,
                delivery_mode: :webhook,
                handler: TriggerHandler,
-               config_schema: Zoi.map(),
-               signal_schema: Zoi.map(),
+               config_schema:
+                 Zoi.object(%{
+                   webhook_secret: Zoi.string()
+                 }),
+               signal_schema:
+                 Zoi.object(%{
+                   issue_id: Zoi.string()
+                 }),
                permissions: %{required_scopes: ["issues:admin"]},
                checkpoint: %{strategy: :cursor},
                dedupe: %{strategy: :event_id},
                verification: %{secret_name: "webhook_secret"},
                secret_requirements: ["signing_secret"],
+               consumer_surface: %{
+                 mode: :connector_local,
+                 reason: "Webhook delivery stays above the connector package"
+               },
+               schema_policy: %{config: :defined, signal: :defined},
                jido: %{sensor: %{name: "drifted_issue_updated"}}
              })
 
@@ -240,6 +282,142 @@ defmodule Jido.Integration.V2.ConformanceTest do
     end
   end
 
+  defmodule ProjectedPlaceholderConnector do
+    @behaviour Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "projected_placeholder",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :oauth2,
+          install: %{required: true},
+          reauth: %{supported: true},
+          requested_scopes: ["issues:read"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        },
+        catalog: %{
+          display_name: "Projected Placeholder",
+          description: "Connector with an invalid projected common surface schema policy",
+          category: "test",
+          tags: ["projection"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [
+          %{
+            operation_id: "projected_placeholder.issue.fetch",
+            name: "issue_fetch",
+            display_name: "Issue fetch",
+            description: "Uses passthrough schemas even though it is projected",
+            runtime_class: :direct,
+            transport_mode: :sdk,
+            handler: TriggerHandler,
+            input_schema: Zoi.map(),
+            output_schema: Zoi.map(),
+            permissions: %{required_scopes: ["issues:read"]},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["projected_placeholder.issue.fetch"]
+              }
+            },
+            upstream: %{method: "GET", path: "/issues/{issue_id}"},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "work_item_fetch"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "This should fail because projected common surfaces need real schemas"
+            },
+            jido: %{}
+          }
+        ],
+        triggers: [],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
+  defmodule DeferredPassthroughConnector do
+    @behaviour Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "deferred_passthrough",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :oauth2,
+          install: %{required: true},
+          reauth: %{supported: true},
+          requested_scopes: ["provider:raw"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        },
+        catalog: %{
+          display_name: "Deferred Passthrough",
+          description:
+            "Connector-local runtime operation with explicit passthrough schema justification",
+          category: "test",
+          tags: ["projection"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [
+          %{
+            operation_id: "deferred_passthrough.provider.raw_lookup",
+            name: "provider_raw_lookup",
+            display_name: "Provider raw lookup",
+            description:
+              "A connector-local operation that intentionally stays out of the common consumer surface",
+            runtime_class: :direct,
+            transport_mode: :sdk,
+            handler: TriggerHandler,
+            input_schema: Zoi.map(),
+            output_schema: Zoi.map(),
+            permissions: %{required_scopes: ["provider:raw"]},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["deferred_passthrough.provider.raw_lookup"]
+              }
+            },
+            upstream: %{method: "GET", path: "/provider/raw_lookup"},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason:
+                "Provider-specific long-tail methods are available through the connector boundary only"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Connector-local passthrough while this runtime slice remains outside the normalized common consumer surface"
+            },
+            jido: %{}
+          }
+        ],
+        triggers: [],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
   test "returns the stable connector foundation profile names" do
     assert Conformance.profiles() == [:connector_foundation]
   end
@@ -259,6 +437,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
 
     assert Enum.map(report.suite_results, & &1.id) == [
              :manifest_contract,
+             :consumer_surface_projection,
              :capability_contracts,
              :runtime_class_fit,
              :policy_contract,
@@ -337,6 +516,37 @@ defmodule Jido.Integration.V2.ConformanceTest do
              manifest_suite.checks,
              "manifest.auth.secret_names.cover_trigger_secrets"
            )
+  end
+
+  test "fails conformance when a projected common surface uses passthrough schemas" do
+    assert {:ok, report} =
+             Conformance.run(
+               ProjectedPlaceholderConnector,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-03-12 00:00:00Z]
+             )
+
+    projection_suite = Enum.find(report.suite_results, &(&1.id == :consumer_surface_projection))
+
+    assert projection_suite.status == :failed
+
+    assert failed_check?(
+             projection_suite.checks,
+             "projected_placeholder.issue.fetch.common_surface.schemas_defined"
+           )
+  end
+
+  test "allows connector-local passthrough schemas when the exemption is explicit" do
+    assert {:ok, report} =
+             Conformance.run(
+               DeferredPassthroughConnector,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-03-12 00:00:00Z]
+             )
+
+    projection_suite = Enum.find(report.suite_results, &(&1.id == :consumer_surface_projection))
+
+    assert projection_suite.status == :passed
   end
 
   test "returns an error for an unknown profile" do

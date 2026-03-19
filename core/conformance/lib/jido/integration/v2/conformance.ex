@@ -13,6 +13,7 @@ defmodule Jido.Integration.V2.Conformance do
   alias Jido.Integration.V2.Conformance.Report
   alias Jido.Integration.V2.Conformance.SuiteResult
   alias Jido.Integration.V2.Conformance.Suites.CapabilityContracts
+  alias Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection
   alias Jido.Integration.V2.Conformance.Suites.DeterministicFixtures
   alias Jido.Integration.V2.Conformance.Suites.IngressDefinitionDiscipline
   alias Jido.Integration.V2.Conformance.Suites.ManifestContract
@@ -22,6 +23,7 @@ defmodule Jido.Integration.V2.Conformance do
 
   @suite_modules %{
     manifest_contract: ManifestContract,
+    consumer_surface_projection: ConsumerSurfaceProjection,
     capability_contracts: CapabilityContracts,
     runtime_class_fit: RuntimeClassFit,
     policy_contract: PolicyContract,

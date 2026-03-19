@@ -68,6 +68,21 @@ When the workspace root already has a `mix.lock`, the scaffold copies that lock
 snapshot into the new package so it participates in the same monorepo
 dependency surface as the existing child packages.
 
+## Inventory, Runtime Publication, And Consumer Projection
+
+Connector authors now need to keep three layers distinct:
+
+1. provider inventory
+   Keep the full upstream SDK inventory in connector-local catalogs or helper modules when that is useful for reviewability, parity tracking, or future planning.
+2. runtime publication
+   Only put the runtime capabilities you are actually publishing through `Manifest.operations` or `Manifest.triggers` into the authored manifest.
+3. common consumer projection
+   Only mark an authored entry as `consumer_surface.mode: :common` when it represents a curated normalized surface that should become a generated `Jido.Action`, `Jido.Sensor`, or `Jido.Plugin` entry.
+
+If an authored runtime capability is useful but still provider-specific, keep it `consumer_surface.mode: :connector_local`.
+
+If a provider SDK method is long-tail inventory that should remain at the SDK boundary, leave it out of the manifest entirely instead of inflating the generated Jido surface.
+
 ## Current Options
 
 - `--runtime-class`: `direct`, `session`, or `stream`; only `direct` is
@@ -85,6 +100,8 @@ After generation:
    published operation or trigger `required_scopes`.
    Keep `auth.secret_names` aligned as the authored superset of any trigger
    verification secret or `secret_requirements`.
+   Declare `consumer_surface` explicitly on every authored operation or trigger.
+   Declare `schema_policy` explicitly on every authored operation or trigger.
 2. implement the action or provider logic inside the generated package
 3. declare every child-package dependency explicitly in that connector package
 4. update the companion fixtures so conformance reflects the real behavior
@@ -129,3 +146,7 @@ The root scaffold does not currently emit:
 
 If those are needed later, add them as explicit package or app work, not as
 hand-built drift around the generated baseline.
+
+It also does not assume that every authored runtime capability should become a
+generated common-surface action or plugin entry. Authors must make that
+projection decision explicitly.

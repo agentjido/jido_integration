@@ -69,6 +69,12 @@ defmodule <%= @connector_module %> do
             }
           },
           upstream: %{transport: :action},
+          consumer_surface: %{
+            mode: :connector_local,
+            reason:
+              "Scaffold placeholder operation stays connector-local until a normalized common surface is authored"
+          },
+          schema_policy: %{input: :defined, output: :defined},
           jido: %{action: %{name: "<%= @connector_name %>_sample_perform"}}
         })
       ],

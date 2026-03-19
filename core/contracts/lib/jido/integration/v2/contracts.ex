@@ -437,6 +437,58 @@ defmodule Jido.Integration.V2.Contracts do
     raise ArgumentError, "#{field_name} must be a map, got: #{inspect(value)}"
   end
 
+  @spec any_map_schema() :: zoi_schema()
+  def any_map_schema do
+    Zoi.map(Zoi.any(), Zoi.any(), [])
+  end
+
+  @spec non_empty_string_schema(String.t()) :: zoi_schema()
+  def non_empty_string_schema(field_name) when is_binary(field_name) do
+    Zoi.string() |> Zoi.refine({__MODULE__, :validate_non_empty_string_refine, [field_name]})
+  end
+
+  @spec string_list_schema(String.t()) :: zoi_schema()
+  def string_list_schema(field_name) when is_binary(field_name) do
+    Zoi.list(non_empty_string_schema(field_name))
+  end
+
+  @spec module_schema(String.t()) :: zoi_schema()
+  def module_schema(field_name) when is_binary(field_name) do
+    Zoi.atom() |> Zoi.refine({__MODULE__, :validate_module_refine, [field_name]})
+  end
+
+  @spec atomish_schema(String.t()) :: zoi_schema()
+  def atomish_schema(field_name) when is_binary(field_name) do
+    Zoi.union([Zoi.atom(), Zoi.string()])
+    |> Zoi.transform({__MODULE__, :normalize_atomish_transform, [field_name]})
+  end
+
+  @spec enumish_schema([atom()], String.t()) :: zoi_schema()
+  def enumish_schema(values, field_name) when is_list(values) and is_binary(field_name) do
+    Zoi.union([Zoi.enum(values), Zoi.string()])
+    |> Zoi.transform({__MODULE__, :normalize_enumish_transform, [values, field_name]})
+  end
+
+  @spec zoi_schema_schema(String.t()) :: zoi_schema()
+  def zoi_schema_schema(field_name) when is_binary(field_name) do
+    Zoi.any() |> Zoi.refine({__MODULE__, :validate_zoi_schema_refine, [field_name]})
+  end
+
+  @spec placeholder_zoi_schema?(term()) :: boolean()
+  def placeholder_zoi_schema?(%Zoi.Types.Any{}), do: true
+
+  def placeholder_zoi_schema?(%Zoi.Types.Map{fields: [], unrecognized_keys: mode})
+      when mode != :error,
+      do: true
+
+  def placeholder_zoi_schema?(%Zoi.Types.Map{
+        key_type: %Zoi.Types.Any{},
+        value_type: %Zoi.Types.Any{}
+      }),
+      do: true
+
+  def placeholder_zoi_schema?(_value), do: false
+
   @doc """
   Builds a `Zoi.object/2` schema from an ordered keyword list.
 
@@ -507,6 +559,65 @@ defmodule Jido.Integration.V2.Contracts do
       nil -> raise ArgumentError, "invalid #{field_name}: #{inspect(value)}"
       enum_value -> enum_value
     end
+  end
+
+  @doc false
+  @spec validate_non_empty_string_refine(term(), String.t(), keyword()) ::
+          :ok | {:error, String.t()}
+  def validate_non_empty_string_refine(value, field_name, _opts) do
+    validate_non_empty_string!(value, field_name)
+    :ok
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
+  @spec validate_module_refine(term(), String.t(), keyword()) :: :ok | {:error, String.t()}
+  def validate_module_refine(value, field_name, _opts) do
+    validate_module!(value, field_name)
+    :ok
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
+  @spec validate_zoi_schema_refine(term(), String.t(), keyword()) :: :ok | {:error, String.t()}
+  def validate_zoi_schema_refine(value, field_name, _opts) do
+    validate_zoi_schema!(value, field_name)
+    :ok
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
+  @spec normalize_atomish_transform(term(), String.t(), keyword()) ::
+          atom() | {:error, String.t()}
+  def normalize_atomish_transform(value, field_name, _opts) do
+    normalize_atomish!(value, field_name)
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
+  @spec normalize_enumish_transform(term(), [atom()], String.t(), keyword()) ::
+          atom() | {:error, String.t()}
+  def normalize_enumish_transform(value, values, field_name, _opts) do
+    case value do
+      atom when is_atom(atom) ->
+        if Enum.member?(values, atom) do
+          atom
+        else
+          {:error, "invalid #{field_name}: #{inspect(atom)}"}
+        end
+
+      binary when is_binary(binary) ->
+        validate_enum_string!(binary, values, field_name)
+
+      other ->
+        {:error, "invalid #{field_name}: #{inspect(other)}"}
+    end
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
   end
 
   defp validate_non_negative_integer!(value, _field_name)

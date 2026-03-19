@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.ConsumerProjection do
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
+  alias Jido.Integration.V2.Schema
 
   @default_invoker :"Elixir.Jido.Integration.V2"
 
@@ -15,43 +16,43 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     Projected metadata for a generated `Jido.Action` surface.
     """
 
-    @enforce_keys [
-      :connector_module,
-      :plugin_module,
-      :module,
-      :operation_id,
-      :action_name,
-      :description,
-      :category,
-      :tags,
-      :schema,
-      :output_schema
-    ]
-    defstruct [
-      :connector_module,
-      :plugin_module,
-      :module,
-      :operation_id,
-      :action_name,
-      :description,
-      :category,
-      :tags,
-      :schema,
-      :output_schema
-    ]
+    alias Jido.Integration.V2.Contracts
+    alias Jido.Integration.V2.Schema
 
-    @type t :: %__MODULE__{
-            connector_module: module(),
-            plugin_module: module(),
-            module: module(),
-            operation_id: String.t(),
-            action_name: String.t(),
-            description: String.t(),
-            category: String.t(),
-            tags: [String.t()],
-            schema: term(),
-            output_schema: term()
-          }
+    @schema Zoi.struct(
+              __MODULE__,
+              %{
+                connector_module: Contracts.module_schema("action_projection.connector_module"),
+                plugin_module: Contracts.module_schema("action_projection.plugin_module"),
+                module: Contracts.module_schema("action_projection.module"),
+                operation_id: Contracts.non_empty_string_schema("action_projection.operation_id"),
+                normalized_id:
+                  Contracts.non_empty_string_schema("action_projection.normalized_id"),
+                action_name: Contracts.non_empty_string_schema("action_projection.action_name"),
+                description: Contracts.non_empty_string_schema("action_projection.description"),
+                category: Contracts.non_empty_string_schema("action_projection.category"),
+                tags: Contracts.string_list_schema("action_projection.tags"),
+                schema: Contracts.zoi_schema_schema("action_projection.schema"),
+                output_schema: Contracts.zoi_schema_schema("action_projection.output_schema")
+              },
+              coerce: true
+            )
+
+    @type t :: unquote(Zoi.type_spec(@schema))
+
+    @enforce_keys Zoi.Struct.enforce_keys(@schema)
+    defstruct Zoi.Struct.struct_fields(@schema)
+
+    @spec schema() :: Zoi.schema()
+    def schema, do: @schema
+
+    @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+    def new(%__MODULE__{} = projection), do: {:ok, projection}
+    def new(attrs), do: Schema.new(__MODULE__, @schema, attrs)
+
+    @spec new!(map() | keyword() | t()) :: t()
+    def new!(%__MODULE__{} = projection), do: projection
+    def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs)
   end
 
   defmodule PluginProjection do
@@ -59,67 +60,68 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     Projected metadata for a generated `Jido.Plugin` bundle.
     """
 
-    @enforce_keys [
-      :connector_module,
-      :module,
-      :name,
-      :state_key,
-      :description,
-      :category,
-      :tags,
-      :config_schema,
-      :actions
-    ]
-    defstruct [
-      :connector_module,
-      :module,
-      :name,
-      :state_key,
-      :description,
-      :category,
-      :tags,
-      :config_schema,
-      :actions
-    ]
+    alias Jido.Integration.V2.Contracts
+    alias Jido.Integration.V2.Schema
 
-    @type t :: %__MODULE__{
-            connector_module: module(),
-            module: module(),
-            name: String.t(),
-            state_key: atom(),
-            description: String.t(),
-            category: String.t(),
-            tags: [String.t()],
-            config_schema: term(),
-            actions: [module()]
-          }
+    @schema Zoi.struct(
+              __MODULE__,
+              %{
+                connector_module: Contracts.module_schema("plugin_projection.connector_module"),
+                module: Contracts.module_schema("plugin_projection.module"),
+                name: Contracts.non_empty_string_schema("plugin_projection.name"),
+                state_key: Contracts.atomish_schema("plugin_projection.state_key"),
+                description: Contracts.non_empty_string_schema("plugin_projection.description"),
+                category: Contracts.non_empty_string_schema("plugin_projection.category"),
+                tags: Contracts.string_list_schema("plugin_projection.tags"),
+                config_schema: Contracts.zoi_schema_schema("plugin_projection.config_schema"),
+                actions: Zoi.list(Contracts.module_schema("plugin_projection.actions"))
+              },
+              coerce: true
+            )
+
+    @type t :: unquote(Zoi.type_spec(@schema))
+
+    @enforce_keys Zoi.Struct.enforce_keys(@schema)
+    defstruct Zoi.Struct.struct_fields(@schema)
+
+    @spec schema() :: Zoi.schema()
+    def schema, do: @schema
+
+    @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+    def new(%__MODULE__{} = projection), do: {:ok, projection}
+    def new(attrs), do: Schema.new(__MODULE__, @schema, attrs)
+
+    @spec new!(map() | keyword() | t()) :: t()
+    def new!(%__MODULE__{} = projection), do: projection
+    def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs)
   end
 
   @spec action_projection!(module(), String.t()) :: ActionProjection.t()
   def action_projection!(connector_module, operation_id)
       when is_atom(connector_module) and is_binary(operation_id) do
     manifest = fetch_manifest!(connector_module)
-    operation = fetch_operation!(manifest, operation_id)
+    operation = fetch_projected_operation!(manifest, operation_id)
 
-    %ActionProjection{
+    ActionProjection.new!(%{
       connector_module: connector_module,
       plugin_module: plugin_module(connector_module),
       module: action_module(connector_module, operation),
       operation_id: operation.operation_id,
+      normalized_id: OperationSpec.normalized_surface_id(operation),
       action_name: action_name(operation),
       description: operation.description || "Generated action for #{operation.operation_id}",
       category: manifest.catalog.category,
       tags: action_tags(manifest, operation),
       schema: operation.input_schema,
       output_schema: operation.output_schema
-    }
+    })
   end
 
   @spec plugin_projection!(module()) :: PluginProjection.t()
   def plugin_projection!(connector_module) when is_atom(connector_module) do
     manifest = fetch_manifest!(connector_module)
 
-    %PluginProjection{
+    PluginProjection.new!(%{
       connector_module: connector_module,
       module: plugin_module(connector_module),
       name: plugin_name(manifest),
@@ -129,21 +131,26 @@ defmodule Jido.Integration.V2.ConsumerProjection do
       tags: plugin_tags(manifest),
       config_schema: plugin_config_schema(manifest),
       actions: action_modules(connector_module)
-    }
+    })
   end
 
   @spec action_module(module(), String.t() | OperationSpec.t()) :: module()
   def action_module(connector_module, operation_id_or_spec)
 
-  def action_module(connector_module, %OperationSpec{name: name})
+  def action_module(connector_module, %OperationSpec{} = operation)
       when is_atom(connector_module) do
-    Module.concat([connector_module, Generated, Actions, Macro.camelize(name)])
+    Module.concat([
+      connector_module,
+      Generated,
+      Actions,
+      operation |> action_name() |> Macro.camelize()
+    ])
   end
 
   def action_module(connector_module, operation_id) when is_atom(connector_module) do
     connector_module
     |> fetch_manifest!()
-    |> fetch_operation!(operation_id)
+    |> fetch_projected_operation!(operation_id)
     |> then(&action_module(connector_module, &1))
   end
 
@@ -151,8 +158,13 @@ defmodule Jido.Integration.V2.ConsumerProjection do
   def action_modules(connector_module) when is_atom(connector_module) do
     connector_module
     |> fetch_manifest!()
-    |> Map.fetch!(:operations)
+    |> projected_operations()
     |> Enum.map(&action_module(connector_module, &1))
+  end
+
+  @spec projected_operations(Manifest.t()) :: [OperationSpec.t()]
+  def projected_operations(%Manifest{} = manifest) do
+    Enum.filter(manifest.operations, &OperationSpec.common_consumer_surface?/1)
   end
 
   @spec plugin_module(module()) :: module()
@@ -266,7 +278,7 @@ defmodule Jido.Integration.V2.ConsumerProjection do
   end
 
   defp validate_generated_action_projections!(connector_module, %Manifest{} = manifest) do
-    operations = manifest.operations
+    operations = projected_operations(manifest)
 
     duplicate_modules =
       operations
@@ -292,16 +304,25 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     end
   end
 
-  defp fetch_operation!(manifest, operation_id) do
-    Manifest.fetch_operation(manifest, operation_id) ||
-      raise ArgumentError, "unknown authored operation #{inspect(operation_id)}"
+  defp fetch_projected_operation!(manifest, operation_id) do
+    case Manifest.fetch_operation(manifest, operation_id) do
+      %OperationSpec{} = operation ->
+        if OperationSpec.common_consumer_surface?(operation) do
+          operation
+        else
+          raise ArgumentError,
+                "operation #{inspect(operation_id)} is not projected into the common consumer surface"
+        end
+
+      nil ->
+        raise ArgumentError, "unknown authored operation #{inspect(operation_id)}"
+    end
   end
 
-  defp action_name(%OperationSpec{jido: jido, operation_id: operation_id}) do
-    jido
-    |> Contracts.get(:action, %{})
-    |> Contracts.get(:name, String.replace(operation_id, ".", "_"))
-    |> Contracts.validate_non_empty_string!("operation.jido.action.name")
+  defp action_name(%OperationSpec{} = operation) do
+    operation
+    |> OperationSpec.action_name()
+    |> Contracts.validate_non_empty_string!("operation.consumer_surface.action_name")
   end
 
   defp action_tags(manifest, operation) do

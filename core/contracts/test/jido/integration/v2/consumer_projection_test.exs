@@ -67,6 +67,12 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
               }
             },
             upstream: %{method: "GET", path: "/issues/{issue_id}"},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "work_item_fetch"
+            },
+            schema_policy: %{input: :defined, output: :defined},
             jido: %{action: %{name: "acme_issue_fetch"}}
           })
         ],
@@ -131,6 +137,12 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
               }
             },
             upstream: %{method: "GET", path: "/issues/{issue_id}"},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "work_item_fetch"
+            },
+            schema_policy: %{input: :defined, output: :defined},
             jido: %{action: %{name: "duplicate_issue"}}
           }),
           OperationSpec.new!(%{
@@ -160,7 +172,116 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
               }
             },
             upstream: %{method: "GET", path: "/issues/{issue_id}"},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "work_item_fetch"
+            },
+            schema_policy: %{input: :defined, output: :defined},
             jido: %{action: %{name: "duplicate_issue"}}
+          })
+        ],
+        triggers: [],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
+  defmodule MixedSurfaceConnector do
+    @behaviour Jido.Integration.V2.Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "mixed",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :oauth2,
+            install: %{required: true},
+            reauth: %{supported: true},
+            requested_scopes: ["issues:read", "provider:raw"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Mixed",
+            description: "Connector with projected and connector-local runtime operations",
+            category: "developer_tools",
+            tags: ["issues", "mixed"],
+            docs_refs: ["https://docs.example.test/mixed"],
+            maturity: :beta,
+            publication: :public
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "mixed.issue.fetch",
+            name: "issue_fetch",
+            display_name: "Issue fetch",
+            description: "Fetches one issue through a normalized common surface",
+            runtime_class: :direct,
+            transport_mode: :sdk,
+            handler: Handler,
+            input_schema:
+              Zoi.object(%{
+                issue_id: Zoi.string()
+              }),
+            output_schema:
+              Zoi.object(%{
+                id: Zoi.string()
+              }),
+            permissions: %{required_scopes: ["issues:read"]},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["mixed.issue.fetch"]
+              }
+            },
+            upstream: %{method: "GET", path: "/issues/{issue_id}"},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "work_item_fetch"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{}
+          }),
+          OperationSpec.new!(%{
+            operation_id: "mixed.provider.raw_lookup",
+            name: "provider_raw_lookup",
+            display_name: "Provider raw lookup",
+            description: "Keeps a provider-specific long-tail method out of projected surfaces",
+            runtime_class: :direct,
+            transport_mode: :sdk,
+            handler: Handler,
+            input_schema: Zoi.map(),
+            output_schema: Zoi.map(),
+            permissions: %{required_scopes: ["provider:raw"]},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["mixed.provider.raw_lookup"]
+              }
+            },
+            upstream: %{method: "GET", path: "/provider/raw_lookup"},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Provider-specific long-tail behavior stays at the SDK boundary"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Connector-local runtime passthrough while the operation remains outside the common projected surface"
+            },
+            jido: %{}
           })
         ],
         triggers: [],
@@ -173,10 +294,11 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
     projection = ConsumerProjection.action_projection!(AcmeConnector, "acme.issue.fetch")
     [operation] = AcmeConnector.manifest().operations
 
-    assert projection.module == AcmeConnector.Generated.Actions.IssueFetch
+    assert projection.module == AcmeConnector.Generated.Actions.WorkItemFetch
     assert projection.plugin_module == AcmeConnector.Generated.Plugin
     assert projection.operation_id == "acme.issue.fetch"
-    assert projection.action_name == "acme_issue_fetch"
+    assert projection.normalized_id == "work_item.fetch"
+    assert projection.action_name == "work_item_fetch"
     assert projection.description == operation.description
     assert projection.category == "developer_tools"
     assert projection.tags == ["issues", "acme", "direct"]
@@ -196,16 +318,16 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
     assert projection.description == "Generated plugin bundle for Acme"
     assert projection.category == "developer_tools"
     assert projection.tags == ["issues", "acme", "generated"]
-    assert projection.actions == [AcmeConnector.Generated.Actions.IssueFetch]
+    assert projection.actions == [AcmeConnector.Generated.Actions.WorkItemFetch]
 
     assert {:ok, parsed_config} =
              Zoi.parse(
                projection.config_schema,
-               %{connection_id: "conn-acme-1", enabled_actions: ["acme_issue_fetch"]}
+               %{connection_id: "conn-acme-1", enabled_actions: ["work_item_fetch"]}
              )
 
     assert parsed_config.connection_id == "conn-acme-1"
-    assert parsed_config.enabled_actions == ["acme_issue_fetch"]
+    assert parsed_config.enabled_actions == ["work_item_fetch"]
   end
 
   test "builds typed invocation requests from params and plugin runtime context" do
@@ -241,5 +363,67 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
                  fn ->
                    ConsumerProjection.plugin_projection!(DuplicateProjectedSurfaceConnector)
                  end
+  end
+
+  test "projects only explicitly common consumer surfaces" do
+    projection = ConsumerProjection.plugin_projection!(MixedSurfaceConnector)
+
+    assert projection.actions == [MixedSurfaceConnector.Generated.Actions.WorkItemFetch]
+    assert ConsumerProjection.action_modules(MixedSurfaceConnector) == projection.actions
+
+    assert_raise ArgumentError, ~r/not projected into the common consumer surface/, fn ->
+      ConsumerProjection.action_projection!(MixedSurfaceConnector, "mixed.provider.raw_lookup")
+    end
+  end
+
+  test "projection structs expose canonical Zoi schema helpers" do
+    action_projection_attrs = %{
+      connector_module: AcmeConnector,
+      plugin_module: AcmeConnector.Generated.Plugin,
+      module: AcmeConnector.Generated.Actions.WorkItemFetch,
+      operation_id: "acme.issue.fetch",
+      normalized_id: "work_item.fetch",
+      action_name: "work_item_fetch",
+      description: "Fetches one Acme issue",
+      category: "developer_tools",
+      tags: ["issues", "acme", "direct"],
+      schema:
+        Zoi.object(%{
+          issue_id: Zoi.string()
+        }),
+      output_schema:
+        Zoi.object(%{
+          id: Zoi.string()
+        })
+    }
+
+    plugin_projection_attrs = %{
+      connector_module: AcmeConnector,
+      module: AcmeConnector.Generated.Plugin,
+      name: "acme",
+      state_key: :acme,
+      description: "Generated plugin bundle for Acme",
+      category: "developer_tools",
+      tags: ["issues", "acme", "generated"],
+      config_schema:
+        Zoi.object(%{
+          connection_id: Zoi.string(),
+          enabled_actions: Zoi.list(Zoi.string()) |> Zoi.default([])
+        }),
+      actions: [AcmeConnector.Generated.Actions.WorkItemFetch]
+    }
+
+    for {module, attrs} <- [
+          {ConsumerProjection.ActionProjection, action_projection_attrs},
+          {ConsumerProjection.PluginProjection, plugin_projection_attrs}
+        ] do
+      assert function_exported?(module, :schema, 0)
+      assert function_exported?(module, :new, 1)
+      assert function_exported?(module, :new!, 1)
+      assert %Zoi.Types.Struct{module: ^module} = module.schema()
+      assert {:ok, struct} = module.new(attrs)
+      assert module == struct.__struct__
+      assert ^struct = module.new!(attrs)
+    end
   end
 end

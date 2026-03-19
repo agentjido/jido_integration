@@ -69,6 +69,16 @@ defmodule Jido.Integration.V2ExecuteRunTest do
               }
             },
             upstream: %{transport: :action},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Platform retry proofs stay connector-local"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Retry test connector uses passthrough payloads because it is not part of the normalized common consumer surface"
+            },
             jido: %{action: %{name: "platform_retry_echo"}}
           })
         ],

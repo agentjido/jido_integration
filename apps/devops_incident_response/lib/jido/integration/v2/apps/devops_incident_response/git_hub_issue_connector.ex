@@ -49,6 +49,16 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector d
           checkpoint: %{},
           dedupe: %{},
           verification: %{secret_name: "webhook_secret"},
+          consumer_surface: %{
+            mode: :connector_local,
+            reason: "Hosted webhook composition stays app-local"
+          },
+          schema_policy: %{
+            config: :passthrough,
+            signal: :passthrough,
+            justification:
+              "App-level hosted webhook handling preserves payload passthrough because it is not a normalized projected common sensor surface"
+          },
           jido: %{sensor: %{name: "github_issue_ingest"}}
         })
       ],

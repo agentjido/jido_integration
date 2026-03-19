@@ -4,8 +4,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures
-  alias Jido.Integration.V2.Connectors.GitHub.Generated.Actions.IssueFetch
-  alias Jido.Integration.V2.Connectors.GitHub.Generated.Actions.IssueList
+  alias Jido.Integration.V2.Connectors.GitHub.Generated.Actions.WorkItemFetch
+  alias Jido.Integration.V2.Connectors.GitHub.Generated.Actions.WorkItemList
   alias Jido.Integration.V2.Connectors.GitHub.Generated.Plugin, as: GeneratedPlugin
   alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.Contracts
@@ -72,25 +72,25 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
   end
 
   test "generated actions invoke the public facade with typed request bindings from params or plugin config" do
-    projection = IssueFetch.generated_action_projection()
+    projection = WorkItemFetch.generated_action_projection()
 
     assert {:ok, _parsed_input} =
-             Zoi.parse(IssueFetch.schema(), %{repo: "acme/widgets", issue_number: 7})
+             Zoi.parse(WorkItemFetch.schema(), %{repo: "acme/widgets", issue_number: 7})
 
     assert {:error, _reason} =
-             Zoi.parse(IssueFetch.schema(), %{repo: "widgets"})
+             Zoi.parse(WorkItemFetch.schema(), %{repo: "widgets"})
 
     assert {:error, _reason} =
-             Zoi.parse(IssueFetch.schema(), %{repo: "acme/widgets/extra", issue_number: 7})
+             Zoi.parse(WorkItemFetch.schema(), %{repo: "acme/widgets/extra", issue_number: 7})
 
     assert {:error, _reason} =
-             Zoi.parse(IssueFetch.schema(), %{repo: "acme/widgets", issue_number: 0})
+             Zoi.parse(WorkItemFetch.schema(), %{repo: "acme/widgets", issue_number: 0})
 
     assert {:error, _reason} =
-             Zoi.parse(IssueList.schema(), %{repo: "acme/widgets", page: 0, per_page: 2})
+             Zoi.parse(WorkItemList.schema(), %{repo: "acme/widgets", page: 0, per_page: 2})
 
     assert {:error, _reason} =
-             Zoi.parse(IssueList.schema(), %{repo: "acme/widgets", page: 1, per_page: -1})
+             Zoi.parse(WorkItemList.schema(), %{repo: "acme/widgets", page: 1, per_page: -1})
 
     assert %InvocationRequest{
              capability_id: "github.issue.fetch",
@@ -116,7 +116,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
              )
 
     assert {:error, _reason} =
-             IssueFetch.run(
+             WorkItemFetch.run(
                %{repo: "acme/widgets", issue_number: 7, connection_id: "conn-param"},
                %{invoker: FakeInvoker, trace_id: "trace-generated-1"}
              )
@@ -174,11 +174,11 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
     assert {:ok, parsed_config} =
              Zoi.parse(
                plugin.config_schema(),
-               %{connection_id: "conn-gh", enabled_actions: ["github_issue_fetch"]}
+               %{connection_id: "conn-gh", enabled_actions: ["work_item_fetch"]}
              )
 
     assert parsed_config.connection_id == "conn-gh"
-    assert parsed_config.enabled_actions == ["github_issue_fetch"]
+    assert parsed_config.enabled_actions == ["work_item_fetch"]
 
     assert plugin.manifest().actions == expected_actions
     assert plugin.manifest().subscriptions == []
@@ -186,8 +186,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
 
     assert plugin.plugin_spec(%{
              connection_id: "conn-gh",
-             enabled_actions: ["github_issue_fetch"]
-           }).actions == [IssueFetch]
+             enabled_actions: ["work_item_fetch"]
+           }).actions == [WorkItemFetch]
   end
 
   defp register_connector! do

@@ -8,78 +8,71 @@ defmodule Jido.Integration.V2.Manifest do
   alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.OperationSpec
+  alias Jido.Integration.V2.Schema
   alias Jido.Integration.V2.TriggerSpec
 
   @runtime_order %{direct: 0, session: 1, stream: 2}
 
-  @enforce_keys [
-    :connector,
-    :auth,
-    :catalog,
-    :operations,
-    :triggers,
-    :runtime_families,
-    :capabilities
-  ]
-  defstruct [
-    :connector,
-    :auth,
-    :catalog,
-    :operations,
-    :triggers,
-    :runtime_families,
-    :capabilities,
-    metadata: %{}
-  ]
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              connector: Contracts.non_empty_string_schema("manifest.connector"),
+              auth: AuthSpec.schema(),
+              catalog: CatalogSpec.schema(),
+              operations: Zoi.list(OperationSpec.schema()) |> Zoi.default([]),
+              triggers: Zoi.list(TriggerSpec.schema()) |> Zoi.default([]),
+              runtime_families:
+                Zoi.list(
+                  Contracts.enumish_schema(
+                    [:direct, :session, :stream],
+                    "manifest.runtime_families"
+                  )
+                )
+                |> Zoi.default([]),
+              capabilities: Zoi.list(Capability.schema()) |> Zoi.default([]),
+              metadata: Contracts.any_map_schema() |> Zoi.default(%{})
+            },
+            coerce: true
+          )
 
-  @type t :: %__MODULE__{
-          connector: String.t(),
-          auth: AuthSpec.t(),
-          catalog: CatalogSpec.t(),
-          operations: [OperationSpec.t()],
-          triggers: [TriggerSpec.t()],
-          runtime_families: [Contracts.runtime_class()],
-          capabilities: [Capability.t()],
-          metadata: map()
-        }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @spec new!(map()) :: t()
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
+
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
+
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = manifest), do: validate(manifest)
+
+  def new(attrs) when is_map(attrs) or is_list(attrs) do
+    attrs = if is_list(attrs), do: Map.new(attrs), else: Map.new(attrs)
+
+    with :ok <- reject_manual_capability_authoring(attrs),
+         {:ok, manifest} <- Schema.new(__MODULE__, @schema, attrs),
+         {:ok, manifest} <- validate(manifest) do
+      {:ok, manifest}
+    else
+      {:error, %ArgumentError{} = error} -> {:error, error}
+    end
+  end
+
+  def new(attrs), do: Schema.new(__MODULE__, @schema, attrs)
+
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = manifest) do
+    case validate(manifest) do
+      {:ok, validated} -> validated
+      {:error, %ArgumentError{} = error} -> raise error
+    end
+  end
+
   def new!(attrs) do
-    attrs = Map.new(attrs)
-    reject_manual_capability_authoring!(attrs)
-
-    connector =
-      Contracts.validate_non_empty_string!(Map.fetch!(attrs, :connector), "manifest.connector")
-
-    auth = AuthSpec.new!(Map.fetch!(attrs, :auth))
-    catalog = CatalogSpec.new!(Map.fetch!(attrs, :catalog))
-    operations = normalize_operations(attrs)
-    triggers = normalize_triggers(attrs)
-    ensure_authored_entries_present!(operations, triggers)
-    validate_auth_requested_scopes!(auth, operations, triggers)
-    validate_auth_secret_names!(auth, triggers)
-
-    runtime_families =
-      attrs
-      |> Map.get(:runtime_families, derive_runtime_families(operations, triggers))
-      |> normalize_runtime_families!()
-
-    derived_runtime_families = derive_runtime_families(operations, triggers)
-    validate_runtime_families!(runtime_families, derived_runtime_families)
-
-    capabilities = derive_capabilities(connector, operations, triggers)
-    ensure_unique_capability_ids!(capabilities)
-
-    struct!(__MODULE__, %{
-      connector: connector,
-      auth: auth,
-      catalog: catalog,
-      operations: operations,
-      triggers: triggers,
-      runtime_families: runtime_families,
-      capabilities: capabilities,
-      metadata: Contracts.validate_map!(Map.get(attrs, :metadata, %{}), "manifest.metadata")
-    })
+    case new(attrs) do
+      {:ok, manifest} -> manifest
+      {:error, %ArgumentError{} = error} -> raise error
+    end
   end
 
   @spec capabilities(t()) :: [Capability.t()]
@@ -100,46 +93,46 @@ defmodule Jido.Integration.V2.Manifest do
     Enum.find(capabilities(manifest), &(&1.id == capability_id))
   end
 
-  defp reject_manual_capability_authoring!(attrs) do
-    if Map.has_key?(attrs, :capabilities) or Map.has_key?(attrs, "capabilities") do
-      raise ArgumentError,
-            "manual capability authoring is retired; author auth, catalog, operations, and triggers instead"
+  defp validate(%__MODULE__{} = manifest) do
+    operations = manifest.operations |> Enum.sort_by(& &1.operation_id)
+    triggers = manifest.triggers |> Enum.sort_by(& &1.trigger_id)
+
+    runtime_families =
+      manifest.runtime_families
+      |> normalize_runtime_families!()
+      |> maybe_use_derived_runtime_families(operations, triggers)
+
+    derived_runtime_families = derive_runtime_families(operations, triggers)
+    capabilities = derive_capabilities(manifest.connector, operations, triggers)
+
+    with :ok <- ensure_authored_entries_present!(operations, triggers),
+         :ok <- validate_auth_requested_scopes!(manifest.auth, operations, triggers),
+         :ok <- validate_auth_secret_names!(manifest.auth, triggers),
+         :ok <- validate_runtime_families!(runtime_families, derived_runtime_families),
+         :ok <- ensure_unique_capability_ids!(capabilities) do
+      {:ok,
+       %__MODULE__{
+         manifest
+         | operations: operations,
+           triggers: triggers,
+           runtime_families: runtime_families,
+           capabilities: Enum.sort_by(capabilities, & &1.id)
+       }}
     end
   end
 
-  defp normalize_operations(attrs) do
-    attrs
-    |> Map.get(:operations, [])
-    |> normalize_spec_list!("manifest.operations", &OperationSpec.new!/1)
-    |> Enum.sort_by(& &1.operation_id)
-  end
-
-  defp normalize_triggers(attrs) do
-    attrs
-    |> Map.get(:triggers, [])
-    |> normalize_spec_list!("manifest.triggers", &TriggerSpec.new!/1)
-    |> Enum.sort_by(& &1.trigger_id)
-  end
-
-  defp normalize_spec_list!(values, field_name, builder) when is_list(values) do
-    Enum.map(values, builder)
-  rescue
-    error ->
-      reraise(
-        ArgumentError.exception(
-          "#{field_name} contains an invalid authored spec: #{Exception.message(error)}"
-        ),
-        __STACKTRACE__
+  defp reject_manual_capability_authoring(attrs) do
+    if Map.has_key?(attrs, :capabilities) or Map.has_key?(attrs, "capabilities") do
+      error(
+        "manual capability authoring is retired; author auth, catalog, operations, and triggers instead"
       )
-  end
-
-  defp normalize_spec_list!(values, field_name, _builder) do
-    raise ArgumentError, "#{field_name} must be a list, got: #{inspect(values)}"
+    else
+      :ok
+    end
   end
 
   defp ensure_authored_entries_present!([], []) do
-    raise ArgumentError,
-          "connector manifests must declare at least one authored operation or trigger"
+    error("connector manifests must declare at least one authored operation or trigger")
   end
 
   defp ensure_authored_entries_present!(_operations, _triggers), do: :ok
@@ -159,8 +152,9 @@ defmodule Jido.Integration.V2.Manifest do
     if missing_scopes == [] do
       :ok
     else
-      raise ArgumentError,
-            "auth.requested_scopes must cover all authored required_scopes, missing #{inspect(missing_scopes)}"
+      error(
+        "auth.requested_scopes must cover all authored required_scopes, missing #{inspect(missing_scopes)}"
+      )
     end
   end
 
@@ -175,8 +169,9 @@ defmodule Jido.Integration.V2.Manifest do
     if missing_secret_names == [] do
       :ok
     else
-      raise ArgumentError,
-            "auth.secret_names must declare all authored trigger secrets, missing #{inspect(missing_secret_names)}"
+      error(
+        "auth.secret_names must declare all authored trigger secrets, missing #{inspect(missing_secret_names)}"
+      )
     end
   end
 
@@ -191,6 +186,12 @@ defmodule Jido.Integration.V2.Manifest do
     raise ArgumentError, "manifest.runtime_families must be a list, got: #{inspect(values)}"
   end
 
+  defp maybe_use_derived_runtime_families([], operations, triggers),
+    do: derive_runtime_families(operations, triggers)
+
+  defp maybe_use_derived_runtime_families(runtime_families, _operations, _triggers),
+    do: runtime_families
+
   defp derive_runtime_families(operations, triggers) do
     (Enum.map(operations, & &1.runtime_class) ++ Enum.map(triggers, & &1.runtime_class))
     |> Enum.uniq()
@@ -201,15 +202,15 @@ defmodule Jido.Integration.V2.Manifest do
     if runtime_families == derived_runtime_families do
       :ok
     else
-      raise ArgumentError,
-            "manifest.runtime_families must match authored specs, got #{inspect(runtime_families)} expected #{inspect(derived_runtime_families)}"
+      error(
+        "manifest.runtime_families must match authored specs, got #{inspect(runtime_families)} expected #{inspect(derived_runtime_families)}"
+      )
     end
   end
 
   defp derive_capabilities(connector, operations, triggers) do
-    (Enum.map(operations, &Capability.from_operation!(connector, &1)) ++
-       Enum.map(triggers, &Capability.from_trigger!(connector, &1)))
-    |> Enum.sort_by(& &1.id)
+    Enum.map(operations, &Capability.from_operation!(connector, &1)) ++
+      Enum.map(triggers, &Capability.from_trigger!(connector, &1))
   end
 
   defp ensure_unique_capability_ids!(capabilities) do
@@ -218,7 +219,7 @@ defmodule Jido.Integration.V2.Manifest do
     if capability_ids == Enum.uniq(capability_ids) do
       :ok
     else
-      raise ArgumentError, "derived executable capability ids must be unique within a manifest"
+      error("derived executable capability ids must be unique within a manifest")
     end
   end
 
@@ -247,4 +248,6 @@ defmodule Jido.Integration.V2.Manifest do
       )
     ]
   end
+
+  defp error(message), do: {:error, ArgumentError.exception(message)}
 end

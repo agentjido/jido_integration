@@ -59,6 +59,14 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
       assert capability.metadata.policy.sandbox.approvals == :auto
       assert capability.metadata.policy.sandbox.allowed_tools == [capability.id]
     end)
+
+    Enum.each(manifest.operations, fn operation ->
+      assert operation.consumer_surface.mode == :connector_local
+      assert is_binary(operation.consumer_surface.reason)
+      assert operation.schema_policy.input == :passthrough
+      assert operation.schema_policy.output == :passthrough
+      assert is_binary(operation.schema_policy.justification)
+    end)
   end
 
   test "registers through the public facade and exposes deterministic lookup by connector and capability id" do

@@ -4,103 +4,42 @@ defmodule Jido.Integration.V2.CatalogSpec do
   """
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Schema
 
   @maturity_values [:experimental, :alpha, :beta, :ga]
   @publication_values [:internal, :public, :private]
 
-  @enforce_keys [
-    :display_name,
-    :description,
-    :category,
-    :tags,
-    :docs_refs,
-    :maturity,
-    :publication
-  ]
-  defstruct [
-    :display_name,
-    :description,
-    :category,
-    :tags,
-    :docs_refs,
-    :maturity,
-    :publication,
-    metadata: %{}
-  ]
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              display_name: Contracts.non_empty_string_schema("catalog.display_name"),
+              description: Contracts.non_empty_string_schema("catalog.description"),
+              category: Contracts.non_empty_string_schema("catalog.category"),
+              tags: Contracts.string_list_schema("catalog.tags"),
+              docs_refs: Contracts.string_list_schema("catalog.docs_refs"),
+              maturity: Contracts.enumish_schema(@maturity_values, "catalog.maturity"),
+              publication: Contracts.enumish_schema(@publication_values, "catalog.publication"),
+              metadata: Contracts.any_map_schema() |> Zoi.default(%{})
+            },
+            coerce: true
+          )
 
   @type maturity :: :experimental | :alpha | :beta | :ga
   @type publication :: :internal | :public | :private
 
-  @type t :: %__MODULE__{
-          display_name: String.t(),
-          description: String.t(),
-          category: String.t(),
-          tags: [String.t()],
-          docs_refs: [String.t()],
-          maturity: maturity(),
-          publication: publication(),
-          metadata: map()
-        }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @spec new!(map() | t()) :: t()
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
+
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
+
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = catalog_spec), do: {:ok, catalog_spec}
+  def new(attrs), do: Schema.new(__MODULE__, @schema, attrs)
+
+  @spec new!(map() | keyword() | t()) :: t()
   def new!(%__MODULE__{} = catalog_spec), do: catalog_spec
-
-  def new!(attrs) when is_map(attrs) do
-    attrs = Map.new(attrs)
-
-    struct!(__MODULE__, %{
-      display_name:
-        Contracts.validate_non_empty_string!(
-          Contracts.fetch!(attrs, :display_name),
-          "catalog.display_name"
-        ),
-      description:
-        Contracts.validate_non_empty_string!(
-          Contracts.fetch!(attrs, :description),
-          "catalog.description"
-        ),
-      category:
-        Contracts.validate_non_empty_string!(
-          Contracts.fetch!(attrs, :category),
-          "catalog.category"
-        ),
-      tags: Contracts.normalize_string_list!(Contracts.fetch!(attrs, :tags), "catalog.tags"),
-      docs_refs:
-        Contracts.normalize_string_list!(Contracts.fetch!(attrs, :docs_refs), "catalog.docs_refs"),
-      maturity: validate_maturity!(Contracts.fetch!(attrs, :maturity)),
-      publication: validate_publication!(Contracts.fetch!(attrs, :publication)),
-      metadata: Contracts.validate_map!(Map.get(attrs, :metadata, %{}), "catalog.metadata")
-    })
-  end
-
-  def new!(attrs) do
-    raise ArgumentError, "catalog spec must be a map, got: #{inspect(attrs)}"
-  end
-
-  defp validate_maturity!(maturity) when maturity in @maturity_values, do: maturity
-
-  defp validate_maturity!(maturity) when is_binary(maturity) do
-    normalize_enum_string!(maturity, @maturity_values, "catalog.maturity")
-  end
-
-  defp validate_maturity!(maturity) do
-    raise ArgumentError, "invalid catalog.maturity: #{inspect(maturity)}"
-  end
-
-  defp validate_publication!(publication) when publication in @publication_values, do: publication
-
-  defp validate_publication!(publication) when is_binary(publication) do
-    normalize_enum_string!(publication, @publication_values, "catalog.publication")
-  end
-
-  defp validate_publication!(publication) do
-    raise ArgumentError, "invalid catalog.publication: #{inspect(publication)}"
-  end
-
-  defp normalize_enum_string!(value, allowed, field_name) do
-    case Enum.find(allowed, &(Atom.to_string(&1) == value)) do
-      nil -> raise ArgumentError, "invalid #{field_name}: #{inspect(value)}"
-      enum_value -> enum_value
-    end
-  end
+  def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs)
 end

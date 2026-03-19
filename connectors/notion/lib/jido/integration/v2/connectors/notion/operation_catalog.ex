@@ -106,7 +106,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
       operation_id: entry.operation_id,
       name: entry.event_suffix,
       display_name: display_name(entry.event_suffix),
-      description: "Notion API projection for #{entry.operation_id}",
+      description: "Connector-local Notion runtime capability for #{entry.operation_id}",
       runtime_class: :direct,
       transport_mode: :sdk,
       handler: Operation,
@@ -126,6 +126,17 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
         method: entry.method,
         path: entry.path,
         reference_page: entry.reference_page
+      },
+      consumer_surface: %{
+        mode: :connector_local,
+        reason:
+          "Notion runtime capabilities stay connector-local until a normalized common consumer surface exists"
+      },
+      schema_policy: %{
+        input: :passthrough,
+        output: :passthrough,
+        justification:
+          "Published Notion runtime capabilities intentionally preserve the SDK-shaped payload boundary while wrapper parity is deferred"
       },
       jido: %{
         action: %{

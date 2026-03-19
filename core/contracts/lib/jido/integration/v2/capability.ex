@@ -5,36 +5,39 @@ defmodule Jido.Integration.V2.Capability do
 
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.OperationSpec
+  alias Jido.Integration.V2.Schema
   alias Jido.Integration.V2.TriggerSpec
 
-  @enforce_keys [:id, :connector, :runtime_class, :kind, :transport_profile, :handler]
-  defstruct [:id, :connector, :runtime_class, :kind, :transport_profile, :handler, metadata: %{}]
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              id: Contracts.non_empty_string_schema("capability.id"),
+              connector: Contracts.non_empty_string_schema("capability.connector"),
+              runtime_class:
+                Contracts.enumish_schema([:direct, :session, :stream], "capability.runtime_class"),
+              kind: Contracts.atomish_schema("capability.kind"),
+              transport_profile: Contracts.atomish_schema("capability.transport_profile"),
+              handler: Contracts.module_schema("capability.handler"),
+              metadata: Contracts.any_map_schema() |> Zoi.default(%{})
+            },
+            coerce: true
+          )
 
-  @type t :: %__MODULE__{
-          id: String.t(),
-          connector: String.t(),
-          runtime_class: Contracts.runtime_class(),
-          kind: atom(),
-          transport_profile: atom(),
-          handler: module(),
-          metadata: map()
-        }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @spec new!(map()) :: t()
-  def new!(attrs) do
-    attrs = Map.new(attrs)
-    runtime_class = Contracts.validate_runtime_class!(Map.fetch!(attrs, :runtime_class))
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
 
-    struct!(__MODULE__, %{
-      id: Map.fetch!(attrs, :id),
-      connector: Map.fetch!(attrs, :connector),
-      runtime_class: runtime_class,
-      kind: Map.fetch!(attrs, :kind),
-      transport_profile: Map.fetch!(attrs, :transport_profile),
-      handler: Map.fetch!(attrs, :handler),
-      metadata: Map.get(attrs, :metadata, %{})
-    })
-  end
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
+
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = capability), do: {:ok, capability}
+  def new(attrs), do: Schema.new(__MODULE__, @schema, attrs)
+
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = capability), do: capability
+  def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs)
 
   @spec required_scopes(t()) :: [String.t()]
   def required_scopes(%__MODULE__{metadata: metadata}) do
@@ -73,6 +76,8 @@ defmodule Jido.Integration.V2.Capability do
           runtime: operation_spec.runtime,
           policy: operation_spec.policy,
           upstream: operation_spec.upstream,
+          consumer_surface: operation_spec.consumer_surface,
+          schema_policy: operation_spec.schema_policy,
           jido: operation_spec.jido
         })
     })
@@ -105,6 +110,8 @@ defmodule Jido.Integration.V2.Capability do
           dedupe: trigger_spec.dedupe,
           verification: trigger_spec.verification,
           policy: trigger_spec.policy,
+          consumer_surface: trigger_spec.consumer_surface,
+          schema_policy: trigger_spec.schema_policy,
           jido: trigger_spec.jido,
           secret_requirements: trigger_spec.secret_requirements
         })

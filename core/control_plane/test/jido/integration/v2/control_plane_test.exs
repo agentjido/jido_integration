@@ -83,6 +83,16 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
               }
             },
             upstream: %{transport: :action},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Control-plane proof connectors stay connector-local"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Control-plane test operations are internal proofs and do not participate in the normalized common consumer surface"
+            },
             jido: %{action: %{name: "test_echo"}}
           })
         ],
@@ -148,6 +158,16 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
               }
             },
             upstream: %{transport: :stdio},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Control-plane proof connectors stay connector-local"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Control-plane test operations are internal proofs and do not participate in the normalized common consumer surface"
+            },
             jido: %{action: %{name: "test_session_prompt"}}
           })
         ],
@@ -217,6 +237,16 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
               }
             },
             upstream: %{transport: :stdio},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Control-plane proof connectors stay connector-local"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Control-plane test operations are internal proofs and do not participate in the normalized common consumer surface"
+            },
             jido: %{action: %{name: "test_asm_stream"}}
           })
         ],
@@ -333,6 +363,16 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
               }
             },
             upstream: %{transport: :action},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Control-plane proof connectors stay connector-local"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Control-plane test operations are internal proofs and do not participate in the normalized common consumer surface"
+            },
             jido: %{action: %{name: "leaky_echo"}}
           })
         ],

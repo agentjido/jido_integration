@@ -115,6 +115,8 @@ defmodule Mix.Tasks.Jido.Conformance do
   end
 
   defp run_loaded_connector!(module, profile) do
+    ensure_runtime_apps_started!()
+
     case Conformance.run(module, profile: profile) do
       {:ok, report} ->
         report
@@ -342,5 +344,18 @@ defmodule Mix.Tasks.Jido.Conformance do
 
   defp normalize_module_name(module_string) do
     String.trim_leading(module_string, "Elixir.")
+  end
+
+  defp ensure_runtime_apps_started! do
+    case Application.ensure_all_started(:telemetry) do
+      {:ok, _apps} ->
+        :ok
+
+      {:error, {:telemetry, reason}} ->
+        Mix.raise("Could not start :telemetry for conformance: #{inspect(reason)}")
+
+      {:error, {app, reason}} ->
+        Mix.raise("Could not start #{inspect(app)} for conformance: #{inspect(reason)}")
+    end
   end
 end

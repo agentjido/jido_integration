@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.Conformance.Profile do
 
   @type suite_id ::
           :manifest_contract
+          | :consumer_surface_projection
           | :capability_contracts
           | :runtime_class_fit
           | :policy_contract
@@ -61,6 +62,7 @@ defmodule Jido.Integration.V2.Conformance.Profile do
           "Base deterministic connector conformance for manifest, runtime-fit, policy, fixtures, and ingress discipline",
         suite_ids: [
           :manifest_contract,
+          :consumer_surface_projection,
           :capability_contracts,
           :runtime_class_fit,
           :policy_contract,

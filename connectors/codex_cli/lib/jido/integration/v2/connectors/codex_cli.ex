@@ -65,6 +65,16 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
             }
           },
           upstream: %{protocol: :stdio},
+          consumer_surface: %{
+            mode: :connector_local,
+            reason: "Session migration proofs stay connector-local"
+          },
+          schema_policy: %{
+            input: :passthrough,
+            output: :passthrough,
+            justification:
+              "Example session connector preserves the runtime shim boundary without projecting a common consumer surface"
+          },
           jido: %{action: %{name: "codex_exec_session"}}
         })
       ],

@@ -64,6 +64,16 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
             }
           },
           upstream: %{protocol: :market_feed},
+          consumer_surface: %{
+            mode: :connector_local,
+            reason: "Stream migration proofs stay connector-local"
+          },
+          schema_policy: %{
+            input: :passthrough,
+            output: :passthrough,
+            justification:
+              "Example stream connector preserves the runtime shim boundary without projecting a common consumer surface"
+          },
           jido: %{action: %{name: "market_ticks_pull"}}
         })
       ],

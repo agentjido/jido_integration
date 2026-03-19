@@ -30,6 +30,19 @@ out of the invoke surface on purpose. The connector catalog tracks them as
 auth-control inventory, but the package does not publish them as runtime
 capabilities.
 
+Those published runtime capability ids are intentionally not treated as a
+generated common consumer surface. In this connector they are marked
+`consumer_surface.mode: :connector_local`, which means:
+
+- they remain stable runtime capabilities through `Jido.Integration.V2.invoke/3`
+- they do not auto-project into generated `Jido.Action` or `Jido.Plugin`
+  surfaces
+- they carry an explicit passthrough `schema_policy` justification because the
+  current Notion runtime slice preserves the SDK-shaped payload boundary
+
+This is the architecture stress test for large SDKs: the catalog can track wide
+Notion inventory without implying wrapper parity.
+
 ## Permission Model
 
 The connector uses Jido semantic permission bundles instead of pretending
@@ -133,6 +146,10 @@ The generic operation handler:
 - normalizes provider failures into the Jido error taxonomy
 - emits redacted `auth_binding` digests instead of raw tokens in output and
   event payloads
+
+Provider inventory beyond the published runtime slice stays in the local
+catalog metadata and at the `notion_sdk` boundary. It does not automatically
+become generated Jido consumer surface area.
 
 ## Files
 

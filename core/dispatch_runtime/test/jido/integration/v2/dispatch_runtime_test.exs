@@ -99,6 +99,16 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
               }
             },
             upstream: %{transport: :async_trigger},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Dispatch runtime proofs stay connector-local"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Dispatch runtime test operations are internal runtime proofs, not normalized projected surfaces"
+            },
             jido: %{action: %{name: "dispatch_test_async_echo"}}
           })
         ],

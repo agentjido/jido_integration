@@ -28,6 +28,16 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     "github.issue.list" => {GitHubEx.Issues, :list_for_repo, ["github.api.issue.list"]},
     "github.issue.update" => {GitHubEx.Issues, :update, ["github.api.issue.update"]}
   }
+  @normalized_surface_expectations %{
+    "github.comment.create" => {"comment.create", "comment_create"},
+    "github.comment.update" => {"comment.update", "comment_update"},
+    "github.issue.close" => {"work_item.close", "work_item_close"},
+    "github.issue.create" => {"work_item.create", "work_item_create"},
+    "github.issue.fetch" => {"work_item.fetch", "work_item_fetch"},
+    "github.issue.label" => {"work_item.label_add", "work_item_label_add"},
+    "github.issue.list" => {"work_item.list", "work_item_list"},
+    "github.issue.update" => {"work_item.update", "work_item_update"}
+  }
 
   test "publishes the A0 direct catalog slice as authored operation specs plus derived capabilities" do
     manifest = GitHub.manifest()
@@ -69,6 +79,17 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
       assert capability.metadata.policy.sandbox.egress == :restricted
       assert capability.metadata.policy.sandbox.approvals == :auto
       assert capability.metadata.policy.sandbox.allowed_tools == allowed_tools
+    end)
+
+    Enum.each(manifest.operations, fn operation ->
+      {normalized_id, action_name} =
+        Map.fetch!(@normalized_surface_expectations, operation.operation_id)
+
+      assert operation.consumer_surface.mode == :common
+      assert operation.consumer_surface.normalized_id == normalized_id
+      assert operation.consumer_surface.action_name == action_name
+      assert operation.schema_policy.input == :defined
+      assert operation.schema_policy.output == :defined
     end)
   end
 

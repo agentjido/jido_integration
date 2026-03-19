@@ -62,6 +62,12 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
               }
             },
             upstream: %{method: "GET", path: "/issues/{issue_id}"},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "work_item_fetch"
+            },
+            schema_policy: %{input: :defined, output: :defined},
             jido: %{action: %{name: "acme_issue_fetch"}},
             metadata: %{rollout_phase: :a0}
           }
@@ -87,6 +93,11 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
             checkpoint: %{strategy: :cursor},
             dedupe: %{strategy: :event_id},
             verification: %{secret_name: "webhook_secret"},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Webhook delivery stays above the connector package"
+            },
+            schema_policy: %{config: :defined, signal: :defined},
             jido: %{sensor: %{name: "acme_issue_updated"}},
             metadata: %{published?: false}
           }
@@ -186,6 +197,12 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
                            }
                          },
                          upstream: %{method: "POST", path: "/issues"},
+                         consumer_surface: %{
+                           mode: :common,
+                           normalized_id: "work_item.update",
+                           action_name: "work_item_update"
+                         },
+                         schema_policy: %{input: :defined, output: :defined},
                          jido: %{}
                        }
                      ],
@@ -202,6 +219,11 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
                          checkpoint: %{strategy: :cursor},
                          dedupe: %{strategy: :event_id},
                          verification: %{secret_name: "webhook_secret"},
+                         consumer_surface: %{
+                           mode: :connector_local,
+                           reason: "Webhook delivery stays above the connector package"
+                         },
+                         schema_policy: %{config: :defined, signal: :defined},
                          jido: %{}
                        }
                      ],
@@ -249,6 +271,11 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
                          dedupe: %{strategy: :event_id},
                          verification: %{secret_name: "webhook_secret"},
                          secret_requirements: ["signing_secret"],
+                         consumer_surface: %{
+                           mode: :connector_local,
+                           reason: "Webhook delivery stays above the connector package"
+                         },
+                         schema_policy: %{config: :defined, signal: :defined},
                          jido: %{}
                        }
                      ],
@@ -278,6 +305,12 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
           }
         },
         upstream: %{method: "GET", path: "/issues/{issue_id}"},
+        consumer_surface: %{
+          mode: :common,
+          normalized_id: "work_item.fetch",
+          action_name: "work_item_fetch"
+        },
+        schema_policy: %{input: :defined, output: :defined},
         jido: %{}
       })
     end
@@ -295,8 +328,141 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
         checkpoint: %{strategy: :cursor},
         dedupe: %{strategy: :event_id},
         verification: %{secret_name: "webhook_secret"},
+        consumer_surface: %{
+          mode: :connector_local,
+          reason: "Webhook delivery stays above the connector package"
+        },
+        schema_policy: %{config: :defined, signal: :defined},
         jido: %{}
       })
     end
+  end
+
+  test "authored catalog structs expose canonical Zoi schema helpers" do
+    operation_attrs = %{
+      operation_id: "acme.issue.fetch",
+      name: "issue_fetch",
+      display_name: "Fetch issue",
+      description: "Fetches one issue",
+      runtime_class: :direct,
+      transport_mode: :sdk,
+      handler: Handler,
+      input_schema:
+        Zoi.object(%{
+          issue_id: Zoi.string()
+        }),
+      output_schema:
+        Zoi.object(%{
+          id: Zoi.string()
+        }),
+      permissions: %{required_scopes: ["issues:read"]},
+      policy: %{
+        environment: %{allowed: [:prod]},
+        sandbox: %{
+          level: :standard,
+          egress: :restricted,
+          approvals: :auto,
+          allowed_tools: ["acme.issue.fetch"]
+        }
+      },
+      upstream: %{method: "GET", path: "/issues/{issue_id}"},
+      consumer_surface: %{
+        mode: :common,
+        normalized_id: "work_item.fetch",
+        action_name: "work_item_fetch"
+      },
+      schema_policy: %{input: :defined, output: :defined},
+      jido: %{}
+    }
+
+    trigger_attrs = %{
+      trigger_id: "acme.issue.updated",
+      name: "issue_updated",
+      display_name: "Issue updated",
+      description: "Accepts webhook issue updates",
+      runtime_class: :direct,
+      delivery_mode: :webhook,
+      handler: Handler,
+      config_schema:
+        Zoi.object(%{
+          webhook_secret: Zoi.string()
+        }),
+      signal_schema:
+        Zoi.object(%{
+          issue_id: Zoi.string()
+        }),
+      permissions: %{required_scopes: ["issues:read"]},
+      checkpoint: %{strategy: :cursor},
+      dedupe: %{strategy: :event_id},
+      verification: %{secret_name: "webhook_secret"},
+      consumer_surface: %{
+        mode: :connector_local,
+        reason: "Webhook delivery stays above the connector package"
+      },
+      schema_policy: %{config: :defined, signal: :defined},
+      jido: %{}
+    }
+
+    manifest_attrs = %{
+      connector: "acme",
+      auth: %{
+        binding_kind: :connection_id,
+        auth_type: :oauth2,
+        install: %{required: true},
+        reauth: %{supported: true},
+        requested_scopes: ["issues:read"],
+        lease_fields: ["access_token"],
+        secret_names: ["webhook_secret"]
+      },
+      catalog: %{
+        display_name: "Acme",
+        description: "Acme issue workflows",
+        category: "project_management",
+        tags: ["issues", "tickets"],
+        docs_refs: ["https://docs.example.test/acme"],
+        maturity: :beta,
+        publication: :public
+      },
+      operations: [operation_attrs],
+      triggers: [trigger_attrs],
+      runtime_families: [:direct],
+      metadata: %{provider_sdk: :acme_sdk}
+    }
+
+    modules = [
+      {AuthSpec,
+       %{
+         binding_kind: :connection_id,
+         auth_type: :oauth2,
+         install: %{required: true},
+         reauth: %{supported: true},
+         requested_scopes: ["issues:read"],
+         lease_fields: ["access_token"],
+         secret_names: ["webhook_secret"]
+       }},
+      {CatalogSpec,
+       %{
+         display_name: "Acme",
+         description: "Acme issue workflows",
+         category: "project_management",
+         tags: ["issues", "tickets"],
+         docs_refs: ["https://docs.example.test/acme"],
+         maturity: :beta,
+         publication: :public
+       }},
+      {OperationSpec, operation_attrs},
+      {TriggerSpec, trigger_attrs},
+      {Manifest, manifest_attrs}
+    ]
+
+    Enum.each(modules, fn {module, attrs} ->
+      assert function_exported?(module, :schema, 0)
+      assert function_exported?(module, :new, 1)
+      assert function_exported?(module, :new!, 1)
+      assert %Zoi.Types.Struct{module: ^module} = module.schema()
+      assert {:ok, struct} = module.new(attrs)
+      assert module == struct.__struct__
+      assert ^struct = module.new!(attrs)
+    end)
   end
 end
