@@ -57,22 +57,16 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaValidator do
 
   defp validate_property_map(properties, path, source, %SchemaContext{} = schema_context)
        when is_map(properties) do
-    Enum.reduce(properties, [], fn {property_name, _value}, issues ->
+    Enum.flat_map(properties, fn {property_name, _value} ->
       property_name = to_string(property_name)
 
-      if SchemaContext.property_known?(schema_context, property_name) do
-        issues
-      else
-        issues ++
-          [
-            %{
-              kind: :data_source_properties,
-              path: path ++ [property_name],
-              property: property_name,
-              source: source
-            }
-          ]
-      end
+      unknown_property_issues(
+        schema_context,
+        :data_source_properties,
+        path ++ [property_name],
+        property_name,
+        source
+      )
     end)
   end
 
@@ -80,46 +74,8 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaValidator do
 
   defp validate_filter(filter, path, source, %SchemaContext{} = schema_context)
        when is_map(filter) do
-    property_issues =
-      case Contracts.get(filter, :property) do
-        property_name when is_binary(property_name) ->
-          if SchemaContext.property_known?(schema_context, property_name) do
-            []
-          else
-            [
-              %{
-                kind: :data_source_filter,
-                path: path ++ ["property"],
-                property: property_name,
-                source: source
-              }
-            ]
-          end
-
-        _other ->
-          []
-      end
-
-    nested_issues =
-      Enum.flat_map(["and", "or"], fn branch ->
-        case Contracts.get(filter, String.to_atom(branch)) do
-          filters when is_list(filters) ->
-            Enum.with_index(filters, fn nested_filter, index ->
-              validate_filter(
-                nested_filter,
-                path ++ [branch, Integer.to_string(index)],
-                source,
-                schema_context
-              )
-            end)
-            |> List.flatten()
-
-          _other ->
-            []
-        end
-      end)
-
-    property_issues ++ nested_issues
+    validate_filter_property(filter, path, source, schema_context) ++
+      validate_filter_branches(filter, path, source, schema_context)
   end
 
   defp validate_filter(_filter, _path, _source, _schema_context), do: []
@@ -127,24 +83,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaValidator do
   defp validate_sorts(sorts, path, source, %SchemaContext{} = schema_context)
        when is_list(sorts) do
     Enum.flat_map(Enum.with_index(sorts), fn {sort, index} ->
-      case Contracts.get(sort, :property) do
-        property_name when is_binary(property_name) ->
-          if SchemaContext.property_known?(schema_context, property_name) do
-            []
-          else
-            [
-              %{
-                kind: :data_source_sorts,
-                path: path ++ [Integer.to_string(index), "property"],
-                property: property_name,
-                source: source
-              }
-            ]
-          end
-
-        _other ->
-          []
-      end
+      validate_sort(sort, index, path, source, schema_context)
     end)
   end
 
@@ -160,7 +99,6 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaValidator do
   end
 
   defp path_get(_map, []), do: nil
-  defp path_get(_map, _path), do: nil
 
   defp preflight_validation(message, issues, schema_context_summary) do
     %{
@@ -175,6 +113,76 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaValidator do
         }
         |> maybe_put(:schema_context, Redaction.redact(schema_context_summary))
     }
+  end
+
+  defp validate_filter_property(filter, path, source, %SchemaContext{} = schema_context) do
+    case Contracts.get(filter, :property) do
+      property_name when is_binary(property_name) ->
+        unknown_property_issues(
+          schema_context,
+          :data_source_filter,
+          path ++ ["property"],
+          property_name,
+          source
+        )
+
+      _other ->
+        []
+    end
+  end
+
+  defp validate_filter_branches(filter, path, source, %SchemaContext{} = schema_context) do
+    Enum.flat_map(["and", "or"], fn branch ->
+      filter
+      |> branch_filters(branch)
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {nested_filter, index} ->
+        validate_filter(
+          nested_filter,
+          path ++ [branch, Integer.to_string(index)],
+          source,
+          schema_context
+        )
+      end)
+    end)
+  end
+
+  defp branch_filters(filter, branch) do
+    case Contracts.get(filter, String.to_atom(branch)) do
+      filters when is_list(filters) -> filters
+      _other -> []
+    end
+  end
+
+  defp validate_sort(sort, index, path, source, %SchemaContext{} = schema_context) do
+    case Contracts.get(sort, :property) do
+      property_name when is_binary(property_name) ->
+        unknown_property_issues(
+          schema_context,
+          :data_source_sorts,
+          path ++ [Integer.to_string(index), "property"],
+          property_name,
+          source
+        )
+
+      _other ->
+        []
+    end
+  end
+
+  defp unknown_property_issues(schema_context, kind, path, property_name, source) do
+    if SchemaContext.property_known?(schema_context, property_name) do
+      []
+    else
+      [
+        %{
+          kind: kind,
+          path: path,
+          property: property_name,
+          source: source
+        }
+      ]
+    end
   end
 
   defp maybe_put(map, _key, nil), do: map

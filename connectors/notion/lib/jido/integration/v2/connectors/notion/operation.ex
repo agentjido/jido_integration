@@ -71,34 +71,49 @@ defmodule Jido.Integration.V2.Connectors.Notion.Operation do
   defp execute_with_schema(capability_id, metadata, client, params) do
     case SchemaResolver.resolve_for_input(metadata, client, params) do
       {:ok, input_schema_context} ->
-        case SchemaValidator.validate_input(capability_id, metadata, params, input_schema_context) do
-          :ok ->
-            case invoke(metadata, client, params) do
-              {:ok, response} ->
-                case SchemaResolver.resolve_for_output(
-                       metadata,
-                       client,
-                       params,
-                       response,
-                       input_schema_context
-                     ) do
-                  {:ok, output_schema_context} ->
-                    {:ok, response, output_schema_context || input_schema_context}
-
-                  {:error, reason} ->
-                    {:error, reason, input_schema_context}
-                end
-
-              {:error, reason} ->
-                {:error, reason, input_schema_context}
-            end
-
-          {:error, mapped_error} ->
-            {:error, mapped_error, input_schema_context}
-        end
+        execute_with_resolved_input_schema(
+          capability_id,
+          metadata,
+          client,
+          params,
+          input_schema_context
+        )
 
       {:error, reason} ->
         {:error, reason, nil}
+    end
+  end
+
+  defp execute_with_resolved_input_schema(
+         capability_id,
+         metadata,
+         client,
+         params,
+         input_schema_context
+       ) do
+    with :ok <-
+           SchemaValidator.validate_input(capability_id, metadata, params, input_schema_context),
+         {:ok, response} <- invoke(metadata, client, params),
+         {:ok, schema_context} <-
+           resolve_output_schema_context(metadata, client, params, response, input_schema_context) do
+      {:ok, response, schema_context}
+    else
+      {:error, reason} ->
+        {:error, reason, input_schema_context}
+    end
+  end
+
+  defp resolve_output_schema_context(metadata, client, params, response, input_schema_context) do
+    case SchemaResolver.resolve_for_output(
+           metadata,
+           client,
+           params,
+           response,
+           input_schema_context
+         ) do
+      {:ok, nil} -> {:ok, input_schema_context}
+      {:ok, output_schema_context} -> {:ok, output_schema_context}
+      {:error, reason} -> {:error, reason}
     end
   end
 

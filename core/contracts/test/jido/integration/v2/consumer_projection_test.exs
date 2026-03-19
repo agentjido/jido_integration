@@ -417,6 +417,7 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
           {ConsumerProjection.ActionProjection, action_projection_attrs},
           {ConsumerProjection.PluginProjection, plugin_projection_attrs}
         ] do
+      assert Code.ensure_loaded?(module)
       assert function_exported?(module, :schema, 0)
       assert function_exported?(module, :new, 1)
       assert function_exported?(module, :new!, 1)

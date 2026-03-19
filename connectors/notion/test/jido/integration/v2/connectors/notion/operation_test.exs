@@ -430,6 +430,84 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationTest do
            ]
   end
 
+  test "rejects notion.data_sources.query before provider invocation when a nested filter references an unknown property" do
+    capability = fetch_capability!("notion.data_sources.query")
+    query_url = Fixtures.request_url("notion.data_sources.query")
+
+    input =
+      Fixtures.input_for("notion.data_sources.query")
+      |> put_in(
+        [
+          :filter,
+          :and
+        ],
+        [
+          %{
+            property: "Bogus",
+            status: %{equals: "Published"}
+          }
+        ]
+      )
+
+    assert {:error, mapped_error, _result} =
+             DirectRuntime.execute(
+               capability,
+               input,
+               execution_context("notion.data_sources.query")
+             )
+
+    assert_receive {:transport_request, schema_request, _context}
+    assert schema_request.method == :get
+    assert schema_request.url == Fixtures.request_url("notion.data_sources.retrieve")
+    refute_receive {:transport_request, %{url: ^query_url}, _context}
+
+    assert mapped_error.upstream_context.issues == [
+             %{
+               kind: :data_source_filter,
+               path: ["filter", "and", "0", "property"],
+               property: "Bogus",
+               source: :data_source
+             }
+           ]
+  end
+
+  test "rejects notion.data_sources.query before provider invocation when sorts reference an unknown property" do
+    capability = fetch_capability!("notion.data_sources.query")
+    query_url = Fixtures.request_url("notion.data_sources.query")
+
+    input =
+      Fixtures.input_for("notion.data_sources.query")
+      |> put_in(
+        [
+          :sorts,
+          Access.at(0),
+          :property
+        ],
+        "Bogus"
+      )
+
+    assert {:error, mapped_error, _result} =
+             DirectRuntime.execute(
+               capability,
+               input,
+               execution_context("notion.data_sources.query")
+             )
+
+    assert_receive {:transport_request, schema_request, _context}
+    assert schema_request.method == :get
+    assert schema_request.url == Fixtures.request_url("notion.data_sources.retrieve")
+    refute_receive {:transport_request, %{url: ^query_url}, _context}
+
+    assert mapped_error.upstream_context.issues == [
+             %{
+               kind: :data_source_sorts,
+               path: ["sorts", "0", "property"],
+               property: "Bogus",
+               source: :data_source
+             }
+           ]
+  end
+
   defp execution_context(capability_id, opts \\ []) do
     Fixtures.execution_context(capability_id,
       notion_client: [

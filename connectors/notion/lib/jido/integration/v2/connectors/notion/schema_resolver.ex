@@ -180,7 +180,6 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaResolver do
   end
 
   defp path_get(_map, []), do: nil
-  defp path_get(_map, _path), do: nil
 
   defp parent_reference_from_page(page) do
     parent = Contracts.get(page, :parent, %{})
