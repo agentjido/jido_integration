@@ -6,6 +6,7 @@ offline tests and package-local, opt-in live proofs.
 Proves:
 
 - direct capability publishing against the shared `RuntimeResult` substrate
+- generated `Jido.Action` modules and a connector-level `Jido.Plugin` bundle projected from the authored manifest
 - `github_ex`-backed execution through one lease-bound SDK client factory
 - package-local deterministic tests through the SDK transport seam
 - connector-specific review events plus one durable artifact ref per run
@@ -26,6 +27,19 @@ The connector publishes these direct capabilities:
 - `github.comment.update`
 
 All direct capabilities currently require the GitHub `repo` scope.
+
+The same authored operation specs now also project into:
+
+- generated actions under `lib/jido/integration/v2/connectors/git_hub/generated/actions.ex`
+- a generated plugin bundle at `lib/jido/integration/v2/connectors/git_hub/generated/plugin.ex`
+
+The generated actions use the real `Jido.Action` contract with the authored
+operation input and output schemas. They resolve `connection_id` from params or
+runtime context and then invoke the public integration facade through its typed
+request contract.
+
+The generated plugin uses the real `Jido.Plugin` `actions:` and
+`subscriptions/2` surface. In this phase its subscriptions remain empty.
 
 Webhook routing is intentionally not part of this package. Hosted webhook proof
 code lives in `apps/devops_incident_response` so the direct connector contract

@@ -58,6 +58,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert mix_content =~
              "{:jido_integration_v2_conformance, path: \"../../core/conformance\", only: :test, runtime: false}"
 
+    assert mix_content =~ "{:jido, \"~> 2.1\"}"
     assert mix_content =~ "{:jido_action, \"~> 2.1\"}"
     refute mix_content =~ "jido_integration_workspace"
 
@@ -144,10 +145,27 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
   defp temp_workspace!(label) do
     root = TestTmpDir.create!("jido_integration_new_#{label}")
+    source_hex_home = Path.expand("~/.hex")
+    hex_home = Path.join(root, ".hex")
 
     on_exit(fn -> TestTmpDir.cleanup!(root) end)
     File.mkdir_p!(Path.join(root, "connectors"))
     File.ln_s!(Path.join(Monorepo.root_dir(), "core"), Path.join(root, "core"))
+    File.ln_s!(Path.join(Monorepo.root_dir(), "mix.lock"), Path.join(root, "mix.lock"))
+    File.mkdir_p!(hex_home)
+
+    if File.exists?(Path.join(source_hex_home, "cache.ets")) do
+      File.cp!(Path.join(source_hex_home, "cache.ets"), Path.join(hex_home, "cache.ets"))
+    end
+
+    if File.exists?(Path.join(source_hex_home, "hex.config")) do
+      File.cp!(Path.join(source_hex_home, "hex.config"), Path.join(hex_home, "hex.config"))
+    end
+
+    if File.exists?(Path.join(source_hex_home, "packages")) do
+      File.ln_s!(Path.join(source_hex_home, "packages"), Path.join(hex_home, "packages"))
+    end
+
     root
   end
 
@@ -162,12 +180,13 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       end
 
     env = [
-      {"MIX_DEPS_PATH", Path.join(workspace_root, "deps")},
+      {"MIX_DEPS_PATH", Path.join(Monorepo.root_dir(), "deps")},
       {"MIX_BUILD_PATH", Path.join(workspace_root, "_build")},
-      {"MIX_LOCKFILE", lockfile_path}
+      {"MIX_LOCKFILE", lockfile_path},
+      {"HEX_HOME", Path.join(workspace_root, ".hex")}
     ]
 
-    case System.cmd("mix", args, cd: project_root, env: env, stderr_to_stdout: true) do
+    case System.cmd("/tmp/mix_sandbox", args, cd: project_root, env: env, stderr_to_stdout: true) do
       {output, 0} ->
         output
 

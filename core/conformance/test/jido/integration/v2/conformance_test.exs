@@ -1,13 +1,13 @@
 defmodule Jido.Integration.V2.ConformanceTest do
   use ExUnit.Case, async: false
 
-  alias Jido.Integration.V2.Conformance
-  alias Jido.Integration.V2.Connector
-  alias Jido.Integration.V2.Conformance.CheckResult
-  alias Jido.Integration.V2.Connectors.GitHub
-  alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.AuthSpec
+  alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.CatalogSpec
+  alias Jido.Integration.V2.Conformance
+  alias Jido.Integration.V2.Conformance.CheckResult
+  alias Jido.Integration.V2.Connector
+  alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.TriggerSpec

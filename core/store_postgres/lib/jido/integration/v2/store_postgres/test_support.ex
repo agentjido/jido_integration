@@ -167,12 +167,11 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
       )
 
     pool = Keyword.get(opts, :pool, Ecto.Adapters.SQL.Sandbox)
+    socket_dir = System.get_env("JIDO_INTEGRATION_V2_DB_SOCKET_DIR")
 
     [
       username: System.get_env("JIDO_INTEGRATION_V2_DB_USER", "postgres"),
       password: System.get_env("JIDO_INTEGRATION_V2_DB_PASSWORD", "postgres"),
-      hostname: System.get_env("JIDO_INTEGRATION_V2_DB_HOST", "127.0.0.1"),
-      port: parse_integer(System.get_env("JIDO_INTEGRATION_V2_DB_PORT", "5432"), 5432),
       database: database,
       pool: pool,
       pool_size: parse_integer(System.get_env("JIDO_INTEGRATION_V2_DB_POOL_SIZE", "10"), 10),
@@ -180,7 +179,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
       queue_interval: 1_000,
       timeout: 15_000,
       ownership_timeout: 60_000
-    ]
+    ] ++ connection_config(socket_dir)
   end
 
   defp wait_for_repo(previous_pid, attempts \\ 40)
@@ -233,5 +232,19 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
       {parsed, ""} -> parsed
       _ -> fallback
     end
+  end
+
+  defp connection_config(socket_dir) when is_binary(socket_dir) and socket_dir != "" do
+    [
+      socket_dir: socket_dir,
+      port: parse_integer(System.get_env("JIDO_INTEGRATION_V2_DB_PORT", "5432"), 5432)
+    ]
+  end
+
+  defp connection_config(_socket_dir) do
+    [
+      hostname: System.get_env("JIDO_INTEGRATION_V2_DB_HOST", "127.0.0.1"),
+      port: parse_integer(System.get_env("JIDO_INTEGRATION_V2_DB_PORT", "5432"), 5432)
+    ]
   end
 end

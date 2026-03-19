@@ -24,6 +24,7 @@ defmodule <%= @project_module %> do
   defp deps do
     [
       {:jido_integration_v2_contracts, path: "<%= @contracts_dep_path %>", override: true},
+      {:jido, "~> 2.1"},
       {:zoi, "~> 0.17"},
 <%= if @direct_runtime do %>      {:jido_action, "~> 2.1"},
       {:jido_integration_v2_direct_runtime, path: "<%= @runtime_dep_path %>", override: true},

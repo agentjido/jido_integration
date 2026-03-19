@@ -27,6 +27,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
 
   defp deps do
     [
+      {:jido, "~> 2.1"},
+      {:jido_action, "~> 2.1"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
       {:jido_integration_v2_direct_runtime, path: "../../core/direct_runtime"},
       {:jido_integration_v2_conformance,
