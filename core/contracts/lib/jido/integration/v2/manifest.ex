@@ -56,6 +56,8 @@ defmodule Jido.Integration.V2.Manifest do
     operations = normalize_operations(attrs)
     triggers = normalize_triggers(attrs)
     ensure_authored_entries_present!(operations, triggers)
+    validate_auth_requested_scopes!(auth, operations, triggers)
+    validate_auth_secret_names!(auth, triggers)
 
     runtime_families =
       attrs
@@ -142,6 +144,42 @@ defmodule Jido.Integration.V2.Manifest do
 
   defp ensure_authored_entries_present!(_operations, _triggers), do: :ok
 
+  defp validate_auth_requested_scopes!(
+         %AuthSpec{requested_scopes: requested_scopes},
+         operations,
+         triggers
+       ) do
+    missing_scopes =
+      (Enum.flat_map(operations, &required_scopes(&1.permissions)) ++
+         Enum.flat_map(triggers, &required_scopes(&1.permissions)))
+      |> Enum.uniq()
+      |> Enum.sort()
+      |> Kernel.--(Enum.uniq(requested_scopes))
+
+    if missing_scopes == [] do
+      :ok
+    else
+      raise ArgumentError,
+            "auth.requested_scopes must cover all authored required_scopes, missing #{inspect(missing_scopes)}"
+    end
+  end
+
+  defp validate_auth_secret_names!(%AuthSpec{secret_names: secret_names}, triggers) do
+    missing_secret_names =
+      triggers
+      |> Enum.flat_map(&trigger_secret_names/1)
+      |> Enum.uniq()
+      |> Enum.sort()
+      |> Kernel.--(Enum.uniq(secret_names))
+
+    if missing_secret_names == [] do
+      :ok
+    else
+      raise ArgumentError,
+            "auth.secret_names must declare all authored trigger secrets, missing #{inspect(missing_secret_names)}"
+    end
+  end
+
   defp normalize_runtime_families!(values) when is_list(values) do
     values
     |> Enum.map(&Contracts.validate_runtime_class!/1)
@@ -182,5 +220,31 @@ defmodule Jido.Integration.V2.Manifest do
     else
       raise ArgumentError, "derived executable capability ids must be unique within a manifest"
     end
+  end
+
+  defp required_scopes(permissions) do
+    permissions
+    |> Contracts.get(:required_scopes, [])
+    |> Contracts.normalize_string_list!("authored permissions required_scopes")
+  end
+
+  defp trigger_secret_names(trigger) do
+    verification_secret_name =
+      trigger.verification
+      |> Contracts.get(:secret_name)
+      |> normalize_optional_secret_name!()
+
+    trigger.secret_requirements ++ verification_secret_name
+  end
+
+  defp normalize_optional_secret_name!(nil), do: []
+
+  defp normalize_optional_secret_name!(secret_name) do
+    [
+      Contracts.validate_non_empty_string!(
+        secret_name,
+        "trigger.verification.secret_name"
+      )
+    ]
   end
 end

@@ -18,6 +18,9 @@ defmodule Jido.Integration.V2.Conformance.Suites.ManifestContract do
     trigger_ids = Enum.map(triggers, &Map.get(&1, :trigger_id))
     derived_runtime_families = derive_runtime_families(operations, triggers)
     runtime_families = Map.get(manifest_map, :runtime_families, [])
+    auth = Map.get(manifest_map, :auth)
+    missing_scopes = missing_requested_scopes(auth, operations, triggers)
+    missing_trigger_secrets = missing_trigger_secrets(auth, triggers)
 
     checks = [
       SuiteSupport.check(
@@ -39,6 +42,16 @@ defmodule Jido.Integration.V2.Conformance.Suites.ManifestContract do
         "manifest.authored_entries.present",
         operation_ids != [] or trigger_ids != [],
         "connector manifests must declare at least one authored operation or trigger"
+      ),
+      SuiteSupport.check(
+        "manifest.auth.requested_scopes.cover_required",
+        missing_scopes == [],
+        "manifest.auth.requested_scopes must cover all authored operation and trigger required_scopes"
+      ),
+      SuiteSupport.check(
+        "manifest.auth.secret_names.cover_trigger_secrets",
+        missing_trigger_secrets == [],
+        "manifest.auth.secret_names must declare every authored trigger verification secret_name and secret_requirements entry"
       ),
       SuiteSupport.check(
         "manifest.operations.deterministic",
@@ -80,4 +93,54 @@ defmodule Jido.Integration.V2.Conformance.Suites.ManifestContract do
     |> Enum.uniq()
     |> Enum.sort()
   end
+
+  defp missing_requested_scopes(%AuthSpec{} = auth, operations, triggers) do
+    (Enum.flat_map(operations, &required_scopes(Map.get(&1, :permissions, %{}))) ++
+       Enum.flat_map(triggers, &required_scopes(Map.get(&1, :permissions, %{}))))
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Kernel.--(Enum.uniq(auth.requested_scopes))
+  end
+
+  defp missing_requested_scopes(_auth, _operations, _triggers), do: [:invalid_auth]
+
+  defp missing_trigger_secrets(%AuthSpec{} = auth, triggers) do
+    triggers
+    |> Enum.flat_map(&trigger_secret_names/1)
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Kernel.--(Enum.uniq(auth.secret_names))
+  end
+
+  defp missing_trigger_secrets(_auth, _triggers), do: [:invalid_auth]
+
+  defp required_scopes(permissions) do
+    permissions
+    |> SuiteSupport.fetch(:required_scopes, [])
+    |> normalize_string_list()
+  end
+
+  defp trigger_secret_names(trigger) do
+    verification_secret_name =
+      trigger
+      |> Map.get(:verification, %{})
+      |> SuiteSupport.fetch(:secret_name)
+      |> normalize_optional_secret_name()
+
+    secret_requirements =
+      trigger
+      |> Map.get(:secret_requirements, [])
+      |> normalize_string_list()
+
+    secret_requirements ++ verification_secret_name
+  end
+
+  defp normalize_optional_secret_name(nil), do: []
+  defp normalize_optional_secret_name(secret_name), do: normalize_string_list([secret_name])
+
+  defp normalize_string_list(values) when is_list(values) do
+    Enum.map(values, &to_string/1)
+  end
+
+  defp normalize_string_list(_values), do: []
 end

@@ -81,6 +81,10 @@ dependency surface as the existing child packages.
 After generation:
 
 1. replace the placeholder authored auth, catalog, and operation contract with the real connector surface
+   Keep `auth.requested_scopes` aligned as the authored superset of every
+   published operation or trigger `required_scopes`.
+   Keep `auth.secret_names` aligned as the authored superset of any trigger
+   verification secret or `secret_requirements`.
 2. implement the action or provider logic inside the generated package
 3. declare every child-package dependency explicitly in that connector package
 4. update the companion fixtures so conformance reflects the real behavior

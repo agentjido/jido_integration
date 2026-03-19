@@ -142,6 +142,121 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
     end
   end
 
+  test "manifest requires auth requested scopes to cover authored operation and trigger scopes" do
+    assert_raise ArgumentError,
+                 ~r/auth.requested_scopes must cover all authored required_scopes/,
+                 fn ->
+                   Manifest.new!(%{
+                     connector: "scope_drift",
+                     auth: %{
+                       binding_kind: :connection_id,
+                       auth_type: :oauth2,
+                       install: %{required: true},
+                       reauth: %{supported: true},
+                       requested_scopes: ["issues:read"],
+                       lease_fields: ["access_token"],
+                       secret_names: ["webhook_secret"]
+                     },
+                     catalog: %{
+                       display_name: "Scope Drift",
+                       description: "Connector with scope drift",
+                       category: "test",
+                       tags: ["scope"],
+                       docs_refs: [],
+                       maturity: :experimental,
+                       publication: :internal
+                     },
+                     operations: [
+                       %{
+                         operation_id: "scope_drift.issue.write",
+                         name: "issue_write",
+                         runtime_class: :direct,
+                         transport_mode: :sdk,
+                         handler: Handler,
+                         input_schema: Zoi.map(),
+                         output_schema: Zoi.map(),
+                         permissions: %{required_scopes: ["issues:write"]},
+                         policy: %{
+                           environment: %{allowed: [:prod]},
+                           sandbox: %{
+                             level: :standard,
+                             egress: :restricted,
+                             approvals: :auto,
+                             allowed_tools: ["scope_drift.issue.write"]
+                           }
+                         },
+                         upstream: %{method: "POST", path: "/issues"},
+                         jido: %{}
+                       }
+                     ],
+                     triggers: [
+                       %{
+                         trigger_id: "scope_drift.issue.updated",
+                         name: "issue_updated",
+                         runtime_class: :direct,
+                         delivery_mode: :webhook,
+                         handler: Handler,
+                         config_schema: Zoi.map(),
+                         signal_schema: Zoi.map(),
+                         permissions: %{required_scopes: ["issues:admin"]},
+                         checkpoint: %{strategy: :cursor},
+                         dedupe: %{strategy: :event_id},
+                         verification: %{secret_name: "webhook_secret"},
+                         jido: %{}
+                       }
+                     ],
+                     runtime_families: [:direct]
+                   })
+                 end
+  end
+
+  test "manifest requires auth secret names to cover authored trigger verification and secret requirements" do
+    assert_raise ArgumentError,
+                 ~r/auth.secret_names must declare all authored trigger secrets/,
+                 fn ->
+                   Manifest.new!(%{
+                     connector: "secret_drift",
+                     auth: %{
+                       binding_kind: :connection_id,
+                       auth_type: :oauth2,
+                       install: %{required: true},
+                       reauth: %{supported: true},
+                       requested_scopes: ["issues:read"],
+                       lease_fields: ["access_token"],
+                       secret_names: []
+                     },
+                     catalog: %{
+                       display_name: "Secret Drift",
+                       description: "Connector with trigger secret drift",
+                       category: "test",
+                       tags: ["secret"],
+                       docs_refs: [],
+                       maturity: :experimental,
+                       publication: :internal
+                     },
+                     operations: [],
+                     triggers: [
+                       %{
+                         trigger_id: "secret_drift.issue.updated",
+                         name: "issue_updated",
+                         runtime_class: :direct,
+                         delivery_mode: :webhook,
+                         handler: Handler,
+                         config_schema: Zoi.map(),
+                         signal_schema: Zoi.map(),
+                         permissions: %{required_scopes: ["issues:read"]},
+                         checkpoint: %{strategy: :cursor},
+                         dedupe: %{strategy: :event_id},
+                         verification: %{secret_name: "webhook_secret"},
+                         secret_requirements: ["signing_secret"],
+                         jido: %{}
+                       }
+                     ],
+                     runtime_families: [:direct]
+                   })
+                 end
+  end
+
   test "operation and trigger specs require Zoi schemas" do
     assert_raise ArgumentError, ~r/input_schema must be a Zoi schema/, fn ->
       OperationSpec.new!(%{

@@ -3,8 +3,14 @@ defmodule Jido.Integration.V2.ConformanceTest do
 
   alias Jido.Integration.V2.Conformance
   alias Jido.Integration.V2.Connector
+  alias Jido.Integration.V2.Conformance.CheckResult
   alias Jido.Integration.V2.Connectors.GitHub
+  alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.AuthSpec
+  alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.OperationSpec
+  alias Jido.Integration.V2.TriggerSpec
 
   defmodule BrokenSessionHandler do
     def run(_input, _context), do: {:ok, %{unexpected: true}}
@@ -155,6 +161,85 @@ defmodule Jido.Integration.V2.ConformanceTest do
     end
   end
 
+  defmodule DriftedAuthConnector do
+    @behaviour Connector
+
+    @operation OperationSpec.new!(%{
+                 operation_id: "drifted.issue.write",
+                 name: "issue_write",
+                 runtime_class: :direct,
+                 transport_mode: :sdk,
+                 handler: TriggerHandler,
+                 input_schema: Zoi.map(),
+                 output_schema: Zoi.map(),
+                 permissions: %{required_scopes: ["issues:write"]},
+                 policy: %{
+                   environment: %{allowed: [:prod]},
+                   sandbox: %{
+                     level: :standard,
+                     egress: :restricted,
+                     approvals: :auto,
+                     allowed_tools: ["drifted.issue.write"]
+                   }
+                 },
+                 upstream: %{method: "POST", path: "/issues"},
+                 jido: %{action: %{name: "drifted_issue_write"}}
+               })
+
+    @trigger TriggerSpec.new!(%{
+               trigger_id: "drifted.issue.updated",
+               name: "issue_updated",
+               runtime_class: :direct,
+               delivery_mode: :webhook,
+               handler: TriggerHandler,
+               config_schema: Zoi.map(),
+               signal_schema: Zoi.map(),
+               permissions: %{required_scopes: ["issues:admin"]},
+               checkpoint: %{strategy: :cursor},
+               dedupe: %{strategy: :event_id},
+               verification: %{secret_name: "webhook_secret"},
+               secret_requirements: ["signing_secret"],
+               jido: %{sensor: %{name: "drifted_issue_updated"}}
+             })
+
+    @impl true
+    def manifest do
+      %Manifest{
+        connector: "drifted_auth",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :oauth2,
+            install: %{required: true},
+            reauth: %{supported: true},
+            requested_scopes: ["issues:read"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Drifted Auth",
+            description: "Connector that bypasses manifest normalization",
+            category: "test",
+            tags: ["drift"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [@operation],
+        triggers: [@trigger],
+        runtime_families: [:direct],
+        capabilities:
+          [
+            Capability.from_operation!("drifted_auth", @operation),
+            Capability.from_trigger!("drifted_auth", @trigger)
+          ]
+          |> Enum.sort_by(& &1.id),
+        metadata: %{}
+      }
+    end
+  end
+
   test "returns the stable connector foundation profile names" do
     assert Conformance.profiles() == [:connector_foundation]
   end
@@ -234,8 +319,35 @@ defmodule Jido.Integration.V2.ConformanceTest do
            end)
   end
 
+  test "flags auth scope and trigger secret drift in manifest conformance" do
+    assert {:ok, report} =
+             Conformance.run(
+               DriftedAuthConnector,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-03-12 00:00:00Z]
+             )
+
+    manifest_suite = Enum.find(report.suite_results, &(&1.id == :manifest_contract))
+
+    assert manifest_suite.status == :failed
+
+    assert failed_check?(manifest_suite.checks, "manifest.auth.requested_scopes.cover_required")
+
+    assert failed_check?(
+             manifest_suite.checks,
+             "manifest.auth.secret_names.cover_trigger_secrets"
+           )
+  end
+
   test "returns an error for an unknown profile" do
     assert {:error, {:unknown_profile, :missing_profile}} =
              Conformance.run(GitHub, profile: :missing_profile)
+  end
+
+  defp failed_check?(checks, id) do
+    Enum.any?(checks, fn
+      %CheckResult{id: ^id, status: :failed} -> true
+      _check -> false
+    end)
   end
 end

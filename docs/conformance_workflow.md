@@ -55,6 +55,10 @@ For a connector package under `connectors/<name>/`:
 
 1. implement or update the connector `manifest/0`
 2. author auth, catalog, operation, and trigger entries in that manifest rather than hand-writing executable capabilities
+   Keep `auth.requested_scopes` as the authored superset of every operation and
+   trigger `required_scopes`, and keep `auth.secret_names` as the authored
+   superset of trigger `verification.secret_name` and
+   `secret_requirements`.
 3. keep runtime handlers in the connector package and declare explicit child
    deps in that package `mix.exs`
 4. add or update deterministic tests in the connector package
@@ -104,7 +108,7 @@ Each fixture map should declare:
 ## How To Read Failures
 
 - `manifest_contract`
-  - fix connector id stability, authored auth/catalog/operation/trigger completeness, or derived capability ownership
+  - fix connector id stability, authored auth/catalog/operation/trigger completeness, auth scope or trigger-secret coverage, or derived capability ownership
 - `capability_contracts`
   - fix authored operation or trigger ids, projection drift, invalid policy metadata, or malformed derived capability structs
 - `runtime_class_fit`

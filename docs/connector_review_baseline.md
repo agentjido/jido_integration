@@ -27,6 +27,9 @@ Supporting proof surfaces:
   `fetch_capability/1`
 - connector manifests are authored through explicit auth, catalog, operation,
   and trigger contracts, with executable capabilities derived from that source
+- authored auth remains internally consistent with the published slice:
+  `requested_scopes` cover all operation and trigger scope requirements, and
+  `secret_names` cover every trigger verification or webhook secret reference
 - public invocation can be expressed either as `invoke/3` or through the typed
   `InvocationRequest` helper, with `connection_id` as the public auth binding
   when auth is required
