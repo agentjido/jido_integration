@@ -244,7 +244,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     :ok
   end
 
-  test "asm resolves to the integration-owned harness bridge module" do
+  test "asm resolves to the target Harness runtime driver" do
     assert {:ok, HarnessDriver} = HarnessRuntime.driver_module("asm")
   end
 

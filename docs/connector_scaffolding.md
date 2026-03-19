@@ -14,14 +14,12 @@ Example commands:
 
 ```bash
 mix jido.integration.new acme_crm
-mix jido.integration.new analyst_cli --runtime-class session
-mix jido.integration.new market_feed --runtime-class stream
 mix jido.integration.new custom_ai --module MyApp.Connectors.CustomAi --package-name "Custom AI Connector"
 ```
 
 ## Choose The Runtime Class First
 
-The scaffold currently supports:
+The runtime model still distinguishes:
 
 - `direct`
 - `session`
@@ -36,6 +34,17 @@ Pick the runtime class based on the connector contract you intend to publish:
 - `stream`
   - execution should reuse a provider-managed stream reference or cursor
 
+The workspace scaffold currently supports direct connectors only.
+
+Phase 0 intentionally refuses to generate `session` or `stream` packages from
+the root scaffold. That keeps new connector work from deepening the frozen
+`integration_session_bridge` and `integration_stream_bridge` compatibility
+paths. Compose non-direct connectors manually against the real Harness target
+kernels, `asm` or `jido_session`, instead:
+
+- `asm`
+- `jido_session`
+
 Hosted webhook routing is not a runtime class. If the proof depends on route
 registration, secret resolution, or async transport, keep that proof in an app
 or package above the connector rather than forcing it into the scaffold.
@@ -49,7 +58,7 @@ Generated files include:
 
 - package-local `mix.exs`, `mix.lock`, `.formatter.exs`, and `.gitignore`
 - a connector module that publishes `Manifest` and `Capability`
-- a runtime-class-appropriate action or provider skeleton
+- a direct-runtime action skeleton
 - a `<ConnectorModule>.Conformance` companion module with deterministic fixtures
 - package-local tests, including a baseline conformance test
 - a package README suitable for `mix docs`
@@ -60,7 +69,8 @@ dependency surface as the existing child packages.
 
 ## Current Options
 
-- `--runtime-class`: `direct`, `session`, or `stream`
+- `--runtime-class`: `direct`, `session`, or `stream`; only `direct` is
+  scaffoldable in Phase 0
 - `--module`: fully qualified connector module override
 - `--path`: output path override relative to the workspace root
 - `--package-name`: human-readable package name override for docs and `mix.exs`
