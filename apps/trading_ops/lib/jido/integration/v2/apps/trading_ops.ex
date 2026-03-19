@@ -41,8 +41,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
 
   @type provisioned_resource :: %{
           install: Jido.Integration.V2.Auth.Install.t(),
-          connection: Jido.Integration.V2.Auth.Connection.t(),
-          credential_ref: Jido.Integration.V2.CredentialRef.t()
+          connection: Jido.Integration.V2.Auth.Connection.t()
         }
 
   @type connection_views :: %{
@@ -167,7 +166,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
                venue: Map.get(attrs, :venue, "CME")
              },
              invoke_opts(
-               stack.connections.market_data.credential_ref,
+               stack.connections.market_data.connection.connection_id,
                tenant_id,
                actor_id,
                "market.ticks.pull",
@@ -180,7 +179,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
              "codex.exec.session",
              %{prompt: analyst_prompt(trigger, market_pull.output, attrs)},
              invoke_opts(
-               stack.connections.analyst.credential_ref,
+               stack.connections.analyst.connection.connection_id,
                tenant_id,
                actor_id,
                "codex.exec.session",
@@ -197,7 +196,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
                body: issue_body(trigger, market_pull.output, analyst_session.output)
              },
              invoke_opts(
-               stack.connections.operator.credential_ref,
+               stack.connections.operator.connection.connection_id,
                tenant_id,
                actor_id,
                "github.issue.create",
@@ -322,7 +321,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
         now: now
       })
 
-    {:ok, %{credential_ref: credential_ref}} =
+    {:ok, _completed_install} =
       V2.complete_install(install.install_id, %{
         subject: subject,
         granted_scopes: scopes,
@@ -333,8 +332,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
 
     %{
       install: fetch_install!(install.install_id),
-      connection: fetch_connection!(connection.connection_id),
-      credential_ref: credential_ref
+      connection: fetch_connection!(connection.connection_id)
     }
   end
 
@@ -393,9 +391,9 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     end
   end
 
-  defp invoke_opts(credential_ref, tenant_id, actor_id, capability_id, sandbox, target_id) do
+  defp invoke_opts(connection_id, tenant_id, actor_id, capability_id, sandbox, target_id) do
     [
-      credential_ref: credential_ref,
+      connection_id: connection_id,
       actor_id: actor_id,
       tenant_id: tenant_id,
       environment: :prod,

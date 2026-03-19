@@ -437,6 +437,42 @@ defmodule Jido.Integration.V2.Contracts do
     raise ArgumentError, "#{field_name} must be a map, got: #{inspect(value)}"
   end
 
+  @doc """
+  Builds a `Zoi.object/2` schema from an ordered keyword list.
+
+  `Zoi` preserves object field order. Using maps here makes the resulting schema
+  order depend on map enumeration, which can diverge between compile-time
+  generated modules and runtime manifest construction.
+  """
+  @spec ordered_object!(keyword(), keyword()) :: zoi_schema()
+  def ordered_object!(fields, opts \\ [])
+
+  def ordered_object!(fields, opts) when is_list(fields) do
+    if Keyword.keyword?(fields) do
+      opts =
+        Zoi.Types.Map.opts()
+        |> Zoi.parse!(opts)
+
+      Zoi.Types.Map.new(fields, opts)
+    else
+      raise ArgumentError,
+            "ordered object schema fields must be a keyword list, got: #{inspect(fields)}"
+    end
+  end
+
+  def ordered_object!(fields, _opts) do
+    raise ArgumentError,
+          "ordered object schema fields must be a keyword list, got: #{inspect(fields)}"
+  end
+
+  @doc """
+  Builds a strict `Zoi.object/2` schema from an ordered keyword list.
+  """
+  @spec strict_object!(keyword(), keyword()) :: zoi_schema()
+  def strict_object!(fields, opts \\ []) do
+    ordered_object!(fields, Keyword.merge([coerce: true, unrecognized_keys: :error], opts))
+  end
+
   @spec validate_zoi_schema!(term(), String.t()) :: zoi_schema()
   def validate_zoi_schema!(value, field_name) do
     if zoi_schema?(value) do

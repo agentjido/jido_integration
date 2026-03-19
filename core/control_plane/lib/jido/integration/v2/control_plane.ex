@@ -280,7 +280,7 @@ defmodule Jido.Integration.V2.ControlPlane do
         credential_ref: credential_ref,
         runtime_class: capability.runtime_class,
         allowed_operations: Keyword.get(opts, :allowed_operations, []),
-        sandbox: Keyword.get(opts, :sandbox, %{}),
+        sandbox: effective_sandbox(capability, opts),
         metadata: %{
           opts: Enum.into(opts, %{}),
           pressure: Keyword.get(opts, :pressure)
@@ -288,6 +288,37 @@ defmodule Jido.Integration.V2.ControlPlane do
       })
 
     Policy.evaluate(capability, resolved_credential, input, gateway)
+  end
+
+  defp effective_sandbox(capability, opts) do
+    contract_sandbox =
+      capability.metadata
+      |> Contracts.get(:policy, %{})
+      |> Contracts.get(:sandbox, %{})
+
+    case Keyword.fetch(opts, :sandbox) do
+      {:ok, sandbox} when is_map(sandbox) ->
+        %{
+          level: Contracts.get(sandbox, :level, Contracts.get(contract_sandbox, :level)),
+          egress: Contracts.get(sandbox, :egress, Contracts.get(contract_sandbox, :egress)),
+          approvals:
+            Contracts.get(sandbox, :approvals, Contracts.get(contract_sandbox, :approvals)),
+          file_scope:
+            Contracts.get(sandbox, :file_scope, Contracts.get(contract_sandbox, :file_scope)),
+          allowed_tools:
+            Contracts.get(
+              sandbox,
+              :allowed_tools,
+              Contracts.get(contract_sandbox, :allowed_tools, [])
+            )
+        }
+
+      {:ok, sandbox} ->
+        sandbox
+
+      :error ->
+        contract_sandbox
+    end
   end
 
   defp execute_admitted_run(

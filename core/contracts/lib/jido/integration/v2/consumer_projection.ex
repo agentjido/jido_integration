@@ -334,12 +334,12 @@ defmodule Jido.Integration.V2.ConsumerProjection do
         _other -> connection_id_schema |> Zoi.optional()
       end
 
-    Zoi.object(%{
+    Contracts.ordered_object!(
       connection_id: connection_id_schema,
       enabled_actions:
         Zoi.list(Zoi.string(), description: "Optional subset of generated actions to enable")
         |> Zoi.default([])
-    })
+    )
   end
 
   defp normalize_identifier(value) do

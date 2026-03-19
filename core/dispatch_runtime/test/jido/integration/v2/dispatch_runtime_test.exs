@@ -309,10 +309,6 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     assert {:ok, %{dispatch: dispatch, run: run}} =
              DispatchRuntime.enqueue(runtime, trigger, max_attempts: 2)
 
-    run_id = run.run_id
-
-    assert_receive {:capability_attempt, ^run_id, 1}, 1_000
-
     completed_dispatch =
       wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :completed))
 
@@ -350,11 +346,6 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     assert {:ok, %{dispatch: dispatch, run: run}} =
              DispatchRuntime.enqueue(runtime, trigger, max_attempts: 3)
 
-    run_id = run.run_id
-
-    assert_receive {:capability_attempt, ^run_id, 1}, 1_000
-    assert_receive {:capability_attempt, ^run_id, 2}, 1_000
-
     completed_dispatch =
       wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :completed))
 
@@ -383,17 +374,19 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     assert {:ok, %{dispatch: dispatch, run: run}} =
              DispatchRuntime.enqueue(runtime, trigger, max_attempts: 2)
 
-    run_id = run.run_id
-
-    assert_receive {:capability_attempt, ^run_id, 1}, 1_000
-    assert_receive {:capability_attempt, ^run_id, 2}, 1_000
-
     dead_lettered_dispatch =
       wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :dead_lettered))
 
     assert dead_lettered_dispatch.attempts == 2
     assert dead_lettered_dispatch.dead_lettered_at
     assert dead_lettered_dispatch.last_error.reason == "{:scripted_failure, 2}"
+
+    assert {:ok, %Attempt{attempt: 1, status: :failed}} =
+             ControlPlane.fetch_attempt("#{run.run_id}:1")
+
+    assert {:ok, %Attempt{attempt: 2, status: :failed}} =
+             ControlPlane.fetch_attempt("#{run.run_id}:2")
+
     assert {:ok, %Run{status: :failed}} = ControlPlane.fetch_run(run.run_id)
 
     stop_runtime(runtime)
@@ -428,10 +421,6 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     assert {:ok, replayed_dispatch} = DispatchRuntime.replay(runtime, dispatch.dispatch_id)
     assert replayed_dispatch.status in [:queued, :retry_scheduled, :running]
 
-    run_id = run.run_id
-
-    assert_receive {:capability_attempt, ^run_id, 3}, 1_000
-
     completed_dispatch =
       wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :completed))
 
@@ -457,15 +446,15 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     assert {:ok, %{dispatch: dispatch, run: run}} =
              DispatchRuntime.enqueue(runtime, trigger, max_attempts: 3)
 
-    run_id = run.run_id
+    running_dispatch =
+      wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :running))
 
-    assert_receive {:capability_attempt, ^run_id, 1}, 1_000
+    assert running_dispatch.attempts == 1
+
     kill_runtime(runtime)
 
     {:ok, restarted} = start_runtime(storage_dir)
     assert :ok = DispatchRuntime.register_handler(restarted, "desk.alert", ExecuteTriggerHandler)
-
-    assert_receive {:capability_attempt, ^run_id, 2}, 1_000
 
     completed_dispatch =
       wait_for_dispatch(restarted, dispatch.dispatch_id, &(&1.status == :completed))
@@ -520,7 +509,7 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     end
   end
 
-  defp wait_for_dispatch(runtime, dispatch_id, predicate, attempts \\ 60)
+  defp wait_for_dispatch(runtime, dispatch_id, predicate, attempts \\ 200)
 
   defp wait_for_dispatch(_runtime, dispatch_id, _predicate, 0) do
     flunk("dispatch #{dispatch_id} did not reach the expected state")

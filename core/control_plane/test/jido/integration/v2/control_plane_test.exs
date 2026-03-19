@@ -394,6 +394,40 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert Enum.all?(events, &(&1.attempt_id == result.attempt.attempt_id))
   end
 
+  test "uses capability sandbox defaults when invoke opts omit sandbox" do
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    assert {:ok, result} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "ok"},
+               Keyword.drop(invoke_opts(connection_id), [:sandbox])
+             )
+
+    assert result.run.status == :completed
+    assert result.output == %{value: "ok"}
+  end
+
+  test "merges partial sandbox overrides with the capability policy contract" do
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    assert {:ok, result} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "ok"},
+               invoke_opts(connection_id,
+                 sandbox: %{
+                   allowed_tools: ["connector.echo", "connector.debug"]
+                 }
+               )
+             )
+
+    assert result.run.status == :completed
+    assert result.output == %{value: "ok"}
+  end
+
   test "persists an explicit target selection through run, attempt, and event truth" do
     connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)

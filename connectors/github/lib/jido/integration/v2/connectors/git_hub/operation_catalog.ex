@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   @moduledoc false
 
   alias Jido.Integration.V2.Connectors.GitHub.Operation
+  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.OperationSpec
 
   @repo_regex ~r/\A[^\/\s]+\/[^\/\s]+\z/
@@ -83,15 +84,15 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       name: "issue_list",
       description: "List GitHub issues for a repository.",
       input_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           state: Zoi.enum(["open", "closed", "all"]) |> Zoi.optional(),
           per_page: positive_integer_schema() |> Zoi.optional(),
           page: positive_integer_schema() |> Zoi.optional(),
           request_opts: request_opts_schema() |> Zoi.optional()
-        }),
+        ),
       output_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           state: Zoi.string(),
           page: positive_integer_schema(),
@@ -100,7 +101,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
           issues: Zoi.list(issue_summary_schema()),
           listed_by: Zoi.string(),
           auth_binding: auth_binding_schema()
-        }),
+        ),
       allowed_tools: ["github.api.issue.list"],
       upstream: %{
         method: "GET",
@@ -126,13 +127,13 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       name: "issue_fetch",
       description: "Fetch a GitHub issue by repository and issue number.",
       input_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           request_opts: request_opts_schema() |> Zoi.optional()
-        }),
+        ),
       output_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           title: Zoi.string(),
@@ -141,7 +142,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
           labels: string_list_schema(),
           fetched_by: Zoi.string(),
           auth_binding: auth_binding_schema()
-        }),
+        ),
       allowed_tools: ["github.api.issue.fetch"],
       upstream: %{
         method: "GET",
@@ -167,16 +168,16 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       name: "issue_create",
       description: "Create a GitHub issue in a repository.",
       input_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           title: Zoi.string(),
           body: Zoi.string() |> Zoi.nullish(),
           labels: string_list_schema() |> Zoi.optional(),
           assignees: string_list_schema() |> Zoi.optional(),
           request_opts: request_opts_schema() |> Zoi.optional()
-        }),
+        ),
       output_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           title: Zoi.string(),
@@ -186,7 +187,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
           assignees: string_list_schema(),
           opened_by: Zoi.string(),
           auth_binding: auth_binding_schema()
-        }),
+        ),
       allowed_tools: ["github.api.issue.create"],
       upstream: %{
         method: "POST",
@@ -212,7 +213,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       name: "issue_update",
       description: "Update a GitHub issue's editable fields.",
       input_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           title: Zoi.string() |> Zoi.optional(),
@@ -221,9 +222,9 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
           labels: string_list_schema() |> Zoi.optional(),
           assignees: string_list_schema() |> Zoi.optional(),
           request_opts: request_opts_schema() |> Zoi.optional()
-        }),
+        ),
       output_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           title: Zoi.string() |> Zoi.nullable(),
@@ -233,7 +234,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
           assignees: string_list_schema(),
           updated_by: Zoi.string(),
           auth_binding: auth_binding_schema()
-        }),
+        ),
       allowed_tools: ["github.api.issue.update"],
       upstream: %{
         method: "PATCH",
@@ -259,20 +260,20 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       name: "issue_label",
       description: "Add labels to an existing GitHub issue.",
       input_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           labels: string_list_schema(),
           request_opts: request_opts_schema() |> Zoi.optional()
-        }),
+        ),
       output_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           labels: string_list_schema(),
           labeled_by: Zoi.string(),
           auth_binding: auth_binding_schema()
-        }),
+        ),
       allowed_tools: ["github.api.issue.label"],
       upstream: %{
         method: "POST",
@@ -298,19 +299,19 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       name: "issue_close",
       description: "Close a GitHub issue by setting its state to closed.",
       input_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           request_opts: request_opts_schema() |> Zoi.optional()
-        }),
+        ),
       output_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           state: Zoi.string(),
           closed_by: Zoi.string(),
           auth_binding: auth_binding_schema()
-        }),
+        ),
       allowed_tools: ["github.api.issue.close"],
       upstream: %{
         method: "PATCH",
@@ -336,21 +337,21 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       name: "comment_create",
       description: "Create a comment on a GitHub issue.",
       input_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           body: Zoi.string(),
           request_opts: request_opts_schema() |> Zoi.optional()
-        }),
+        ),
       output_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           issue_number: positive_integer_schema(),
           comment_id: positive_integer_schema(),
           body: Zoi.string(),
           created_by: Zoi.string(),
           auth_binding: auth_binding_schema()
-        }),
+        ),
       allowed_tools: ["github.api.comment.create"],
       upstream: %{
         method: "POST",
@@ -376,20 +377,20 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       name: "comment_update",
       description: "Update an existing GitHub issue comment.",
       input_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           comment_id: positive_integer_schema(),
           body: Zoi.string(),
           request_opts: request_opts_schema() |> Zoi.optional()
-        }),
+        ),
       output_schema:
-        strict_object(%{
+        strict_object(
           repo: repo_schema(),
           comment_id: positive_integer_schema(),
           body: Zoi.string(),
           updated_by: Zoi.string(),
           auth_binding: auth_binding_schema()
-        }),
+        ),
       allowed_tools: ["github.api.comment.update"],
       upstream: %{
         method: "PATCH",
@@ -468,7 +469,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   end
 
   defp strict_object(fields) do
-    Zoi.object(fields, coerce: true, unrecognized_keys: :error)
+    Contracts.strict_object!(fields)
   end
 
   defp repo_schema do
@@ -493,13 +494,13 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   end
 
   defp issue_summary_schema do
-    strict_object(%{
+    strict_object(
       repo: repo_schema(),
       issue_number: positive_integer_schema(),
       title: Zoi.string(),
       state: Zoi.string(),
       labels: string_list_schema()
-    })
+    )
   end
 
   defp display_name(operation_id) do

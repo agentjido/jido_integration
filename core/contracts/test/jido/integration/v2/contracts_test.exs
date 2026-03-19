@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.ContractsTest do
   alias Jido.Integration.V2.ArtifactRef
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
@@ -140,5 +141,25 @@ defmodule Jido.Integration.V2.ContractsTest do
     assert event.target_id == "target-local"
     assert event.session_id == "session-1"
     assert %DateTime{} = event.ts
+  end
+
+  test "ordered object helpers require explicit field ordering for stable Zoi schemas" do
+    schema =
+      Contracts.strict_object!(
+        repo: Zoi.string(),
+        issue_number: Zoi.integer(),
+        body: Zoi.string() |> Zoi.optional()
+      )
+
+    assert Enum.map(schema.fields, &elem(&1, 0)) == [:repo, :issue_number, :body]
+
+    assert_raise ArgumentError,
+                 ~r/ordered object schema fields must be a keyword list/,
+                 fn ->
+                   Contracts.strict_object!(%{
+                     repo: Zoi.string(),
+                     issue_number: Zoi.integer()
+                   })
+                 end
   end
 end
