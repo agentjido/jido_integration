@@ -437,6 +437,24 @@ defmodule Jido.Integration.V2.Contracts do
     raise ArgumentError, "#{field_name} must be a map, got: #{inspect(value)}"
   end
 
+  @spec validate_positive_integer!(term(), String.t()) :: pos_integer()
+  def validate_positive_integer!(value, _field_name) when is_integer(value) and value > 0,
+    do: value
+
+  def validate_positive_integer!(value, field_name) do
+    raise ArgumentError, "#{field_name} must be a positive integer, got: #{inspect(value)}"
+  end
+
+  @spec map_schema(String.t()) :: zoi_schema()
+  def map_schema(field_name) when is_binary(field_name) do
+    Zoi.any() |> Zoi.refine({__MODULE__, :validate_map_refine, [field_name]})
+  end
+
+  @spec positive_integer_schema(String.t()) :: zoi_schema()
+  def positive_integer_schema(field_name) when is_binary(field_name) do
+    Zoi.any() |> Zoi.refine({__MODULE__, :validate_positive_integer_refine, [field_name]})
+  end
+
   @spec any_map_schema() :: zoi_schema()
   def any_map_schema do
     Zoi.map(Zoi.any(), Zoi.any(), [])
@@ -455,6 +473,26 @@ defmodule Jido.Integration.V2.Contracts do
   @spec module_schema(String.t()) :: zoi_schema()
   def module_schema(field_name) when is_binary(field_name) do
     Zoi.atom() |> Zoi.refine({__MODULE__, :validate_module_refine, [field_name]})
+  end
+
+  @spec struct_schema(module(), String.t()) :: zoi_schema()
+  def struct_schema(module, field_name) when is_atom(module) and is_binary(field_name) do
+    Zoi.any() |> Zoi.refine({__MODULE__, :validate_struct_refine, [module, field_name]})
+  end
+
+  @spec datetime_schema(String.t()) :: zoi_schema()
+  def datetime_schema(field_name) when is_binary(field_name) do
+    Zoi.any() |> Zoi.refine({__MODULE__, :validate_datetime_refine, [field_name]})
+  end
+
+  @spec keyword_list_schema(String.t()) :: zoi_schema()
+  def keyword_list_schema(field_name) when is_binary(field_name) do
+    Zoi.any() |> Zoi.refine({__MODULE__, :validate_keyword_list_refine, [field_name]})
+  end
+
+  @spec payload_ref_schema(String.t()) :: zoi_schema()
+  def payload_ref_schema(field_name) when is_binary(field_name) do
+    Zoi.any() |> Zoi.refine({__MODULE__, :validate_payload_ref_refine, [field_name]})
   end
 
   @spec atomish_schema(String.t()) :: zoi_schema()
@@ -581,6 +619,62 @@ defmodule Jido.Integration.V2.Contracts do
   end
 
   @doc false
+  @spec validate_map_refine(term(), String.t(), keyword()) :: :ok | {:error, String.t()}
+  def validate_map_refine(value, field_name, _opts) do
+    validate_map!(value, field_name)
+    :ok
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
+  @spec validate_positive_integer_refine(term(), String.t(), keyword()) ::
+          :ok | {:error, String.t()}
+  def validate_positive_integer_refine(value, field_name, _opts) do
+    validate_positive_integer!(value, field_name)
+    :ok
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
+  @spec validate_struct_refine(term(), module(), String.t(), keyword()) ::
+          :ok | {:error, String.t()}
+  def validate_struct_refine(value, module, field_name, _opts) do
+    validate_struct!(value, module, field_name)
+    :ok
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
+  @spec validate_datetime_refine(term(), String.t(), keyword()) :: :ok | {:error, String.t()}
+  def validate_datetime_refine(value, field_name, _opts) do
+    validate_datetime!(value, field_name)
+    :ok
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
+  @spec validate_keyword_list_refine(term(), String.t(), keyword()) :: :ok | {:error, String.t()}
+  def validate_keyword_list_refine(value, field_name, _opts) do
+    validate_keyword_list!(value, field_name)
+    :ok
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
+  @spec validate_payload_ref_refine(term(), String.t(), keyword()) :: :ok | {:error, String.t()}
+  def validate_payload_ref_refine(value, field_name, _opts) do
+    validate_payload_ref!(value, field_name)
+    :ok
+  rescue
+    error in ArgumentError -> {:error, Exception.message(error)}
+  end
+
+  @doc false
   @spec validate_zoi_schema_refine(term(), String.t(), keyword()) :: :ok | {:error, String.t()}
   def validate_zoi_schema_refine(value, field_name, _opts) do
     validate_zoi_schema!(value, field_name)
@@ -626,6 +720,35 @@ defmodule Jido.Integration.V2.Contracts do
 
   defp validate_non_negative_integer!(value, field_name) do
     raise ArgumentError, "#{field_name} must be a non-negative integer, got: #{inspect(value)}"
+  end
+
+  defp validate_struct!(%module{} = value, module, _field_name), do: value
+
+  defp validate_struct!(value, module, field_name) do
+    raise ArgumentError,
+          "#{field_name} must be a #{inspect(module)} struct, got: #{inspect(value)}"
+  end
+
+  defp validate_datetime!(%DateTime{} = value, _field_name), do: value
+
+  defp validate_datetime!(value, field_name) do
+    raise ArgumentError, "#{field_name} must be a DateTime, got: #{inspect(value)}"
+  end
+
+  defp validate_keyword_list!(value, field_name) when is_list(value) do
+    if Keyword.keyword?(value) do
+      value
+    else
+      raise ArgumentError, "#{field_name} must be a keyword list, got: #{inspect(value)}"
+    end
+  end
+
+  defp validate_keyword_list!(value, field_name) do
+    raise ArgumentError, "#{field_name} must be a keyword list, got: #{inspect(value)}"
+  end
+
+  defp validate_payload_ref!(value, _field_name) do
+    normalize_payload_ref!(value)
   end
 
   defp local_payload_ref?(store, key) do

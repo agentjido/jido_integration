@@ -4,95 +4,126 @@ defmodule Jido.Integration.V2.Event do
   """
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Schema
 
-  @enforce_keys [:event_id, :schema_version, :run_id, :seq, :type, :stream, :level, :trace, :ts]
-  defstruct [
-    :event_id,
-    :schema_version,
-    :run_id,
-    :attempt,
-    :attempt_id,
-    :seq,
-    :type,
-    :stream,
-    :level,
-    :payload,
-    :payload_ref,
-    :trace,
-    :target_id,
-    :session_id,
-    :runtime_ref_id,
-    :ts
-  ]
+  @streams [:assistant, :stdout, :stderr, :system, :control]
+  @levels [:debug, :info, :warn, :error]
 
-  @type t :: %__MODULE__{
-          event_id: String.t(),
-          schema_version: String.t(),
-          run_id: String.t(),
-          attempt: pos_integer() | nil,
-          attempt_id: String.t() | nil,
-          seq: non_neg_integer(),
-          type: String.t(),
-          stream: Contracts.event_stream(),
-          level: Contracts.event_level(),
-          payload: map(),
-          payload_ref: Contracts.payload_ref() | nil,
-          trace: Contracts.trace_context(),
-          target_id: String.t() | nil,
-          session_id: String.t() | nil,
-          runtime_ref_id: String.t() | nil,
-          ts: DateTime.t()
-        }
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              event_id:
+                Contracts.non_empty_string_schema("event.event_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              schema_version: Zoi.string() |> Zoi.default(Contracts.schema_version()),
+              run_id: Contracts.non_empty_string_schema("event.run_id"),
+              attempt: Zoi.integer() |> Zoi.min(1) |> Zoi.nullish() |> Zoi.optional(),
+              attempt_id:
+                Contracts.non_empty_string_schema("event.attempt_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              seq: Zoi.integer() |> Zoi.min(0),
+              type: Contracts.non_empty_string_schema("event.type"),
+              stream: Contracts.enumish_schema(@streams, "event.stream") |> Zoi.default(:system),
+              level: Contracts.enumish_schema(@levels, "event.level") |> Zoi.default(:info),
+              payload: Contracts.any_map_schema() |> Zoi.default(%{}),
+              payload_ref:
+                Contracts.payload_ref_schema("event.payload_ref")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              trace: Contracts.any_map_schema() |> Zoi.default(%{}),
+              target_id:
+                Contracts.non_empty_string_schema("event.target_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              session_id:
+                Contracts.non_empty_string_schema("event.session_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              runtime_ref_id:
+                Contracts.non_empty_string_schema("event.runtime_ref_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              ts: Contracts.datetime_schema("event.ts") |> Zoi.nullish() |> Zoi.optional()
+            },
+            coerce: true
+          )
 
-  @spec new!(map()) :: t()
-  def new!(attrs) do
-    attrs = Map.new(attrs)
-    run_id = Map.fetch!(attrs, :run_id)
-    {attempt, attempt_id} = normalize_attempt_identity(run_id, attrs)
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-    struct!(__MODULE__, %{
-      event_id: Map.get(attrs, :event_id, Contracts.next_id("event")),
-      schema_version: Map.get(attrs, :schema_version, Contracts.schema_version()),
-      run_id: run_id,
-      attempt: attempt,
-      attempt_id: attempt_id,
-      seq: Contracts.validate_event_seq!(Map.fetch!(attrs, :seq)),
-      type: Map.fetch!(attrs, :type),
-      stream: Contracts.validate_event_stream!(Map.get(attrs, :stream, :system)),
-      level: Contracts.validate_event_level!(Map.get(attrs, :level, :info)),
-      payload: Map.get(attrs, :payload, %{}),
-      payload_ref: normalize_payload_ref(Map.get(attrs, :payload_ref)),
-      trace: Contracts.normalize_trace(Map.get(attrs, :trace, %{})),
-      target_id: Map.get(attrs, :target_id),
-      session_id: Map.get(attrs, :session_id),
-      runtime_ref_id: Map.get(attrs, :runtime_ref_id),
-      ts: Map.get(attrs, :ts, Contracts.now())
-    })
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
+
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
+
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = event), do: normalize(event)
+
+  def new(attrs) do
+    case Schema.new(__MODULE__, @schema, attrs) do
+      {:ok, event} -> normalize(event)
+      {:error, %ArgumentError{} = error} -> {:error, error}
+    end
   end
 
-  defp normalize_attempt_identity(run_id, attrs) do
-    case {Map.get(attrs, :attempt), Map.get(attrs, :attempt_id)} do
-      {nil, nil} ->
-        {nil, nil}
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = event) do
+    case normalize(event) do
+      {:ok, event} -> event
+      {:error, %ArgumentError{} = error} -> raise error
+    end
+  end
 
-      {attempt, nil} ->
-        attempt = Contracts.validate_attempt!(attempt)
-        {attempt, Contracts.attempt_id(run_id, attempt)}
+  def new!(attrs) do
+    case new(attrs) do
+      {:ok, event} -> event
+      {:error, %ArgumentError{} = error} -> raise error
+    end
+  end
 
-      {nil, attempt_id} ->
-        attempt = Contracts.attempt_from_id!(run_id, attempt_id)
-        {attempt, attempt_id}
+  defp normalize(%__MODULE__{} = event) do
+    with {:ok, attempt, attempt_id} <- normalize_attempt_identity(event.run_id, event) do
+      {:ok,
+       %__MODULE__{
+         event
+         | event_id: event.event_id || Contracts.next_id("event"),
+           attempt: attempt,
+           attempt_id: attempt_id,
+           payload_ref: normalize_payload_ref(event.payload_ref),
+           trace: Contracts.normalize_trace(event.trace),
+           ts: event.ts || Contracts.now()
+       }}
+    end
+  end
 
-      {attempt, attempt_id} ->
-        attempt = Contracts.validate_attempt!(attempt)
-        expected_attempt_id = Contracts.attempt_id(run_id, attempt)
+  defp normalize_attempt_identity(_run_id, %__MODULE__{attempt: nil, attempt_id: nil}),
+    do: {:ok, nil, nil}
 
-        if attempt_id != expected_attempt_id do
-          raise ArgumentError,
-                "event attempt_id must match run_id and attempt: #{inspect({run_id, attempt, attempt_id})}"
-        end
+  defp normalize_attempt_identity(run_id, %__MODULE__{attempt: attempt, attempt_id: nil}) do
+    attempt = Contracts.validate_attempt!(attempt)
+    {:ok, attempt, Contracts.attempt_id(run_id, attempt)}
+  end
 
-        {attempt, attempt_id}
+  defp normalize_attempt_identity(run_id, %__MODULE__{attempt: nil, attempt_id: attempt_id}) do
+    {:ok, Contracts.attempt_from_id!(run_id, attempt_id), attempt_id}
+  end
+
+  defp normalize_attempt_identity(
+         run_id,
+         %__MODULE__{attempt: attempt, attempt_id: attempt_id}
+       ) do
+    attempt = Contracts.validate_attempt!(attempt)
+    expected_attempt_id = Contracts.attempt_id(run_id, attempt)
+
+    if attempt_id == expected_attempt_id do
+      {:ok, attempt, attempt_id}
+    else
+      {:error,
+       ArgumentError.exception(
+         "event attempt_id must match run_id and attempt: #{inspect({run_id, attempt, attempt_id})}"
+       )}
     end
   end
 

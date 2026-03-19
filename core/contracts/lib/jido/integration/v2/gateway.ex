@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.Gateway do
 
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.CredentialRef
+  alias Jido.Integration.V2.Schema
 
   @default_sandbox %{
     level: :standard,
@@ -14,18 +15,59 @@ defmodule Jido.Integration.V2.Gateway do
     allowed_tools: []
   }
 
-  @enforce_keys [:runtime_class]
-  defstruct [
-    :actor_id,
-    :tenant_id,
-    :environment,
-    :trace_id,
-    :credential_ref,
-    :runtime_class,
-    allowed_operations: [],
-    sandbox: @default_sandbox,
-    metadata: %{}
-  ]
+  @sandbox_levels [:strict, :standard, :none]
+  @approvals [:none, :manual, :auto]
+  @egress_policies [:blocked, :restricted, :open]
+
+  @sandbox_schema Contracts.strict_object!(
+                    level:
+                      Contracts.enumish_schema(@sandbox_levels, "gateway.sandbox.level")
+                      |> Zoi.default(:standard),
+                    egress:
+                      Contracts.enumish_schema(@egress_policies, "gateway.sandbox.egress")
+                      |> Zoi.default(:restricted),
+                    approvals:
+                      Contracts.enumish_schema(@approvals, "gateway.sandbox.approvals")
+                      |> Zoi.default(:auto),
+                    file_scope:
+                      Contracts.non_empty_string_schema("gateway.sandbox.file_scope")
+                      |> Zoi.nullish()
+                      |> Zoi.optional(),
+                    allowed_tools:
+                      Contracts.string_list_schema("gateway.sandbox.allowed_tools")
+                      |> Zoi.default([])
+                  )
+
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              actor_id:
+                Contracts.non_empty_string_schema("gateway.actor_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              tenant_id:
+                Contracts.non_empty_string_schema("gateway.tenant_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              environment:
+                Zoi.union([Zoi.atom(), Zoi.string()]) |> Zoi.nullish() |> Zoi.optional(),
+              trace_id:
+                Contracts.non_empty_string_schema("gateway.trace_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              credential_ref:
+                Contracts.struct_schema(CredentialRef, "gateway.credential_ref")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              runtime_class:
+                Contracts.enumish_schema([:direct, :session, :stream], "gateway.runtime_class"),
+              allowed_operations:
+                Contracts.string_list_schema("gateway.allowed_operations") |> Zoi.default([]),
+              sandbox: @sandbox_schema |> Zoi.default(@default_sandbox),
+              metadata: Contracts.any_map_schema() |> Zoi.default(%{})
+            },
+            coerce: true
+          )
 
   @type sandbox_t :: %{
           level: Contracts.sandbox_level(),
@@ -34,65 +76,48 @@ defmodule Jido.Integration.V2.Gateway do
           file_scope: String.t() | nil,
           allowed_tools: [String.t()]
         }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @type t :: %__MODULE__{
-          actor_id: String.t() | nil,
-          tenant_id: String.t() | nil,
-          environment: atom() | String.t() | nil,
-          trace_id: String.t() | nil,
-          credential_ref: CredentialRef.t() | nil,
-          runtime_class: Contracts.runtime_class(),
-          allowed_operations: [String.t()],
-          sandbox: sandbox_t(),
-          metadata: map()
-        }
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
 
-  @spec new!(map()) :: t()
-  def new!(attrs) do
-    attrs = Map.new(attrs)
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
 
-    struct!(__MODULE__, %{
-      actor_id: optional_string(Contracts.get(attrs, :actor_id)),
-      tenant_id: optional_string(Contracts.get(attrs, :tenant_id)),
-      environment: normalize_environment(Contracts.get(attrs, :environment)),
-      trace_id: optional_string(Contracts.get(attrs, :trace_id)),
-      credential_ref: normalize_credential_ref(Contracts.get(attrs, :credential_ref)),
-      runtime_class: Contracts.validate_runtime_class!(Contracts.fetch!(attrs, :runtime_class)),
-      allowed_operations:
-        Contracts.normalize_string_list!(
-          Contracts.get(attrs, :allowed_operations, []),
-          "allowed_operations"
-        ),
-      sandbox: normalize_sandbox(Contracts.get(attrs, :sandbox, %{})),
-      metadata: normalize_metadata(Contracts.get(attrs, :metadata, %{}))
-    })
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = gateway), do: normalize(gateway)
+
+  def new(attrs) do
+    case Schema.new(__MODULE__, @schema, attrs) do
+      {:ok, gateway} -> normalize(gateway)
+      {:error, %ArgumentError{} = error} -> {:error, error}
+    end
   end
 
-  defp optional_string(nil), do: nil
-  defp optional_string(value), do: Contracts.validate_non_empty_string!(value, "gateway")
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = gateway), do: normalize(gateway) |> then(fn {:ok, value} -> value end)
+
+  def new!(attrs) do
+    case new(attrs) do
+      {:ok, gateway} -> gateway
+      {:error, %ArgumentError{} = error} -> raise error
+    end
+  end
+
+  defp normalize(%__MODULE__{} = gateway) do
+    {:ok,
+     %__MODULE__{
+       gateway
+       | environment: normalize_environment(gateway.environment),
+         sandbox: normalize_sandbox(gateway.sandbox)
+     }}
+  end
 
   defp normalize_environment(nil), do: nil
   defp normalize_environment(value) when is_atom(value), do: value
 
   defp normalize_environment(value) when is_binary(value),
     do: Contracts.validate_non_empty_string!(value, "environment")
-
-  defp normalize_environment(value) do
-    raise ArgumentError, "environment must be an atom or string, got: #{inspect(value)}"
-  end
-
-  defp normalize_credential_ref(nil), do: nil
-  defp normalize_credential_ref(%CredentialRef{} = credential_ref), do: credential_ref
-
-  defp normalize_credential_ref(value) do
-    raise ArgumentError, "credential_ref must be a CredentialRef, got: #{inspect(value)}"
-  end
-
-  defp normalize_metadata(metadata) when is_map(metadata), do: metadata
-
-  defp normalize_metadata(metadata) do
-    raise ArgumentError, "gateway metadata must be a map, got: #{inspect(metadata)}"
-  end
 
   defp normalize_sandbox(sandbox) when is_map(sandbox) do
     %{
@@ -106,10 +131,6 @@ defmodule Jido.Integration.V2.Gateway do
           "sandbox.allowed_tools"
         )
     }
-  end
-
-  defp normalize_sandbox(sandbox) do
-    raise ArgumentError, "sandbox must be a map, got: #{inspect(sandbox)}"
   end
 
   defp normalize_file_scope(nil), do: nil

@@ -41,6 +41,20 @@ That means root validation commands such as `mix mr.test` and `mix ci` expect a
 reachable Postgres test database unless the relevant packages are reconfigured
 explicitly.
 
+Before calling the root acceptance surface blocked on Postgres reachability,
+run the root preflight task:
+
+```bash
+cd /home/home/p/g/n/jido_integration && mix mr.pg.preflight
+```
+
+That check confirms the canonical `store_postgres` tier is reachable for the
+root `:test` surface. It does not change the other durability tiers:
+
+- in-memory defaults remain available in `core/auth` and `core/control_plane`
+- `core/store_local` remains the restart-safe local middle tier
+- `core/store_postgres` remains the shared database-backed tier
+
 Default test settings:
 
 - `JIDO_INTEGRATION_V2_DB_HOST=127.0.0.1`

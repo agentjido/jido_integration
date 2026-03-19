@@ -4,63 +4,69 @@ defmodule Jido.Integration.V2.CredentialLease do
   """
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Schema
 
-  @enforce_keys [
-    :lease_id,
-    :credential_ref_id,
-    :subject,
-    :scopes,
-    :payload,
-    :issued_at,
-    :expires_at
-  ]
-  defstruct [
-    :lease_id,
-    :credential_ref_id,
-    :subject,
-    :scopes,
-    :payload,
-    :issued_at,
-    :expires_at,
-    metadata: %{}
-  ]
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              lease_id: Contracts.non_empty_string_schema("credential_lease.lease_id"),
+              credential_ref_id:
+                Contracts.non_empty_string_schema("credential_lease.credential_ref_id"),
+              subject: Contracts.non_empty_string_schema("credential_lease.subject"),
+              scopes: Contracts.string_list_schema("credential_lease.scopes") |> Zoi.default([]),
+              payload: Contracts.any_map_schema(),
+              issued_at:
+                Contracts.datetime_schema("credential_lease.issued_at")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              expires_at: Contracts.datetime_schema("credential_lease.expires_at"),
+              metadata: Contracts.any_map_schema() |> Zoi.default(%{})
+            },
+            coerce: true
+          )
 
-  @type t :: %__MODULE__{
-          lease_id: String.t(),
-          credential_ref_id: String.t(),
-          subject: String.t(),
-          scopes: [String.t()],
-          payload: map(),
-          issued_at: DateTime.t(),
-          expires_at: DateTime.t(),
-          metadata: map()
-        }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @spec new!(map()) :: t()
-  def new!(attrs) do
-    attrs = Map.new(attrs)
-    issued_at = Map.get(attrs, :issued_at, Contracts.now())
-    expires_at = Map.fetch!(attrs, :expires_at)
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
 
-    if DateTime.compare(expires_at, issued_at) != :gt do
-      raise ArgumentError,
-            "credential lease expires_at must be after issued_at: #{inspect({issued_at, expires_at})}"
-    end
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
 
-    struct!(__MODULE__, %{
-      lease_id: Map.fetch!(attrs, :lease_id),
-      credential_ref_id: Map.fetch!(attrs, :credential_ref_id),
-      subject: Map.fetch!(attrs, :subject),
-      scopes: Map.get(attrs, :scopes, []),
-      payload: Map.fetch!(attrs, :payload),
-      issued_at: issued_at,
-      expires_at: expires_at,
-      metadata: Map.get(attrs, :metadata, %{})
-    })
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = credential_lease), do: validate(credential_lease)
+
+  def new(attrs) do
+    __MODULE__
+    |> Schema.new(@schema, attrs)
+    |> Schema.refine_new(&validate/1)
   end
+
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = credential_lease) do
+    case validate(credential_lease) do
+      {:ok, lease} -> lease
+      {:error, %ArgumentError{} = error} -> raise error
+    end
+  end
+
+  def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs) |> new!()
 
   @spec expired?(t(), DateTime.t()) :: boolean()
   def expired?(%__MODULE__{expires_at: %DateTime{} = expires_at}, %DateTime{} = now) do
     DateTime.compare(expires_at, now) != :gt
+  end
+
+  defp validate(%__MODULE__{} = credential_lease) do
+    issued_at = credential_lease.issued_at || Contracts.now()
+
+    if DateTime.compare(credential_lease.expires_at, issued_at) == :gt do
+      {:ok, %__MODULE__{credential_lease | issued_at: issued_at}}
+    else
+      {:error,
+       ArgumentError.exception(
+         "credential lease expires_at must be after issued_at: #{inspect({issued_at, credential_lease.expires_at})}"
+       )}
+    end
   end
 end

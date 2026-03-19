@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.TargetDescriptor do
   """
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Schema
 
   @known_keys [
     :target_id,
@@ -20,62 +21,63 @@ defmodule Jido.Integration.V2.TargetDescriptor do
     :location,
     :extensions
   ]
+  @runtime_classes [:direct, :session, :stream]
+  @target_health [:healthy, :degraded, :unavailable]
 
-  @enforce_keys [
-    :target_id,
-    :capability_id,
-    :runtime_class,
-    :version,
-    :features,
-    :constraints,
-    :health,
-    :location
-  ]
-  defstruct [
-    :target_id,
-    :capability_id,
-    :runtime_class,
-    :version,
-    :health,
-    features: %{},
-    constraints: %{},
-    location: %{},
-    extensions: %{}
-  ]
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              target_id: Contracts.non_empty_string_schema("target_descriptor.target_id"),
+              capability_id: Contracts.non_empty_string_schema("target_descriptor.capability_id"),
+              runtime_class:
+                Contracts.enumish_schema(
+                  @runtime_classes,
+                  "target_descriptor.runtime_class"
+                ),
+              version: Contracts.non_empty_string_schema("target_descriptor.version"),
+              features: Contracts.any_map_schema(),
+              constraints: Contracts.any_map_schema(),
+              health: Contracts.enumish_schema(@target_health, "target_descriptor.health"),
+              location: Contracts.any_map_schema(),
+              extensions: Contracts.any_map_schema() |> Zoi.default(%{})
+            },
+            coerce: true
+          )
 
-  @type t :: %__MODULE__{
-          target_id: String.t(),
-          capability_id: String.t(),
-          runtime_class: Contracts.runtime_class(),
-          version: String.t(),
-          features: map(),
-          constraints: map(),
-          health: Contracts.target_health(),
-          location: map(),
-          extensions: map()
-        }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @spec new!(map()) :: t()
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
+
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
+
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = descriptor), do: normalize(descriptor)
+
+  def new(attrs) when is_map(attrs) or is_list(attrs) do
+    attrs = attrs |> Map.new() |> prepare_attrs()
+
+    __MODULE__
+    |> Schema.new(@schema, attrs)
+    |> Schema.refine_new(&normalize/1)
+  end
+
+  def new(attrs), do: Schema.new(__MODULE__, @schema, attrs)
+
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = descriptor) do
+    case normalize(descriptor) do
+      {:ok, descriptor} -> descriptor
+      {:error, %ArgumentError{} = error} -> raise error
+    end
+  end
+
   def new!(attrs) do
-    attrs = Map.new(attrs)
-    extensions = normalize_extensions(attrs)
-
-    struct!(__MODULE__, %{
-      target_id:
-        Contracts.validate_non_empty_string!(Contracts.fetch!(attrs, :target_id), "target_id"),
-      capability_id:
-        Contracts.validate_non_empty_string!(
-          Contracts.fetch!(attrs, :capability_id),
-          "capability_id"
-        ),
-      runtime_class: Contracts.validate_runtime_class!(Contracts.fetch!(attrs, :runtime_class)),
-      version: Contracts.validate_semver!(Contracts.fetch!(attrs, :version), "version"),
-      features: normalize_features!(Contracts.fetch!(attrs, :features)),
-      constraints: normalize_constraints!(Contracts.fetch!(attrs, :constraints)),
-      health: Contracts.validate_target_health!(Contracts.fetch!(attrs, :health)),
-      location: normalize_location!(Contracts.fetch!(attrs, :location)),
-      extensions: extensions
-    })
+    case new(attrs) do
+      {:ok, descriptor} -> descriptor
+      {:error, %ArgumentError{} = error} -> raise error
+    end
   end
 
   @spec compatibility(t(), map()) ::
@@ -109,6 +111,26 @@ defmodule Jido.Integration.V2.TargetDescriptor do
          event_schema_version: event_schema_version
        }}
     end
+  end
+
+  defp prepare_attrs(attrs) do
+    Map.put(attrs, :extensions, normalize_extensions(attrs))
+  end
+
+  defp normalize(%__MODULE__{} = descriptor) do
+    {:ok,
+     %__MODULE__{
+       descriptor
+       | runtime_class: Contracts.validate_runtime_class!(descriptor.runtime_class),
+         version: Contracts.validate_semver!(descriptor.version, "version"),
+         features: normalize_features!(descriptor.features),
+         constraints: normalize_constraints!(descriptor.constraints),
+         health: Contracts.validate_target_health!(descriptor.health),
+         location: normalize_location!(descriptor.location),
+         extensions: validate_extensions!(descriptor.extensions)
+     }}
+  rescue
+    error in ArgumentError -> {:error, error}
   end
 
   defp normalize_features!(features) when is_map(features) do
@@ -189,6 +211,12 @@ defmodule Jido.Integration.V2.TargetDescriptor do
     attrs
     |> collect_unknown_fields(@known_keys)
     |> Map.merge(extensions)
+  end
+
+  defp validate_extensions!(extensions) when is_map(extensions), do: extensions
+
+  defp validate_extensions!(extensions) do
+    raise ArgumentError, "extensions must be a map, got: #{inspect(extensions)}"
   end
 
   defp match_capability(descriptor, requirements) do

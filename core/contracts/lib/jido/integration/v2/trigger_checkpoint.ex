@@ -4,50 +4,58 @@ defmodule Jido.Integration.V2.TriggerCheckpoint do
   """
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Schema
 
-  @enforce_keys [:tenant_id, :connector_id, :trigger_id, :partition_key, :cursor]
-  defstruct [
-    :tenant_id,
-    :connector_id,
-    :trigger_id,
-    :partition_key,
-    :cursor,
-    :last_event_id,
-    :last_event_time,
-    :revision,
-    :updated_at
-  ]
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              tenant_id: Contracts.non_empty_string_schema("trigger_checkpoint.tenant_id"),
+              connector_id: Contracts.non_empty_string_schema("trigger_checkpoint.connector_id"),
+              trigger_id: Contracts.non_empty_string_schema("trigger_checkpoint.trigger_id"),
+              partition_key:
+                Contracts.non_empty_string_schema("trigger_checkpoint.partition_key"),
+              cursor: Contracts.non_empty_string_schema("trigger_checkpoint.cursor"),
+              last_event_id:
+                Contracts.non_empty_string_schema("trigger_checkpoint.last_event_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              last_event_time:
+                Contracts.datetime_schema("trigger_checkpoint.last_event_time")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              revision: Zoi.integer() |> Zoi.min(1) |> Zoi.default(1),
+              updated_at:
+                Contracts.datetime_schema("trigger_checkpoint.updated_at")
+                |> Zoi.nullish()
+                |> Zoi.optional()
+            },
+            coerce: true
+          )
 
-  @type t :: %__MODULE__{
-          tenant_id: String.t(),
-          connector_id: String.t(),
-          trigger_id: String.t(),
-          partition_key: String.t(),
-          cursor: String.t(),
-          last_event_id: String.t() | nil,
-          last_event_time: DateTime.t() | nil,
-          revision: pos_integer(),
-          updated_at: DateTime.t()
-        }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @spec new!(map()) :: t()
-  def new!(attrs) do
-    attrs = Map.new(attrs)
-    updated_at = Map.get(attrs, :updated_at, Contracts.now())
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
 
-    struct!(__MODULE__, %{
-      tenant_id: Contracts.validate_non_empty_string!(Map.fetch!(attrs, :tenant_id), "tenant_id"),
-      connector_id:
-        Contracts.validate_non_empty_string!(Map.fetch!(attrs, :connector_id), "connector_id"),
-      trigger_id:
-        Contracts.validate_non_empty_string!(Map.fetch!(attrs, :trigger_id), "trigger_id"),
-      partition_key:
-        Contracts.validate_non_empty_string!(Map.fetch!(attrs, :partition_key), "partition_key"),
-      cursor: Contracts.validate_non_empty_string!(Map.fetch!(attrs, :cursor), "cursor"),
-      last_event_id: Map.get(attrs, :last_event_id),
-      last_event_time: Map.get(attrs, :last_event_time),
-      revision: Map.get(attrs, :revision, 1),
-      updated_at: updated_at
-    })
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
+
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = checkpoint), do: normalize(checkpoint)
+
+  def new(attrs) do
+    __MODULE__
+    |> Schema.new(@schema, attrs)
+    |> Schema.refine_new(&normalize/1)
+  end
+
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = checkpoint),
+    do: normalize(checkpoint) |> then(fn {:ok, value} -> value end)
+
+  def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs) |> new!()
+
+  defp normalize(%__MODULE__{} = checkpoint) do
+    {:ok, %__MODULE__{checkpoint | updated_at: checkpoint.updated_at || Contracts.now()}}
   end
 end

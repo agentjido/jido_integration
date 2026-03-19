@@ -4,58 +4,61 @@ defmodule Jido.Integration.V2.Credential do
   """
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Schema
 
   @non_leaseable_secret_keys ~w(refresh_token client_secret webhook_secret private_key password)
 
-  @enforce_keys [:id, :subject, :auth_type]
-  defstruct [
-    :id,
-    :connection_id,
-    :subject,
-    :auth_type,
-    :expires_at,
-    :revoked_at,
-    scopes: [],
-    secret: %{},
-    lease_fields: [],
-    metadata: %{}
-  ]
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              id: Contracts.non_empty_string_schema("credential.id"),
+              connection_id:
+                Contracts.non_empty_string_schema("credential.connection_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              subject: Contracts.non_empty_string_schema("credential.subject"),
+              auth_type: Zoi.atom(),
+              scopes: Contracts.string_list_schema("credential.scopes") |> Zoi.default([]),
+              secret: Contracts.any_map_schema() |> Zoi.default(%{}),
+              lease_fields:
+                Contracts.string_list_schema("credential.lease_fields")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              expires_at:
+                Contracts.datetime_schema("credential.expires_at")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              revoked_at:
+                Contracts.datetime_schema("credential.revoked_at")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              metadata: Contracts.any_map_schema() |> Zoi.default(%{})
+            },
+            coerce: true
+          )
 
-  @type t :: %__MODULE__{
-          id: String.t(),
-          connection_id: String.t() | nil,
-          subject: String.t(),
-          auth_type: atom(),
-          scopes: [String.t()],
-          secret: map(),
-          lease_fields: [String.t()],
-          expires_at: DateTime.t() | nil,
-          revoked_at: DateTime.t() | nil,
-          metadata: map()
-        }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @spec new!(map()) :: t()
-  def new!(attrs) do
-    attrs = Map.new(attrs)
-    secret = Map.get(attrs, :secret, %{})
-    lease_fields = Map.get(attrs, :lease_fields)
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
 
-    struct!(__MODULE__, %{
-      id: Map.fetch!(attrs, :id),
-      connection_id: Map.get(attrs, :connection_id),
-      subject: Map.fetch!(attrs, :subject),
-      auth_type: Map.fetch!(attrs, :auth_type),
-      scopes: Map.get(attrs, :scopes, []),
-      secret: secret,
-      lease_fields:
-        normalize_lease_fields(
-          if(is_nil(lease_fields), do: default_lease_fields(secret), else: lease_fields)
-        ),
-      expires_at: Map.get(attrs, :expires_at),
-      revoked_at: Map.get(attrs, :revoked_at),
-      metadata: Map.get(attrs, :metadata, %{})
-    })
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
+
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = credential), do: validate(credential)
+
+  def new(attrs) do
+    __MODULE__
+    |> Schema.new(@schema, attrs)
+    |> Schema.refine_new(&validate/1)
   end
+
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = credential),
+    do: credential |> validate() |> then(fn {:ok, value} -> value end)
+
+  def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs) |> new!()
 
   @spec expired?(t(), DateTime.t()) :: boolean()
   def expired?(%__MODULE__{expires_at: nil}, _now), do: false
@@ -91,6 +94,16 @@ defmodule Jido.Integration.V2.Credential do
 
   @spec now() :: DateTime.t()
   def now, do: Contracts.now()
+
+  defp validate(%__MODULE__{} = credential) do
+    lease_fields =
+      case credential.lease_fields do
+        nil -> default_lease_fields(credential.secret)
+        fields -> normalize_lease_fields(fields)
+      end
+
+    {:ok, %__MODULE__{credential | lease_fields: lease_fields}}
+  end
 
   defp default_lease_fields(secret) when is_map(secret) do
     secret

@@ -4,83 +4,86 @@ defmodule Jido.Integration.V2.TriggerRecord do
   """
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Schema
 
-  @enforce_keys [
-    :admission_id,
-    :source,
-    :connector_id,
-    :trigger_id,
-    :capability_id,
-    :tenant_id,
-    :dedupe_key,
-    :payload,
-    :signal,
-    :status
-  ]
-  defstruct [
-    :admission_id,
-    :source,
-    :connector_id,
-    :trigger_id,
-    :capability_id,
-    :tenant_id,
-    :external_id,
-    :dedupe_key,
-    :partition_key,
-    :payload,
-    :signal,
-    :status,
-    :run_id,
-    :rejection_reason,
-    :inserted_at,
-    :updated_at
-  ]
+  @sources [:webhook, :poll]
+  @statuses [:accepted, :rejected]
 
-  @type t :: %__MODULE__{
-          admission_id: String.t(),
-          source: Contracts.trigger_source(),
-          connector_id: String.t(),
-          trigger_id: String.t(),
-          capability_id: String.t(),
-          tenant_id: String.t(),
-          external_id: String.t() | nil,
-          dedupe_key: String.t(),
-          partition_key: String.t() | nil,
-          payload: map(),
-          signal: map(),
-          status: Contracts.trigger_status(),
-          run_id: String.t() | nil,
-          rejection_reason: term() | nil,
-          inserted_at: DateTime.t(),
-          updated_at: DateTime.t()
-        }
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              admission_id:
+                Contracts.non_empty_string_schema("trigger_record.admission_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              source: Contracts.enumish_schema(@sources, "trigger_record.source"),
+              connector_id: Contracts.non_empty_string_schema("trigger_record.connector_id"),
+              trigger_id: Contracts.non_empty_string_schema("trigger_record.trigger_id"),
+              capability_id: Contracts.non_empty_string_schema("trigger_record.capability_id"),
+              tenant_id: Contracts.non_empty_string_schema("trigger_record.tenant_id"),
+              external_id:
+                Contracts.non_empty_string_schema("trigger_record.external_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              dedupe_key: Contracts.non_empty_string_schema("trigger_record.dedupe_key"),
+              partition_key:
+                Contracts.non_empty_string_schema("trigger_record.partition_key")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              payload: Contracts.any_map_schema() |> Zoi.default(%{}),
+              signal: Contracts.any_map_schema() |> Zoi.default(%{}),
+              status:
+                Contracts.enumish_schema(@statuses, "trigger_record.status")
+                |> Zoi.default(:accepted),
+              run_id:
+                Contracts.non_empty_string_schema("trigger_record.run_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              rejection_reason: Zoi.any() |> Zoi.nullish() |> Zoi.optional(),
+              inserted_at:
+                Contracts.datetime_schema("trigger_record.inserted_at")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              updated_at:
+                Contracts.datetime_schema("trigger_record.updated_at")
+                |> Zoi.nullish()
+                |> Zoi.optional()
+            },
+            coerce: true
+          )
 
-  @spec new!(map()) :: t()
-  def new!(attrs) do
-    attrs = Map.new(attrs)
-    inserted_at = Map.get(attrs, :inserted_at, Contracts.now())
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-    struct!(__MODULE__, %{
-      admission_id: Map.get(attrs, :admission_id, Contracts.next_id("trigger")),
-      source: Contracts.validate_trigger_source!(Map.fetch!(attrs, :source)),
-      connector_id:
-        Contracts.validate_non_empty_string!(Map.fetch!(attrs, :connector_id), "connector_id"),
-      trigger_id:
-        Contracts.validate_non_empty_string!(Map.fetch!(attrs, :trigger_id), "trigger_id"),
-      capability_id:
-        Contracts.validate_non_empty_string!(Map.fetch!(attrs, :capability_id), "capability_id"),
-      tenant_id: Contracts.validate_non_empty_string!(Map.fetch!(attrs, :tenant_id), "tenant_id"),
-      external_id: Map.get(attrs, :external_id),
-      dedupe_key:
-        Contracts.validate_non_empty_string!(Map.fetch!(attrs, :dedupe_key), "dedupe_key"),
-      partition_key: Map.get(attrs, :partition_key),
-      payload: Map.get(attrs, :payload, %{}),
-      signal: Map.get(attrs, :signal, %{}),
-      status: Contracts.validate_trigger_status!(Map.get(attrs, :status, :accepted)),
-      run_id: Map.get(attrs, :run_id),
-      rejection_reason: Map.get(attrs, :rejection_reason),
-      inserted_at: inserted_at,
-      updated_at: Map.get(attrs, :updated_at, inserted_at)
-    })
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
+
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
+
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = trigger_record), do: normalize(trigger_record)
+
+  def new(attrs) do
+    __MODULE__
+    |> Schema.new(@schema, attrs)
+    |> Schema.refine_new(&normalize/1)
+  end
+
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = trigger_record),
+    do: normalize(trigger_record) |> then(fn {:ok, value} -> value end)
+
+  def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs) |> new!()
+
+  defp normalize(%__MODULE__{} = trigger_record) do
+    inserted_at = trigger_record.inserted_at || Contracts.now()
+
+    {:ok,
+     %__MODULE__{
+       trigger_record
+       | admission_id: trigger_record.admission_id || Contracts.next_id("trigger"),
+         inserted_at: inserted_at,
+         updated_at: trigger_record.updated_at || inserted_at
+     }}
   end
 end

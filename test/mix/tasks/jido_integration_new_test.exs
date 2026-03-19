@@ -66,6 +66,16 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     assert mix_content =~ "{:jido, \"~> 2.1\"}"
     assert mix_content =~ "{:jido_action, \"~> 2.1\"}"
+    assert mix_content =~ ~s(elixir: "~> 1.18")
+    assert mix_content =~ "dialyzer: dialyzer()"
+    assert mix_content =~ "defp dialyzer do"
+    assert mix_content =~ "docs: docs()"
+    assert mix_content =~ "defp docs do"
+    assert mix_content =~ "{:credo,"
+    assert mix_content =~ "{:dialyxir,"
+    assert mix_content =~ "{:ex_doc,"
+    assert mix_content =~ "name:"
+    assert mix_content =~ "description:"
     refute mix_content =~ "jido_integration_workspace"
 
     connector_content =

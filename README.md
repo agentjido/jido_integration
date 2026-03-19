@@ -190,6 +190,19 @@ The monorepo test and CI surface now includes packages that wire
 `core/store_postgres` in `:test`.
 
 `mix mr.test` and `mix ci` therefore expect a reachable Postgres test store.
+Before calling the repo blocked on Postgres reachability, run:
+
+```bash
+mix mr.pg.preflight
+```
+
+That check validates the canonical `core/store_postgres` test tier only. The
+repo still supports the other two durability tiers in parallel:
+
+- in-memory defaults in `core/auth` and `core/control_plane`
+- `core/store_local` for restart-safe local durability
+- `core/store_postgres` for the shared database-backed tier
+
 The default test configuration uses:
 
 - `JIDO_INTEGRATION_V2_DB_HOST=127.0.0.1`
@@ -217,6 +230,7 @@ mix monorepo.test
 mix monorepo.credo --strict
 mix monorepo.dialyzer
 mix monorepo.docs
+mix mr.pg.preflight
 mix quality
 mix docs.all
 mix ci
@@ -237,6 +251,7 @@ mix mr.deps.get
 mix mr.format
 mix mr.compile
 mix mr.test
+mix mr.pg.preflight
 mix mr.credo --strict
 mix mr.dialyzer
 mix mr.docs

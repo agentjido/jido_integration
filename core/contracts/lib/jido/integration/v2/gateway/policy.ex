@@ -5,16 +5,20 @@ defmodule Jido.Integration.V2.Gateway.Policy do
 
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Schema
 
-  @enforce_keys [:actor, :tenant, :environment, :capability, :runtime, :sandbox]
-  defstruct [
-    :actor,
-    :tenant,
-    :environment,
-    :capability,
-    :runtime,
-    :sandbox
-  ]
+  @schema Zoi.struct(
+            __MODULE__,
+            %{
+              actor: Contracts.any_map_schema(),
+              tenant: Contracts.any_map_schema(),
+              environment: Contracts.any_map_schema(),
+              capability: Contracts.any_map_schema(),
+              runtime: Contracts.any_map_schema(),
+              sandbox: Contracts.any_map_schema()
+            },
+            coerce: true
+          )
 
   @type actor_t :: %{required: boolean(), allowed_ids: [String.t()]}
   @type tenant_t :: %{required: boolean(), allowed_ids: [String.t()]}
@@ -28,15 +32,21 @@ defmodule Jido.Integration.V2.Gateway.Policy do
           file_scope: String.t() | nil,
           allowed_tools: [String.t()]
         }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @type t :: %__MODULE__{
-          actor: actor_t(),
-          tenant: tenant_t(),
-          environment: environment_t(),
-          capability: capability_t(),
-          runtime: runtime_t(),
-          sandbox: sandbox_t()
-        }
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
+
+  @spec schema() :: Zoi.schema()
+  def schema, do: @schema
+
+  @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+  def new(%__MODULE__{} = policy), do: {:ok, policy}
+  def new(attrs), do: Schema.new(__MODULE__, @schema, attrs)
+
+  @spec new!(map() | keyword() | t()) :: t()
+  def new!(%__MODULE__{} = policy), do: policy
+  def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs)
 
   @spec from_capability(Capability.t()) :: t()
   def from_capability(%Capability{} = capability) do
@@ -48,7 +58,7 @@ defmodule Jido.Integration.V2.Gateway.Policy do
     runtime = Contracts.get(policy, :runtime, %{})
     sandbox = Contracts.get(policy, :sandbox, %{})
 
-    struct!(__MODULE__, %{
+    new!(%{
       actor: %{
         required: Contracts.get(actor, :required, true),
         allowed_ids:

@@ -38,11 +38,12 @@ defmodule Jido.Integration.V2.Schema do
 
   @spec refine_new(
           {:ok, struct()} | {:error, Exception.t()},
-          (struct() -> :ok | {:error, Exception.t()})
+          (struct() -> :ok | {:ok, struct()} | {:error, Exception.t()})
         ) :: {:ok, struct()} | {:error, Exception.t()}
   def refine_new({:ok, value}, fun) when is_function(fun, 1) do
     case fun.(value) do
       :ok -> {:ok, value}
+      {:ok, refined_value} -> {:ok, refined_value}
       {:error, %ArgumentError{} = error} -> {:error, error}
     end
   end
