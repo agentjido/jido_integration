@@ -30,6 +30,7 @@ All direct capabilities currently require the GitHub `repo` scope.
 
 The same authored operation specs now also project into:
 
+- the derived executable entry catalog used by the runtime and conformance seam
 - generated actions under `lib/jido/integration/v2/connectors/git_hub/generated/actions.ex`
 - a generated plugin bundle at `lib/jido/integration/v2/connectors/git_hub/generated/plugin.ex`
 
@@ -38,6 +39,11 @@ operation input and output schemas. They resolve `connection_id` from params or
 runtime context and then invoke the public integration facade through its typed
 request contract. The generated surface does not expose a caller-supplied
 invoker override seam.
+
+The authored A0 slice lives in rich `OperationSpec` records inside
+`lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex`. The older
+entry shape is now derived from those specs for the runtime handler,
+deterministic fixtures, and connector conformance coverage.
 
 The generated plugin uses the real `Jido.Plugin` `actions:` and
 `subscriptions/2` surface. In this phase its subscriptions remain empty.
@@ -127,7 +133,7 @@ credential leases.
 
 The connector owns:
 
-- authored operation catalog publication
+- authored operation-spec publication and derived executable entry projection
 - lease-bound client construction
 - SDK method mapping from the public `repo` input shape
 - normalized runtime output, events, artifacts, and conformance fixtures
@@ -166,7 +172,8 @@ Successful runs emit:
 
 ## Files
 
-- operation catalog: `lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex`
+- authored operation specs and derived executable catalog:
+  `lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex`
 - lease-bound client factory: `lib/jido/integration/v2/connectors/git_hub/client_factory.ex`
 - generic SDK operation handler: `lib/jido/integration/v2/connectors/git_hub/operation.ex`
 - deterministic fixture seam: `lib/jido/integration/v2/connectors/git_hub/fixtures.ex`

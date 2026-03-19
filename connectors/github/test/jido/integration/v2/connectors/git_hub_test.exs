@@ -2,8 +2,10 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
   use ExUnit.Case, async: true
 
   alias Jido.Integration.V2.Connectors.GitHub
+  alias Jido.Integration.V2.Connectors.GitHub.Fixtures
   alias Jido.Integration.V2.Connectors.GitHub.Operation
   alias Jido.Integration.V2.Connectors.GitHub.OperationCatalog
+  alias Jido.Integration.V2.OperationSpec
 
   @published_capability_ids [
     "github.comment.create",
@@ -70,13 +72,46 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     end)
   end
 
-  test "builds one authored operation catalog for the published github_ex issue surface" do
+  test "authors the A0 slice as rich operation specs and derives the executable catalog from them" do
+    operations = OperationCatalog.published_operations()
     entries = OperationCatalog.entries()
+
+    assert Enum.all?(operations, &match?(%OperationSpec{}, &1))
+
+    assert Enum.map(operations, & &1.operation_id) ==
+             @published_capability_ids
 
     assert Enum.map(OperationCatalog.published_entries(), & &1.operation_id) ==
              @published_capability_ids
 
     assert Enum.all?(entries, & &1.published?)
+
+    Enum.each(Fixtures.specs(), fn spec ->
+      operation = OperationCatalog.fetch_operation!(spec.capability_id)
+
+      assert {:ok, _parsed_input} = Zoi.parse(operation.input_schema, spec.input)
+      assert {:ok, _parsed_output} = Zoi.parse(operation.output_schema, spec.output)
+      assert is_binary(operation.display_name)
+      refute operation.description =~ "GitHub API projection for"
+    end)
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.issue.fetch").input_schema,
+               %{repo: "agentjido/jido_integration_v2"}
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.issue.create").input_schema,
+               %{repo: "agentjido/jido_integration_v2"}
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.comment.update").input_schema,
+               %{repo: "agentjido/jido_integration_v2", comment_id: 901}
+             )
 
     assert OperationCatalog.fetch!("github.issue.close").sdk_function == :update
     assert OperationCatalog.fetch!("github.issue.label").sdk_function == :add_labels
