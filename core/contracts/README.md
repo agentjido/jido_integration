@@ -37,8 +37,9 @@ Current hardening guarantees:
 - `Gateway.Policy` is the normalized capability-side security contract for actor, tenant, environment, runtime, operation, and sandbox checks
 - `PolicyDecision` can allow work, deny it, or shed it before attempt creation
 - `InvocationRequest` is the typed public invoke helper that normalizes stable facade fields, uses `connection_id` as the public auth binding, and derives the requested capability allowlist by default
-- `ConsumerProjection` derives deterministic action and plugin projection rules from the authored manifest without reintroducing handwritten capability catalogs
+- `ConsumerProjection` derives deterministic action and plugin projection rules from the authored manifest without reintroducing handwritten capability catalogs, and rejects duplicate projected action names or module collisions within one connector
 - `GeneratedAction` and `GeneratedPlugin` project those rules into the current real `Jido.Action` and `Jido.Plugin` APIs
+- generated actions build typed `InvocationRequest` structs and call the fixed `Jido.Integration.V2.invoke/1` facade path rather than honoring a caller-supplied invoker module
 - `CredentialRef` remains durable while `CredentialLease` is the short-lived execution boundary
 - `Credential` carries durable subject/scope/auth metadata plus secret-bearing fields that are meant to stay behind auth APIs
 - `CredentialLease` carries only the execution-time payload needed for a bounded lease lifetime

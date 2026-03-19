@@ -38,35 +38,39 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
     end)
   end
 
-  test "generated actions invoke the public request contract with connection_id from params or plugin config" do
-    assert {:ok, %{request_capability_id: "github.issue.fetch"} = output} =
+  test "generated actions invoke the public facade with typed request bindings from params or plugin config" do
+    projection = IssueFetch.generated_action_projection()
+
+    assert %InvocationRequest{
+             capability_id: "github.issue.fetch",
+             connection_id: "conn-param",
+             input: %{owner: "acme", repo: "widgets", issue_number: 7},
+             trace_id: "trace-generated-1"
+           } =
+             ConsumerProjection.invocation_request!(
+               projection,
+               %{owner: "acme", repo: "widgets", issue_number: 7, connection_id: "conn-param"},
+               %{trace_id: "trace-generated-1"}
+             )
+
+    assert %InvocationRequest{
+             capability_id: "github.issue.fetch",
+             connection_id: "conn-plugin",
+             input: %{owner: "acme", repo: "widgets", issue_number: 8}
+           } =
+             ConsumerProjection.invocation_request!(
+               projection,
+               %{owner: "acme", repo: "widgets", issue_number: 8},
+               %{plugin_config: %{connection_id: "conn-plugin"}}
+             )
+
+    assert {:error, _reason} =
              IssueFetch.run(
                %{owner: "acme", repo: "widgets", issue_number: 7, connection_id: "conn-param"},
                %{invoker: FakeInvoker, trace_id: "trace-generated-1"}
              )
 
-    assert output.echoed_input == %{owner: "acme", repo: "widgets", issue_number: 7}
-
-    assert_receive {:generated_invoke,
-                    %InvocationRequest{
-                      capability_id: "github.issue.fetch",
-                      connection_id: "conn-param",
-                      input: %{owner: "acme", repo: "widgets", issue_number: 7},
-                      trace_id: "trace-generated-1"
-                    }}
-
-    assert {:ok, %{request_capability_id: "github.issue.fetch"}} =
-             IssueFetch.run(
-               %{owner: "acme", repo: "widgets", issue_number: 8},
-               %{invoker: FakeInvoker, plugin_config: %{connection_id: "conn-plugin"}}
-             )
-
-    assert_receive {:generated_invoke,
-                    %InvocationRequest{
-                      capability_id: "github.issue.fetch",
-                      connection_id: "conn-plugin",
-                      input: %{owner: "acme", repo: "widgets", issue_number: 8}
-                    }}
+    refute_receive {:generated_invoke, _request}
   end
 
   test "generated plugin exposes the real Jido.Plugin contract over the generated action bundle" do

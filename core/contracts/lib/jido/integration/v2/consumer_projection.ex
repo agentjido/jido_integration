@@ -200,32 +200,43 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     end
   end
 
-  @spec run_action(ActionProjection.t(), map(), map()) :: {:ok, map()} | {:error, term()}
-  def run_action(%ActionProjection{} = projection, params, context)
+  @doc false
+  @spec invocation_request!(ActionProjection.t(), map(), map()) :: InvocationRequest.t()
+  def invocation_request!(%ActionProjection{} = projection, params, context)
       when is_map(params) and is_map(context) do
     invoke_context = invoke_context(context)
 
-    request =
-      %{
-        capability_id: projection.operation_id,
-        input: Map.drop(params, [:connection_id, "connection_id"]),
-        connection_id: resolve_connection_id(projection, params, context, invoke_context),
-        actor_id: read_invoke_value(invoke_context, context, :actor_id),
-        tenant_id: read_invoke_value(invoke_context, context, :tenant_id),
-        environment: read_invoke_value(invoke_context, context, :environment),
-        trace_id: read_invoke_value(invoke_context, context, :trace_id),
-        allowed_operations: read_invoke_value(invoke_context, context, :allowed_operations),
-        sandbox: read_invoke_value(invoke_context, context, :sandbox),
-        target_id: read_invoke_value(invoke_context, context, :target_id),
-        aggregator_id: read_invoke_value(invoke_context, context, :aggregator_id),
-        aggregator_epoch: read_invoke_value(invoke_context, context, :aggregator_epoch),
-        extensions: read_invoke_value(invoke_context, context, :extensions, [])
-      }
-      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
-      |> Map.new()
-      |> InvocationRequest.new!()
+    %{
+      capability_id: projection.operation_id,
+      input: Map.drop(params, [:connection_id, "connection_id"]),
+      connection_id: resolve_connection_id(projection, params, context, invoke_context),
+      actor_id: read_invoke_value(invoke_context, context, :actor_id),
+      tenant_id: read_invoke_value(invoke_context, context, :tenant_id),
+      environment: read_invoke_value(invoke_context, context, :environment),
+      trace_id: read_invoke_value(invoke_context, context, :trace_id),
+      allowed_operations: read_invoke_value(invoke_context, context, :allowed_operations),
+      sandbox: read_invoke_value(invoke_context, context, :sandbox),
+      target_id: read_invoke_value(invoke_context, context, :target_id),
+      aggregator_id: read_invoke_value(invoke_context, context, :aggregator_id),
+      aggregator_epoch: read_invoke_value(invoke_context, context, :aggregator_epoch),
+      extensions: read_invoke_value(invoke_context, context, :extensions, [])
+    }
+    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+    |> Map.new()
+    |> InvocationRequest.new!()
+  end
 
-    case invoke(invoker(context, invoke_context), request) do
+  def invocation_request!(%ActionProjection{}, params, context) do
+    raise ArgumentError,
+          "generated actions expect params and context maps, got: #{inspect({params, context})}"
+  end
+
+  @spec run_action(ActionProjection.t(), map(), map()) :: {:ok, map()} | {:error, term()}
+  def run_action(%ActionProjection{} = projection, params, context)
+      when is_map(params) and is_map(context) do
+    request = invocation_request!(projection, params, context)
+
+    case invoke(request) do
       {:ok, %{output: output}} when is_map(output) ->
         {:ok, output}
 
@@ -246,10 +257,38 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     manifest = connector_module.manifest()
 
     if match?(%Manifest{}, manifest) do
+      validate_generated_action_projections!(connector_module, manifest)
       manifest
     else
       raise ArgumentError,
             "connector module #{inspect(connector_module)} must return a manifest, got: #{inspect(manifest)}"
+    end
+  end
+
+  defp validate_generated_action_projections!(connector_module, %Manifest{} = manifest) do
+    operations = manifest.operations
+
+    duplicate_modules =
+      operations
+      |> Enum.map(&action_module(connector_module, &1))
+      |> duplicate_values()
+
+    duplicate_action_names =
+      operations
+      |> Enum.map(&action_name/1)
+      |> duplicate_values()
+
+    if duplicate_modules == [] and duplicate_action_names == [] do
+      :ok
+    else
+      details =
+        []
+        |> append_duplicate_detail("modules", duplicate_modules)
+        |> append_duplicate_detail("action names", duplicate_action_names)
+        |> Enum.join(", ")
+
+      raise ArgumentError,
+            "generated consumer action projections must be unique within a connector, duplicate #{details}"
     end
   end
 
@@ -346,6 +385,20 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     end
   end
 
+  defp duplicate_values(values) do
+    values
+    |> Enum.frequencies()
+    |> Enum.filter(fn {_value, count} -> count > 1 end)
+    |> Enum.map(fn {value, _count} -> value end)
+    |> Enum.sort()
+  end
+
+  defp append_duplicate_detail(details, _label, []), do: details
+
+  defp append_duplicate_detail(details, label, values) do
+    details ++ ["#{label} #{inspect(values)}"]
+  end
+
   defp invoke_context(context) do
     case Contracts.get(context, :invoke, %{}) do
       %{} = invoke_context ->
@@ -397,17 +450,11 @@ defmodule Jido.Integration.V2.ConsumerProjection do
 
   defp present_string?(value), do: is_binary(value) and byte_size(String.trim(value)) > 0
 
-  defp invoker(context, invoke_context) do
-    read_invoke_value(invoke_context, context, :invoker, @default_invoker)
-  end
-
-  defp invoke(invoker, request) when is_atom(invoker) do
-    if function_exported?(invoker, :invoke, 1) do
-      invoker.invoke(request)
+  defp invoke(request) do
+    if function_exported?(@default_invoker, :invoke, 1) do
+      apply(@default_invoker, :invoke, [request])
     else
-      {:error, {:invalid_invoker, invoker}}
+      {:error, {:invalid_invoker, @default_invoker}}
     end
   end
-
-  defp invoke(invoker, _request), do: {:error, {:invalid_invoker, invoker}}
 end

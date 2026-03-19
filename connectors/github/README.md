@@ -36,7 +36,8 @@ The same authored operation specs now also project into:
 The generated actions use the real `Jido.Action` contract with the authored
 operation input and output schemas. They resolve `connection_id` from params or
 runtime context and then invoke the public integration facade through its typed
-request contract.
+request contract. The generated surface does not expose a caller-supplied
+invoker override seam.
 
 The generated plugin uses the real `Jido.Plugin` `actions:` and
 `subscriptions/2` surface. In this phase its subscriptions remain empty.
