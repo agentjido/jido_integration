@@ -329,9 +329,9 @@ defmodule Jido.Integration.V2.OperationSpec do
 
   defp validate_late_bound_schema_metadata(strategy, context_source, slots) do
     cond do
-      not present_atom?(context_source) ->
+      not real_schema_source?(context_source) ->
         error(
-          "operation.metadata.schema_context_source must be an atom when late-bound schema metadata is declared"
+          "operation.metadata.schema_context_source must identify a real lookup source when late-bound schema metadata is declared"
         )
 
       not is_list(slots) or slots == [] ->
@@ -409,8 +409,10 @@ defmodule Jido.Integration.V2.OperationSpec do
       not present_atom?(Contracts.get(slot, :kind)) ->
         error("operation.metadata.schema_slots[#{index}].kind must be an atom")
 
-      not present_atom?(Contracts.get(slot, :source)) ->
-        error("operation.metadata.schema_slots[#{index}].source must be an atom")
+      not real_schema_source?(Contracts.get(slot, :source)) ->
+        error(
+          "operation.metadata.schema_slots[#{index}].source must identify a real lookup source"
+        )
 
       true ->
         :ok
@@ -441,6 +443,7 @@ defmodule Jido.Integration.V2.OperationSpec do
 
   defp valid_path?(_value), do: false
 
+  defp real_schema_source?(value), do: present_atom?(value) and value != :none
   defp present_atom?(value), do: is_atom(value)
   defp present_string?(value), do: is_binary(value) and byte_size(String.trim(value)) > 0
 

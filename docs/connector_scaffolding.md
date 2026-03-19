@@ -105,6 +105,8 @@ After generation:
    If a connector keeps passthrough payloads but knows some regions are
    late-bound, encode that authored truth in `OperationSpec.metadata`
    with `schema_strategy`, `schema_context_source`, and `schema_slots`.
+   Reserve `:none` for static operations only; late-bound metadata must point
+   at real lookup sources.
 2. implement the action or provider logic inside the generated package
 3. declare every child-package dependency explicitly in that connector package
 4. update the companion fixtures so conformance reflects the real behavior

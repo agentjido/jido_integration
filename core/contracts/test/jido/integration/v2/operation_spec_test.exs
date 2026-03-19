@@ -66,6 +66,44 @@ defmodule Jido.Integration.V2.OperationSpecTest do
                  end
   end
 
+  test "rejects late-bound schema metadata without a real context source" do
+    assert_raise ArgumentError,
+                 "operation.metadata.schema_context_source must identify a real lookup source when late-bound schema metadata is declared",
+                 fn ->
+                   operation_spec!(%{
+                     schema_strategy: :late_bound_input,
+                     schema_context_source: :none,
+                     schema_slots: [
+                       %{
+                         surface: :input,
+                         path: ["properties"],
+                         kind: :data_source_properties,
+                         source: :parent_data_source
+                       }
+                     ]
+                   })
+                 end
+  end
+
+  test "rejects late-bound schema slots without a real lookup source" do
+    assert_raise ArgumentError,
+                 "operation.metadata.schema_slots[0].source must identify a real lookup source",
+                 fn ->
+                   operation_spec!(%{
+                     schema_strategy: :late_bound_input,
+                     schema_context_source: :parent_data_source,
+                     schema_slots: [
+                       %{
+                         surface: :input,
+                         path: ["properties"],
+                         kind: :data_source_properties,
+                         source: :none
+                       }
+                     ]
+                   })
+                 end
+  end
+
   defp operation_spec!(schema_metadata \\ %{}) do
     OperationSpec.new!(%{
       operation_id: "acme.pages.create",

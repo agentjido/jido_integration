@@ -91,6 +91,8 @@ Current hardening guarantees:
   - `schema_strategy` to classify static versus late-bound behavior
   - `schema_context_source` to identify the governing lookup source
   - `schema_slots` entries with `surface`, `path`, `kind`, and `source`
+  - `:none` is reserved for `:static` metadata; late-bound operations and slots
+    must identify a real lookup source
 - expose `OperationSpec.schema_strategy/1`, `schema_context_source/1`,
   `schema_slots/1`, and `late_bound_schema?/1` so connector-owned runtime
   enrichment can stay on the authored-contract spine without widening the
