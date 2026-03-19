@@ -184,6 +184,26 @@ Package and app runbooks:
 - `apps/trading_ops/README.md`
 - `apps/devops_incident_response/README.md`
 
+## Validation Prerequisites
+
+The monorepo test and CI surface now includes packages that wire
+`core/store_postgres` in `:test`.
+
+`mix mr.test` and `mix ci` therefore expect a reachable Postgres test store.
+The default test configuration uses:
+
+- `JIDO_INTEGRATION_V2_DB_HOST=127.0.0.1`
+- `JIDO_INTEGRATION_V2_DB_PORT=5432`
+- `JIDO_INTEGRATION_V2_DB_NAME=jido_integration_v2_test`
+- `JIDO_INTEGRATION_V2_DB_USER=postgres`
+- `JIDO_INTEGRATION_V2_DB_PASSWORD=postgres`
+
+If your local environment exposes Postgres through a socket directory instead
+of TCP, set `JIDO_INTEGRATION_V2_DB_SOCKET_DIR`.
+
+`core/store_postgres/README.md` is the canonical home for the durable-tier test
+configuration.
+
 ## Monorepo Commands
 
 Run these from the repo root:

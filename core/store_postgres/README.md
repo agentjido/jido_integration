@@ -30,3 +30,25 @@ Current control-plane durability includes:
   - encrypted secret-bearing credential fields
   - explicit connection state and install-session state
   - lease records that persist only bounded metadata, not raw lease payloads
+
+## Test And Validation Defaults
+
+`core/store_postgres` is also the shared test-time durability seam for packages
+that validate the public platform and ingress layers against the canonical
+database-backed stores.
+
+That means root validation commands such as `mix mr.test` and `mix ci` expect a
+reachable Postgres test database unless the relevant packages are reconfigured
+explicitly.
+
+Default test settings:
+
+- `JIDO_INTEGRATION_V2_DB_HOST=127.0.0.1`
+- `JIDO_INTEGRATION_V2_DB_PORT=5432`
+- `JIDO_INTEGRATION_V2_DB_NAME=jido_integration_v2_test`
+- `JIDO_INTEGRATION_V2_DB_USER=postgres`
+- `JIDO_INTEGRATION_V2_DB_PASSWORD=postgres`
+- `JIDO_INTEGRATION_V2_DB_POOL_SIZE=10`
+
+If you validate against a socket-mounted local Postgres instead of TCP, set
+`JIDO_INTEGRATION_V2_DB_SOCKET_DIR`.

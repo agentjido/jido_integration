@@ -452,7 +452,7 @@ defmodule Jido.Integration.V2.ConsumerProjection do
 
   defp invoke(request) do
     if function_exported?(@default_invoker, :invoke, 1) do
-      apply(@default_invoker, :invoke, [request])
+      :erlang.apply(@default_invoker, :invoke, [request])
     else
       {:error, {:invalid_invoker, @default_invoker}}
     end

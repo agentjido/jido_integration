@@ -3,10 +3,10 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
 
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Connectors.GitHub
+  alias Jido.Integration.V2.Connectors.GitHub.Fixtures
   alias Jido.Integration.V2.Connectors.GitHub.Generated.Actions.IssueFetch
   alias Jido.Integration.V2.Connectors.GitHub.Generated.Actions.IssueList
   alias Jido.Integration.V2.Connectors.GitHub.Generated.Plugin, as: GeneratedPlugin
-  alias Jido.Integration.V2.Connectors.GitHub.Fixtures
   alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.InvocationRequest
