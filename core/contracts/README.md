@@ -44,6 +44,7 @@ Current hardening guarantees:
   - projected common consumer surfaces through `consumer_surface`
 - non-direct authored routing stays on the existing contract spine:
   - `runtime.driver`, `runtime.provider`, and `runtime.options` are the canonical authored routing keys for `:session` and `:stream` operations
+  - the control plane does not synthesize an implicit `asm` default when authored `runtime.driver` is missing
   - common `:session` and `:stream` consumer surfaces must also declare canonical `metadata.runtime_family`
   - `:connector_local` remains the explicit authored escape hatch when a non-direct capability should stay off the generated common surface
   - target descriptors can advertise compatible runtime environments and workspace locations, but they must not rewrite authored runtime routing keys

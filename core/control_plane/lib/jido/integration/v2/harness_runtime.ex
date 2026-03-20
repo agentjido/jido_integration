@@ -4,7 +4,9 @@ defmodule Jido.Integration.V2.HarnessRuntime do
 
   Target Harness driver ids for new architecture work are `asm` and
   `jido_session`. The integration-owned bridge ids remain available only as
-  compatibility shims while older fixtures are retired.
+  compatibility shims while older fixtures are retired. Session and stream
+  capabilities must publish authored `runtime.driver`; the router does not
+  synthesize an implicit default.
 
   Target descriptors remain compatibility and location advertisements. They do
   not override authored `runtime.driver`, `runtime.provider`, or
@@ -14,11 +16,6 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   alias Jido.Harness.{ExecutionResult, RunRequest, SessionHandle}
   alias Jido.Integration.V2.{Capability, Contracts, RuntimeResult, TargetDescriptor}
   alias Jido.Integration.V2.HarnessRuntime.SessionStore
-
-  @default_driver_ids %{
-    session: "asm",
-    stream: "asm"
-  }
 
   @target_driver_modules %{
     "asm" => Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver,
@@ -98,24 +95,23 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   defp resolve_driver(capability, input, context) do
     runtime_config = authored_runtime_config(capability)
 
-    driver_value =
-      Contracts.get(
-        runtime_config,
-        :driver,
-        Map.fetch!(@default_driver_ids, capability.runtime_class)
-      )
+    case Contracts.get(runtime_config, :driver) do
+      nil ->
+        {:error, {:missing_runtime_driver, capability.runtime_class}}
 
-    with {:ok, driver_id, driver_module} <- resolve_driver_module(driver_value) do
-      resolution = %{
-        driver_id: driver_id,
-        driver_module: driver_module,
-        runtime_config: runtime_config,
-        driver_opts: driver_opts(runtime_config, capability, input, context),
-        session_key:
-          session_key(driver_module, driver_id, capability, input, context, runtime_config)
-      }
+      driver_value ->
+        with {:ok, driver_id, driver_module} <- resolve_driver_module(driver_value) do
+          resolution = %{
+            driver_id: driver_id,
+            driver_module: driver_module,
+            runtime_config: runtime_config,
+            driver_opts: driver_opts(runtime_config, capability, input, context),
+            session_key:
+              session_key(driver_module, driver_id, capability, input, context, runtime_config)
+          }
 
-      {:ok, resolution}
+          {:ok, resolution}
+        end
     end
   end
 

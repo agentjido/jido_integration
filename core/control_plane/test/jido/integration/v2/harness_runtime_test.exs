@@ -162,6 +162,31 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
     assert run_opts[:approval_mode] == "manual"
   end
 
+  test "requires an authored runtime driver for non-direct capabilities" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{asm: AuthoredDriver}
+    )
+
+    assert {:error, {:missing_runtime_driver, :session}, runtime_result} =
+             HarnessRuntime.execute(
+               capability_fixture(%{
+                 runtime: %{
+                   provider: :codex,
+                   options: %{
+                     "lane" => "sdk"
+                   }
+                 }
+               }),
+               %{prompt: "hello"},
+               runtime_context()
+             )
+
+    assert Enum.map(runtime_result.events, & &1.type) == ["attempt.started", "attempt.failed"]
+    refute_received {:authored_driver_start_session, _opts}
+  end
+
   test "does not let target descriptors override authored routing metadata" do
     Application.put_env(
       :jido_integration_v2_control_plane,

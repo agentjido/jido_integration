@@ -104,6 +104,10 @@ contract itself:
 - `runtime.provider`
 - `runtime.options`
 
+There is no implicit `asm` fallback for `:session` or `:stream` routing. If a
+non-direct connector omits `runtime.driver`, the control plane rejects that
+authored capability instead of guessing.
+
 Targets must align to those authored routing keys. A `TargetDescriptor` is a
 compatibility and location advertisement, not a second place to override the
 selected runtime driver, provider, or options.

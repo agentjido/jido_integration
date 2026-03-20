@@ -16,6 +16,7 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
              "mix jido.integration.new market_feed --runtime-class stream --runtime-driver asm"
 
     assert guide =~ "never generate `integration_session_bridge` or `integration_stream_bridge`"
+    assert guide =~ "There is no implicit `asm` fallback for `:session` or `:stream` routing."
     refute guide =~ "The workspace scaffold currently supports direct connectors only."
   end
 end
