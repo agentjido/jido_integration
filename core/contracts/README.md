@@ -42,6 +42,10 @@ Current hardening guarantees:
   - provider inventory in connector-local catalogs
   - runtime-published manifest entries
   - projected common consumer surfaces through `consumer_surface`
+- non-direct authored routing stays on the existing contract spine:
+  - `runtime.driver`, `runtime.provider`, and `runtime.options` are the canonical authored routing keys for `:session` and `:stream` operations
+  - common `:session` and `:stream` consumer surfaces must also declare canonical `metadata.runtime_family`
+  - `:connector_local` remains the explicit authored escape hatch when a non-direct capability should stay off the generated common surface
 - `schema_policy` is explicit on authored operations and triggers so placeholder schemas cannot silently leak into published or projected surfaces
 - `ConsumerProjection` derives deterministic action and plugin projection rules only from authored entries marked as normalized common consumer surfaces, and rejects duplicate projected action names or module collisions within one connector
 - `GeneratedAction` and `GeneratedPlugin` project those rules into the current real `Jido.Action` and `Jido.Plugin` APIs
@@ -94,9 +98,10 @@ Current hardening guarantees:
   - `:none` is reserved for `:static` metadata; late-bound operations and slots
     must identify a real lookup source
 - expose `OperationSpec.schema_strategy/1`, `schema_context_source/1`,
-  `schema_slots/1`, and `late_bound_schema?/1` so connector-owned runtime
-  enrichment can stay on the authored-contract spine without widening the
-  public generated consumer surface
+  `schema_slots/1`, `late_bound_schema?/1`, `runtime_driver/1`,
+  `runtime_provider/1`, `runtime_options/1`, and `runtime_family/1` so
+  connector-owned runtime enrichment can stay on the authored-contract spine
+  without widening the public generated consumer surface
 
 `ConsumerProjection`
 

@@ -56,6 +56,23 @@ defmodule Jido.Integration.V2.Capability do
       |> Contracts.get(:permission_bundle, required_scopes)
       |> Contracts.normalize_string_list!("operation.permissions.permission_bundle")
 
+    metadata =
+      operation_spec.metadata
+      |> Map.delete("runtime_family")
+      |> maybe_put(:runtime_family, OperationSpec.runtime_family(operation_spec))
+
+    runtime_metadata =
+      case operation_spec.runtime_class do
+        runtime_class when runtime_class in [:session, :stream] ->
+          %{}
+          |> Map.put(:driver, OperationSpec.runtime_driver(operation_spec))
+          |> maybe_put(:provider, OperationSpec.runtime_provider(operation_spec))
+          |> Map.put(:options, OperationSpec.runtime_options(operation_spec))
+
+        _other ->
+          operation_spec.runtime
+      end
+
     new!(%{
       id: operation_spec.operation_id,
       connector: connector_id,
@@ -64,7 +81,7 @@ defmodule Jido.Integration.V2.Capability do
       transport_profile: operation_spec.transport_mode,
       handler: operation_spec.handler,
       metadata:
-        operation_spec.metadata
+        metadata
         |> Map.merge(%{
           name: operation_spec.name,
           display_name: operation_spec.display_name,
@@ -73,7 +90,7 @@ defmodule Jido.Integration.V2.Capability do
           output_schema: operation_spec.output_schema,
           permission_bundle: permission_bundle,
           required_scopes: required_scopes,
-          runtime: operation_spec.runtime,
+          runtime: runtime_metadata,
           policy: operation_spec.policy,
           upstream: operation_spec.upstream,
           consumer_surface: operation_spec.consumer_surface,
@@ -82,6 +99,9 @@ defmodule Jido.Integration.V2.Capability do
         })
     })
   end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   @spec from_trigger!(String.t(), TriggerSpec.t()) :: t()
   def from_trigger!(connector_id, %TriggerSpec{} = trigger_spec) do

@@ -10,6 +10,18 @@ defmodule Jido.Integration.V2.OperationSpec do
   @schema_policy_modes [:defined, :dynamic, :passthrough]
   @schema_strategies [:static, :late_bound_input, :late_bound_output, :late_bound_input_output]
   @late_bound_schema_strategies [:late_bound_input, :late_bound_output, :late_bound_input_output]
+  @non_direct_runtime_keys [:driver, :provider, :options]
+  @runtime_family_keys [
+    :session_affinity,
+    :resumable,
+    :approval_required,
+    :stream_capable,
+    :lifecycle_owner,
+    :runtime_ref
+  ]
+  @runtime_family_session_affinities [:none, :connection, :target]
+  @runtime_family_lifecycle_owners [:asm, :jido_session]
+  @runtime_family_runtime_refs [:session, :run]
 
   @consumer_surface_schema Contracts.strict_object!(
                              mode:
@@ -83,6 +95,17 @@ defmodule Jido.Integration.V2.OperationSpec do
   @type schema_strategy ::
           :static | :late_bound_input | :late_bound_output | :late_bound_input_output
   @type schema_surface :: :input | :output
+  @type runtime_family_session_affinity :: :none | :connection | :target
+  @type runtime_family_lifecycle_owner :: :asm | :jido_session
+  @type runtime_family_ref :: :session | :run
+  @type runtime_family :: %{
+          session_affinity: runtime_family_session_affinity(),
+          resumable: boolean(),
+          approval_required: boolean(),
+          stream_capable: boolean(),
+          lifecycle_owner: runtime_family_lifecycle_owner(),
+          runtime_ref: runtime_family_ref()
+        }
   @type schema_slot :: %{
           surface: schema_surface(),
           path: [String.t()],
@@ -142,6 +165,40 @@ defmodule Jido.Integration.V2.OperationSpec do
     Contracts.get(consumer_surface, :action_name)
   end
 
+  @spec runtime_driver(t()) :: String.t() | nil
+  def runtime_driver(%__MODULE__{runtime: runtime}) do
+    case Contracts.get(runtime, :driver) do
+      nil -> nil
+      value -> normalize_runtime_driver(value)
+    end
+  end
+
+  @spec runtime_provider(t()) :: atom() | nil
+  def runtime_provider(%__MODULE__{runtime: runtime}) do
+    case Contracts.get(runtime, :provider) do
+      nil -> nil
+      value -> normalize_runtime_provider(value)
+    end
+  end
+
+  @spec runtime_options(t()) :: map()
+  def runtime_options(%__MODULE__{runtime: runtime}) do
+    case Contracts.get(runtime, :options, %{}) do
+      %{} = options -> options
+      _other -> %{}
+    end
+  end
+
+  @spec runtime_family(t()) :: runtime_family() | nil
+  def runtime_family(%__MODULE__{metadata: metadata}) do
+    case Contracts.get(metadata, :runtime_family) do
+      %{} = runtime_family -> normalize_runtime_family(runtime_family)
+      _other -> nil
+    end
+  rescue
+    ArgumentError -> nil
+  end
+
   @spec schema_strategy(t()) :: schema_strategy() | nil
   def schema_strategy(%__MODULE__{metadata: metadata}) do
     Contracts.get(metadata, :schema_strategy)
@@ -173,9 +230,22 @@ defmodule Jido.Integration.V2.OperationSpec do
 
     with :ok <- validate_consumer_surface(operation_spec),
          :ok <- validate_schema_policy(operation_spec),
-         :ok <- validate_schema_metadata(operation_spec) do
+         :ok <- validate_schema_metadata(operation_spec),
+         :ok <- validate_runtime_contract(operation_spec) do
       {:ok, operation_spec}
     end
+  end
+
+  defp validate_runtime_contract(%__MODULE__{runtime_class: runtime_class} = operation_spec)
+       when runtime_class in [:session, :stream] do
+    with :ok <- validate_non_direct_runtime(operation_spec),
+         :ok <- validate_runtime_family_requirement(operation_spec) do
+      validate_runtime_family_shape(operation_spec)
+    end
+  end
+
+  defp validate_runtime_contract(%__MODULE__{} = operation_spec) do
+    validate_runtime_family_shape(operation_spec)
   end
 
   defp validate_consumer_surface(%__MODULE__{
@@ -302,6 +372,56 @@ defmodule Jido.Integration.V2.OperationSpec do
 
   defp validate_schema_metadata_shape(_strategy, _context_source, _slots_declared?, _raw_slots),
     do: :ok
+
+  defp validate_non_direct_runtime(%__MODULE__{runtime: runtime}) when is_map(runtime) do
+    unknown_keys =
+      runtime
+      |> Map.keys()
+      |> Enum.reject(&(normalize_runtime_key(&1) in @non_direct_runtime_keys))
+      |> Enum.sort()
+
+    cond do
+      unknown_keys != [] ->
+        error(
+          "operation.runtime only supports driver, provider, and options for session and stream authored routing"
+        )
+
+      is_nil(runtime_driver_value(runtime)) ->
+        error("operation.runtime.driver is required for session and stream authored routing")
+
+      true ->
+        with :ok <- validate_runtime_driver(runtime_driver_value(runtime)),
+             :ok <- validate_runtime_provider_value(runtime_provider_value(runtime)) do
+          validate_runtime_options(runtime_options_value(runtime))
+        end
+    end
+  end
+
+  defp validate_non_direct_runtime(%__MODULE__{}), do: error("operation.runtime must be a map")
+
+  defp validate_runtime_family_requirement(%__MODULE__{} = operation_spec) do
+    if common_consumer_surface?(operation_spec) and is_nil(runtime_family(operation_spec)) do
+      error(
+        "operation.metadata.runtime_family is required for common projected session and stream surfaces"
+      )
+    else
+      :ok
+    end
+  end
+
+  defp validate_runtime_family_shape(%__MODULE__{} = operation_spec) do
+    case Contracts.get(operation_spec.metadata, :runtime_family) do
+      nil ->
+        :ok
+
+      %{} = runtime_family ->
+        normalize_runtime_family(runtime_family)
+        :ok
+
+      _other ->
+        error("operation.metadata.runtime_family must be a map when declared")
+    end
+  end
 
   defp validate_schema_metadata_strategy(nil, _context_source, _slots), do: :ok
 
@@ -444,6 +564,162 @@ defmodule Jido.Integration.V2.OperationSpec do
   defp valid_path?(_value), do: false
 
   defp real_schema_source?(value), do: present_atom?(value) and value != :none
+  defp runtime_driver_value(runtime), do: Contracts.get(runtime, :driver)
+  defp runtime_provider_value(runtime), do: Contracts.get(runtime, :provider)
+  defp runtime_options_value(runtime), do: Contracts.get(runtime, :options, %{})
+
+  defp validate_runtime_driver(value) do
+    value
+    |> normalize_runtime_driver()
+    |> then(fn _driver -> :ok end)
+  rescue
+    ArgumentError -> error("operation.runtime.driver must be a non-empty string or atom")
+  end
+
+  defp validate_runtime_provider_value(nil), do: :ok
+
+  defp validate_runtime_provider_value(value) do
+    value
+    |> normalize_runtime_provider()
+    |> then(fn _provider -> :ok end)
+  rescue
+    ArgumentError ->
+      error("operation.runtime.provider must be a non-empty string or atom when declared")
+  end
+
+  defp validate_runtime_options(%{}), do: :ok
+
+  defp validate_runtime_options(_other),
+    do: error("operation.runtime.options must be a map when declared")
+
+  defp normalize_runtime_driver(value) when is_atom(value), do: Atom.to_string(value)
+
+  defp normalize_runtime_driver(value),
+    do: Contracts.validate_non_empty_string!(value, "operation.runtime.driver")
+
+  defp normalize_runtime_provider(value) when is_atom(value), do: value
+
+  defp normalize_runtime_provider(value) when is_binary(value) do
+    value
+    |> Contracts.validate_non_empty_string!("operation.runtime.provider")
+    |> String.to_atom()
+  end
+
+  defp normalize_runtime_provider(value) do
+    raise ArgumentError,
+          "operation.runtime.provider must be a non-empty string or atom, got: #{inspect(value)}"
+  end
+
+  defp normalize_runtime_key(key) when key in @non_direct_runtime_keys, do: key
+
+  defp normalize_runtime_key(key) when is_binary(key) do
+    case key do
+      "driver" -> :driver
+      "provider" -> :provider
+      "options" -> :options
+      _other -> nil
+    end
+  end
+
+  defp normalize_runtime_key(_key), do: nil
+
+  defp normalize_runtime_family(runtime_family) when is_map(runtime_family) do
+    keys =
+      runtime_family
+      |> Map.keys()
+      |> Enum.map(&normalize_runtime_family_key/1)
+      |> Enum.sort()
+
+    if keys != Enum.sort(@runtime_family_keys) do
+      raise ArgumentError,
+            "operation.metadata.runtime_family must include exactly #{inspect(@runtime_family_keys)}"
+    end
+
+    %{
+      session_affinity:
+        normalize_runtime_family_enum(
+          Contracts.get(runtime_family, :session_affinity),
+          @runtime_family_session_affinities,
+          "operation.metadata.runtime_family.session_affinity"
+        ),
+      resumable:
+        normalize_runtime_family_boolean(
+          Contracts.get(runtime_family, :resumable),
+          "operation.metadata.runtime_family.resumable"
+        ),
+      approval_required:
+        normalize_runtime_family_boolean(
+          Contracts.get(runtime_family, :approval_required),
+          "operation.metadata.runtime_family.approval_required"
+        ),
+      stream_capable:
+        normalize_runtime_family_boolean(
+          Contracts.get(runtime_family, :stream_capable),
+          "operation.metadata.runtime_family.stream_capable"
+        ),
+      lifecycle_owner:
+        normalize_runtime_family_enum(
+          Contracts.get(runtime_family, :lifecycle_owner),
+          @runtime_family_lifecycle_owners,
+          "operation.metadata.runtime_family.lifecycle_owner"
+        ),
+      runtime_ref:
+        normalize_runtime_family_enum(
+          Contracts.get(runtime_family, :runtime_ref),
+          @runtime_family_runtime_refs,
+          "operation.metadata.runtime_family.runtime_ref"
+        )
+    }
+  end
+
+  defp normalize_runtime_family(_other) do
+    raise ArgumentError, "operation.metadata.runtime_family must be a map when declared"
+  end
+
+  defp normalize_runtime_family_key(key) when key in @runtime_family_keys, do: key
+
+  defp normalize_runtime_family_key(key) when is_binary(key) do
+    case key do
+      "session_affinity" -> :session_affinity
+      "resumable" -> :resumable
+      "approval_required" -> :approval_required
+      "stream_capable" -> :stream_capable
+      "lifecycle_owner" -> :lifecycle_owner
+      "runtime_ref" -> :runtime_ref
+      _other -> key
+    end
+  end
+
+  defp normalize_runtime_family_key(key), do: key
+
+  defp normalize_runtime_family_enum(value, allowed_values, field_name) when is_atom(value) do
+    if value in allowed_values do
+      value
+    else
+      raise ArgumentError, "#{field_name} must be one of #{inspect(allowed_values)}"
+    end
+  end
+
+  defp normalize_runtime_family_enum(value, allowed_values, field_name) when is_binary(value) do
+    atom_value = String.to_atom(value)
+
+    if atom_value in allowed_values do
+      atom_value
+    else
+      raise ArgumentError, "#{field_name} must be one of #{inspect(allowed_values)}"
+    end
+  end
+
+  defp normalize_runtime_family_enum(_value, allowed_values, field_name) do
+    raise ArgumentError, "#{field_name} must be one of #{inspect(allowed_values)}"
+  end
+
+  defp normalize_runtime_family_boolean(value, _field_name) when is_boolean(value), do: value
+
+  defp normalize_runtime_family_boolean(value, field_name) do
+    raise ArgumentError, "#{field_name} must be a boolean, got: #{inspect(value)}"
+  end
+
   defp present_atom?(value), do: is_atom(value)
   defp present_string?(value), do: is_binary(value) and byte_size(String.trim(value)) > 0
 

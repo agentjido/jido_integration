@@ -290,6 +290,211 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
     end
   end
 
+  defmodule CrossRuntimeProjectedConnector do
+    @behaviour Jido.Integration.V2.Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "cross_runtime",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :oauth2,
+            install: %{required: true},
+            reauth: %{supported: true},
+            requested_scopes: ["ops:execute", "provider:raw"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Cross Runtime",
+            description: "Connector with direct, session, and stream common surfaces",
+            category: "developer_tools",
+            tags: ["cross-runtime"],
+            docs_refs: ["https://docs.example.test/cross-runtime"],
+            maturity: :beta,
+            publication: :internal
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "cross_runtime.issue.fetch",
+            name: "issue_fetch",
+            display_name: "Issue fetch",
+            description: "Fetches one issue directly",
+            runtime_class: :direct,
+            transport_mode: :sdk,
+            handler: Handler,
+            input_schema:
+              Zoi.object(%{
+                issue_id: Zoi.string()
+              }),
+            output_schema:
+              Zoi.object(%{
+                id: Zoi.string()
+              }),
+            permissions: %{required_scopes: ["ops:execute"]},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["cross_runtime.issue.fetch"]
+              }
+            },
+            upstream: %{method: "GET", path: "/issues/{issue_id}"},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "work_item_fetch"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{}
+          }),
+          OperationSpec.new!(%{
+            operation_id: "cross_runtime.session.exec",
+            name: "session_exec",
+            display_name: "Session exec",
+            description: "Routes through a reusable session runtime",
+            runtime_class: :session,
+            transport_mode: :stdio,
+            handler: Handler,
+            input_schema:
+              Zoi.object(%{
+                prompt: Zoi.string()
+              }),
+            output_schema:
+              Zoi.object(%{
+                text: Zoi.string()
+              }),
+            permissions: %{required_scopes: ["ops:execute"]},
+            runtime: %{
+              driver: "asm",
+              provider: :codex,
+              options: %{}
+            },
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :manual,
+                allowed_tools: ["cross_runtime.session.exec"]
+              }
+            },
+            upstream: %{transport: :stdio},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "codex.exec.session",
+              action_name: "codex_exec_session"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{},
+            metadata: %{
+              runtime_family: %{
+                session_affinity: :connection,
+                resumable: true,
+                approval_required: true,
+                stream_capable: true,
+                lifecycle_owner: :asm,
+                runtime_ref: :session
+              }
+            }
+          }),
+          OperationSpec.new!(%{
+            operation_id: "cross_runtime.stream.pull",
+            name: "stream_pull",
+            display_name: "Stream pull",
+            description: "Routes through a stream-capable runtime",
+            runtime_class: :stream,
+            transport_mode: :stdio,
+            handler: Handler,
+            input_schema:
+              Zoi.object(%{
+                query: Zoi.string()
+              }),
+            output_schema:
+              Zoi.object(%{
+                rows: Zoi.list(Zoi.map())
+              }),
+            permissions: %{required_scopes: ["ops:execute"]},
+            runtime: %{
+              driver: "asm",
+              provider: :claude,
+              options: %{}
+            },
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["cross_runtime.stream.pull"]
+              }
+            },
+            upstream: %{transport: :stdio},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "market.ticks.pull",
+              action_name: "market_ticks_pull"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{},
+            metadata: %{
+              runtime_family: %{
+                session_affinity: :target,
+                resumable: false,
+                approval_required: false,
+                stream_capable: true,
+                lifecycle_owner: :asm,
+                runtime_ref: :session
+              }
+            }
+          }),
+          OperationSpec.new!(%{
+            operation_id: "cross_runtime.provider.raw_lookup",
+            name: "provider_raw_lookup",
+            display_name: "Provider raw lookup",
+            description: "Stays off the common projection spine",
+            runtime_class: :session,
+            transport_mode: :stdio,
+            handler: Handler,
+            input_schema: Zoi.map(),
+            output_schema: Zoi.map(),
+            permissions: %{required_scopes: ["provider:raw"]},
+            runtime: %{driver: "asm"},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :manual,
+                allowed_tools: ["cross_runtime.provider.raw_lookup"]
+              }
+            },
+            upstream: %{transport: :stdio},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Provider-specific runtime behavior stays connector-local"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Connector-local runtime passthrough while the operation stays outside the common projected surface"
+            },
+            jido: %{},
+            metadata: %{}
+          })
+        ],
+        triggers: [],
+        runtime_families: [:direct, :session, :stream]
+      })
+    end
+  end
+
   test "derives deterministic action projection rules from the authored manifest" do
     projection = ConsumerProjection.action_projection!(AcmeConnector, "acme.issue.fetch")
     [operation] = AcmeConnector.manifest().operations
@@ -374,6 +579,33 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
     assert_raise ArgumentError, ~r/not projected into the common consumer surface/, fn ->
       ConsumerProjection.action_projection!(MixedSurfaceConnector, "mixed.provider.raw_lookup")
     end
+  end
+
+  test "keeps direct session and stream common surfaces on the one consumer projection spine" do
+    projection = ConsumerProjection.plugin_projection!(CrossRuntimeProjectedConnector)
+
+    assert projection.actions == [
+             CrossRuntimeProjectedConnector.Generated.Actions.WorkItemFetch,
+             CrossRuntimeProjectedConnector.Generated.Actions.CodexExecSession,
+             CrossRuntimeProjectedConnector.Generated.Actions.MarketTicksPull
+           ]
+
+    assert ConsumerProjection.action_modules(CrossRuntimeProjectedConnector) == projection.actions
+
+    assert ConsumerProjection.action_projection!(
+             CrossRuntimeProjectedConnector,
+             "cross_runtime.issue.fetch"
+           ).tags == ["cross-runtime", "cross_runtime", "direct"]
+
+    assert ConsumerProjection.action_projection!(
+             CrossRuntimeProjectedConnector,
+             "cross_runtime.session.exec"
+           ).tags == ["cross-runtime", "cross_runtime", "session"]
+
+    assert ConsumerProjection.action_projection!(
+             CrossRuntimeProjectedConnector,
+             "cross_runtime.stream.pull"
+           ).tags == ["cross-runtime", "cross_runtime", "stream"]
   end
 
   test "projection structs expose canonical Zoi schema helpers" do

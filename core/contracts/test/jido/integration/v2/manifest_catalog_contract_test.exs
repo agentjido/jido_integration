@@ -338,6 +338,96 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
     end
   end
 
+  test "manifest derives canonical non-direct runtime routing metadata into capabilities" do
+    manifest =
+      Manifest.new!(%{
+        connector: "codex_like",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :oauth2,
+          install: %{required: true},
+          reauth: %{supported: true},
+          requested_scopes: ["session:execute"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        },
+        catalog: %{
+          display_name: "Codex Like",
+          description: "Session-family authored routing proof",
+          category: "developer_tools",
+          tags: ["session"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [
+          %{
+            operation_id: "codex_like.exec.session",
+            name: "exec_session",
+            display_name: "Exec session",
+            description: "Runs through a session runtime",
+            runtime_class: :session,
+            transport_mode: :stdio,
+            handler: Handler,
+            input_schema: Zoi.map(),
+            output_schema: Zoi.map(),
+            permissions: %{required_scopes: ["session:execute"]},
+            runtime: %{
+              "driver" => "asm",
+              "provider" => "codex",
+              "options" => %{"lane" => "sdk"}
+            },
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :manual,
+                allowed_tools: ["codex_like.exec.session"]
+              }
+            },
+            upstream: %{transport: :stdio},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "codex.exec.session",
+              action_name: "codex_exec_session"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{},
+            metadata: %{
+              "runtime_family" => %{
+                "session_affinity" => "connection",
+                "resumable" => true,
+                "approval_required" => true,
+                "stream_capable" => true,
+                "lifecycle_owner" => "asm",
+                "runtime_ref" => "session"
+              }
+            }
+          }
+        ],
+        triggers: [],
+        runtime_families: [:session]
+      })
+
+    assert [%Capability{} = capability] = manifest.capabilities
+
+    assert capability.metadata.runtime == %{
+             driver: "asm",
+             provider: :codex,
+             options: %{"lane" => "sdk"}
+           }
+
+    assert capability.metadata.runtime_family == %{
+             session_affinity: :connection,
+             resumable: true,
+             approval_required: true,
+             stream_capable: true,
+             lifecycle_owner: :asm,
+             runtime_ref: :session
+           }
+  end
+
   test "authored catalog structs expose canonical Zoi schema helpers" do
     operation_attrs = %{
       operation_id: "acme.issue.fetch",

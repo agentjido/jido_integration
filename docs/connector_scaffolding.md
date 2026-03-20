@@ -83,6 +83,28 @@ If an authored runtime capability is useful but still provider-specific, keep it
 
 If a provider SDK method is long-tail inventory that should remain at the SDK boundary, leave it out of the manifest entirely instead of inflating the generated Jido surface.
 
+For non-direct authored operations, keep routing metadata on the authored
+contract itself:
+
+- `runtime.driver`
+- `runtime.provider`
+- `runtime.options`
+
+If a `:session` or `:stream` operation is published as
+`consumer_surface.mode: :common`, it must also carry the canonical
+`metadata.runtime_family` keys:
+
+- `session_affinity`
+- `resumable`
+- `approval_required`
+- `stream_capable`
+- `lifecycle_owner`
+- `runtime_ref`
+
+Connector-local non-direct operations may omit `metadata.runtime_family`, but
+that is an explicit authored exception, not the default posture for those
+runtime families.
+
 ## Current Options
 
 - `--runtime-class`: `direct`, `session`, or `stream`; only `direct` is
