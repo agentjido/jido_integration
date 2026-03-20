@@ -5,6 +5,10 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   Target Harness driver ids for new architecture work are `asm` and
   `jido_session`. The integration-owned bridge ids remain available only as
   compatibility shims while older fixtures are retired.
+
+  Target descriptors remain compatibility and location advertisements. They do
+  not override authored `runtime.driver`, `runtime.provider`, or
+  `runtime.options`.
   """
 
   alias Jido.Harness.{ExecutionResult, RunRequest, SessionHandle}
@@ -92,7 +96,7 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   end
 
   defp resolve_driver(capability, input, context) do
-    runtime_config = merged_runtime_config(capability, context)
+    runtime_config = authored_runtime_config(capability)
 
     driver_value =
       Contracts.get(
@@ -115,31 +119,14 @@ defmodule Jido.Integration.V2.HarnessRuntime do
     end
   end
 
-  defp merged_runtime_config(%Capability{metadata: metadata}, context) do
+  defp authored_runtime_config(%Capability{metadata: metadata}) do
     capability_config =
       case Contracts.get(metadata, :runtime, %{}) do
         value when is_map(value) -> normalize_runtime_config(value)
         _other -> %{}
       end
 
-    target_config =
-      case Map.get(context, :target_descriptor) do
-        %TargetDescriptor{extensions: extensions} ->
-          case Contracts.get(extensions, :runtime, %{}) do
-            value when is_map(value) -> normalize_runtime_config(value)
-            _other -> %{}
-          end
-
-        _other ->
-          %{}
-      end
-
     capability_config
-    |> Map.merge(target_config)
-    |> Map.put(
-      :options,
-      Map.merge(Map.get(capability_config, :options, %{}), Map.get(target_config, :options, %{}))
-    )
   end
 
   defp resolve_driver_module(driver_value) when is_atom(driver_value) do
@@ -487,20 +474,8 @@ defmodule Jido.Integration.V2.HarnessRuntime do
       {key, value}, acc when is_atom(key) ->
         Keyword.put(acc, key, value)
 
-      {"driver", value}, acc ->
-        Keyword.put(acc, :driver, value)
-
-      {"driver_module", value}, acc ->
-        Keyword.put(acc, :driver_module, value)
-
-      {"cwd", value}, acc ->
-        Keyword.put(acc, :cwd, value)
-
-      {"provider", value}, acc ->
-        Keyword.put(acc, :provider, value)
-
-      {"allowed_tools", value}, acc ->
-        Keyword.put(acc, :allowed_tools, value)
+      {key, value}, acc when is_binary(key) and byte_size(key) > 0 ->
+        Keyword.put(acc, String.to_atom(key), value)
 
       {_key, _value}, acc ->
         acc

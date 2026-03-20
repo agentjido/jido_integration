@@ -46,6 +46,7 @@ Current hardening guarantees:
   - `runtime.driver`, `runtime.provider`, and `runtime.options` are the canonical authored routing keys for `:session` and `:stream` operations
   - common `:session` and `:stream` consumer surfaces must also declare canonical `metadata.runtime_family`
   - `:connector_local` remains the explicit authored escape hatch when a non-direct capability should stay off the generated common surface
+  - target descriptors can advertise compatible runtime environments and workspace locations, but they must not rewrite authored runtime routing keys
 - `schema_policy` is explicit on authored operations and triggers so placeholder schemas cannot silently leak into published or projected surfaces
 - `ConsumerProjection` derives deterministic action and plugin projection rules only from authored entries marked as normalized common consumer surfaces, and rejects duplicate projected action names or module collisions within one connector
 - `GeneratedAction` and `GeneratedPlugin` project those rules into the current real `Jido.Action` and `Jido.Plugin` APIs

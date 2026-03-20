@@ -90,6 +90,10 @@ contract itself:
 - `runtime.provider`
 - `runtime.options`
 
+Targets must align to those authored routing keys. A `TargetDescriptor` is a
+compatibility and location advertisement, not a second place to override the
+selected runtime driver, provider, or options.
+
 If a `:session` or `:stream` operation is published as
 `consumer_surface.mode: :common`, it must also carry the canonical
 `metadata.runtime_family` keys:

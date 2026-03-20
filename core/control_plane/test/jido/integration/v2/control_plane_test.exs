@@ -573,7 +573,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert audit_payload.reasons == ["missing required scopes: echo:write"]
   end
 
-  test "routes session work through the jido_session harness driver selected by target metadata" do
+  test "routes session work through the authored jido_session harness driver when a compatible target is selected" do
     connection_id = install_connection!("tester", ["session:execute"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(JidoSessionConnector)
 
@@ -634,7 +634,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
            end)
   end
 
-  test "routes stream work through the asm harness driver selected by target metadata" do
+  test "routes stream work through the authored asm harness driver when a compatible target is selected" do
     connection_id = install_connection!("tester", ["stream:execute"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(AsmStreamConnector)
 
@@ -1054,12 +1054,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
       },
       constraints: %{workspace_root: "/srv/tenant-1"},
       health: :healthy,
-      location: %{mode: :beam, region: "test", workspace_root: "/srv/tenant-1"},
-      extensions: %{
-        "runtime" => %{
-          "driver" => driver_id
-        }
-      }
+      location: %{mode: :beam, region: "test", workspace_root: "/srv/tenant-1"}
     })
   end
 end
