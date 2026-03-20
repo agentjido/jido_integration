@@ -1,5 +1,8 @@
 defmodule <%= @conformance_module %> do
   @moduledoc false
+<%= if @include_runtime_drivers do %>
+  alias <%= @conformance_harness_driver_module %>
+<% end %>
 
   @spec fixtures() :: [map()]
   def fixtures do
@@ -19,6 +22,13 @@ defmodule <%= @conformance_module %> do
       }
     ]
   end
+
+<%= if @include_runtime_drivers do %>
+  @spec runtime_drivers() :: map()
+  def runtime_drivers do
+    %{<%= @runtime_driver_atom_literal %> => <%= @conformance_harness_driver_alias %>}
+  end
+<% end %>
 
 <%= if Keyword.get(assigns, :publish_ingress_definitions, false) do %>
   @spec ingress_definitions() :: [map()]

@@ -19,6 +19,7 @@ defmodule Jido.Integration.V2.Conformance do
   alias Jido.Integration.V2.Conformance.Suites.ManifestContract
   alias Jido.Integration.V2.Conformance.Suites.PolicyContract
   alias Jido.Integration.V2.Conformance.Suites.RuntimeClassFit
+  alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.Manifest
 
   @suite_modules %{
@@ -67,7 +68,6 @@ defmodule Jido.Integration.V2.Conformance do
           )
 
         suite_results = Enum.map(profile.suite_ids, &run_suite(&1, context))
-        status = if Enum.any?(suite_results, &(&1.status == :failed)), do: :failed, else: :passed
 
         {:ok,
          %Report{
@@ -77,7 +77,7 @@ defmodule Jido.Integration.V2.Conformance do
            runner_version: runner_version(),
            generated_at:
              Keyword.get(opts, :generated_at, DateTime.utc_now() |> DateTime.truncate(:second)),
-           status: status,
+           status: report_status(suite_results),
            suite_results: suite_results
          }}
       end)
@@ -146,7 +146,7 @@ defmodule Jido.Integration.V2.Conformance do
 
     {:ok, _apps} = Application.ensure_all_started(:jido_integration_v2_control_plane)
     Application.put_env(:jido_integration_v2_control_plane, :runtime_drivers, runtime_drivers)
-    Jido.Integration.V2.HarnessRuntime.reset!()
+    HarnessRuntime.reset!()
 
     try do
       fun.()
@@ -159,7 +159,7 @@ defmodule Jido.Integration.V2.Conformance do
           Application.put_env(:jido_integration_v2_control_plane, :runtime_drivers, value)
       end
 
-      Jido.Integration.V2.HarnessRuntime.reset!()
+      HarnessRuntime.reset!()
     end
   end
 
@@ -183,6 +183,10 @@ defmodule Jido.Integration.V2.Conformance do
       version when is_list(version) -> List.to_string(version)
       version -> to_string(version)
     end
+  end
+
+  defp report_status(suite_results) do
+    if Enum.any?(suite_results, &(&1.status == :failed)), do: :failed, else: :passed
   end
 
   defp struct_instance?(value, module),

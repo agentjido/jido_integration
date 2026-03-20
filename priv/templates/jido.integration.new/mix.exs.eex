@@ -7,6 +7,7 @@ defmodule <%= @project_module %> do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       dialyzer: dialyzer(),
       docs: docs(),
@@ -21,6 +22,11 @@ defmodule <%= @project_module %> do
     ]
   end
 
+<%= if @include_test_support do %>  defp elixirc_paths(env) when env in [:dev, :test], do: ["lib", "test_support"]
+  defp elixirc_paths(_env), do: ["lib"]
+<% else %>  defp elixirc_paths(_env), do: ["lib"]
+<% end %>
+
   defp deps do
     [
       {:jido_integration_v2_contracts, path: "<%= @contracts_dep_path %>", override: true},
@@ -28,9 +34,9 @@ defmodule <%= @project_module %> do
       {:zoi, "~> 0.17"},
 <%= if @direct_runtime do %>      {:jido_action, "~> 2.1"},
       {:jido_integration_v2_direct_runtime, path: "<%= @runtime_dep_path %>", override: true},
-<% else %>      {:<%= @runtime_dependency_app %>, path: "<%= @runtime_dep_path %>", override: true},
 <% end %>      {:jido_integration_v2_conformance, path: "<%= @conformance_dep_path %>", only: :test, runtime: false},
-      {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
+<%= if @include_test_support do %>      {:jido_harness, path: "<%= @jido_harness_dep_path %>", only: [:dev, :test]},
+<% end %>      {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
     ]

@@ -32,13 +32,32 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver do
 
   @spec run(SessionHandle.t(), RunRequest.t(), keyword()) :: {:ok, ExecutionResult.t()}
   def run(%SessionHandle{} = session, %RunRequest{} = request, opts) when is_list(opts) do
-    turn = next_turn!(session.session_id)
+    capability = Keyword.fetch!(opts, :capability)
+
+    case capability.id do
+      "market.ticks.pull" ->
+        run_market_data(session, request, opts)
+
+      _other ->
+        run_codex_cli(session, request, opts)
+    end
+  end
+
+  @spec stop_session(SessionHandle.t()) :: :ok
+  def stop_session(%SessionHandle{session_id: session_id}) do
+    ensure_table!()
+    :ets.delete(@table, session_id)
+    :ok
+  end
+
+  defp run_codex_cli(%SessionHandle{} = session, %RunRequest{} = request, opts) do
+    turn = advance_counter!(session.session_id, 1)
     capability = Keyword.fetch!(opts, :capability)
     context = Keyword.fetch!(opts, :context)
     prompt = Map.fetch!(Keyword.fetch!(opts, :input), :prompt)
     workspace = request.cwd
     tool = opts |> Keyword.get(:allowed_tools, []) |> List.first()
-    auth_binding = ArtifactBuilder.digest(context.credential_lease.payload.access_token)
+    auth_binding = ArtifactBuilder.digest(credential_value(context.credential_lease.payload))
     reply = "codex(#{context.credential_lease.subject}) turn #{turn}: #{String.downcase(prompt)}"
 
     artifact =
@@ -74,7 +93,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver do
         runtime_ref_id: session.session_id,
         events: [
           %{
-            type: lifecycle_event_type(Keyword.get(opts, :lifecycle, :started)),
+            type: lifecycle_event_type(:session, Keyword.get(opts, :lifecycle, :started)),
             payload: %{provider: session.provider},
             session_id: session.session_id,
             runtime_ref_id: session.session_id
@@ -95,6 +114,89 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver do
         artifacts: [artifact]
       })
 
+    execution_result(session, context, reply, runtime_result, opts)
+  end
+
+  defp run_market_data(%SessionHandle{} = session, %RunRequest{} = _request, opts) do
+    capability = Keyword.fetch!(opts, :capability)
+    context = Keyword.fetch!(opts, :context)
+    input = Keyword.fetch!(opts, :input)
+    symbol = Map.fetch!(input, :symbol)
+    limit = Map.get(input, :limit, 1)
+    venue = Map.get(input, :venue, "demo")
+    cursor = advance_counter!(session.session_id, limit)
+    auth_binding = ArtifactBuilder.digest(credential_value(context.credential_lease.payload))
+
+    items =
+      for seq <- (cursor - limit + 1)..cursor do
+        %{
+          seq: seq,
+          symbol: symbol,
+          venue: venue,
+          bid: 5_000 + seq,
+          ask: 5_001 + seq
+        }
+      end
+
+    artifact =
+      ArtifactBuilder.build!(
+        run_id: context.run_id,
+        attempt_id: context.attempt_id,
+        artifact_type: :log,
+        key: "market_data/#{context.run_id}/#{context.attempt_id}/batch_#{cursor}.term",
+        content: %{
+          symbol: symbol,
+          venue: venue,
+          cursor: cursor,
+          batch_size: limit,
+          items: items
+        },
+        metadata: %{
+          connector: "market_data",
+          capability_id: capability.id,
+          session_id: session.session_id,
+          auth_binding: auth_binding
+        }
+      )
+
+    runtime_result =
+      RuntimeResult.new!(%{
+        output: %{
+          symbol: symbol,
+          venue: venue,
+          cursor: cursor,
+          items: items,
+          auth_binding: auth_binding
+        },
+        runtime_ref_id: session.session_id,
+        events: [
+          %{
+            type: lifecycle_event_type(:stream, Keyword.get(opts, :lifecycle, :started)),
+            payload: %{provider: session.provider},
+            session_id: session.session_id,
+            runtime_ref_id: session.session_id
+          },
+          %{
+            type: "connector.market_data.batch.pulled",
+            stream: :control,
+            payload: %{
+              symbol: symbol,
+              venue: venue,
+              cursor: cursor,
+              batch_size: limit,
+              auth_binding: auth_binding
+            },
+            session_id: session.session_id,
+            runtime_ref_id: session.session_id
+          }
+        ],
+        artifacts: [artifact]
+      })
+
+    execution_result(session, context, "#{symbol} batch #{cursor}", runtime_result, opts)
+  end
+
+  defp execution_result(%SessionHandle{} = session, context, text, runtime_result, opts) do
     {:ok,
      ExecutionResult.new!(%{
        run_id: Keyword.get(opts, :run_id, context.run_id),
@@ -102,31 +204,33 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver do
        runtime_id: :asm,
        provider: session.provider,
        status: :completed,
-       text: reply,
+       text: text,
        messages: [],
        cost: %{},
        stop_reason: "completed",
        metadata: %{
-         jido_integration: %{
+         "jido_integration" => %{
            runtime_result: runtime_result
          }
        }
      })}
   end
 
-  @spec stop_session(SessionHandle.t()) :: :ok
-  def stop_session(%SessionHandle{session_id: session_id}) do
+  defp lifecycle_event_type(:session, :reused), do: "session.reused"
+  defp lifecycle_event_type(:session, _other), do: "session.started"
+  defp lifecycle_event_type(:stream, :reused), do: "stream.reused"
+  defp lifecycle_event_type(:stream, _other), do: "stream.started"
+
+  defp advance_counter!(session_id, step) do
     ensure_table!()
-    :ets.delete(@table, session_id)
-    :ok
+    :ets.update_counter(@table, session_id, {2, step})
   end
 
-  defp lifecycle_event_type(:reused), do: "session.reused"
-  defp lifecycle_event_type(_other), do: "session.started"
-
-  defp next_turn!(session_id) do
-    ensure_table!()
-    :ets.update_counter(@table, session_id, {2, 1})
+  defp credential_value(payload) do
+    case Map.get(payload, :access_token) || Map.get(payload, :api_key) do
+      nil -> raise ArgumentError, "missing credential token payload"
+      value -> value
+    end
   end
 
   defp ensure_table! do

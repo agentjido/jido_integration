@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2Test do
   alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures, as: GitHubFixtures
   alias Jido.Integration.V2.Connectors.MarketData
+  alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.InvocationRequest
 
   @github %{
@@ -148,7 +149,7 @@ defmodule Jido.Integration.V2Test do
       GitHubFixtures.client_opts(nil)
     )
 
-    Jido.Integration.V2.HarnessRuntime.reset!()
+    HarnessRuntime.reset!()
     ConformanceHarnessDriver.reset!()
 
     Application.put_env(
@@ -176,7 +177,7 @@ defmodule Jido.Integration.V2Test do
           )
       end
 
-      Jido.Integration.V2.HarnessRuntime.reset!()
+      HarnessRuntime.reset!()
       ConformanceHarnessDriver.reset!()
     end)
 
@@ -243,6 +244,33 @@ defmodule Jido.Integration.V2Test do
              session_affinity: :connection,
              resumable: true,
              approval_required: true,
+             stream_capable: true,
+             lifecycle_owner: :asm,
+             runtime_ref: :session
+           }
+  end
+
+  test "stream connector publishes the shared asm-backed common surface metadata" do
+    register_connector!(@market_data.connector)
+
+    assert {:ok, capability} = V2.fetch_capability(@market_data.capability_id)
+
+    assert capability.metadata.runtime == %{
+             driver: "asm",
+             provider: :claude,
+             options: %{}
+           }
+
+    assert capability.metadata.consumer_surface == %{
+             mode: :common,
+             normalized_id: "market.ticks.pull",
+             action_name: "market_ticks_pull"
+           }
+
+    assert capability.metadata.runtime_family == %{
+             session_affinity: :target,
+             resumable: false,
+             approval_required: false,
              stream_capable: true,
              lifecycle_owner: :asm,
              runtime_ref: :session

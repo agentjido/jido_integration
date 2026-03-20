@@ -2,17 +2,16 @@
 
 Stream baseline connector package.
 
-This package still targets the `integration_stream_bridge` compatibility shim.
-That keeps the migration proof around for feed-style fixtures, but it should be
-treated as temporary architecture rather than the target model for new runtime
-composition work. Treat this package as a migration fixture, not as a template
-for new connector work. New runtime-boundary work must target Harness through
-`asm` or `jido_session` instead of extending this shim.
+This package now publishes the accepted Phase 4 stream-family authored shape:
+the authored operation targets Harness through `runtime.driver: "asm"`,
+projects through the shared common consumer surface, and carries the canonical
+`metadata.runtime_family` keys for an ASM-owned stream-capable session seam.
 
 Proves:
 
 - stream-class capability publishing against the shared `RuntimeResult` substrate
+- common-surface projection through the single consumer projection contract
 - explicit environment and sandbox posture for feed-style pulls
 - lease-bound auth and durable review artifacts/events for each batch
-- repeated pulls with cursor advancement over a stable stream reference keyed by credential ref
+- deterministic ASM-backed conformance through a package-local Harness test driver
 - scope-gated admission (`market:read`)

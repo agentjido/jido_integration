@@ -2,8 +2,8 @@ defmodule <%= @handler_module %> do
   @moduledoc false
 
   use Jido.Action,
-    name: "<%= @connector_name %>_perform",
-    description: "Placeholder direct capability for the scaffolded connector",
+    name: "<%= @generated_action_name %>",
+    description: "<%= @operation_description %>",
     schema: [
       message: [type: :string, required: true]
     ]
@@ -16,7 +16,10 @@ defmodule <%= @handler_module %> do
   def run(params, context) do
     subject = context.credential_lease.subject
     message = Map.fetch!(params, :message)
-    auth_binding = ArtifactBuilder.digest(lease_value(context.credential_lease.payload, :api_token))
+    auth_binding =
+      ArtifactBuilder.digest(
+        lease_value(context.credential_lease.payload, <%= @auth_lease_field_literal %>)
+      )
 
     artifact =
       ArtifactBuilder.build!(

@@ -1,0 +1,186 @@
+defmodule <%= @conformance_harness_driver_module %> do
+  @moduledoc false
+
+  alias Jido.Harness.{ExecutionResult, RunRequest, SessionHandle}
+  alias Jido.Integration.V2.ArtifactBuilder
+  alias Jido.Integration.V2.RuntimeResult
+
+  @spec start_session(keyword()) :: {:ok, SessionHandle.t()}
+  def start_session(opts) when is_list(opts) do
+    session_id =
+      "<%= @runtime_driver_id %>-<%= Atom.to_string(@runtime_class) %>-"
+      <> Integer.to_string(System.unique_integer([:positive]))
+
+    {:ok,
+     SessionHandle.new!(%{
+       session_id: session_id,
+       runtime_id: <%= @runtime_driver_atom_literal %>,
+       provider: Keyword.get(opts, :provider),
+       status: :ready,
+       metadata: %{}
+     })}
+  end
+
+  @spec run(SessionHandle.t(), RunRequest.t(), keyword()) :: {:ok, ExecutionResult.t()}
+  def run(%SessionHandle{} = session, %RunRequest{} = _request, opts) when is_list(opts) do
+    context = Keyword.fetch!(opts, :context)
+    input = Keyword.fetch!(opts, :input)
+    auth_binding = ArtifactBuilder.digest(credential_value(context.credential_lease.payload))
+
+<%= if @session_runtime do %>    prompt = Map.fetch!(input, :prompt)
+    reply = "<%= @runtime_driver_id %>(#{context.credential_lease.subject}): #{prompt}"
+
+    artifact =
+      ArtifactBuilder.build!(
+        run_id: context.run_id,
+        attempt_id: context.attempt_id,
+        artifact_type: :event_log,
+        key: "<%= @connector_name %>/#{context.run_id}/#{context.attempt_id}/session.term",
+        content: %{
+          prompt: prompt,
+          reply: reply,
+          auth_binding: auth_binding,
+          runtime_driver: "<%= @runtime_driver_id %>"
+        },
+        metadata: %{
+          connector: "<%= @connector_name %>",
+          capability_id: "<%= @capability_id %>",
+          session_id: session.session_id,
+          auth_binding: auth_binding
+        }
+      )
+
+    runtime_result =
+      RuntimeResult.new!(%{
+        output: %{
+          reply: reply,
+          auth_binding: auth_binding,
+          runtime_driver: "<%= @runtime_driver_id %>"
+        },
+        runtime_ref_id: session.session_id,
+        events: [
+          %{
+            type: lifecycle_event_type(Keyword.get(opts, :lifecycle, :started)),
+            payload: %{provider: session.provider},
+            session_id: session.session_id,
+            runtime_ref_id: session.session_id
+          },
+          %{
+            type: "<%= @conformance_event_type %>",
+            stream: :assistant,
+            payload: %{
+              reply: reply,
+              auth_binding: auth_binding,
+              runtime_driver: "<%= @runtime_driver_id %>"
+            },
+            session_id: session.session_id,
+            runtime_ref_id: session.session_id
+          }
+        ],
+        artifacts: [artifact]
+      })
+<% else %>    topic = Map.fetch!(input, :topic)
+    batch_size = Map.fetch!(input, :batch_size)
+
+    items =
+      for seq <- 1..batch_size do
+        %{
+          seq: seq,
+          topic: topic
+        }
+      end
+
+    artifact =
+      ArtifactBuilder.build!(
+        run_id: context.run_id,
+        attempt_id: context.attempt_id,
+        artifact_type: :log,
+        key: "<%= @connector_name %>/#{context.run_id}/#{context.attempt_id}/stream_#{batch_size}.term",
+        content: %{
+          topic: topic,
+          batch_size: batch_size,
+          cursor: batch_size,
+          items: items,
+          auth_binding: auth_binding,
+          runtime_driver: "<%= @runtime_driver_id %>"
+        },
+        metadata: %{
+          connector: "<%= @connector_name %>",
+          capability_id: "<%= @capability_id %>",
+          session_id: session.session_id,
+          auth_binding: auth_binding
+        }
+      )
+
+    runtime_result =
+      RuntimeResult.new!(%{
+        output: %{
+          topic: topic,
+          batch_size: batch_size,
+          cursor: batch_size,
+          items: items,
+          auth_binding: auth_binding,
+          runtime_driver: "<%= @runtime_driver_id %>"
+        },
+        runtime_ref_id: session.session_id,
+        events: [
+          %{
+            type: lifecycle_event_type(Keyword.get(opts, :lifecycle, :started)),
+            payload: %{provider: session.provider},
+            session_id: session.session_id,
+            runtime_ref_id: session.session_id
+          },
+          %{
+            type: "<%= @conformance_event_type %>",
+            stream: :control,
+            payload: %{
+              topic: topic,
+              batch_size: batch_size,
+              cursor: batch_size,
+              auth_binding: auth_binding,
+              runtime_driver: "<%= @runtime_driver_id %>"
+            },
+            session_id: session.session_id,
+            runtime_ref_id: session.session_id
+          }
+        ],
+        artifacts: [artifact]
+      })
+<% end %>
+
+    {:ok,
+     ExecutionResult.new!(%{
+       run_id: Keyword.get(opts, :run_id, context.run_id),
+       session_id: session.session_id,
+       runtime_id: <%= @runtime_driver_atom_literal %>,
+       provider: session.provider,
+       status: :completed,
+<%= if @session_runtime do %>       text: reply,
+<% else %>       text: "#{topic} batch #{batch_size}",
+<% end %>       messages: [],
+       cost: %{},
+       stop_reason: "completed",
+       metadata: %{
+         "jido_integration" => %{
+           runtime_result: runtime_result
+         }
+       }
+     })}
+  end
+
+  @spec stop_session(SessionHandle.t()) :: :ok
+  def stop_session(_session), do: :ok
+
+<%= if @session_runtime do %>  defp lifecycle_event_type(:reused), do: "session.reused"
+  defp lifecycle_event_type(_other), do: "session.started"
+<% else %>  defp lifecycle_event_type(:reused), do: "stream.reused"
+  defp lifecycle_event_type(_other), do: "stream.started"
+<% end %>
+
+  defp credential_value(payload) do
+    case Map.get(payload, <%= @auth_lease_field_literal %>) do
+      nil -> raise ArgumentError, "missing credential lease field <%= @auth_lease_field %>"
+      value -> value
+    end
+  end
+end

@@ -22,7 +22,7 @@ defmodule <%= @connector_module %> do
           install: %{required: true},
           reauth: %{supported: false},
           requested_scopes: ["<%= @required_scope %>"],
-          lease_fields: ["access_token"],
+          lease_fields: ["<%= @auth_lease_field %>"],
           secret_names: []
         }),
       catalog:
@@ -38,25 +38,21 @@ defmodule <%= @connector_module %> do
       operations: [
         OperationSpec.new!(%{
           operation_id: "<%= @operation_id %>",
-          name: "sample_perform",
-          display_name: "Sample perform",
-          description: "Placeholder authored operation for the scaffolded connector",
+          name: "<%= @operation_name %>",
+          display_name: "<%= @operation_display_name %>",
+          description: "<%= @operation_description %>",
           runtime_class: <%= @runtime_class_literal %>,
-          transport_mode: :action,
+          transport_mode: <%= @transport_profile_literal %>,
           handler: <%= @handler_alias %>,
           input_schema:
-            Zoi.object(%{
-              message: Zoi.string()
-            }),
+<%= @input_schema_literal %>,
           output_schema:
-            Zoi.object(%{
-              message: Zoi.string(),
-              handled_by: Zoi.string(),
-              auth_binding: Zoi.string()
-            }),
+<%= @output_schema_literal %>,
           permissions: %{required_scopes: ["<%= @required_scope %>"]},
 <%= if @include_runtime_metadata do %>          runtime: %{
-            driver: "<%= @runtime_driver_id %>"
+            driver: "<%= @runtime_driver_id %>",
+<%= if @runtime_provider_literal do %>            provider: <%= @runtime_provider_literal %>,
+<% end %>            options: <%= @runtime_options_literal %>
           },
 <% end %>          policy: %{
             environment: %{allowed: <%= @environment_allowed_literal %>},
@@ -68,14 +64,13 @@ defmodule <%= @connector_module %> do
 <% end %>              allowed_tools: <%= @allowed_tools_literal %>
             }
           },
-          upstream: %{transport: :action},
+          upstream: <%= @upstream_literal %>,
           consumer_surface: %{
             mode: :connector_local,
-            reason:
-              "Scaffold placeholder operation stays connector-local until a normalized common surface is authored"
+            reason: "<%= @consumer_surface_reason %>"
           },
           schema_policy: %{input: :defined, output: :defined},
-          jido: %{action: %{name: "<%= @connector_name %>_sample_perform"}}
+          jido: %{action: %{name: "<%= @generated_action_name %>"}}
         })
       ],
       triggers: [],

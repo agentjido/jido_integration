@@ -56,10 +56,13 @@ It covers:
 - one stream pull, one session execution, and one direct GitHub escalation
 - durable target ids on runs, attempts, and events
 - durable review artifacts for each runtime family
+- market target descriptors that advertise the ASM-backed stream seam instead of
+  the legacy stream bridge
 - analyst target descriptors that advertise the ASM-backed session seam instead
   of the legacy session bridge
-- analyst target lookup that requires the authored `asm` feature so a
-  same-capability `jido_session` descriptor is not selected by mistake
+- non-direct target lookup that requires the authored `asm` feature so a
+  same-capability bridge or mismatched-driver descriptor is not selected by
+  mistake
 
 Package tests keep the direct GitHub step offline by forcing the connector's
 client factory onto the deterministic fixture transport in

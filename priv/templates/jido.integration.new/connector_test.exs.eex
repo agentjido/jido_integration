@@ -15,14 +15,27 @@ defmodule <%= @connector_module %>Test do
     assert capability.id == operation.operation_id
     assert capability.runtime_class == <%= @runtime_class_literal %>
     assert capability.kind == :operation
-    assert capability.transport_profile == :action
+    assert capability.transport_profile == <%= @transport_profile_literal %>
     assert capability.metadata.required_scopes == ["<%= @required_scope %>"]
-<%= if @include_runtime_metadata do %>    assert capability.metadata.runtime.driver == "<%= @runtime_driver_id %>"
+<%= if @include_runtime_metadata do %>    assert capability.metadata.runtime == %{
+             driver: "<%= @runtime_driver_id %>",
+             options: %{}
+           }
 <% end %>    assert capability.metadata.policy.environment.allowed == <%= @environment_allowed_literal %>
     assert capability.metadata.policy.sandbox.allowed_tools == <%= @allowed_tools_literal %>
     assert capability.metadata.input_schema |> is_struct()
     assert capability.metadata.output_schema |> is_struct()
-    assert capability.metadata.jido.action.name == "<%= @connector_name %>_sample_perform"
-<%= if @session_runtime do %>    assert capability.metadata.policy.sandbox.file_scope == <%= @sandbox_file_scope_literal %>
-<% end %>  end
+    assert capability.metadata.consumer_surface == %{
+             mode: :connector_local,
+             reason: "<%= @consumer_surface_reason %>"
+           }
+
+    assert capability.metadata.jido.action.name == "<%= @generated_action_name %>"
+<%= if @session_runtime do %>
+    assert capability.metadata.policy.sandbox.file_scope == <%= @sandbox_file_scope_literal %>
+<% end %>
+<%= if @non_direct_runtime do %>
+    assert Map.get(capability.metadata, :runtime_family) == nil
+<% end %>
+  end
 end

@@ -237,6 +237,7 @@ mix ci
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
 mix jido.conformance Jido.Integration.V2.Connectors.Notion
 mix jido.integration.new acme_crm --runtime-class direct
+mix jido.integration.new analyst_cli --runtime-class session --runtime-driver asm
 ```
 
 `mix ci` is the main acceptance gate.

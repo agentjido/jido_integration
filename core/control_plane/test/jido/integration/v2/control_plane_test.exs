@@ -261,7 +261,23 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
 
     alias ASM.Event
     alias ASM.Message
-    alias ASM.Run
+    alias CliSubprocessCore.Payload
+
+    @spec child_spec(keyword()) :: Supervisor.child_spec()
+    def child_spec(opts) when is_list(opts) do
+      %{
+        id: {__MODULE__, Keyword.get(opts, :run_id, make_ref())},
+        start: {__MODULE__, :start_link, [opts]},
+        restart: :temporary
+      }
+    end
+
+    @spec start_link(keyword()) :: {:ok, pid()}
+    def start_link(opts) when is_list(opts) do
+      opts
+      |> Enum.into(%{})
+      |> then(fn context -> Task.start_link(fn -> emit(context) end) end)
+    end
 
     @spec start(map()) :: {:ok, pid()}
     def start(%{} = context) do
@@ -269,21 +285,48 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     end
 
     defp emit(context) do
+      notify_subscriber(context, :run_started, Payload.RunStarted.new(command: "control-plane"))
+
       for {kind, payload} <- script() do
-        Run.Server.ingest_event(
-          context.run_pid,
-          %Event{
-            id: Event.generate_id(),
-            kind: kind,
-            run_id: context.run_id,
-            session_id: context.session_id,
-            provider: context.provider,
-            payload: payload,
-            timestamp: DateTime.utc_now()
-          }
-        )
+        notify_subscriber(context, kind, normalize_payload(kind, payload))
+      end
+
+      if is_pid(context.subscriber) do
+        send(context.subscriber, {:asm_run_done, context.run_id})
       end
     end
+
+    defp notify_subscriber(context, kind, payload) when is_pid(context.subscriber) do
+      send(
+        context.subscriber,
+        {:asm_run_event, context.run_id,
+         %Event{
+           id: Event.generate_id(),
+           kind: kind,
+           run_id: context.run_id,
+           session_id: context.session_id,
+           provider: context.provider,
+           payload: payload,
+           timestamp: DateTime.utc_now()
+         }}
+      )
+    end
+
+    defp notify_subscriber(_context, _kind, _payload), do: :ok
+
+    defp normalize_payload(:assistant_delta, %Payload.AssistantDelta{} = payload), do: payload
+
+    defp normalize_payload(:assistant_delta, %Message.Partial{content_type: :text, delta: delta}) do
+      Payload.AssistantDelta.new(content: delta)
+    end
+
+    defp normalize_payload(:result, %Payload.Result{} = payload), do: payload
+
+    defp normalize_payload(:result, %Message.Result{stop_reason: stop_reason}) do
+      Payload.Result.new(status: :completed, stop_reason: stop_reason)
+    end
+
+    defp normalize_payload(_kind, payload), do: payload
 
     defp script do
       [

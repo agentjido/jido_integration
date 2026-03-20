@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
   alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Conformance
   alias Jido.Integration.V2.Conformance.CheckResult
+  alias Jido.Integration.V2.Conformance.Suites.RuntimeClassFit
   alias Jido.Integration.V2.Connector
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Manifest
@@ -14,6 +15,92 @@ defmodule Jido.Integration.V2.ConformanceTest do
 
   defmodule BrokenSessionHandler do
     def run(_input, _context), do: {:ok, %{unexpected: true}}
+  end
+
+  defmodule HarnessBackedStreamHandler do
+  end
+
+  defmodule HarnessBackedStreamConnector do
+    @behaviour Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "harness_backed_stream",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :api_token,
+          install: %{required: false},
+          reauth: %{supported: false},
+          requested_scopes: ["stream:execute"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        },
+        catalog: %{
+          display_name: "Harness Backed Stream",
+          description: "Harness-targeted stream connector",
+          category: "test",
+          tags: ["stream"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [
+          %{
+            operation_id: "harness.stream.exec",
+            name: "stream_exec",
+            display_name: "Harness stream exec",
+            description: "Exercises Harness-backed runtime fit",
+            runtime_class: :stream,
+            transport_mode: :stdio,
+            handler: HarnessBackedStreamHandler,
+            input_schema:
+              Zoi.object(%{
+                prompt: Zoi.string()
+              }),
+            output_schema:
+              Zoi.object(%{
+                rows: Zoi.list(Zoi.map())
+              }),
+            permissions: %{required_scopes: ["stream:execute"]},
+            runtime: %{
+              driver: "asm",
+              provider: :claude,
+              options: %{}
+            },
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["harness.stream.exec"]
+              }
+            },
+            upstream: %{transport: :stdio},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "market.ticks.pull",
+              action_name: "market_ticks_pull"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{action: %{name: "market_ticks_pull"}},
+            metadata: %{
+              runtime_family: %{
+                session_affinity: :target,
+                resumable: false,
+                approval_required: false,
+                stream_capable: true,
+                lifecycle_owner: :asm,
+                runtime_ref: :session
+              }
+            }
+          }
+        ],
+        triggers: [],
+        runtime_families: [:stream]
+      })
+    end
   end
 
   defmodule BrokenSessionConnector do
@@ -479,6 +566,12 @@ defmodule Jido.Integration.V2.ConformanceTest do
     assert Enum.any?(fixture_suite.checks, fn check ->
              check.id == "fixtures.present"
            end)
+  end
+
+  test "accepts target-driver-backed non-direct marker handlers in runtime fit" do
+    runtime_suite = RuntimeClassFit.run(%{manifest: HarnessBackedStreamConnector.manifest()})
+
+    assert runtime_suite.status == :passed
   end
 
   test "requires ingress definitions when a trigger capability is declared" do

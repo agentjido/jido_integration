@@ -259,7 +259,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
           @market_target_id,
           "market.ticks.pull",
           :stream,
-          "integration_stream_bridge",
+          "asm",
           "/srv/trading_ops/feeds"
         ),
       analyst:

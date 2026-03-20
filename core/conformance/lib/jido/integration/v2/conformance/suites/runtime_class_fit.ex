@@ -3,6 +3,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.RuntimeClassFit do
 
   alias Jido.Integration.V2.Conformance.SuiteResult
   alias Jido.Integration.V2.Conformance.SuiteSupport
+  alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.Manifest
 
   @spec run(map()) :: SuiteResult.t()
@@ -26,8 +27,8 @@ defmodule Jido.Integration.V2.Conformance.Suites.RuntimeClassFit do
           ),
           SuiteSupport.check(
             "#{capability.id}.runtime_contract",
-            loaded? and runtime_handler_valid?(capability.runtime_class, handler),
-            runtime_contract_error(capability.runtime_class, handler)
+            loaded? and runtime_handler_valid?(capability, handler),
+            runtime_contract_error(capability, handler)
           )
         ]
       end)
@@ -39,15 +40,21 @@ defmodule Jido.Integration.V2.Conformance.Suites.RuntimeClassFit do
     )
   end
 
-  defp runtime_handler_valid?(:direct, handler), do: function_exported?(handler, :run, 2)
+  defp runtime_handler_valid?(%{runtime_class: :direct}, handler),
+    do: function_exported?(handler, :run, 2)
 
-  defp runtime_handler_valid?(:session, handler) do
+  defp runtime_handler_valid?(%{runtime_class: runtime_class} = capability, _handler)
+       when runtime_class in [:session, :stream] do
+    target_harness_driver?(capability)
+  end
+
+  defp runtime_handler_valid?(%{runtime_class: :session}, handler) do
     function_exported?(handler, :reuse_key, 2) and
       function_exported?(handler, :open_session, 2) and
       function_exported?(handler, :execute, 4)
   end
 
-  defp runtime_handler_valid?(:stream, handler) do
+  defp runtime_handler_valid?(%{runtime_class: :stream}, handler) do
     function_exported?(handler, :reuse_key, 3) and
       function_exported?(handler, :open_stream, 3) and
       function_exported?(handler, :pull, 4)
@@ -68,19 +75,49 @@ defmodule Jido.Integration.V2.Conformance.Suites.RuntimeClassFit do
 
   defp runtime_driver_declared?(_capability), do: false
 
-  defp runtime_contract_error(:direct, handler) do
+  defp runtime_contract_error(%{runtime_class: :direct}, handler) do
     "direct handlers must export run/2; #{inspect(handler)} does not"
   end
 
-  defp runtime_contract_error(:session, handler) do
-    "session providers must export reuse_key/2, open_session/2, and execute/4; #{inspect(handler)} does not"
+  defp runtime_contract_error(%{runtime_class: :session} = capability, handler) do
+    if target_harness_driver?(capability) do
+      "session connectors targeting accepted Harness drivers only need a loadable marker handler; #{inspect(handler)} could not be used"
+    else
+      "session providers must export reuse_key/2, open_session/2, and execute/4; #{inspect(handler)} does not"
+    end
   end
 
-  defp runtime_contract_error(:stream, handler) do
-    "stream providers must export reuse_key/3, open_stream/3, and pull/4; #{inspect(handler)} does not"
+  defp runtime_contract_error(%{runtime_class: :stream} = capability, handler) do
+    if target_harness_driver?(capability) do
+      "stream connectors targeting accepted Harness drivers only need a loadable marker handler; #{inspect(handler)} could not be used"
+    else
+      "stream providers must export reuse_key/3, open_stream/3, and pull/4; #{inspect(handler)} does not"
+    end
   end
 
   defp runtime_driver_error(%{runtime_class: runtime_class, id: capability_id}) do
     "#{capability_id} declares #{runtime_class} work but does not expose metadata.runtime.driver"
   end
+
+  defp target_harness_driver?(capability) do
+    case runtime_driver_id(capability) do
+      driver_id when is_binary(driver_id) ->
+        driver_id in HarnessRuntime.target_driver_ids()
+
+      _other ->
+        false
+    end
+  end
+
+  defp runtime_driver_id(%{metadata: metadata}) when is_map(metadata) do
+    case Map.get(metadata, :runtime) || Map.get(metadata, "runtime") do
+      runtime when is_map(runtime) ->
+        Map.get(runtime, :driver) || Map.get(runtime, "driver")
+
+      _other ->
+        nil
+    end
+  end
+
+  defp runtime_driver_id(_capability), do: nil
 end

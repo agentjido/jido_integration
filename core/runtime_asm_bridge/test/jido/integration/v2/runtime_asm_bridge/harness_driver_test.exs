@@ -66,12 +66,12 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
              %ExecutionEvent{
                type: :assistant_delta,
                provider: :claude,
-               payload: %{"content_type" => "text", "delta" => "hello "}
+               payload: %{"content" => "hello ", "format" => "text"}
              },
              %ExecutionEvent{
                type: :assistant_delta,
                provider: :claude,
-               payload: %{"content_type" => "text", "delta" => "from scripted driver"}
+               payload: %{"content" => "from scripted driver", "format" => "text"}
              },
              %ExecutionEvent{type: :result, provider: :claude}
            ] = events

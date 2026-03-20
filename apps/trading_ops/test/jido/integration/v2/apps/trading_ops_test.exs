@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Apps.TradingOps
   alias Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver
+  alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.TargetDescriptor
 
   setup do
@@ -36,7 +37,7 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
 
     V2.reset!()
 
-    Jido.Integration.V2.HarnessRuntime.reset!()
+    HarnessRuntime.reset!()
     ConformanceHarnessDriver.reset!()
 
     Application.put_env(
@@ -58,7 +59,7 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
           )
       end
 
-      Jido.Integration.V2.HarnessRuntime.reset!()
+      HarnessRuntime.reset!()
       ConformanceHarnessDriver.reset!()
     end)
 
@@ -104,8 +105,12 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert packet.targets.market_data.target_id == "target-trading-ops-market-feed"
     assert packet.targets.analyst.target_id == "target-trading-ops-analyst-session"
     assert packet.targets.operator.target_id == "target-trading-ops-operator-saas"
+    assert "asm" in packet.targets.market_data.features.feature_ids
+    assert packet.targets.market_data.extensions == %{"runtime" => %{"driver" => "asm"}}
     assert "asm" in packet.targets.analyst.features.feature_ids
     assert packet.targets.analyst.extensions == %{"runtime" => %{"driver" => "asm"}}
+    refute "integration_stream_bridge" in packet.targets.market_data.features.feature_ids
+    refute "integration_session_bridge" in packet.targets.analyst.features.feature_ids
 
     assert packet.runs.market_pull.run.target_id == "target-trading-ops-market-feed"
     assert packet.runs.market_pull.attempt.target_id == "target-trading-ops-market-feed"
@@ -187,6 +192,54 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
 
     assert workflow.analyst_session.run.target_id == "target-trading-ops-analyst-session"
     assert workflow.analyst_session.attempt.target_id == "target-trading-ops-analyst-session"
+  end
+
+  test "selects the authored asm market target when a mismatched stream bridge target is also advertised" do
+    assert {:ok, stack} =
+             TradingOps.bootstrap_reference_stack(%{
+               tenant_id: "tenant-trading-review",
+               actor_id: "desk-operator"
+             })
+
+    assert :ok =
+             V2.announce_target(
+               TargetDescriptor.new!(%{
+                 target_id: "a-target-trading-ops-market-bridge",
+                 capability_id: "market.ticks.pull",
+                 runtime_class: :stream,
+                 version: "1.0.0",
+                 features: %{
+                   feature_ids: ["integration_stream_bridge", "market.ticks.pull"],
+                   runspec_versions: ["1.0.0"],
+                   event_schema_versions: ["1.0.0"]
+                 },
+                 constraints: %{workspace_root: "/srv/trading_ops/market-bridge"},
+                 health: :healthy,
+                 location: %{
+                   mode: :beam,
+                   region: "test",
+                   workspace_root: "/srv/trading_ops/market-bridge"
+                 },
+                 extensions: %{"runtime" => %{"driver" => "integration_stream_bridge"}}
+               })
+             )
+
+    assert {:ok, workflow} =
+             TradingOps.run_market_review(stack, %{
+               external_id: "alert-es-3",
+               cursor: "cursor-es-3",
+               last_event_id: "event-es-3",
+               observed_at: ~U[2026-03-09 13:15:00Z],
+               symbol: "ES",
+               price: 5_090.25,
+               threshold: 5_080.00,
+               venue: "CME",
+               issue_repo: "trading/ops-review",
+               desk_note: "review before live routing"
+             })
+
+    assert workflow.market_pull.run.target_id == "target-trading-ops-market-feed"
+    assert workflow.market_pull.attempt.target_id == "target-trading-ops-market-feed"
   end
 
   defp ensure_started(required_processes, supervisor_name, application_module) do

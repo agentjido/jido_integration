@@ -2,16 +2,15 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
   @moduledoc """
   Example stream connector package.
 
-  It preserves the legacy `integration_stream_bridge` proof path as a migration
-  shim while the control plane consolidates on real Harness-backed runtime
-  families.
+  This connector publishes the canonical ASM-backed stream-family authored
+  shape on the shared common consumer-surface spine.
   """
 
   @behaviour Jido.Integration.V2.Connector
 
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.CatalogSpec
-  alias Jido.Integration.V2.Connectors.MarketData.Provider
+  alias Jido.Integration.V2.Connectors.MarketData.Handler
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
 
@@ -47,12 +46,35 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
           description: "Pulls a market data feed batch",
           runtime_class: :stream,
           transport_mode: :market_feed,
-          handler: Provider,
-          input_schema: Zoi.map(description: "Feed input"),
-          output_schema: Zoi.map(description: "Feed output"),
+          handler: Handler,
+          input_schema:
+            Zoi.object(%{
+              symbol: Zoi.string(),
+              limit: Zoi.integer(),
+              venue: Zoi.string()
+            }),
+          output_schema:
+            Zoi.object(%{
+              symbol: Zoi.string(),
+              venue: Zoi.string(),
+              cursor: Zoi.integer(),
+              items:
+                Zoi.list(
+                  Zoi.object(%{
+                    seq: Zoi.integer(),
+                    symbol: Zoi.string(),
+                    venue: Zoi.string(),
+                    bid: Zoi.number(),
+                    ask: Zoi.number()
+                  })
+                ),
+              auth_binding: Zoi.string()
+            }),
           permissions: %{required_scopes: ["market:read"]},
           runtime: %{
-            driver: "integration_stream_bridge"
+            driver: "asm",
+            provider: :claude,
+            options: %{}
           },
           policy: %{
             environment: %{allowed: [:prod]},
@@ -65,16 +87,25 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
           },
           upstream: %{protocol: :market_feed},
           consumer_surface: %{
-            mode: :connector_local,
-            reason: "Stream migration proofs stay connector-local"
+            mode: :common,
+            normalized_id: "market.ticks.pull",
+            action_name: "market_ticks_pull"
           },
           schema_policy: %{
-            input: :passthrough,
-            output: :passthrough,
-            justification:
-              "Example stream connector preserves the runtime shim boundary without projecting a common consumer surface"
+            input: :defined,
+            output: :defined
           },
-          jido: %{action: %{name: "market_ticks_pull"}}
+          jido: %{action: %{name: "market_ticks_pull"}},
+          metadata: %{
+            runtime_family: %{
+              session_affinity: :target,
+              resumable: false,
+              approval_required: false,
+              stream_capable: true,
+              lifecycle_owner: :asm,
+              runtime_ref: :session
+            }
+          }
         })
       ],
       triggers: [],

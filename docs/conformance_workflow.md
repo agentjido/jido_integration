@@ -133,7 +133,9 @@ Each fixture map should declare:
 ## Relationship To The Generator
 
 `mix jido.integration.new` emits a package-local baseline conformance test and
-companion module. Treat that output as the starting contract, not the finished
+companion module. Non-direct scaffolds also emit a package-local
+`runtime_drivers/0` hook plus a deterministic Harness driver under
+`test_support/`. Treat that output as the starting contract, not the finished
 connector.
 
 Generated connectors still need:

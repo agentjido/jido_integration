@@ -41,7 +41,6 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
     :max_concurrent_runs,
     :max_queued_runs,
     :debug,
-    :driver,
     :driver_opts,
     :execution_mode,
     :stream_timeout_ms,
@@ -86,12 +85,10 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
       session_mode: :external,
       streaming?: true,
       cancellation?: true,
-      approvals?:
-        supports?(provider, :supports_control, fn -> any_provider_supports?(:supports_control) end),
+      approvals?: true,
       cost?: true,
       subscribe?: false,
-      resume?:
-        supports?(provider, :supports_resume, fn -> any_provider_supports?(:supports_resume) end),
+      resume?: true,
       metadata: descriptor_metadata(provider)
     })
   end
@@ -159,7 +156,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
          provider: session.provider,
          status: :running,
          started_at: DateTime.utc_now() |> DateTime.to_iso8601(),
-         metadata: %{"transport" => provider.profile.transport_mode |> Atom.to_string()}
+         metadata: %{"transport" => "stream"}
        }), stream}
     end
   rescue
@@ -304,29 +301,17 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
       "supported_providers" => Enum.map(@supported_providers, &Atom.to_string/1),
       "asm_provider" => Atom.to_string(provider.name),
       "display_name" => provider.display_name,
-      "binary_names" => provider.binary_names,
-      "env_var" => provider.env_var,
-      "transport_mode" => Atom.to_string(provider.profile.transport_mode),
-      "control_mode" => Atom.to_string(provider.profile.control_mode),
-      "session_profile_mode" => Atom.to_string(provider.profile.session_mode)
+      "sdk_runtime" => provider.sdk_runtime && inspect(provider.sdk_runtime),
+      "max_concurrent_runs" => provider.profile.max_concurrent_runs,
+      "max_queued_runs" => provider.profile.max_queued_runs
     }
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)
     |> Map.new()
   end
 
-  defp any_provider_supports?(field) do
-    Enum.any?(@supported_providers, fn provider ->
-      provider
-      |> Provider.resolve!()
-      |> Map.get(field)
-    end)
-  end
-
-  defp supports?(nil, _field, fallback), do: fallback.()
-  defp supports?(provider, field, _fallback), do: Map.get(provider, field)
-
   defp start_session_opts(opts, provider, requested_provider) do
     opts
+    |> Keyword.delete(:driver)
     |> Keyword.put(:provider, requested_provider)
     |> Keyword.take(@asm_session_option_keys ++ Keyword.keys(provider.options_schema))
   end
@@ -334,8 +319,26 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
   defp stream_run_opts(%RunRequest{} = request, provider, opts, run_id) do
     filtered_request_opts(request, provider)
     |> Keyword.merge(opts)
+    |> normalize_bridge_run_overrides()
     |> Keyword.put(:run_id, run_id)
     |> Keyword.take(@asm_run_option_keys ++ Keyword.keys(provider.options_schema))
+  end
+
+  defp normalize_bridge_run_overrides(opts) do
+    {run_module, opts} = Keyword.pop(opts, :driver)
+    {driver_opts, opts} = Keyword.pop(opts, :driver_opts, [])
+
+    opts =
+      if is_list(driver_opts) and driver_opts != [] do
+        Keyword.update(opts, :run_module_opts, driver_opts, &Keyword.merge(driver_opts, &1))
+      else
+        opts
+      end
+
+    case run_module do
+      nil -> opts
+      value -> Keyword.put(opts, :run_module, value)
+    end
   end
 
   defp filtered_request_opts(%RunRequest{} = request, provider) do

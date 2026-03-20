@@ -81,6 +81,10 @@ end
 Trigger-capable connectors may also publish `ingress_definitions/0` from the
 same companion module.
 
+Non-direct connectors may also publish `runtime_drivers/0` from the same
+companion module so conformance can bind accepted Harness driver ids such as
+`asm` or `jido_session` to deterministic package-local test drivers.
+
 ## Direct Package Use
 
 Inside this monorepo, depend on `core/conformance` only when another child

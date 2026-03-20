@@ -92,11 +92,11 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     refute connector_content =~ "Capability.new!("
   end
 
-  test "rejects session and stream scaffolds until real Harness target-kernel generators exist" do
+  test "requires explicit runtime-driver selection for non-direct scaffolds" do
     session_workspace_root = temp_workspace!("session")
 
     assert_raise Mix.Error,
-                 ~r/Session connector scaffolds are intentionally disabled in Phase 0/,
+                 ~r/Session connector scaffolds require --runtime-driver/,
                  fn ->
                    run_task([
                      "assistant_cli",
@@ -114,7 +114,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     stream_workspace_root = temp_workspace!("stream")
 
     assert_raise Mix.Error,
-                 ~r/Stream connector scaffolds are intentionally disabled in Phase 0/,
+                 ~r/Stream connector scaffolds require --runtime-driver/,
                  fn ->
                    run_task([
                      "price_feed",
@@ -126,6 +126,78 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
                  end
 
     refute File.exists?(Path.join(stream_workspace_root, "connectors/price_feed"))
+  end
+
+  test "generates non-direct connector packages only when an explicit Harness runtime-driver is selected" do
+    workspace_root = temp_workspace!("non_direct")
+
+    run_task([
+      "assistant_cli",
+      "--workspace-root",
+      workspace_root,
+      "--runtime-class",
+      "session",
+      "--runtime-driver",
+      "jido_session"
+    ])
+
+    run_task([
+      "price_feed",
+      "--workspace-root",
+      workspace_root,
+      "--runtime-class",
+      "stream",
+      "--runtime-driver",
+      "asm"
+    ])
+
+    session_package_root = Path.join(workspace_root, "connectors/assistant_cli")
+    stream_package_root = Path.join(workspace_root, "connectors/price_feed")
+
+    session_connector =
+      File.read!(
+        Path.join(
+          session_package_root,
+          "lib/jido/integration/v2/connectors/assistant_cli.ex"
+        )
+      )
+
+    stream_connector =
+      File.read!(
+        Path.join(
+          stream_package_root,
+          "lib/jido/integration/v2/connectors/price_feed.ex"
+        )
+      )
+
+    session_mix = File.read!(Path.join(session_package_root, "mix.exs"))
+    stream_mix = File.read!(Path.join(stream_package_root, "mix.exs"))
+
+    assert session_connector =~ ~s(driver: "jido_session")
+    assert stream_connector =~ ~s(driver: "asm")
+    assert session_connector =~ "mode: :connector_local"
+    assert stream_connector =~ "mode: :connector_local"
+    refute session_connector =~ "integration_session_bridge"
+    refute stream_connector =~ "integration_stream_bridge"
+
+    assert File.exists?(
+             Path.join(
+               session_package_root,
+               "test_support/jido/integration/v2/connectors/assistant_cli/conformance_harness_driver.ex"
+             )
+           )
+
+    assert File.exists?(
+             Path.join(
+               stream_package_root,
+               "test_support/jido/integration/v2/connectors/price_feed/conformance_harness_driver.ex"
+             )
+           )
+
+    assert session_mix =~ "defp elixirc_paths(env) when env in [:dev, :test]"
+    assert stream_mix =~ "defp elixirc_paths(env) when env in [:dev, :test]"
+    assert session_mix =~ "{:jido_harness,"
+    assert stream_mix =~ "{:jido_harness,"
   end
 
   @tag timeout: 180_000
@@ -140,6 +212,40 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert_mix!(workspace_root, package_root, ["test"])
 
     assert_mix!(workspace_root, package_root, ["docs"])
+  end
+
+  @tag timeout: 180_000
+  test "generated non-direct packages compile, test, build docs, and pass baseline conformance" do
+    workspace_root = temp_workspace!("validation_non_direct")
+
+    run_task([
+      "acme_session",
+      "--workspace-root",
+      workspace_root,
+      "--runtime-class",
+      "session",
+      "--runtime-driver",
+      "jido_session"
+    ])
+
+    run_task([
+      "acme_stream",
+      "--workspace-root",
+      workspace_root,
+      "--runtime-class",
+      "stream",
+      "--runtime-driver",
+      "asm"
+    ])
+
+    Enum.each(["acme_session", "acme_stream"], fn connector_name ->
+      package_root = Path.join(workspace_root, "connectors/#{connector_name}")
+
+      assert_mix!(workspace_root, package_root, ["deps.get"])
+      assert_mix!(workspace_root, package_root, ["compile", "--warnings-as-errors"])
+      assert_mix!(workspace_root, package_root, ["test"])
+      assert_mix!(workspace_root, package_root, ["docs"])
+    end)
   end
 
   defp run_task(args) do
