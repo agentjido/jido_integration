@@ -35,6 +35,7 @@ defmodule Jido.Integration.V2.Conformance do
           {:profile, Profile.name() | String.t()}
           | {:generated_at, DateTime.t()}
           | {:fixtures, list()}
+          | {:runtime_drivers, map()}
           | {:ingress_definitions, list()}
 
   @spec profiles() :: [Profile.name()]
@@ -45,32 +46,41 @@ defmodule Jido.Integration.V2.Conformance do
     with :ok <- validate_connector_module(connector_module),
          {:ok, profile} <- fetch_profile(Keyword.get(opts, :profile, Profile.default().name)),
          {:ok, manifest} <- fetch_manifest(connector_module) do
-      context =
-        build_context(
-          connector_module,
-          manifest,
-          Keyword.get(opts, :fixtures, load_connector_export(connector_module, :fixtures)),
-          Keyword.get(
-            opts,
-            :ingress_definitions,
-            load_connector_export(connector_module, :ingress_definitions)
-          )
+      runtime_drivers =
+        Keyword.get(
+          opts,
+          :runtime_drivers,
+          load_connector_export(connector_module, :runtime_drivers)
         )
 
-      suite_results = Enum.map(profile.suite_ids, &run_suite(&1, context))
-      status = if Enum.any?(suite_results, &(&1.status == :failed)), do: :failed, else: :passed
+      with_runtime_drivers(runtime_drivers, fn ->
+        context =
+          build_context(
+            connector_module,
+            manifest,
+            Keyword.get(opts, :fixtures, load_connector_export(connector_module, :fixtures)),
+            Keyword.get(
+              opts,
+              :ingress_definitions,
+              load_connector_export(connector_module, :ingress_definitions)
+            )
+          )
 
-      {:ok,
-       %Report{
-         connector_module: connector_module,
-         connector_id: manifest.connector,
-         profile: profile.name,
-         runner_version: runner_version(),
-         generated_at:
-           Keyword.get(opts, :generated_at, DateTime.utc_now() |> DateTime.truncate(:second)),
-         status: status,
-         suite_results: suite_results
-       }}
+        suite_results = Enum.map(profile.suite_ids, &run_suite(&1, context))
+        status = if Enum.any?(suite_results, &(&1.status == :failed)), do: :failed, else: :passed
+
+        {:ok,
+         %Report{
+           connector_module: connector_module,
+           connector_id: manifest.connector,
+           profile: profile.name,
+           runner_version: runner_version(),
+           generated_at:
+             Keyword.get(opts, :generated_at, DateTime.utc_now() |> DateTime.truncate(:second)),
+           status: status,
+           suite_results: suite_results
+         }}
+      end)
     end
   end
 
@@ -125,6 +135,31 @@ defmodule Jido.Integration.V2.Conformance do
       apply(companion_module, export_name, [])
     else
       []
+    end
+  end
+
+  defp with_runtime_drivers(runtime_drivers, fun) when runtime_drivers in [%{}, []], do: fun.()
+
+  defp with_runtime_drivers(runtime_drivers, fun) when is_map(runtime_drivers) do
+    previous_runtime_drivers =
+      Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
+
+    {:ok, _apps} = Application.ensure_all_started(:jido_integration_v2_control_plane)
+    Application.put_env(:jido_integration_v2_control_plane, :runtime_drivers, runtime_drivers)
+    Jido.Integration.V2.HarnessRuntime.reset!()
+
+    try do
+      fun.()
+    after
+      case previous_runtime_drivers do
+        nil ->
+          Application.delete_env(:jido_integration_v2_control_plane, :runtime_drivers)
+
+        value ->
+          Application.put_env(:jido_integration_v2_control_plane, :runtime_drivers, value)
+      end
+
+      Jido.Integration.V2.HarnessRuntime.reset!()
     end
   end
 

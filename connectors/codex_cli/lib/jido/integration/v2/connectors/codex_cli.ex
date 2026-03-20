@@ -1,17 +1,16 @@
 defmodule Jido.Integration.V2.Connectors.CodexCli do
   @moduledoc """
-  Example session connector package.
+  Example external session connector package.
 
-  It keeps the legacy `integration_session_bridge` path alive as a migration
-  fixture while the control plane moves new external runtimes onto the
-  integration-owned ASM bridge.
+  This connector publishes the canonical ASM-backed session-family authored
+  shape on the shared common consumer-surface spine.
   """
 
   @behaviour Jido.Integration.V2.Connector
 
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.CatalogSpec
-  alias Jido.Integration.V2.Connectors.CodexCli.Provider
+  alias Jido.Integration.V2.Connectors.CodexCli.Handler
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
 
@@ -47,12 +46,24 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
           description: "Runs an interactive codex session turn",
           runtime_class: :session,
           transport_mode: :stdio,
-          handler: Provider,
-          input_schema: Zoi.map(description: "Session input"),
-          output_schema: Zoi.map(description: "Session output"),
+          handler: Handler,
+          input_schema:
+            Zoi.object(%{
+              prompt: Zoi.string()
+            }),
+          output_schema:
+            Zoi.object(%{
+              reply: Zoi.string(),
+              turn: Zoi.integer(),
+              workspace: Zoi.string(),
+              auth_binding: Zoi.string(),
+              approval_mode: Zoi.atom()
+            }),
           permissions: %{required_scopes: ["session:execute"]},
           runtime: %{
-            driver: "integration_session_bridge"
+            driver: "asm",
+            provider: :codex,
+            options: %{}
           },
           policy: %{
             environment: %{allowed: [:prod]},
@@ -66,16 +77,25 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
           },
           upstream: %{protocol: :stdio},
           consumer_surface: %{
-            mode: :connector_local,
-            reason: "Session migration proofs stay connector-local"
+            mode: :common,
+            normalized_id: "codex.exec.session",
+            action_name: "codex_exec_session"
           },
           schema_policy: %{
-            input: :passthrough,
-            output: :passthrough,
-            justification:
-              "Example session connector preserves the runtime shim boundary without projecting a common consumer surface"
+            input: :defined,
+            output: :defined
           },
-          jido: %{action: %{name: "codex_exec_session"}}
+          jido: %{action: %{name: "codex_exec_session"}},
+          metadata: %{
+            runtime_family: %{
+              session_affinity: :connection,
+              resumable: true,
+              approval_required: true,
+              stream_capable: true,
+              lifecycle_owner: :asm,
+              runtime_ref: :session
+            }
+          }
         })
       ],
       triggers: [],

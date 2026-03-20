@@ -24,9 +24,8 @@ defmodule Jido.Integration.V2.Conformance.MixProject do
   defp deps do
     [
       {:jido_integration_v2_contracts, path: "../contracts"},
+      {:jido_integration_v2_control_plane, path: "../control_plane"},
       {:jido_integration_v2_direct_runtime, path: "../direct_runtime"},
-      {:jido_integration_v2_session_kernel, path: "../session_kernel"},
-      {:jido_integration_v2_stream_runtime, path: "../stream_runtime"},
       {:jido_integration_v2_ingress, path: "../ingress"},
       {:jido_integration_v2_github, path: "../../connectors/github", only: :test},
       {:zoi, "~> 0.17"},

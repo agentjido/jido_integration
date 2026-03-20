@@ -3,8 +3,12 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
 
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Apps.TradingOps
+  alias Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver
 
   setup do
+    previous_runtime_drivers =
+      Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
+
     ensure_started(
       [Jido.Integration.V2.ControlPlane.Registry, Jido.Integration.V2.ControlPlane.RunLedger],
       Jido.Integration.V2.ControlPlane.Supervisor,
@@ -30,6 +34,33 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     )
 
     V2.reset!()
+
+    Jido.Integration.V2.HarnessRuntime.reset!()
+    ConformanceHarnessDriver.reset!()
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      Map.put(previous_runtime_drivers || %{}, :asm, ConformanceHarnessDriver)
+    )
+
+    on_exit(fn ->
+      case previous_runtime_drivers do
+        nil ->
+          Application.delete_env(:jido_integration_v2_control_plane, :runtime_drivers)
+
+        runtime_drivers ->
+          Application.put_env(
+            :jido_integration_v2_control_plane,
+            :runtime_drivers,
+            runtime_drivers
+          )
+      end
+
+      Jido.Integration.V2.HarnessRuntime.reset!()
+      ConformanceHarnessDriver.reset!()
+    end)
+
     :ok
   end
 
@@ -72,6 +103,8 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert packet.targets.market_data.target_id == "target-trading-ops-market-feed"
     assert packet.targets.analyst.target_id == "target-trading-ops-analyst-session"
     assert packet.targets.operator.target_id == "target-trading-ops-operator-saas"
+    assert "asm" in packet.targets.analyst.features.feature_ids
+    assert packet.targets.analyst.extensions == %{"runtime" => %{"driver" => "asm"}}
 
     assert packet.runs.market_pull.run.target_id == "target-trading-ops-market-feed"
     assert packet.runs.market_pull.attempt.target_id == "target-trading-ops-market-feed"

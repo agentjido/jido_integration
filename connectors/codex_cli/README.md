@@ -1,20 +1,52 @@
 # Jido Integration V2 Codex CLI Connector
 
-Session baseline connector package.
+Example external session connector package.
 
-This package still targets the `integration_session_bridge` compatibility shim.
-That is deliberate for deterministic fixture coverage, but it is not the final
-runtime model. Treat this package as a migration fixture, not as a template for
-new connector work. New runtime-boundary work must target Harness through
-`asm` or `jido_session` instead of extending this shim.
+This package publishes the canonical Phase 4 external session-family authored
+shape:
+
+- `runtime_class: :session`
+- `runtime.driver: "asm"`
+- `runtime.provider: :codex`
+- `runtime.options: %{}`
+- `consumer_surface.mode: :common`
+- `consumer_surface.normalized_id: "codex.exec.session"`
+- `consumer_surface.action_name: "codex_exec_session"`
+- canonical `metadata.runtime_family` for connection affinity, resumability,
+  approval posture, stream capability, lifecycle ownership, and durable runtime
+  references
+
+The generated consumer surface stays stateless. Session lifecycle, parser
+state, and transport state remain outside `jido_integration` on the accepted
+Harness seam.
 
 Proves:
 
-- session-class capability publishing against the shared `RuntimeResult` substrate
+- session-class capability publishing against the shared `RuntimeResult`
+  substrate
+- shared common-surface projection through generated `Jido.Action` and
+  `Jido.Plugin` modules
 - strict session policy posture for environment, approvals, workspace scope, and tool allowlists
 - lease-bound auth and connector-specific review artifacts/events
-- session reuse keyed by credential ref instead of only subject
+- session reuse keyed by the ASM-backed Harness session handle while durable
+  review truth keeps only the stable runtime reference id
 - scope-gated admission (`session:execute`)
+
+## Validation
+
+From the package directory:
+
+```bash
+mix test
+mix docs
+```
+
+From the repo root:
+
+```bash
+mix jido.conformance Jido.Integration.V2.Connectors.CodexCli
+mix ci
+```
 
 ## Installation
 

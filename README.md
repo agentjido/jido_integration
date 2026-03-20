@@ -35,7 +35,7 @@ jido_integration/
   connectors/
     github/                # direct GitHub connector + live acceptance runbook
     notion/                # direct Notion connector + package-local live proofs
-    codex_cli/             # session baseline connector
+    codex_cli/             # ASM-backed session connector + generated common surface
     market_data/           # stream baseline connector
   apps/
     trading_ops/           # cross-runtime operator proof

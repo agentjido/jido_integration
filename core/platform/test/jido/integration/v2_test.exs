@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2Test do
   use Jido.Integration.V2.ConnectorContractCase, async: false
 
   alias Jido.Integration.V2.Connectors.CodexCli
+  alias Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures, as: GitHubFixtures
@@ -138,10 +139,22 @@ defmodule Jido.Integration.V2Test do
   setup do
     previous = Application.get_env(:jido_integration_v2_github, ClientFactory)
 
+    previous_runtime_drivers =
+      Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
+
     Application.put_env(
       :jido_integration_v2_github,
       ClientFactory,
       GitHubFixtures.client_opts(nil)
+    )
+
+    Jido.Integration.V2.HarnessRuntime.reset!()
+    ConformanceHarnessDriver.reset!()
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      Map.put(previous_runtime_drivers || %{}, :asm, ConformanceHarnessDriver)
     )
 
     on_exit(fn ->
@@ -150,6 +163,21 @@ defmodule Jido.Integration.V2Test do
       else
         Application.put_env(:jido_integration_v2_github, ClientFactory, previous)
       end
+
+      case previous_runtime_drivers do
+        nil ->
+          Application.delete_env(:jido_integration_v2_control_plane, :runtime_drivers)
+
+        runtime_drivers ->
+          Application.put_env(
+            :jido_integration_v2_control_plane,
+            :runtime_drivers,
+            runtime_drivers
+          )
+      end
+
+      Jido.Integration.V2.HarnessRuntime.reset!()
+      ConformanceHarnessDriver.reset!()
     end)
 
     :ok
@@ -192,6 +220,33 @@ defmodule Jido.Integration.V2Test do
     assert {:ok, closed_issue} = V2.fetch_capability("github.issue.close")
     assert closed_issue.metadata.policy.sandbox.allowed_tools == ["github.api.issue.close"]
     assert {:error, :unknown_capability} = V2.fetch_capability("github.issue.reopen")
+  end
+
+  test "session connector publishes the shared asm-backed common surface metadata" do
+    register_connector!(@codex_cli.connector)
+
+    assert {:ok, capability} = V2.fetch_capability(@codex_cli.capability_id)
+
+    assert capability.metadata.runtime == %{
+             driver: "asm",
+             provider: :codex,
+             options: %{}
+           }
+
+    assert capability.metadata.consumer_surface == %{
+             mode: :common,
+             normalized_id: "codex.exec.session",
+             action_name: "codex_exec_session"
+           }
+
+    assert capability.metadata.runtime_family == %{
+             session_affinity: :connection,
+             resumable: true,
+             approval_required: true,
+             stream_capable: true,
+             lifecycle_owner: :asm,
+             runtime_ref: :session
+           }
   end
 
   test "invoke/1 accepts an invocation request and matches invoke/3 behavior" do

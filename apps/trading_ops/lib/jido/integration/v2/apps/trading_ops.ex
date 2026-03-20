@@ -267,7 +267,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
           @analyst_target_id,
           "codex.exec.session",
           :session,
-          "integration_session_bridge",
+          "asm",
           "/srv/trading_ops/analyst"
         ),
       operator:

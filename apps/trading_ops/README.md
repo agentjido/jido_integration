@@ -6,6 +6,10 @@ platform packages.
 This app proves one reviewable workflow across the public facade plus the three
 runtime families.
 
+Its session proof now tracks the accepted Phase 4 session seam: the analyst
+target announces `asm`, the common consumer surface stays `codex.exec.session`,
+and runtime session state remains outside `jido_integration`.
+
 ## Current Scope
 
 - provisions one reference trading-ops stack through the host-facing auth API
@@ -52,6 +56,8 @@ It covers:
 - one stream pull, one session execution, and one direct GitHub escalation
 - durable target ids on runs, attempts, and events
 - durable review artifacts for each runtime family
+- analyst target descriptors that advertise the ASM-backed session seam instead
+  of the legacy session bridge
 
 Package tests keep the direct GitHub step offline by forcing the connector's
 client factory onto the deterministic fixture transport in

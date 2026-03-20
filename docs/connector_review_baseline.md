@@ -36,6 +36,9 @@ Supporting proof surfaces:
 - direct, session, and stream connectors all emit runtime-specific
   `RuntimeResult` evidence while keeping durable review truth in the control
   plane
+- the session example connector publishes the shared `codex.exec.session`
+  common surface on the accepted ASM-backed Harness seam instead of staying
+  connector-local
 - runtime execution uses short-lived credential leases, not durable credential
   secrets
 - policy posture remains explicit at the capability boundary through declared

@@ -9,8 +9,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.DirectRuntime
   alias Jido.Integration.V2.Gateway.Policy
-  alias Jido.Integration.V2.SessionKernel
-  alias Jido.Integration.V2.StreamRuntime
+  alias Jido.Integration.V2.HarnessRuntime
 
   @spec run(map()) :: SuiteResult.t()
   def run(%{fixtures: raw_fixtures, manifest: manifest}) when is_list(raw_fixtures) do
@@ -308,22 +307,15 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
   defp dispatch(%{runtime_class: :direct} = capability, input, context),
     do: DirectRuntime.execute(capability, input, context)
 
-  defp dispatch(%{runtime_class: :session} = capability, input, context),
-    do: SessionKernel.execute(capability, input, context)
-
-  defp dispatch(%{runtime_class: :stream} = capability, input, context),
-    do: StreamRuntime.execute(capability, input, context)
+  defp dispatch(%{runtime_class: runtime_class} = capability, input, context)
+       when runtime_class in [:session, :stream],
+       do: HarnessRuntime.execute(capability, input, context)
 
   defp reset_runtime!(:direct), do: :ok
 
-  defp reset_runtime!(:session) do
-    {:ok, _apps} = Application.ensure_all_started(:jido_integration_v2_session_kernel)
-    SessionKernel.reset!()
-  end
-
-  defp reset_runtime!(:stream) do
-    {:ok, _apps} = Application.ensure_all_started(:jido_integration_v2_stream_runtime)
-    StreamRuntime.reset!()
+  defp reset_runtime!(runtime_class) when runtime_class in [:session, :stream] do
+    {:ok, _apps} = Application.ensure_all_started(:jido_integration_v2_control_plane)
+    HarnessRuntime.reset!()
   end
 
   defp result_summary(result) do
