@@ -682,12 +682,10 @@ defmodule Jido.Integration.V2.ControlPlane do
   defp validate_target_selection(%Run{target_id: nil}, %Capability{}), do: :ok
 
   defp validate_target_selection(%Run{target_id: target_id}, %Capability{} = capability) do
+    requirements = target_selection_requirements(capability)
+
     with {:ok, descriptor} <- fetch_target(target_id),
-         {:ok, _negotiated_versions} <-
-           TargetDescriptor.compatibility(descriptor, %{
-             capability_id: capability.id,
-             runtime_class: capability.runtime_class
-           }) do
+         {:ok, _negotiated_versions} <- TargetDescriptor.compatibility(descriptor, requirements) do
       :ok
     else
       :error ->
@@ -697,6 +695,33 @@ defmodule Jido.Integration.V2.ControlPlane do
         {:error, {:target_incompatible, target_id, reason}}
     end
   end
+
+  defp target_selection_requirements(%Capability{} = capability) do
+    %{
+      capability_id: capability.id,
+      runtime_class: capability.runtime_class
+    }
+    |> maybe_put_authored_runtime_feature(capability)
+  end
+
+  defp maybe_put_authored_runtime_feature(
+         requirements,
+         %Capability{runtime_class: runtime_class} = capability
+       )
+       when runtime_class in [:session, :stream] do
+    case capability.metadata |> Contracts.get(:runtime, %{}) |> Contracts.get(:driver) do
+      driver when is_atom(driver) ->
+        Map.put(requirements, :required_features, [Atom.to_string(driver)])
+
+      driver when is_binary(driver) and driver != "" ->
+        Map.put(requirements, :required_features, [driver])
+
+      _other ->
+        requirements
+    end
+  end
+
+  defp maybe_put_authored_runtime_feature(requirements, %Capability{}), do: requirements
 
   defp append_specs(run_id, attempt, specs) do
     event_store = Stores.event_store()

@@ -94,6 +94,11 @@ Targets must align to those authored routing keys. A `TargetDescriptor` is a
 compatibility and location advertisement, not a second place to override the
 selected runtime driver, provider, or options.
 
+For non-direct target lookup, require the authored `runtime.driver` as a target
+feature as well. That keeps a `:session` or `:stream` capability from matching
+another target that happens to share the same `capability_id` and
+`runtime_class` but advertises the wrong Harness seam.
+
 If a `:session` or `:stream` operation is published as
 `consumer_surface.mode: :common`, it must also carry the canonical
 `metadata.runtime_family` keys:

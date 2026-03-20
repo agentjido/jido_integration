@@ -58,6 +58,8 @@ It covers:
 - durable review artifacts for each runtime family
 - analyst target descriptors that advertise the ASM-backed session seam instead
   of the legacy session bridge
+- analyst target lookup that requires the authored `asm` feature so a
+  same-capability `jido_session` descriptor is not selected by mistake
 
 Package tests keep the direct GitHub step offline by forcing the connector's
 client factory onto the deterministic fixture transport in

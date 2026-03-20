@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Apps.TradingOps
   alias Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver
+  alias Jido.Integration.V2.TargetDescriptor
 
   setup do
     previous_runtime_drivers =
@@ -138,6 +139,54 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert [%{artifact_type: :event_log}] = packet.runs.analyst_session.artifacts
     assert [%{artifact_type: :tool_output}] = packet.runs.escalation_issue.artifacts
     assert workflow.escalation_issue.output.title == "ES alert review for trading ops"
+  end
+
+  test "selects the authored asm analyst target when a mismatched session target is also advertised" do
+    assert {:ok, stack} =
+             TradingOps.bootstrap_reference_stack(%{
+               tenant_id: "tenant-trading-review",
+               actor_id: "desk-operator"
+             })
+
+    assert :ok =
+             V2.announce_target(
+               TargetDescriptor.new!(%{
+                 target_id: "a-target-trading-ops-analyst-session-jido",
+                 capability_id: "codex.exec.session",
+                 runtime_class: :session,
+                 version: "1.0.0",
+                 features: %{
+                   feature_ids: ["jido_session", "codex.exec.session"],
+                   runspec_versions: ["1.0.0"],
+                   event_schema_versions: ["1.0.0"]
+                 },
+                 constraints: %{workspace_root: "/srv/trading_ops/analyst-jido"},
+                 health: :healthy,
+                 location: %{
+                   mode: :beam,
+                   region: "test",
+                   workspace_root: "/srv/trading_ops/analyst-jido"
+                 },
+                 extensions: %{"runtime" => %{"driver" => "jido_session"}}
+               })
+             )
+
+    assert {:ok, workflow} =
+             TradingOps.run_market_review(stack, %{
+               external_id: "alert-es-2",
+               cursor: "cursor-es-2",
+               last_event_id: "event-es-2",
+               observed_at: ~U[2026-03-09 13:10:00Z],
+               symbol: "ES",
+               price: 5_089.25,
+               threshold: 5_080.00,
+               venue: "CME",
+               issue_repo: "trading/ops-review",
+               desk_note: "review before live routing"
+             })
+
+    assert workflow.analyst_session.run.target_id == "target-trading-ops-analyst-session"
+    assert workflow.analyst_session.attempt.target_id == "target-trading-ops-analyst-session"
   end
 
   defp ensure_started(required_processes, supervisor_name, application_module) do

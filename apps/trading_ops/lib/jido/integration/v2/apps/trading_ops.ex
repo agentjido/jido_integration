@@ -379,17 +379,44 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
   defp validate_market_signal(_payload), do: {:error, :invalid_market_signal}
 
   defp choose_target(capability_id, runtime_class) do
-    case V2.compatible_targets(%{
-           capability_id: capability_id,
-           runtime_class: runtime_class,
-           version_requirement: "~> 1.0",
-           accepted_runspec_versions: ["1.0.0"],
-           accepted_event_schema_versions: ["1.0.0"]
-         }) do
+    requirements =
+      %{
+        capability_id: capability_id,
+        runtime_class: runtime_class,
+        version_requirement: "~> 1.0",
+        accepted_runspec_versions: ["1.0.0"],
+        accepted_event_schema_versions: ["1.0.0"]
+      }
+      |> maybe_put_authored_runtime_feature(capability_id, runtime_class)
+
+    case V2.compatible_targets(requirements) do
       [%{target: target} | _rest] -> {:ok, target}
       [] -> {:error, {:no_compatible_target, capability_id}}
     end
   end
+
+  defp maybe_put_authored_runtime_feature(requirements, capability_id, runtime_class)
+       when runtime_class in [:session, :stream] do
+    case V2.fetch_capability(capability_id) do
+      {:ok, capability} ->
+        case capability.metadata |> Contracts.get(:runtime, %{}) |> Contracts.get(:driver) do
+          driver when is_atom(driver) ->
+            Map.put(requirements, :required_features, [Atom.to_string(driver)])
+
+          driver when is_binary(driver) and driver != "" ->
+            Map.put(requirements, :required_features, [driver])
+
+          _other ->
+            requirements
+        end
+
+      {:error, _reason} ->
+        requirements
+    end
+  end
+
+  defp maybe_put_authored_runtime_feature(requirements, _capability_id, _runtime_class),
+    do: requirements
 
   defp invoke_opts(connection_id, tenant_id, actor_id, capability_id, sandbox, target_id) do
     [

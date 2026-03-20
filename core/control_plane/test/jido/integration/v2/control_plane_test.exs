@@ -520,6 +520,42 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert [%Event{attempt: nil, type: "run.failed"}] = ControlPlane.events(error.run.run_id)
   end
 
+  test "fails before attempt creation when the selected session target advertises the wrong Harness driver" do
+    connection_id = install_connection!("tester", ["session:execute"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(JidoSessionConnector)
+
+    assert :ok =
+             ControlPlane.announce_target(
+               harness_target("target-asm-session", "test.session.prompt", :session, "asm")
+             )
+
+    assert {:error, error} =
+             ControlPlane.invoke(
+               "test.session.prompt",
+               %{prompt: "Draft a review packet"},
+               invoke_opts(
+                 connection_id,
+                 allowed_operations: ["test.session.prompt"],
+                 sandbox: %{
+                   level: :strict,
+                   egress: :restricted,
+                   approvals: :manual,
+                   file_scope: "/srv/tenant-1/session",
+                   allowed_tools: ["test.session.prompt"]
+                 },
+                 target_id: "target-asm-session"
+               )
+             )
+
+    assert error.reason ==
+             {:target_incompatible, "target-asm-session", :missing_required_features}
+
+    assert error.run.status == :failed
+    assert error.run.target_id == "target-asm-session"
+    assert error.attempt == nil
+    assert [%Event{attempt: nil, type: "run.failed"}] = ControlPlane.events(error.run.run_id)
+  end
+
   test "records a denied run without creating an attempt" do
     connection_id = install_connection!("tester", ["echo:read"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
