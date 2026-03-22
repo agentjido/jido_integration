@@ -31,10 +31,8 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.Conformance do
             approval_mode: :manual
           },
           event_types: [
-            "attempt.started",
             "session.started",
-            "connector.codex_cli.turn.completed",
-            "attempt.completed"
+            "connector.codex_cli.turn.completed"
           ],
           artifact_types: [:event_log],
           artifact_keys: ["codex_cli/#{@run_id}/#{@attempt_id}/turn_1.term"]

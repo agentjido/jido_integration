@@ -37,7 +37,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.MixProject do
   end
 
   defp dialyzer do
-    [plt_add_deps: :apps_direct]
+    [plt_add_deps: :apps_tree]
   end
 
   defp docs do

@@ -40,6 +40,16 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
   end
 
   test "publishes deterministic conformance fixtures" do
-    assert [%{capability_id: "codex.exec.session"}] = Conformance.fixtures()
+    assert [
+             %{
+               capability_id: "codex.exec.session",
+               expect: %{
+                 event_types: [
+                   "session.started",
+                   "connector.codex_cli.turn.completed"
+                 ]
+               }
+             }
+           ] = Conformance.fixtures()
   end
 end

@@ -397,8 +397,6 @@ defmodule Jido.Integration.V2.OperationSpec do
     end
   end
 
-  defp validate_non_direct_runtime(%__MODULE__{}), do: error("operation.runtime must be a map")
-
   defp validate_runtime_family_requirement(%__MODULE__{} = operation_spec) do
     if common_consumer_surface?(operation_spec) and is_nil(runtime_family(operation_spec)) do
       error(
@@ -670,10 +668,6 @@ defmodule Jido.Integration.V2.OperationSpec do
           "operation.metadata.runtime_family.runtime_ref"
         )
     }
-  end
-
-  defp normalize_runtime_family(_other) do
-    raise ArgumentError, "operation.metadata.runtime_family must be a map when declared"
   end
 
   defp normalize_runtime_family_key(key) when key in @runtime_family_keys, do: key
