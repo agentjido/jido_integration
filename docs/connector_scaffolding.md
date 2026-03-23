@@ -74,7 +74,8 @@ Generated files include:
 - a runtime-class-appropriate handler skeleton
 - a `<ConnectorModule>.Conformance` companion module with deterministic fixtures
 - for non-direct scaffolds, a package-local `runtime_drivers/0` proof hook and
-  deterministic Harness driver under `test_support/`
+  deterministic Harness driver under `lib/` so downstream package tests can
+  load the same conformance surface
 - package-local tests, including a baseline conformance test
 - a package README suitable for `mix docs`
 

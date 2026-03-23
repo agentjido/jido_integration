@@ -16,7 +16,6 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.MixProject do
     ]
   end
 
-  defp elixirc_paths(env) when env in [:dev, :test], do: ["lib", "test_support"]
   defp elixirc_paths(_env), do: ["lib"]
 
   def application do
@@ -30,7 +29,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.MixProject do
       {:jido, "~> 2.1"},
       {:jido_action, "~> 2.1"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
-      {:jido_harness, path: "../../../jido_harness", only: [:dev, :test]},
+      {:jido_harness, path: "../../../jido_harness"},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

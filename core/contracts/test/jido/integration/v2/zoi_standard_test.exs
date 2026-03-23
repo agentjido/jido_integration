@@ -36,6 +36,9 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
 
   test "shared core contract models expose the canonical zoi surface" do
     for module <- @canonical_zoi_modules do
+      assert Code.ensure_loaded?(module),
+             "#{inspect(module)} must load before its canonical Zoi exports are checked"
+
       assert function_exported?(module, :schema, 0),
              "#{inspect(module)} must expose schema/0"
 

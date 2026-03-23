@@ -183,19 +183,19 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert File.exists?(
              Path.join(
                session_package_root,
-               "test_support/jido/integration/v2/connectors/assistant_cli/conformance_harness_driver.ex"
+               "lib/jido/integration/v2/connectors/assistant_cli/conformance_harness_driver.ex"
              )
            )
 
     assert File.exists?(
              Path.join(
                stream_package_root,
-               "test_support/jido/integration/v2/connectors/price_feed/conformance_harness_driver.ex"
+               "lib/jido/integration/v2/connectors/price_feed/conformance_harness_driver.ex"
              )
            )
 
-    assert session_mix =~ "defp elixirc_paths(env) when env in [:dev, :test]"
-    assert stream_mix =~ "defp elixirc_paths(env) when env in [:dev, :test]"
+    refute session_mix =~ ~s(["lib", "test_support"])
+    refute stream_mix =~ ~s(["lib", "test_support"])
     assert session_mix =~ "{:jido_harness,"
     assert stream_mix =~ "{:jido_harness,"
   end

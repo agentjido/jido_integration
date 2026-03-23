@@ -12,7 +12,7 @@ This package starts with:
 - package-local tests that prove the scaffold passes the baseline conformance flow
 <%= if @include_runtime_metadata do %>
 - a package-local `runtime_drivers/0` proof hook plus deterministic Harness
-  driver under `test_support/`
+  driver in `lib/` so downstream package tests can load the same conformance surface
 
 This scaffold already publishes the selected Harness runtime driver
 `<%= @runtime_driver_id %>` on the authored contract. It never generates
@@ -46,5 +46,5 @@ you turn it into a real connector:
 1. auth, catalog, operation ids, schemas, scopes, and policy metadata in `[<%= @module_file %>]`
 2. handler logic in `[<%= @handler_file %>]`
 3. deterministic fixture expectations in `[<%= @conformance_file %>]`
-<%= if @include_test_support do %>4. test-only Harness runtime behavior in `[<%= @conformance_harness_driver_file %>]`
+<%= if @include_test_support do %>4. deterministic Harness runtime behavior in `[<%= @conformance_harness_driver_file %>]`
 <% end %>

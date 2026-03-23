@@ -27,7 +27,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     assert descriptor.cancellation?
     assert descriptor.approvals?
     assert descriptor.cost?
-    assert descriptor.resume?
+    refute descriptor.resume?
     refute descriptor.subscribe?
   end
 

@@ -389,8 +389,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       runtime_options_literal: "%{}",
       auth_lease_field: "access_token",
       auth_lease_field_literal: ":access_token",
-      conformance_harness_driver_file:
-        test_support_file(module_root <> ".ex", "/conformance_harness_driver.ex"),
+      conformance_harness_driver_file: Path.join(module_root, "conformance_harness_driver.ex"),
       publish_ingress_definitions: false,
       ingress_definitions_literal: "[]",
       fixture_run_id: run_id,
@@ -531,8 +530,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       runtime_options_literal: "%{}",
       auth_lease_field: "api_key",
       auth_lease_field_literal: ":api_key",
-      conformance_harness_driver_file:
-        test_support_file(module_root <> ".ex", "/conformance_harness_driver.ex"),
+      conformance_harness_driver_file: Path.join(module_root, "conformance_harness_driver.ex"),
       publish_ingress_definitions: false,
       ingress_definitions_literal: "[]",
       fixture_run_id: run_id,
@@ -699,13 +697,6 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     |> String.trim_leading("lib/")
     |> Path.rootname()
     |> then(&"test/#{&1}#{suffix}")
-  end
-
-  defp test_support_file(module_file, suffix) do
-    module_file
-    |> String.trim_leading("lib/")
-    |> Path.rootname()
-    |> then(&"test_support/#{&1}#{suffix}")
   end
 
   defp relative_dep_path(package_root, target_path) do

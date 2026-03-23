@@ -88,7 +88,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
       approvals?: true,
       cost?: true,
       subscribe?: false,
-      resume?: true,
+      resume?: false,
       metadata: descriptor_metadata(provider)
     })
   end

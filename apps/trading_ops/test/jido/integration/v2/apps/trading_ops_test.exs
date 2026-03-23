@@ -106,9 +106,9 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert packet.targets.analyst.target_id == "target-trading-ops-analyst-session"
     assert packet.targets.operator.target_id == "target-trading-ops-operator-saas"
     assert "asm" in packet.targets.market_data.features.feature_ids
-    assert packet.targets.market_data.extensions == %{"runtime" => %{"driver" => "asm"}}
+    assert packet.targets.market_data.extensions == %{runtime: %{driver: "asm"}}
     assert "asm" in packet.targets.analyst.features.feature_ids
-    assert packet.targets.analyst.extensions == %{"runtime" => %{"driver" => "asm"}}
+    assert packet.targets.analyst.extensions == %{runtime: %{driver: "asm"}}
     refute "integration_stream_bridge" in packet.targets.market_data.features.feature_ids
     refute "integration_session_bridge" in packet.targets.analyst.features.feature_ids
 

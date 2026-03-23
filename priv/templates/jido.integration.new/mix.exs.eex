@@ -22,10 +22,7 @@ defmodule <%= @project_module %> do
     ]
   end
 
-<%= if @include_test_support do %>  defp elixirc_paths(env) when env in [:dev, :test], do: ["lib", "test_support"]
   defp elixirc_paths(_env), do: ["lib"]
-<% else %>  defp elixirc_paths(_env), do: ["lib"]
-<% end %>
 
   defp deps do
     [
@@ -35,7 +32,7 @@ defmodule <%= @project_module %> do
 <%= if @direct_runtime do %>      {:jido_action, "~> 2.1"},
       {:jido_integration_v2_direct_runtime, path: "<%= @runtime_dep_path %>", override: true},
 <% end %>      {:jido_integration_v2_conformance, path: "<%= @conformance_dep_path %>", only: :test, runtime: false},
-<%= if @include_test_support do %>      {:jido_harness, path: "<%= @jido_harness_dep_path %>", only: [:dev, :test]},
+<%= if @include_test_support do %>      {:jido_harness, path: "<%= @jido_harness_dep_path %>"},
 <% end %>      {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
