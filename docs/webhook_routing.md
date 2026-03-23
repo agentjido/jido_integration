@@ -60,6 +60,10 @@ explicit ingress-definition evidence published by the connector-local hosted
 proof. `signal_source` is the normalized ingress signal source, not the public
 callback path.
 
+Root conformance treats `trigger_id`, `signal_type`, and `signal_source` as
+reviewable ingress evidence. If they drift from the trigger capability
+metadata, the ingress-definition suite should fail.
+
 Verification can use:
 
 - a direct `secret`

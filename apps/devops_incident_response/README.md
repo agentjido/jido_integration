@@ -87,6 +87,8 @@ The end-to-end proof lives in:
 It covers:
 
 - install provisioning and connected state
+- preservation of the connector-local hosted trigger boundary instead of a fake
+  common generated sensor surface
 - explicit alignment between the app-local trigger manifest, hosted route
   record, and `ingress_definitions/0` evidence
 - webhook route provisioning

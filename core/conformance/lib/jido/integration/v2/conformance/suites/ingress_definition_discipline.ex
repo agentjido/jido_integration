@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.IngressDefinitionDiscipline do
   alias Jido.Integration.V2.Conformance.CheckResult
   alias Jido.Integration.V2.Conformance.SuiteResult
   alias Jido.Integration.V2.Conformance.SuiteSupport
+  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Ingress.Definition
   alias Jido.Integration.V2.Manifest
 
@@ -83,8 +84,15 @@ defmodule Jido.Integration.V2.Conformance.Suites.IngressDefinitionDiscipline do
         "ingress.#{capability.id}.connector_id",
         definition.connector_id == connector_id,
         "ingress definition connector_id must match manifest.connector"
+      ),
+      SuiteSupport.check(
+        "ingress.#{capability.id}.trigger_id",
+        definition.trigger_id == capability.id,
+        "ingress definition trigger_id must match the trigger capability id"
       )
-    ] ++ transport_checks(definition, capability.transport_profile, capability.id)
+    ] ++
+      signal_metadata_checks(definition, capability) ++
+      transport_checks(definition, capability.transport_profile, capability.id)
   end
 
   defp transport_checks(definition, :webhook, capability_id) do
@@ -113,6 +121,49 @@ defmodule Jido.Integration.V2.Conformance.Suites.IngressDefinitionDiscipline do
   end
 
   defp transport_checks(_definition, _transport_profile, _capability_id), do: []
+
+  defp signal_metadata_checks(definition, capability) do
+    signal_type = sensor_metadata(capability, :signal_type)
+    signal_source = sensor_metadata(capability, :signal_source)
+
+    []
+    |> maybe_add_signal_check(
+      capability.id,
+      :signal_type,
+      definition.signal_type,
+      signal_type
+    )
+    |> maybe_add_signal_check(
+      capability.id,
+      :signal_source,
+      definition.signal_source,
+      signal_source
+    )
+  end
+
+  defp maybe_add_signal_check(checks, capability_id, field, actual, expected) do
+    if present_string?(expected) do
+      checks ++
+        [
+          SuiteSupport.check(
+            "ingress.#{capability_id}.#{field}",
+            actual == expected,
+            "ingress definition #{field} must match the trigger capability signal metadata"
+          )
+        ]
+    else
+      checks
+    end
+  end
+
+  defp sensor_metadata(capability, key) do
+    capability.metadata
+    |> Contracts.get(:jido, %{})
+    |> Contracts.get(:sensor, %{})
+    |> Contracts.get(key)
+  end
+
+  defp present_string?(value), do: is_binary(value) and byte_size(String.trim(value)) > 0
 
   defp normalize_definitions(definitions) when is_list(definitions) do
     {:ok, Enum.map(definitions, &normalize_definition!/1)}

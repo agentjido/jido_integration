@@ -134,6 +134,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
     [trigger] = manifest.triggers
     conformance_module = Module.concat(GitHubIssueConnector, Conformance)
 
+    assert TriggerSpec.connector_local_consumer_surface?(trigger)
     assert TriggerSpec.sensor_signal_type(trigger) == "github.issue.opened"
     assert TriggerSpec.sensor_signal_source(trigger) == "/ingress/webhook/github/issues.opened"
     assert Code.ensure_loaded?(conformance_module)

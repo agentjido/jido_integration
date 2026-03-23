@@ -267,6 +267,126 @@ defmodule Jido.Integration.V2.ConformanceTest do
     end
   end
 
+  defmodule TriggerIdentityDriftConnector do
+    @behaviour Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "trigger_identity_drift",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :api_token,
+          install: %{required: false},
+          reauth: %{supported: false},
+          requested_scopes: ["trigger:ingest"],
+          lease_fields: ["token"],
+          secret_names: ["webhook_secret"]
+        },
+        catalog: %{
+          display_name: "Trigger Identity Drift",
+          description: "Webhook conformance connector with drifted ingress evidence",
+          category: "test",
+          tags: ["trigger"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [],
+        triggers: [
+          %{
+            trigger_id: "trigger.event.ingest",
+            name: "event_ingest",
+            display_name: "Event ingest",
+            description: "Accepts a webhook payload",
+            runtime_class: :direct,
+            delivery_mode: :webhook,
+            handler: TriggerHandler,
+            config_schema: Zoi.map(),
+            signal_schema: Zoi.map(),
+            permissions: %{required_scopes: ["trigger:ingest"]},
+            checkpoint: %{strategy: :cursor},
+            dedupe: %{strategy: :event_id},
+            verification: %{secret_name: "webhook_secret"},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Trigger delivery stays above the connector package"
+            },
+            schema_policy: %{
+              config: :passthrough,
+              signal: :passthrough,
+              justification: "Ingress conformance keeps this trigger connector connector-local"
+            },
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["trigger.event.ingest"]
+              }
+            },
+            jido: %{
+              sensor: %{
+                name: "trigger_event_ingest",
+                signal_type: "trigger.event.accepted",
+                signal_source: "/ingress/webhook/trigger/event.accepted"
+              }
+            }
+          }
+        ],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
+  defmodule TriggerIdentityDriftConnector.Conformance do
+    def fixtures do
+      [
+        %{
+          capability_id: "trigger.event.ingest",
+          input: %{},
+          credential_ref: %{
+            id: "cred-trigger-identity-1",
+            subject: "router",
+            scopes: ["trigger:ingest"]
+          },
+          credential_lease: %{
+            lease_id: "lease-trigger-identity-1",
+            credential_ref_id: "cred-trigger-identity-1",
+            subject: "router",
+            scopes: ["trigger:ingest"],
+            payload: %{token: "lease-token"},
+            issued_at: ~U[2026-03-12 00:00:00Z],
+            expires_at: ~U[2026-03-12 00:05:00Z]
+          },
+          expect: %{
+            output: %{accepted: true},
+            event_types: ["attempt.started", "attempt.completed"]
+          }
+        }
+      ]
+    end
+
+    def ingress_definitions do
+      [
+        %{
+          source: :webhook,
+          connector_id: "trigger_identity_drift",
+          trigger_id: "drifted.trigger.id",
+          capability_id: "trigger.event.ingest",
+          signal_type: "drifted.signal.type",
+          signal_source: "/ingress/webhook/drifted/source",
+          verification: %{
+            algorithm: :sha256,
+            secret: "drifted-secret",
+            signature_header: "x-signature"
+          }
+        }
+      ]
+    end
+  end
+
   defmodule DriftedAuthConnector do
     @behaviour Connector
 
@@ -748,6 +868,22 @@ defmodule Jido.Integration.V2.ConformanceTest do
     assert Enum.any?(ingress_suite.checks, fn check ->
              check.id == "ingress.definitions.present"
            end)
+  end
+
+  test "fails conformance when ingress evidence drifts from trigger identity and signal metadata" do
+    assert {:ok, report} =
+             Conformance.run(
+               TriggerIdentityDriftConnector,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-03-12 00:00:00Z]
+             )
+
+    ingress_suite = Enum.find(report.suite_results, &(&1.id == :ingress_definition_discipline))
+
+    assert ingress_suite.status == :failed
+    assert failed_check?(ingress_suite.checks, "ingress.trigger.event.ingest.trigger_id")
+    assert failed_check?(ingress_suite.checks, "ingress.trigger.event.ingest.signal_type")
+    assert failed_check?(ingress_suite.checks, "ingress.trigger.event.ingest.signal_source")
   end
 
   test "flags auth scope and trigger secret drift in manifest conformance" do
