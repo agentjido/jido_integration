@@ -10,7 +10,11 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           "../../connectors/github/lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex",
           __DIR__
         ),
-      sdk_dep: "{:github_ex,"
+      sdk_dep: "{:github_ex,",
+      sdk_path_dep: "{:github_ex, path: \"deps/github_ex\"}",
+      pristine_path_dep: "{:pristine, path: \"deps/pristine\", runtime: false}",
+      remote_sdk_dep: "{:github_ex, github:",
+      remote_pristine_dep: "{:pristine, \"~>"
     },
     %{
       mix_path: Path.expand("../../connectors/notion/mix.exs", __DIR__),
@@ -20,7 +24,11 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           "../../connectors/notion/lib/jido/integration/v2/connectors/notion/operation_catalog.ex",
           __DIR__
         ),
-      sdk_dep: "{:notion_sdk,"
+      sdk_dep: "{:notion_sdk,",
+      sdk_path_dep: "{:notion_sdk, path: \"deps/notion_sdk\"}",
+      pristine_path_dep: "{:pristine, path: \"deps/pristine\", runtime: false}",
+      remote_sdk_dep: "{:notion_sdk, github:",
+      remote_pristine_dep: "{:pristine, \"~>"
     }
   ]
 
@@ -40,6 +48,33 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
 
       refute mix_exs =~ "jido_session", "#{mix_path} must not depend on jido_session"
     end)
+  end
+
+  test "direct connector packages pin provider stacks through local path deps" do
+    Enum.each(
+      @direct_connectors,
+      fn %{
+           mix_path: mix_path,
+           sdk_path_dep: sdk_path_dep,
+           pristine_path_dep: pristine_path_dep,
+           remote_sdk_dep: remote_sdk_dep,
+           remote_pristine_dep: remote_pristine_dep
+         } ->
+        mix_exs = File.read!(mix_path)
+
+        assert mix_exs =~ sdk_path_dep,
+               "#{mix_path} must pin its provider SDK through a local path dep"
+
+        assert mix_exs =~ pristine_path_dep,
+               "#{mix_path} must pin pristine through a local path dep"
+
+        refute mix_exs =~ remote_sdk_dep,
+               "#{mix_path} must not resolve its provider SDK from a remote Git dependency"
+
+        refute mix_exs =~ remote_pristine_dep,
+               "#{mix_path} must not resolve pristine from Hex"
+      end
+    )
   end
 
   test "direct connector catalogs publish direct runtime classes only" do
