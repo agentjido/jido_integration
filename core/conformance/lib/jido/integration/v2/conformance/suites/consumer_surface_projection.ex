@@ -67,6 +67,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
     normalized_id = SuiteSupport.fetch(consumer_surface, :normalized_id)
     sensor_name = SuiteSupport.fetch(consumer_surface, :sensor_name)
     reason = SuiteSupport.fetch(consumer_surface, :reason)
+    jido_name = Contracts.get(sensor_projection, :name)
     signal_type = Contracts.get(sensor_projection, :signal_type)
     signal_source = Contracts.get(sensor_projection, :signal_source)
     config_mode = SuiteSupport.fetch(schema_policy, :config)
@@ -83,6 +84,11 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
         "#{trigger.trigger_id}.common_surface.metadata",
         common_surface_metadata_valid?(mode, normalized_id, sensor_name, reason),
         "common projected triggers require normalized_id and sensor_name; connector-local triggers require a reason"
+      ),
+      SuiteSupport.check(
+        "#{trigger.trigger_id}.common_surface.jido_sensor_name",
+        common_trigger_jido_sensor_name_valid?(mode, jido_name),
+        "common projected triggers require jido.sensor.name; connector-local triggers may omit it"
       ),
       SuiteSupport.check(
         "#{trigger.trigger_id}.common_surface.signal_metadata",
@@ -132,6 +138,10 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
 
   defp common_surface_schema_policy_valid?(:connector_local, _left_mode, _right_mode), do: true
   defp common_surface_schema_policy_valid?(_mode, _left_mode, _right_mode), do: false
+
+  defp common_trigger_jido_sensor_name_valid?(:common, jido_name), do: present_string?(jido_name)
+  defp common_trigger_jido_sensor_name_valid?(:connector_local, _jido_name), do: true
+  defp common_trigger_jido_sensor_name_valid?(_mode, _jido_name), do: false
 
   defp common_trigger_signal_metadata_valid?(:common, signal_type, signal_source) do
     present_string?(signal_type) and present_string?(signal_source)

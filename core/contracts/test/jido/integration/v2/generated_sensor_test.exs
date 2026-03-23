@@ -11,6 +11,11 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
     def run(_input, _context), do: {:ok, %{}}
   end
 
+  setup_all do
+    {:ok, _apps} = Application.ensure_all_started(:jido_signal)
+    :ok
+  end
+
   defmodule CommonTriggerConnector do
     @behaviour Jido.Integration.V2.Connector
 
@@ -192,6 +197,88 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
     end
   end
 
+  defmodule DuplicateProjectedJidoSensorNameConnector do
+    @behaviour Jido.Integration.V2.Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "duplicate_jido_sensor_names",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :api_token,
+            install: %{required: false},
+            reauth: %{supported: false},
+            requested_scopes: ["market:read"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Duplicate Jido Sensor Names",
+            description: "Connector with colliding generated Jido sensor names",
+            category: "market_data",
+            tags: ["market"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [],
+        triggers: [
+          duplicate_jido_sensor_name_trigger(
+            "market.tick.detected",
+            "market.ticks.detected",
+            "market_ticks_detected"
+          ),
+          duplicate_jido_sensor_name_trigger(
+            "market.tick.updated",
+            "market.ticks.updated",
+            "market_ticks_updated"
+          )
+        ],
+        runtime_families: [:direct]
+      })
+    end
+
+    defp duplicate_jido_sensor_name_trigger(trigger_id, normalized_id, sensor_name) do
+      TriggerSpec.new!(%{
+        trigger_id: trigger_id,
+        name: String.replace(trigger_id, ".", "_"),
+        display_name: trigger_id,
+        description: "Duplicate generated Jido sensor name",
+        runtime_class: :direct,
+        delivery_mode: :poll,
+        handler: Handler,
+        config_schema:
+          Zoi.object(%{
+            interval_ms: Zoi.integer() |> Zoi.default(60_000)
+          }),
+        signal_schema:
+          Zoi.object(%{
+            symbol: Zoi.string()
+          }),
+        permissions: %{required_scopes: ["market:read"]},
+        checkpoint: %{},
+        dedupe: %{},
+        verification: %{},
+        consumer_surface: %{
+          mode: :common,
+          normalized_id: normalized_id,
+          sensor_name: sensor_name
+        },
+        schema_policy: %{config: :defined, signal: :defined},
+        jido: %{
+          sensor: %{
+            name: "shared_market_tick_sensor",
+            signal_type: trigger_id,
+            signal_source: "/sensors/#{String.replace(trigger_id, ".", "/")}"
+          }
+        }
+      })
+    end
+  end
+
   test "derives deterministic sensor projection rules from the authored manifest" do
     projection =
       ConsumerProjection.sensor_projection!(CommonTriggerConnector, "market.tick.detected")
@@ -275,6 +362,16 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
                  ~r/generated consumer trigger projections must be unique within a connector/,
                  fn ->
                    ConsumerProjection.plugin_projection!(DuplicateProjectedTriggerConnector)
+                 end
+  end
+
+  test "rejects manifests that collide on generated Jido sensor names" do
+    assert_raise ArgumentError,
+                 ~r/generated consumer trigger projections must be unique within a connector/,
+                 fn ->
+                   ConsumerProjection.plugin_projection!(
+                     DuplicateProjectedJidoSensorNameConnector
+                   )
                  end
   end
 end

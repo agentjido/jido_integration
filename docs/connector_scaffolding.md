@@ -152,6 +152,10 @@ After generation:
    Keep `auth.secret_names` aligned as the authored superset of any trigger
    verification secret or `secret_requirements`.
    Declare `consumer_surface` explicitly on every authored operation or trigger.
+   If a trigger is `consumer_surface.mode: :common`, also declare
+   deterministic `jido.sensor.name`, `jido.sensor.signal_type`, and
+   `jido.sensor.signal_source` metadata, and keep those generated sensor names
+   unique within the connector.
    Declare `schema_policy` explicitly on every authored operation or trigger.
    If a connector keeps passthrough payloads but knows some regions are
    late-bound, encode that authored truth in `OperationSpec.metadata`

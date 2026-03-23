@@ -499,13 +499,20 @@ defmodule Jido.Integration.V2.ConsumerProjection do
       |> Enum.map(&sensor_name/1)
       |> duplicate_values()
 
-    if duplicate_modules == [] and duplicate_sensor_names == [] do
+    duplicate_jido_sensor_names =
+      triggers
+      |> Enum.map(&jido_sensor_name/1)
+      |> duplicate_values()
+
+    if duplicate_modules == [] and duplicate_sensor_names == [] and
+         duplicate_jido_sensor_names == [] do
       :ok
     else
       details =
         []
         |> append_duplicate_detail("modules", duplicate_modules)
         |> append_duplicate_detail("sensor names", duplicate_sensor_names)
+        |> append_duplicate_detail("Jido sensor names", duplicate_jido_sensor_names)
         |> Enum.join(", ")
 
       raise ArgumentError,

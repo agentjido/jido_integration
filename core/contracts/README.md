@@ -51,7 +51,7 @@ Current hardening guarantees:
   - target descriptors can advertise compatible runtime environments and workspace locations, but they must not rewrite authored runtime routing keys
 - `schema_policy` is explicit on authored operations and triggers so placeholder schemas cannot silently leak into published or projected surfaces
 - `ConsumerProjection` derives deterministic action, sensor, and plugin projection rules only from authored entries marked as normalized common consumer surfaces, and rejects duplicate projected action names or generated sensor collisions within one connector
-- common projected triggers must declare deterministic `jido.sensor.signal_type` and `jido.sensor.signal_source` metadata while `:connector_local` triggers remain explicit exclusions from the generated common sensor surface
+- common projected triggers must declare deterministic `jido.sensor.name`, `jido.sensor.signal_type`, and `jido.sensor.signal_source` metadata, and those generated sensor contract names must stay unique within a connector while `:connector_local` triggers remain explicit exclusions from the generated common sensor surface
 - `GeneratedAction`, `GeneratedSensor`, and `GeneratedPlugin` project those rules into the current real `Jido.Action`, `Jido.Sensor`, and `Jido.Plugin` APIs
 - generated actions build typed `InvocationRequest` structs and call the fixed `Jido.Integration.V2.invoke/1` facade path rather than honoring a caller-supplied invoker module
 - `CredentialRef` remains durable while `CredentialLease` is the short-lived execution boundary
