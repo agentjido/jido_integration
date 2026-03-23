@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Workspace.Docs do
   use Mix.Task
+  @moduledoc false
 
   alias Jido.Integration.Workspace.MonorepoRunner
 
