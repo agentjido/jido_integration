@@ -58,6 +58,25 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     end
   end
 
+  test "workspace isolation clears SSL key logging for monorepo verification tasks" do
+    isolation = MixProject.project()[:blitz_workspace][:isolation]
+
+    assert "SSLKEYLOGFILE" in isolation[:unset_env],
+           "blitz workspace isolation must unset SSLKEYLOGFILE so Req-backed tasks do not fail on read-only home mounts"
+  end
+
+  test "workspace commands prefer the repo-local mix wrapper on PATH" do
+    workspace = MixProject.project()[:blitz_workspace]
+    env = Blitz.MixWorkspace.command_env(workspace, ".", :compile)
+    path = env |> Enum.into(%{}) |> Map.fetch!("PATH")
+
+    assert path |> String.split(":") |> hd() == Path.join(repo_root(), "bin"),
+           "workspace child commands must resolve mix through the repo-local bin wrapper first"
+
+    assert File.exists?(Path.join(repo_root(), "bin/mix")),
+           "repo-local mix wrapper is missing from #{repo_root()}"
+  end
+
   test "child packages keep the baseline monorepo package structure" do
     for package_root <- child_package_roots() do
       for relative_path <- @required_package_paths do

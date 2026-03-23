@@ -7,17 +7,20 @@ proof.
 
 - runtime family: `:stream` for `market.ticks.pull`, plus one connector-owned
   direct poll trigger for `market.alert.detected`
-- stable runtime contract seam: `Jido.Harness`
+- stable runtime contract seam:
+  `/home/home/p/g/n/jido_harness` via `Jido.Harness`
 - public auth binding is `connection_id`
 - the authored stream routing contract is explicit through
   `runtime.driver: "asm"`, `runtime.provider: :claude`, and
   `runtime.options: %{}`
 - the `asm` driver resolves through
   `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` into
-  `agent_session_manager`, with `cli_subprocess_core` below that lane
-- this connector package depends on `jido_harness` for the shared seam; it
-  does not take direct `agent_session_manager` or `cli_subprocess_core`
-  package deps
+  `/home/home/p/g/n/agent_session_manager`, with
+  `/home/home/p/g/n/cli_subprocess_core` below that lane
+- this connector package depends on `/home/home/p/g/n/jido_harness` for the
+  shared seam; it does not take direct
+  `/home/home/p/g/n/agent_session_manager` or
+  `/home/home/p/g/n/cli_subprocess_core` package deps
 - the package uses short-lived credential leases for deterministic stream pulls
   and poll-trigger review
 - scope-gated admission is explicit through `market:read`
@@ -95,6 +98,7 @@ trigger contract, the generated consumer surface, and the package-local
 Harness conformance seam.
 
 It does not own the provider-neutral session lane in
-`agent_session_manager`, the CLI subprocess foundation in
-`cli_subprocess_core`, hosted webhook routing, async dispatch handlers, or
-app-level operator composition above the connector boundary.
+`/home/home/p/g/n/agent_session_manager`, the CLI subprocess foundation in
+`/home/home/p/g/n/cli_subprocess_core`, hosted webhook routing, async
+dispatch handlers, or app-level operator composition above the connector
+boundary.

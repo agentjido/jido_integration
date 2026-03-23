@@ -37,13 +37,13 @@ defmodule Jido.Integration.Workspace.MixProject do
 
   defp aliases do
     monorepo_aliases = [
-      "monorepo.deps.get": ["blitz.workspace deps_get"],
-      "monorepo.format": ["blitz.workspace format"],
-      "monorepo.compile": ["blitz.workspace compile"],
-      "monorepo.test": ["blitz.workspace test"],
-      "monorepo.credo": ["blitz.workspace credo"],
-      "monorepo.dialyzer": ["blitz.workspace dialyzer"],
-      "monorepo.docs": ["blitz.workspace docs"]
+      "monorepo.deps.get": ["workspace.deps.get"],
+      "monorepo.format": ["workspace.format"],
+      "monorepo.compile": ["workspace.compile"],
+      "monorepo.test": ["workspace.test"],
+      "monorepo.credo": ["workspace.credo"],
+      "monorepo.dialyzer": ["workspace.dialyzer"],
+      "monorepo.docs": ["workspace.docs"]
     ]
 
     mr_aliases =
@@ -90,17 +90,30 @@ defmodule Jido.Integration.Workspace.MixProject do
     ]
   end
 
-  def blitz_workspace_test_env(%{project_path: project_path}) do
+  def blitz_workspace_test_env(%{project_path: project_path} = context) do
+    base_env = blitz_workspace_env(context)
+
     base_name =
       System.get_env(
         "JIDO_INTEGRATION_V2_DB_BASE_NAME",
         System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_test")
       )
 
+    base_env ++
+      [
+        {"JIDO_INTEGRATION_V2_DB_BASE_NAME", base_name},
+        {"JIDO_INTEGRATION_V2_DB_NAME",
+         Blitz.MixWorkspace.hashed_project_name(base_name, project_path, max_bytes: 63)}
+      ]
+  end
+
+  def blitz_workspace_env(%{root: root}) do
+    repo_bin = Path.join(root, "bin")
+    path = prepend_path(repo_bin, System.get_env("PATH"))
+
     [
-      {"JIDO_INTEGRATION_V2_DB_BASE_NAME", base_name},
-      {"JIDO_INTEGRATION_V2_DB_NAME",
-       Blitz.MixWorkspace.hashed_project_name(base_name, project_path, max_bytes: 63)}
+      {"PATH", path},
+      {"SSLKEYLOGFILE", nil}
     ]
   end
 
@@ -113,7 +126,7 @@ defmodule Jido.Integration.Workspace.MixProject do
         build_path: true,
         lockfile: true,
         hex_home: "_build/hex",
-        unset_env: ["HEX_API_KEY"]
+        unset_env: ["HEX_API_KEY", "SSLKEYLOGFILE"]
       ],
       parallelism: [
         env: "JIDO_MONOREPO_MAX_CONCURRENCY",
@@ -130,19 +143,33 @@ defmodule Jido.Integration.Workspace.MixProject do
         overrides: []
       ],
       tasks: [
-        deps_get: [args: ["deps.get"], preflight?: false],
-        format: [args: ["format"]],
-        compile: [args: ["compile", "--warnings-as-errors"]],
+        deps_get: [
+          args: ["deps.get"],
+          preflight?: false,
+          env: &__MODULE__.blitz_workspace_env/1
+        ],
+        format: [args: ["format"], env: &__MODULE__.blitz_workspace_env/1],
         test: [
           args: ["test"],
           mix_env: "test",
           color: true,
           env: &__MODULE__.blitz_workspace_test_env/1
         ],
-        credo: [args: ["credo"]],
-        dialyzer: [args: ["dialyzer", "--force-check"]],
-        docs: [args: ["docs"]]
+        compile: [
+          args: ["compile", "--warnings-as-errors"],
+          env: &__MODULE__.blitz_workspace_env/1
+        ],
+        credo: [args: ["credo"], env: &__MODULE__.blitz_workspace_env/1],
+        dialyzer: [
+          args: ["dialyzer", "--force-check"],
+          env: &__MODULE__.blitz_workspace_env/1
+        ],
+        docs: [args: ["docs"], env: &__MODULE__.blitz_workspace_env/1]
       ]
     ]
   end
+
+  defp prepend_path(dir, nil), do: dir
+  defp prepend_path(dir, ""), do: dir
+  defp prepend_path(dir, path), do: dir <> ":" <> path
 end

@@ -5,8 +5,10 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
 
   Public Session Control handles stay pid-free; the live ASM session reference
   is stored privately in `SessionStore` and resolved by `session_id`. This
-  keeps the public `jido_integration` seam at `Jido.Harness` while ASM and the
-  `cli_subprocess_core` foundation remain below it.
+  keeps the public `jido_integration` seam at
+  `/home/home/p/g/n/jido_harness` (`Jido.Harness`) while
+  `/home/home/p/g/n/agent_session_manager` and the
+  `/home/home/p/g/n/cli_subprocess_core` foundation remain below it.
   """
 
   @behaviour Jido.Harness.RuntimeDriver

@@ -25,8 +25,9 @@ Core runtime graph:
   - pre-attempt allow, deny, and shed decisions
 - `core/direct_runtime`
 - `core/runtime_asm_bridge`
-  - integration-owned projection from the authored `Jido.Harness` `asm`
-    driver into `agent_session_manager`
+  - integration-owned projection from the authored
+    `/home/home/p/g/n/jido_harness` (`Jido.Harness`) `asm` driver into
+    `/home/home/p/g/n/agent_session_manager`
 - `core/session_kernel`
 - `core/stream_runtime`
 - `core/dispatch_runtime`
@@ -47,16 +48,17 @@ Durability tiers:
 
 Session and stream capabilities stay above a provider-neutral runtime lane:
 
-- `Jido.Harness` is the stable runtime-driver contract consumed by
-  `core/control_plane`
+- `/home/home/p/g/n/jido_harness` exposes `Jido.Harness`, the stable
+  runtime-driver contract consumed by `core/control_plane`
 - authored `runtime.driver` ids such as `asm` stay on connector capabilities
   and target requirements instead of being inferred from targets or apps
 - `core/runtime_asm_bridge` is the integration-owned projection for the `asm`
-  driver; it adapts the Harness seam to `agent_session_manager`
-- `agent_session_manager` keeps provider-neutral session orchestration and lane
-  selection below `jido_integration` ownership
-- `cli_subprocess_core` remains the subprocess, event, and provider-profile
-  foundation below ASM
+  driver; it adapts the Harness seam to
+  `/home/home/p/g/n/agent_session_manager`
+- `/home/home/p/g/n/agent_session_manager` keeps provider-neutral session
+  orchestration and lane selection below `jido_integration` ownership
+- `/home/home/p/g/n/cli_subprocess_core` remains the subprocess, event, and
+  provider-profile foundation below ASM
 - `metadata.runtime_family.runtime_ref` names the stable Harness handle shape,
   so a `:stream` capability may honestly publish `:session` when the selected
   driver exposes session-scoped handles
@@ -85,9 +87,10 @@ Proof apps:
 - `core/platform` does not pull connectors at runtime; connector packages are
   test-only deps there
 - apps declare every child package whose modules they reference directly
-- session and stream connector packages depend on `jido_harness` for the
-  shared seam rather than taking direct `agent_session_manager` or
-  `cli_subprocess_core` deps
+- session and stream connector packages depend on
+  `/home/home/p/g/n/jido_harness` for the shared seam rather than taking
+  direct `/home/home/p/g/n/agent_session_manager` or
+  `/home/home/p/g/n/cli_subprocess_core` deps
 
 ## Public Invocation And Discovery
 

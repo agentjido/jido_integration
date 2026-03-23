@@ -27,10 +27,11 @@ defmodule Jido.Integration.V2 do
   becoming a second store, policy engine, or runtime owner.
 
   Session and stream execution stay above the provider-neutral runtime basis.
-  Published `runtime.driver` values name `Jido.Harness` driver ids such as
-  `asm`; that path resolves through
+  Published `runtime.driver` values name the `/home/home/p/g/n/jido_harness`
+  `Jido.Harness` driver ids such as `asm`; that path resolves through
   `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` into
-  `agent_session_manager`, with `cli_subprocess_core` below ASM. Durable auth,
+  `/home/home/p/g/n/agent_session_manager`, with
+  `/home/home/p/g/n/cli_subprocess_core` below ASM. Durable auth,
   control-plane, and operator truth still remain owned by `jido_integration`.
   """
 

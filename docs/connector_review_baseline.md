@@ -27,7 +27,10 @@ questions without guessing. The minimum package sections are:
 
 - runtime family and auth posture
 - for session and stream packages, the authored `Jido.Harness` driver id plus
-  the runtime basis beneath that seam
+  the runtime basis beneath that seam:
+  `/home/home/p/g/n/jido_harness` ->
+  `/home/home/p/g/n/agent_session_manager` ->
+  `/home/home/p/g/n/cli_subprocess_core`
 - authored-vs-generated boundary, including which inventory stays connector-local and which entries project into the shared generated consumer surface
 - package-local `mix compile --warnings-as-errors`, `mix test`, and `mix docs`
   plus the root conformance and `mix ci` acceptance loop
@@ -58,10 +61,12 @@ questions without guessing. The minimum package sections are:
   `TargetDescriptor.authored_requirements/2`; target descriptors only
   advertise compatibility and location
 - the session example connector publishes the shared `codex.exec.session`
-  common surface on the accepted `Jido.Harness` seam using authored
-  `runtime.driver: "asm"` instead of staying connector-local
+  common surface on the accepted `/home/home/p/g/n/jido_harness`
+  `Jido.Harness` seam using authored `runtime.driver: "asm"` instead of
+  staying connector-local
 - the reusable session lane for that connector remains in
-  `agent_session_manager` above `cli_subprocess_core`
+  `/home/home/p/g/n/agent_session_manager` above
+  `/home/home/p/g/n/cli_subprocess_core`
 - the stream example connector publishes `market.ticks.pull` on the same
   Harness `asm` seam and honestly keeps `runtime_ref: :session` because the
   selected driver returns a session-scoped handle

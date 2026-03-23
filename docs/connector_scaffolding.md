@@ -66,18 +66,21 @@ or package above the connector rather than forcing it into the scaffold.
 When documenting or reviewing a non-direct connector, describe the stack in
 this order:
 
-1. `Jido.Harness` is the stable runtime-driver contract exposed by
-   `runtime.driver`
+1. `/home/home/p/g/n/jido_harness` exposes `Jido.Harness`, the stable
+   runtime-driver contract referenced by `runtime.driver`
 2. `runtime.driver: "asm"` selects the integration-owned
-   `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver`
-3. that bridge projects into provider-neutral `agent_session_manager`, which
-   itself uses `cli_subprocess_core` for subprocess, event, and provider
+   `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` in
+   `/home/home/p/g/n/jido_integration`
+3. that bridge projects into provider-neutral
+   `/home/home/p/g/n/agent_session_manager`, which itself uses
+   `/home/home/p/g/n/cli_subprocess_core` for subprocess, event, and provider
    profile foundations
 
 Connector packages should usually stop their direct dependencies at
-`jido_harness`. Do not add `agent_session_manager` or `cli_subprocess_core`
-directly to session or stream connector packages just to restate the shared
-runtime basis.
+`/home/home/p/g/n/jido_harness`. Do not add
+`/home/home/p/g/n/agent_session_manager` or
+`/home/home/p/g/n/cli_subprocess_core` directly to session or stream
+connector packages just to restate the shared runtime basis.
 
 `metadata.runtime_family.runtime_ref` names the stable public Harness handle,
 not the runtime class itself. A `:stream` capability may still publish

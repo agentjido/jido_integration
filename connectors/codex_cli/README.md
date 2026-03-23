@@ -9,17 +9,20 @@ shared common consumer-surface spine.
 ## Runtime And Auth Posture
 
 - runtime family: `:session`
-- stable runtime contract seam: `Jido.Harness`
+- stable runtime contract seam:
+  `/home/home/p/g/n/jido_harness` via `Jido.Harness`
 - public auth binding is `connection_id`
 - the authored session routing contract is explicit:
   `runtime.driver: "asm"`, `runtime.provider: :codex`, and
   `runtime.options: %{}`
 - the `asm` driver resolves through
   `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` into
-  `agent_session_manager`, with `cli_subprocess_core` below that lane
-- this connector package depends on `jido_harness` for the shared seam; it
-  does not take direct `agent_session_manager` or `cli_subprocess_core`
-  package deps
+  `/home/home/p/g/n/agent_session_manager`, with
+  `/home/home/p/g/n/cli_subprocess_core` below that lane
+- this connector package depends on `/home/home/p/g/n/jido_harness` for the
+  shared seam; it does not take direct
+  `/home/home/p/g/n/agent_session_manager` or
+  `/home/home/p/g/n/cli_subprocess_core` package deps
 - the package mints short-lived credential leases with `access_token` payloads
   for deterministic session execution
 - scope-gated admission is explicit through `session:execute`
@@ -91,9 +94,9 @@ This package owns the authored session contract, generated common consumer
 surface, deterministic Harness conformance publication, and review events.
 
 It does not own the provider-neutral session lane in
-`agent_session_manager`, the CLI subprocess foundation in
-`cli_subprocess_core`, hosted routing, or app-level operator composition above
-the connector boundary.
+`/home/home/p/g/n/agent_session_manager`, the CLI subprocess foundation in
+`/home/home/p/g/n/cli_subprocess_core`, hosted routing, or app-level operator
+composition above the connector boundary.
 
 ## Installation
 
