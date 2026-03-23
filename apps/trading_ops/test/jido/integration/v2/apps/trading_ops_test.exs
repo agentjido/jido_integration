@@ -105,12 +105,16 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert packet.targets.market_data.target_id == "target-trading-ops-market-feed"
     assert packet.targets.analyst.target_id == "target-trading-ops-analyst-session"
     assert packet.targets.operator.target_id == "target-trading-ops-operator-saas"
-    assert "asm" in packet.targets.market_data.features.feature_ids
+
+    assert Enum.sort(packet.targets.market_data.features.feature_ids) ==
+             ["asm", "market.ticks.pull"]
+
     assert packet.targets.market_data.extensions == %{runtime: %{driver: "asm"}}
-    assert "asm" in packet.targets.analyst.features.feature_ids
+
+    assert Enum.sort(packet.targets.analyst.features.feature_ids) ==
+             ["asm", "codex.exec.session"]
+
     assert packet.targets.analyst.extensions == %{runtime: %{driver: "asm"}}
-    refute "integration_stream_bridge" in packet.targets.market_data.features.feature_ids
-    refute "integration_session_bridge" in packet.targets.analyst.features.feature_ids
 
     assert packet.runs.market_pull.run.target_id == "target-trading-ops-market-feed"
     assert packet.runs.market_pull.attempt.target_id == "target-trading-ops-market-feed"
@@ -249,7 +253,7 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert workflow.analyst_session.attempt.target_id == "target-trading-ops-analyst-session"
   end
 
-  test "selects the authored asm market target when a mismatched stream bridge target is also advertised" do
+  test "selects the authored asm market target when a mismatched stream target is also advertised" do
     assert {:ok, stack} =
              TradingOps.bootstrap_reference_stack(%{
                tenant_id: "tenant-trading-review",
@@ -259,23 +263,23 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert :ok =
              V2.announce_target(
                TargetDescriptor.new!(%{
-                 target_id: "a-target-trading-ops-market-bridge",
+                 target_id: "a-target-trading-ops-market-mismatch",
                  capability_id: "market.ticks.pull",
                  runtime_class: :stream,
                  version: "1.0.0",
                  features: %{
-                   feature_ids: ["integration_stream_bridge", "market.ticks.pull"],
+                   feature_ids: ["alternate_stream_driver", "market.ticks.pull"],
                    runspec_versions: ["1.0.0"],
                    event_schema_versions: ["1.0.0"]
                  },
-                 constraints: %{workspace_root: "/srv/trading_ops/market-bridge"},
+                 constraints: %{workspace_root: "/srv/trading_ops/market-mismatch"},
                  health: :healthy,
                  location: %{
                    mode: :beam,
                    region: "test",
-                   workspace_root: "/srv/trading_ops/market-bridge"
+                   workspace_root: "/srv/trading_ops/market-mismatch"
                  },
-                 extensions: %{"runtime" => %{"driver" => "integration_stream_bridge"}}
+                 extensions: %{"runtime" => %{"driver" => "alternate_stream_driver"}}
                })
              )
 

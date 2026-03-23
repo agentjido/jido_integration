@@ -71,8 +71,9 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
 
       assert readme =~ sdk_dep, "#{path} must name its provider SDK boundary"
       refute readme =~ "Jido.Harness", "#{path} must not describe a Harness-routed path"
-      refute readme =~ "integration_session_bridge", "#{path} must not preserve bridge wording"
-      refute readme =~ "integration_stream_bridge", "#{path} must not preserve bridge wording"
+
+      refute Regex.match?(~r/\bbridge(?:d|s)?\b/i, readme),
+             "#{path} must not preserve removed bridge wording"
     end
   end
 
