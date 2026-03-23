@@ -3,12 +3,14 @@ defmodule Mix.Tasks.Jido.TaskHelpTest do
 
   import ExUnit.CaptureIO
 
+  alias Mix.Tasks.Help
+
   test "jido.conformance help describes connector acceptance expectations" do
     Mix.Task.reenable("help")
 
     output =
       capture_io(fn ->
-        Mix.Tasks.Help.run(["jido.conformance"])
+        Help.run(["jido.conformance"])
       end)
       |> normalize_whitespace()
       |> String.downcase()
@@ -23,7 +25,7 @@ defmodule Mix.Tasks.Jido.TaskHelpTest do
 
     output =
       capture_io(fn ->
-        Mix.Tasks.Help.run(["jido.integration.new"])
+        Help.run(["jido.integration.new"])
       end)
       |> normalize_whitespace()
 

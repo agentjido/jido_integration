@@ -29,8 +29,9 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.MixProject do
   defp deps do
     [
       {:jido_harness, path: "../../../jido_harness"},
-      {:agent_session_manager, path: "../../../agent_session_manager"},
-      {:boundary, path: "../../../agent_session_manager/vendor/boundary", runtime: false},
+      {:agent_session_manager, path: "../../../agent_session_manager", env: :dev},
+      {:boundary,
+       path: "../../../agent_session_manager/vendor/boundary", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

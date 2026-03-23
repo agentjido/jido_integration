@@ -81,11 +81,14 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   test "packages that compile agent_session_manager expose boundary explicitly" do
     for relative_path <- ["core/control_plane/mix.exs", "core/runtime_asm_bridge/mix.exs"] do
       mix_exs = repo_root() |> Path.join(relative_path) |> File.read!()
+      normalized_mix_exs = normalize_whitespace(mix_exs)
 
-      assert mix_exs =~ "{:agent_session_manager, path: \"../../../agent_session_manager\"}"
+      assert normalized_mix_exs =~
+               "{:agent_session_manager, path: \"../../../agent_session_manager\", env: :dev}",
+             "#{relative_path} must pin agent_session_manager to :dev so ASM sees its boundary dependency during isolated workspace builds"
 
-      assert mix_exs =~
-               "{:boundary, path: \"../../../agent_session_manager/vendor/boundary\"",
+      assert normalized_mix_exs =~
+               "{:boundary, path: \"../../../agent_session_manager/vendor/boundary\", only: [:dev, :test], runtime: false}",
              "#{relative_path} must expose boundary explicitly so isolated workspace builds can compile ASM"
     end
   end
@@ -106,4 +109,6 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   end
 
   defp repo_root, do: Path.expand("../..", __DIR__)
+
+  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
 end

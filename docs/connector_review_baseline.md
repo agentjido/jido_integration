@@ -26,8 +26,8 @@ Every connector README in this baseline should let a reviewer answer the same
 questions without guessing. The minimum package sections are:
 
 - runtime family and auth posture
-- package-local verification commands plus the root conformance and `mix ci`
-  acceptance loop
+- package-local `mix compile --warnings-as-errors`, `mix test`, and `mix docs`
+  plus the root conformance and `mix ci` acceptance loop
 - live-proof status, including an explicit "none yet" when no live proof exists
 - package boundary notes that keep hosted or app-only proof out of the
   connector contract
@@ -106,28 +106,37 @@ Reference-app proofs:
 
 ## Recommended Validation Loop
 
-From the repo root:
+Package-local connector proof commands:
+
+```bash
+cd connectors/github && mix compile --warnings-as-errors
+cd connectors/github && mix test
+cd connectors/github && mix docs
+cd connectors/notion && mix compile --warnings-as-errors
+cd connectors/notion && mix test
+cd connectors/notion && mix docs
+cd connectors/codex_cli && mix compile --warnings-as-errors
+cd connectors/codex_cli && mix test
+cd connectors/codex_cli && mix docs
+cd connectors/market_data && mix compile --warnings-as-errors
+cd connectors/market_data && mix test
+cd connectors/market_data && mix docs
+```
+
+Then finish from the repo root:
 
 ```bash
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
 mix jido.conformance Jido.Integration.V2.Connectors.Notion
 mix jido.conformance Jido.Integration.V2.Connectors.CodexCli
 mix jido.conformance Jido.Integration.V2.Connectors.MarketData
-mix monorepo.test
 mix ci
 ```
 
-Package and app proof commands:
+App proof commands stay separate because they are app-owned evidence above the
+connector package contract:
 
 ```bash
-cd connectors/github && mix compile --warnings-as-errors
-cd connectors/github && mix test
-cd connectors/notion && mix compile --warnings-as-errors
-cd connectors/notion && mix test
-cd connectors/codex_cli && mix compile --warnings-as-errors
-cd connectors/codex_cli && mix test
-cd connectors/market_data && mix compile --warnings-as-errors
-cd connectors/market_data && mix test
 cd apps/trading_ops && mix test
 cd apps/devops_incident_response && mix test
 ```

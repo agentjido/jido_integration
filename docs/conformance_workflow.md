@@ -88,7 +88,7 @@ provider connector package.
 4. add or update deterministic tests in the connector package
 5. add or update the optional `<ConnectorModule>.Conformance` companion module
    or the app-local companion surface that publishes ingress evidence
-6. run package-local `mix test` and `mix docs`
+6. run package-local `mix compile --warnings-as-errors`, `mix test`, and `mix docs`
 7. run `mix jido.conformance <ConnectorModule>` from the workspace root for the
    module that owns the published trigger evidence
 8. finish with the root monorepo gates and `mix ci`
@@ -167,8 +167,8 @@ Each fixture map should declare:
 
 `mix jido.integration.new` emits a package-local baseline conformance test and
 companion module. Non-direct scaffolds also emit a package-local
-`runtime_drivers/0` hook plus a deterministic Harness driver under
-`test_support/`. Treat that output as the starting contract, not the finished
+`runtime_drivers/0` hook plus a deterministic Harness driver under `lib/`.
+Treat that output as the starting contract, not the finished
 connector.
 
 Generated connectors still need:

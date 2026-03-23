@@ -17,7 +17,17 @@ defmodule Jido.Integration.Docs.ConformanceWorkflowTest do
     assert guide =~
              "Package-local fixtures stay package-local even though `mix jido.conformance <ConnectorModule>` runs from the workspace root."
 
+    assert guide =~
+             "run package-local `mix compile --warnings-as-errors`, `mix test`, and `mix docs`"
+
     assert guide =~ "mix ci"
+  end
+
+  test "documents non-direct scaffold runtime drivers as package-local lib code" do
+    guide = @guide_path |> File.read!() |> normalize_whitespace()
+
+    assert guide =~ "deterministic Harness driver under `lib/`."
+    refute guide =~ "`test_support/`"
   end
 
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
