@@ -37,18 +37,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
       Jido.Integration.V2.Auth.Application
     )
 
-    ensure_started(
-      [Jido.Integration.V2.SessionKernel.SessionStore],
-      Jido.Integration.V2.SessionKernel.Supervisor,
-      Jido.Integration.V2.SessionKernel.Application
-    )
-
-    ensure_started(
-      [Jido.Integration.V2.StreamRuntime.Store],
-      Jido.Integration.V2.StreamRuntime.Supervisor,
-      Jido.Integration.V2.StreamRuntime.Application
-    )
-
+    ensure_stopped(Jido.Integration.V2.SessionKernel.Supervisor)
+    ensure_stopped(Jido.Integration.V2.StreamRuntime.Supervisor)
     V2.reset!()
     :ok
   end
@@ -124,7 +114,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
     refute_receive {:generated_invoke, _request}
   end
 
-  test "generated actions execute the full GitHub A0 slice through the real facade" do
+  test "generated actions execute the full GitHub A0 slice through the real facade without bridge-era runtime apps" do
+    assert_bridge_runtime_apps_stopped()
     register_connector!()
     connection_id = install_connection!()
 
@@ -153,6 +144,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
       assert_receive {:transport_request, request, _context}
       Fixtures.assert_request(spec.capability_id, request)
     end)
+
+    assert_bridge_runtime_apps_stopped()
   end
 
   test "generated plugin exposes the real Jido.Plugin contract over the generated action bundle" do
@@ -230,13 +223,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
     if Enum.all?(required_processes, &Process.whereis/1) do
       :ok
     else
-      if pid = Process.whereis(supervisor_name) do
-        try do
-          GenServer.stop(pid, :normal)
-        catch
-          :exit, _reason -> :ok
-        end
-      end
+      ensure_stopped(supervisor_name)
 
       case application_module.start(:normal, []) do
         {:ok, _pid} ->
@@ -249,5 +236,20 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
           raise "failed to start #{inspect(supervisor_name)}: #{inspect(reason)}"
       end
     end
+  end
+
+  defp ensure_stopped(supervisor_name) do
+    if pid = Process.whereis(supervisor_name) do
+      try do
+        GenServer.stop(pid, :normal)
+      catch
+        :exit, _reason -> :ok
+      end
+    end
+  end
+
+  defp assert_bridge_runtime_apps_stopped do
+    refute Process.whereis(Jido.Integration.V2.SessionKernel.Supervisor)
+    refute Process.whereis(Jido.Integration.V2.StreamRuntime.Supervisor)
   end
 end

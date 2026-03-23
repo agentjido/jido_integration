@@ -4,6 +4,7 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
   @direct_connectors [
     %{
       mix_path: Path.expand("../../connectors/github/mix.exs", __DIR__),
+      test_root: Path.expand("../../connectors/github/test", __DIR__),
       catalog_path:
         Path.expand(
           "../../connectors/github/lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex",
@@ -13,6 +14,7 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
     },
     %{
       mix_path: Path.expand("../../connectors/notion/mix.exs", __DIR__),
+      test_root: Path.expand("../../connectors/notion/test", __DIR__),
       catalog_path:
         Path.expand(
           "../../connectors/notion/lib/jido/integration/v2/connectors/notion/operation_catalog.ex",
@@ -52,6 +54,31 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
 
       refute catalog =~ "runtime_class: :stream",
              "#{catalog_path} must not publish stream runtime classes"
+    end)
+  end
+
+  test "direct connector tests do not boot bridge-era runtime packages" do
+    Enum.each(@direct_connectors, fn %{test_root: test_root} ->
+      test_suite =
+        test_root
+        |> Path.join("**/*.exs")
+        |> Path.wildcard()
+        |> Enum.map_join("\n", &File.read!/1)
+
+      refute test_suite =~ "Jido.Integration.V2.SessionKernel.Application",
+             "#{test_root} must not start SessionKernel for direct connector proofs"
+
+      refute test_suite =~ "Jido.Integration.V2.SessionKernel.SessionStore",
+             "#{test_root} must not require SessionKernel storage for direct connector proofs"
+
+      refute test_suite =~ "Jido.Integration.V2.StreamRuntime.Application",
+             "#{test_root} must not start StreamRuntime for direct connector proofs"
+
+      refute test_suite =~ "Jido.Integration.V2.StreamRuntime.Store",
+             "#{test_root} must not require StreamRuntime storage for direct connector proofs"
+
+      refute test_suite =~ "Jido.Harness",
+             "#{test_root} must not route direct connector proofs through Jido.Harness"
     end)
   end
 end
