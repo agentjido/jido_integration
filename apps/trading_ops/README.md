@@ -62,11 +62,12 @@ It covers:
 - durable target ids on runs, attempts, and events
 - durable review artifacts for each runtime family
 - market target descriptors that advertise the authored Harness `asm` driver
-  instead of the legacy stream bridge
+  and refuse same-capability descriptors that do not publish the required
+  authored `asm` feature
 - analyst target descriptors that advertise the authored Harness `asm` driver
-  instead of the legacy session bridge
+  and refuse mismatched `jido_session` descriptors for the same capability
 - non-direct target lookup that requires the authored `asm` feature so a
-  same-capability bridge or mismatched-driver descriptor is not selected by
+  mismatched `jido_session` or mismatched-driver descriptor is not selected by
   mistake
 
 Package tests keep the direct GitHub step offline by forcing the connector's

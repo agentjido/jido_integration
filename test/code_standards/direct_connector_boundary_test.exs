@@ -86,6 +86,9 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
 
       refute proof_suite =~ "Jido.Harness",
              "#{test_root} must not route direct connector proofs through Jido.Harness"
+
+      refute proof_suite =~ "HarnessRuntime.SessionStore",
+             "#{package_root} must not name HarnessRuntime.SessionStore in direct proofs or example support"
     end)
   end
 end

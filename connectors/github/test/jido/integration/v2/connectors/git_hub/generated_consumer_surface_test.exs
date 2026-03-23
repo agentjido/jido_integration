@@ -28,8 +28,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
     ensure_started(
       [
         Jido.Integration.V2.ControlPlane.Registry,
-        Jido.Integration.V2.ControlPlane.RunLedger,
-        Jido.Integration.V2.HarnessRuntime.SessionStore
+        Jido.Integration.V2.ControlPlane.RunLedger
       ],
       Jido.Integration.V2.ControlPlane.Supervisor,
       Jido.Integration.V2.ControlPlane.Application
