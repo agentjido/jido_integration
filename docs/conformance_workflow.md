@@ -11,6 +11,8 @@ Example:
 
 ```bash
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix jido.conformance Jido.Integration.V2.Connectors.MarketData
+mix jido.conformance Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector
 mix jido.conformance Jido.Integration.V2.Connectors.Notion
 ```
 
@@ -53,6 +55,10 @@ change the root task shape.
 
 For a connector package under `connectors/<name>/`:
 
+Hosted proofs that intentionally stay app-local use the same workflow, but the
+conformance target is the app-owned connector module instead of the shared
+provider connector package.
+
 1. implement or update the connector `manifest/0`
 2. author auth, catalog, operation, and trigger entries in that manifest rather than hand-writing executable capabilities
    Keep `auth.requested_scopes` as the authored superset of every operation and
@@ -63,8 +69,10 @@ For a connector package under `connectors/<name>/`:
    deps in that package `mix.exs`
 4. add or update deterministic tests in the connector package
 5. add or update the optional `<ConnectorModule>.Conformance` companion module
+   or the app-local companion surface that publishes ingress evidence
 6. run package-local `mix test` and `mix docs`
-7. run `mix jido.conformance <ConnectorModule>` from the workspace root
+7. run `mix jido.conformance <ConnectorModule>` from the workspace root for the
+   module that owns the published trigger evidence
 8. finish with the root monorepo gates and `mix ci`
 
 For thin provider-SDK connectors such as `connectors/notion`, deterministic
@@ -84,8 +92,12 @@ The companion module may expose:
 - `fixtures/0`: deterministic execution fixtures for runtime/result review
 - `ingress_definitions/0`: ingress definitions for trigger-capable connectors
 
-The companion module returns plain maps so the connector package does not need
+The companion module returns plain maps so the publishing package does not need
 to depend on `core/conformance`.
+
+Hosted webhook proofs can use the same companion pattern from an app-local
+connector module when trigger ownership intentionally lives above the shared
+connector package.
 
 ### Fixture Shape
 

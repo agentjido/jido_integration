@@ -235,12 +235,18 @@ mix quality
 mix docs.all
 mix ci
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix jido.conformance Jido.Integration.V2.Connectors.MarketData
+mix jido.conformance Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector
 mix jido.conformance Jido.Integration.V2.Connectors.Notion
 mix jido.integration.new acme_crm --runtime-class direct
 mix jido.integration.new analyst_cli --runtime-class session --runtime-driver asm
 ```
 
 `mix ci` is the main acceptance gate.
+
+Trigger-capable proof surfaces now include both connector-local common poll
+proofs and app-local hosted webhook proofs. Run root conformance against the
+module that actually owns the published `ingress_definitions/0` evidence.
 
 ## Shortcuts
 

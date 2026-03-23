@@ -140,7 +140,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
     assert Code.ensure_loaded?(conformance_module)
     assert function_exported?(conformance_module, :ingress_definitions, 0)
 
-    [definition] = apply(conformance_module, :ingress_definitions, [])
+    [definition] = conformance_module.ingress_definitions()
 
     assert definition.source == :webhook
     assert definition.connector_id == manifest.connector
