@@ -61,6 +61,29 @@ Hosted webhook routing is not a runtime class. If the proof depends on route
 registration, secret resolution, or async transport, keep that proof in an app
 or package above the connector rather than forcing it into the scaffold.
 
+## Name The Runtime Basis In This Order
+
+When documenting or reviewing a non-direct connector, describe the stack in
+this order:
+
+1. `Jido.Harness` is the stable runtime-driver contract exposed by
+   `runtime.driver`
+2. `runtime.driver: "asm"` selects the integration-owned
+   `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver`
+3. that bridge projects into provider-neutral `agent_session_manager`, which
+   itself uses `cli_subprocess_core` for subprocess, event, and provider
+   profile foundations
+
+Connector packages should usually stop their direct dependencies at
+`jido_harness`. Do not add `agent_session_manager` or `cli_subprocess_core`
+directly to session or stream connector packages just to restate the shared
+runtime basis.
+
+`metadata.runtime_family.runtime_ref` names the stable public Harness handle,
+not the runtime class itself. A `:stream` capability may still publish
+`runtime_ref: :session` when the selected Harness driver exposes session-scoped
+handles.
+
 ## Generated Package Contract
 
 The emitted package lands under `connectors/<name>/` by default and uses
@@ -161,6 +184,10 @@ If a `:session` or `:stream` operation is published as
 Connector-local non-direct operations may omit `metadata.runtime_family`, but
 that is an explicit authored exception, not the default posture for those
 runtime families.
+
+Keep those keys provider-neutral. They should describe the public Harness seam
+and lifecycle posture, not ASM lane internals, provider-profile modules, or
+CLI subprocess implementation details.
 
 ## Current Options
 

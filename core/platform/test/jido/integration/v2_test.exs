@@ -458,7 +458,7 @@ defmodule Jido.Integration.V2Test do
     assert Enum.count(packet.events, &(&1.type == "artifact.recorded")) == 2
   end
 
-  test "session connector publishes the shared asm-backed common surface metadata" do
+  test "session connector publishes Harness driver metadata on the shared common surface" do
     register_connector!(@codex_cli.connector)
 
     assert {:ok, capability} = V2.fetch_capability(@codex_cli.capability_id)
@@ -468,6 +468,8 @@ defmodule Jido.Integration.V2Test do
              provider: :codex,
              options: %{}
            }
+
+    assert capability.metadata.runtime.driver in HarnessRuntime.target_driver_ids()
 
     assert capability.metadata.consumer_surface == %{
              mode: :common,
@@ -485,7 +487,7 @@ defmodule Jido.Integration.V2Test do
            }
   end
 
-  test "stream connector publishes the shared asm-backed common surface metadata" do
+  test "stream connector publishes Harness driver metadata with a session-scoped runtime ref" do
     register_connector!(@market_data.connector)
 
     assert {:ok, capability} = V2.fetch_capability(@market_data.capability_id)
@@ -495,6 +497,8 @@ defmodule Jido.Integration.V2Test do
              provider: :claude,
              options: %{}
            }
+
+    assert capability.metadata.runtime.driver in HarnessRuntime.target_driver_ids()
 
     assert capability.metadata.consumer_surface == %{
              mode: :common,

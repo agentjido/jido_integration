@@ -14,5 +14,7 @@ This package is compatibility-only in Phase 0. The workspace scaffold no longer
 generates new packages against this bridge.
 
 New stream connectors should not treat this package as the final architecture.
-Compose them manually against the real Harness target kernels (`asm` or
-`jido_session`) instead of deepening this shim.
+Compose them manually against the real `Jido.Harness` target drivers (`asm` or
+`jido_session`) instead of deepening this shim. When the selected driver is
+`asm`, the provider-neutral session lane lives in `agent_session_manager`
+above `cli_subprocess_core`.

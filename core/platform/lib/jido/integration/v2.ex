@@ -25,6 +25,13 @@ defmodule Jido.Integration.V2 do
   behind the auth and control-plane seam. The shared operator helpers remain
   read-only projections over durable auth and control-plane truth rather than
   becoming a second store, policy engine, or runtime owner.
+
+  Session and stream execution stay above the provider-neutral runtime basis.
+  Published `runtime.driver` values name `Jido.Harness` driver ids such as
+  `asm`; that path resolves through
+  `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` into
+  `agent_session_manager`, with `cli_subprocess_core` below ASM. Durable auth,
+  control-plane, and operator truth still remain owned by `jido_integration`.
   """
 
   alias Jido.Integration.V2.ArtifactRef

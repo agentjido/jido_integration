@@ -12,7 +12,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.MixProject do
       dialyzer: dialyzer(),
       docs: docs(),
       name: "Jido Integration V2 Runtime ASM Bridge",
-      description: "Integration-owned ASM-backed Harness runtime driver"
+      description: "Integration-owned `asm` Jido.Harness runtime driver"
     ]
   end
 

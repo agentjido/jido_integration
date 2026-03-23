@@ -12,7 +12,7 @@ defmodule Jido.Integration.V2.Connectors.MarketData.MixProject do
       dialyzer: dialyzer(),
       docs: docs(),
       name: "Jido Integration V2 Market Data Connector",
-      description: "Example ASM-backed stream connector package for feed-style capabilities"
+      description: "Example stream connector package using the authored Harness `asm` driver"
     ]
   end
 

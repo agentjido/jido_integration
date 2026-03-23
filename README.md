@@ -26,6 +26,7 @@ jido_integration/
     ingress/                # trigger normalization and durable admission
     policy/                 # pre-attempt policy and shed decisions
     direct_runtime/         # direct capability execution
+    runtime_asm_bridge/     # integration-owned `asm` Harness driver projection
     session_kernel/         # reusable session execution
     stream_runtime/         # reusable stream execution
     store_local/            # restart-safe local durability tier
@@ -35,8 +36,8 @@ jido_integration/
   connectors/
     github/                # direct GitHub connector + live acceptance runbook
     notion/                # direct Notion connector + package-local live proofs
-    codex_cli/             # ASM-backed session connector + generated common surface
-    market_data/           # stream baseline connector
+    codex_cli/             # Harness-routed session connector via `asm`
+    market_data/           # Harness-routed stream connector via `asm`
   apps/
     trading_ops/           # cross-runtime operator proof
     devops_incident_response/ # hosted webhook + async recovery proof
@@ -54,6 +55,10 @@ jido_integration/
   invocation.
 - `core/conformance` owns reusable connector review logic behind the root
   `mix jido.conformance` connector acceptance command.
+- non-direct runtime ownership stays below the integration layer.
+  `Jido.Harness` is the stable runtime-driver contract seam; the authored
+  `asm` driver is implemented by `core/runtime_asm_bridge`, which projects
+  into `agent_session_manager` above `cli_subprocess_core`.
 - `core/dispatch_runtime` and `core/webhook_router` stay as child packages.
   Hosted async and webhook behavior does not move back into the root or the
   facade package.
@@ -149,6 +154,9 @@ The current surface also proves:
   truth
 - public invocation binds auth through `connection_id`; `credential_ref`
   remains internal execution plumbing
+- session and stream connector packages depend on `jido_harness` for the
+  shared seam; they do not take direct `agent_session_manager` or
+  `cli_subprocess_core` package dependencies
 - Notion OAuth control flows stay in the auth/install lifecycle instead of the
   normal invoke surface
 - `InvocationRequest` is the typed public invoke object

@@ -24,6 +24,9 @@ Core runtime graph:
 - `core/policy`
   - pre-attempt allow, deny, and shed decisions
 - `core/direct_runtime`
+- `core/runtime_asm_bridge`
+  - integration-owned projection from the authored `Jido.Harness` `asm`
+    driver into `agent_session_manager`
 - `core/session_kernel`
 - `core/stream_runtime`
 - `core/dispatch_runtime`
@@ -40,14 +43,32 @@ Durability tiers:
 - `core/store_local` for restart-safe local durability
 - `core/store_postgres` for the shared database-backed tier
 
+## Runtime Basis Below Non-Direct Capabilities
+
+Session and stream capabilities stay above a provider-neutral runtime lane:
+
+- `Jido.Harness` is the stable runtime-driver contract consumed by
+  `core/control_plane`
+- authored `runtime.driver` ids such as `asm` stay on connector capabilities
+  and target requirements instead of being inferred from targets or apps
+- `core/runtime_asm_bridge` is the integration-owned projection for the `asm`
+  driver; it adapts the Harness seam to `agent_session_manager`
+- `agent_session_manager` keeps provider-neutral session orchestration and lane
+  selection below `jido_integration` ownership
+- `cli_subprocess_core` remains the subprocess, event, and provider-profile
+  foundation below ASM
+- `metadata.runtime_family.runtime_ref` names the stable Harness handle shape,
+  so a `:stream` capability may honestly publish `:session` when the selected
+  driver exposes session-scoped handles
+
 Connector packages:
 
 - `connectors/github`
 - `connectors/notion`
 - `connectors/codex_cli`
 - `connectors/market_data`
-  - publishes the ASM-backed stream operation proof plus the first common
-    projected poll trigger proof
+  - publishes the Harness-routed stream operation proof through the authored
+    `asm` driver plus the first common projected poll trigger proof
   - projects one generated `Jido.Sensor` and plugin subscription surface from
     authored trigger truth
 
@@ -64,6 +85,9 @@ Proof apps:
 - `core/platform` does not pull connectors at runtime; connector packages are
   test-only deps there
 - apps declare every child package whose modules they reference directly
+- session and stream connector packages depend on `jido_harness` for the
+  shared seam rather than taking direct `agent_session_manager` or
+  `cli_subprocess_core` deps
 
 ## Public Invocation And Discovery
 

@@ -7,8 +7,9 @@ This app proves one reviewable workflow across the public facade plus the three
 runtime families.
 
 Its session proof now tracks the accepted Phase 4 session seam: the analyst
-target announces `asm`, the common consumer surface stays `codex.exec.session`,
-and runtime session state remains outside `jido_integration`.
+target announces the authored Harness driver `asm`, the common consumer
+surface stays `codex.exec.session`, and runtime session state remains below the
+durable integration layer.
 
 ## Current Scope
 
@@ -60,10 +61,10 @@ It covers:
 - explicit downstream `market.ticks.pull` invocation after trigger admission
 - durable target ids on runs, attempts, and events
 - durable review artifacts for each runtime family
-- market target descriptors that advertise the ASM-backed stream seam instead of
-  the legacy stream bridge
-- analyst target descriptors that advertise the ASM-backed session seam instead
-  of the legacy session bridge
+- market target descriptors that advertise the authored Harness `asm` driver
+  instead of the legacy stream bridge
+- analyst target descriptors that advertise the authored Harness `asm` driver
+  instead of the legacy session bridge
 - non-direct target lookup that requires the authored `asm` feature so a
   same-capability bridge or mismatched-driver descriptor is not selected by
   mistake

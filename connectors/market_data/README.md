@@ -7,9 +7,17 @@ proof.
 
 - runtime family: `:stream` for `market.ticks.pull`, plus one connector-owned
   direct poll trigger for `market.alert.detected`
+- stable runtime contract seam: `Jido.Harness`
 - public auth binding is `connection_id`
 - the authored stream routing contract is explicit through
-  `runtime.driver: "asm"`
+  `runtime.driver: "asm"`, `runtime.provider: :claude`, and
+  `runtime.options: %{}`
+- the `asm` driver resolves through
+  `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` into
+  `agent_session_manager`, with `cli_subprocess_core` below that lane
+- this connector package depends on `jido_harness` for the shared seam; it
+  does not take direct `agent_session_manager` or `cli_subprocess_core`
+  package deps
 - the package uses short-lived credential leases for deterministic stream pulls
   and poll-trigger review
 - scope-gated admission is explicit through `market:read`
@@ -20,8 +28,12 @@ This package publishes the accepted stream-family authored operation shape:
 
 - capability id: `market.ticks.pull`
 - shared common-surface projection through `consumer_surface.mode: :common`
-- canonical `metadata.runtime_family` keys for an ASM-owned stream-capable
-  session seam
+- canonical provider-neutral `metadata.runtime_family` keys for a stream
+  capability routed through the Harness `asm` driver
+
+For this package, `metadata.runtime_family.runtime_ref: :session` is
+intentional. The capability is `:stream`, but the selected Harness driver
+returns a session-scoped handle that can be reused across pulls.
 
 It also publishes one common poll trigger:
 
@@ -46,8 +58,9 @@ Proves:
 - durable checkpoint, dedupe, and ingress admission truth stay in
   `jido_integration`
 - lease-bound auth and durable review artifacts/events for each batch
-- deterministic ASM-backed conformance through a package-local Harness test
-  driver
+- deterministic conformance through a package-local Harness test driver bound
+  to `asm`, while the reusable runtime lane remains below the connector
+  package
 
 ## Package Verification
 
@@ -79,7 +92,9 @@ conformance.
 
 This package owns the stream capability contract, the connector-owned poll
 trigger contract, the generated consumer surface, and the package-local
-Harness-backed conformance seam.
+Harness conformance seam.
 
-It does not own hosted webhook routing, async dispatch handlers, or app-level
-operator composition above the connector boundary.
+It does not own the provider-neutral session lane in
+`agent_session_manager`, the CLI subprocess foundation in
+`cli_subprocess_core`, hosted webhook routing, async dispatch handlers, or
+app-level operator composition above the connector boundary.

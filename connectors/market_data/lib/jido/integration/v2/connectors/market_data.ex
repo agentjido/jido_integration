@@ -2,8 +2,9 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
   @moduledoc """
   Example stream connector package.
 
-  This connector publishes the canonical ASM-backed stream-family authored
-  shape on the shared common consumer-surface spine.
+  This connector publishes the canonical stream-family authored shape on the
+  shared common consumer-surface spine through the `Jido.Harness` `asm`
+  driver.
   """
 
   @behaviour Jido.Integration.V2.Connector

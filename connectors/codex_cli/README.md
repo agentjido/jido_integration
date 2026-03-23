@@ -1,6 +1,7 @@
 # Jido Integration V2 Codex CLI Connector
 
-Example external session connector package.
+Example external session connector package using the authored `Jido.Harness`
+`asm` driver.
 
 This package publishes the canonical session-family authored shape on the
 shared common consumer-surface spine.
@@ -8,10 +9,17 @@ shared common consumer-surface spine.
 ## Runtime And Auth Posture
 
 - runtime family: `:session`
+- stable runtime contract seam: `Jido.Harness`
 - public auth binding is `connection_id`
 - the authored session routing contract is explicit:
   `runtime.driver: "asm"`, `runtime.provider: :codex`, and
   `runtime.options: %{}`
+- the `asm` driver resolves through
+  `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` into
+  `agent_session_manager`, with `cli_subprocess_core` below that lane
+- this connector package depends on `jido_harness` for the shared seam; it
+  does not take direct `agent_session_manager` or `cli_subprocess_core`
+  package deps
 - the package mints short-lived credential leases with `access_token` payloads
   for deterministic session execution
 - scope-gated admission is explicit through `session:execute`
@@ -28,12 +36,16 @@ Its common-surface projection is also explicit:
 - `consumer_surface.normalized_id: "codex.exec.session"`
 - `consumer_surface.action_name: "codex_exec_session"`
 - canonical `metadata.runtime_family` for connection affinity, resumability,
-  approval posture, stream capability, lifecycle ownership, and durable
-  runtime references
+  approval posture, stream capability, lifecycle ownership, and the stable
+  Harness runtime reference
+
+For this package, `metadata.runtime_family.runtime_ref: :session` names the
+public Harness handle shape. It does not claim ownership of ASM's internal
+process state.
 
 The generated consumer surface stays stateless. Session lifecycle, parser
-state, and transport state remain outside `jido_integration` on the accepted
-Harness seam.
+state, and transport state remain outside the connector package on the
+accepted Harness seam.
 
 Proves:
 
@@ -44,8 +56,9 @@ Proves:
 - strict session policy posture for environment, approvals, workspace scope,
   and tool allowlists
 - lease-bound auth and connector-specific review artifacts/events
-- session reuse keyed by the ASM-backed Harness session handle while durable
-  review truth keeps only the stable runtime reference id
+- session reuse keyed by the stable Harness session handle returned by the
+  authored `asm` driver while durable review truth keeps only the runtime
+  reference id
 
 ## Package Verification
 
@@ -75,10 +88,12 @@ is deterministic package tests plus root conformance.
 ## Package Boundary
 
 This package owns the authored session contract, generated common consumer
-surface, deterministic Harness-backed conformance driver, and review events.
+surface, deterministic Harness conformance publication, and review events.
 
-It does not own session runtime infrastructure, hosted routing, or app-level
-operator composition above the connector boundary.
+It does not own the provider-neutral session lane in
+`agent_session_manager`, the CLI subprocess foundation in
+`cli_subprocess_core`, hosted routing, or app-level operator composition above
+the connector boundary.
 
 ## Installation
 

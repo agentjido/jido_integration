@@ -2,8 +2,9 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
   @moduledoc """
   Example external session connector package.
 
-  This connector publishes the canonical ASM-backed session-family authored
-  shape on the shared common consumer-surface spine.
+  This connector publishes the canonical session-family authored shape on the
+  shared common consumer-surface spine through the `Jido.Harness` `asm`
+  driver.
   """
 
   @behaviour Jido.Integration.V2.Connector
