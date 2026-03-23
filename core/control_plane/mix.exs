@@ -23,6 +23,9 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
   end
 
   defp deps do
+    agent_session_manager_path =
+      basis_repo_path("AGENT_SESSION_MANAGER_PATH", "../../../agent_session_manager")
+
     [
       {:jido_integration_v2_contracts, path: "../contracts"},
       {:jido_integration_v2_auth, path: "../auth"},
@@ -31,10 +34,13 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       {:jido_integration_v2_runtime_asm_bridge, path: "../runtime_asm_bridge"},
       {:jido_integration_v2_session_kernel, path: "../session_kernel"},
       {:jido_integration_v2_stream_runtime, path: "../stream_runtime"},
-      {:jido_harness, path: "../../../jido_harness"},
-      {:agent_session_manager, path: "../../../agent_session_manager", env: :dev},
+      {:jido_harness,
+       path: basis_repo_path("JIDO_HARNESS_PATH", "../../../jido_harness"), override: true},
+      {:agent_session_manager, path: agent_session_manager_path, env: :dev},
       {:boundary,
-       path: "../../../agent_session_manager/vendor/boundary", only: [:dev, :test], runtime: false},
+       path: Path.join(agent_session_manager_path, "vendor/boundary"),
+       only: [:dev, :test],
+       runtime: false},
       {:jido_session, path: "../../../jido_session"},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
@@ -52,5 +58,9 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       main: "readme",
       extras: ["README.md"]
     ]
+  end
+
+  defp basis_repo_path(env_var, default_path) do
+    System.get_env(env_var, default_path)
   end
 end

@@ -57,7 +57,7 @@ Current hardening guarantees:
 - `CredentialRef` remains durable while `CredentialLease` is the short-lived execution boundary
 - `Credential` carries durable subject/scope/auth metadata plus secret-bearing fields that are meant to stay behind auth APIs
 - `CredentialLease` carries only the execution-time payload needed for a bounded lease lifetime
-- `TargetDescriptor` uses a separate target-capability namespace from connector capabilities
+- `TargetDescriptor` matches against authored capability ids while remaining a compatibility and location advertisement rather than a second override plane
 - `TargetDescriptor.authored_requirements/2` turns authored capability truth into compatibility requirements so non-direct runtime drivers stay primary and target lookups do not drift into ad hoc override logic
 - `TriggerRecord` preserves trigger-to-run causation plus rejection truth at the control-plane boundary
 - `TriggerCheckpoint` keeps polling cursors explicit and durable

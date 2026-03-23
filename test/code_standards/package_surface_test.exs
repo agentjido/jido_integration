@@ -84,11 +84,15 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       normalized_mix_exs = normalize_whitespace(mix_exs)
 
       assert normalized_mix_exs =~
-               "{:agent_session_manager, path: \"../../../agent_session_manager\", env: :dev}",
+               "agent_session_manager_path = basis_repo_path(\"AGENT_SESSION_MANAGER_PATH\", \"../../../agent_session_manager\")",
+             "#{relative_path} must resolve agent_session_manager through the shared basis-repo path helper"
+
+      assert normalized_mix_exs =~
+               "{:agent_session_manager, path: agent_session_manager_path, env: :dev}",
              "#{relative_path} must pin agent_session_manager to :dev so ASM sees its boundary dependency during isolated workspace builds"
 
       assert normalized_mix_exs =~
-               "{:boundary, path: \"../../../agent_session_manager/vendor/boundary\", only: [:dev, :test], runtime: false}",
+               "{:boundary, path: Path.join(agent_session_manager_path, \"vendor/boundary\"), only: [:dev, :test], runtime: false}",
              "#{relative_path} must expose boundary explicitly so isolated workspace builds can compile ASM"
     end
   end

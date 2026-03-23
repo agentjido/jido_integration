@@ -229,8 +229,10 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     refute session_mix =~ ~s(["lib", "test_support"])
     refute stream_mix =~ ~s(["lib", "test_support"])
-    assert session_mix =~ "{:jido_harness,"
-    assert stream_mix =~ "{:jido_harness,"
+    assert session_mix =~ "basis_repo_path(\"JIDO_HARNESS_PATH\""
+    assert stream_mix =~ "basis_repo_path(\"JIDO_HARNESS_PATH\""
+    assert session_mix =~ "override: true"
+    assert stream_mix =~ "override: true"
   end
 
   @tag timeout: 180_000

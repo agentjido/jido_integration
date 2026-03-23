@@ -32,7 +32,9 @@ defmodule <%= @project_module %> do
 <%= if @direct_runtime do %>      {:jido_action, "~> 2.1"},
       {:jido_integration_v2_direct_runtime, path: "<%= @runtime_dep_path %>", override: true},
 <% end %>      {:jido_integration_v2_conformance, path: "<%= @conformance_dep_path %>", only: :test, runtime: false},
-<%= if @include_test_support do %>      {:jido_harness, path: "<%= @jido_harness_dep_path %>"},
+<%= if @include_test_support do %>      {:jido_harness,
+       path: basis_repo_path("JIDO_HARNESS_PATH", "<%= @jido_harness_dep_path %>"),
+       override: true},
 <% end %>      {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
@@ -49,4 +51,9 @@ defmodule <%= @project_module %> do
       extras: ["README.md"]
     ]
   end
-end
+
+<%= if @include_test_support do %>  defp basis_repo_path(env_var, default_path) do
+    System.get_env(env_var, default_path)
+  end
+
+<% end %>end

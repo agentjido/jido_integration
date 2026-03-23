@@ -29,7 +29,8 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.MixProject do
       {:jido, "~> 2.1"},
       {:jido_action, "~> 2.1"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
-      {:jido_harness, path: "../../../jido_harness"},
+      {:jido_harness,
+       path: basis_repo_path("JIDO_HARNESS_PATH", "../../../jido_harness"), override: true},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
@@ -46,5 +47,9 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.MixProject do
       main: "readme",
       extras: ["README.md"]
     ]
+  end
+
+  defp basis_repo_path(env_var, default_path) do
+    System.get_env(env_var, default_path)
   end
 end

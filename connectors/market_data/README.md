@@ -26,8 +26,8 @@ This package publishes the accepted stream-family authored operation shape:
 It also publishes one common poll trigger:
 
 - capability id: `market.alert.detected`
-- generated sensor module:
-  `Jido.Integration.V2.Connectors.MarketData.Generated.Sensors.MarketAlertsDetected`
+- generated sensor module resolved through
+  `Jido.Integration.V2.ConsumerProjection.sensor_module/2`
 - generated plugin subscription surface derived from that trigger projection
 - matching `ingress_definitions/0` evidence for the poll-trigger boundary
 - explicit `policy.environment.allowed` and `policy.sandbox.allowed_tools`

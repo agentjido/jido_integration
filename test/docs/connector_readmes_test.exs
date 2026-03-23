@@ -45,5 +45,16 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
              "No package-local live proof exists yet"
   end
 
+  test "market_data README keeps generated sensor references on the public projection contract" do
+    market_data_readme =
+      readme(Path.expand("../../connectors/market_data/README.md", __DIR__))
+
+    refute market_data_readme =~
+             "Jido.Integration.V2.Connectors.MarketData.Generated.Sensors.MarketAlertsDetected"
+
+    assert market_data_readme =~
+             "`Jido.Integration.V2.ConsumerProjection.sensor_module/2`"
+  end
+
   defp readme(path), do: File.read!(path)
 end
