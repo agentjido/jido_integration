@@ -85,6 +85,7 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
     previous_runtime_drivers =
       Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
 
+    Application.delete_env(:jido_integration_v2_control_plane, :runtime_drivers)
     HarnessRuntime.reset!()
 
     on_exit(fn ->
@@ -106,21 +107,15 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
     :ok
   end
 
-  test "publishes asm and jido_session as the only target Harness driver ids" do
+  test "publishes asm and jido_session as the only built-in Harness driver ids" do
     assert HarnessRuntime.target_driver_ids() == ["asm", "jido_session"]
+    assert HarnessRuntime.driver_modules() |> Map.keys() |> Enum.sort() == ["asm", "jido_session"]
   end
 
-  test "keeps integration-owned bridge drivers available only as compatibility shims" do
-    assert HarnessRuntime.compatibility_driver_ids() == [
-             "integration_session_bridge",
-             "integration_stream_bridge"
-           ]
-
-    assert {:ok, Jido.Integration.V2.SessionKernel.HarnessDriver} =
-             HarnessRuntime.driver_module("integration_session_bridge")
-
-    assert {:ok, Jido.Integration.V2.StreamRuntime.HarnessDriver} =
-             HarnessRuntime.driver_module("integration_stream_bridge")
+  test "does not resolve removed bridge runtime drivers" do
+    refute function_exported?(HarnessRuntime, :compatibility_driver_ids, 0)
+    assert :error = HarnessRuntime.driver_module(removed_session_bridge_id())
+    assert :error = HarnessRuntime.driver_module(removed_stream_bridge_id())
   end
 
   test "resolves asm to the target Harness runtime driver" do
@@ -275,5 +270,13 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
       location: %{mode: :beam, region: "test", workspace_root: "/tmp/runtime"},
       extensions: %{"runtime" => runtime_extensions}
     })
+  end
+
+  defp removed_session_bridge_id, do: removed_bridge_id("session")
+  defp removed_stream_bridge_id, do: removed_bridge_id("stream")
+
+  defp removed_bridge_id(kind) do
+    ["integration", kind, "bridge"]
+    |> Enum.join("_")
   end
 end

@@ -15,8 +15,9 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
     assert guide =~
              "mix jido.integration.new market_feed --runtime-class stream --runtime-driver asm"
 
-    assert guide =~ "never generate `integration_session_bridge` or `integration_stream_bridge`"
     assert guide =~ "There is no implicit `asm` fallback for `:session` or `:stream` routing."
+    refute guide =~ removed_session_bridge_id()
+    refute guide =~ removed_stream_bridge_id()
     refute guide =~ "The workspace scaffold currently supports direct connectors only."
   end
 
@@ -37,4 +38,12 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
   end
 
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+
+  defp removed_session_bridge_id, do: removed_bridge_id("session")
+  defp removed_stream_bridge_id, do: removed_bridge_id("stream")
+
+  defp removed_bridge_id(kind) do
+    ["integration", kind, "bridge"]
+    |> Enum.join("_")
+  end
 end

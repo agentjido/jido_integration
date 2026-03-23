@@ -38,8 +38,8 @@ Pick the runtime class based on the connector contract you intend to publish:
 
 The workspace scaffold supports all three runtime classes, but non-direct
 packages require an explicit Harness runtime-driver selection. The scaffold
-will never generate `integration_session_bridge` or `integration_stream_bridge`
-defaults.
+only emits the intended non-direct driver ids and does not invent a legacy
+bridge default.
 
 Accepted non-direct runtime drivers are:
 

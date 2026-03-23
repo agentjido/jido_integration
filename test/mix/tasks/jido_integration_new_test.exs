@@ -205,13 +205,15 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     session_mix = File.read!(Path.join(session_package_root, "mix.exs"))
     stream_mix = File.read!(Path.join(stream_package_root, "mix.exs"))
+    session_readme = File.read!(Path.join(session_package_root, "README.md"))
+    stream_readme = File.read!(Path.join(stream_package_root, "README.md"))
 
     assert session_connector =~ ~s(driver: "jido_session")
     assert stream_connector =~ ~s(driver: "asm")
     assert session_connector =~ "mode: :connector_local"
     assert stream_connector =~ "mode: :connector_local"
-    refute session_connector =~ "integration_session_bridge"
-    refute stream_connector =~ "integration_stream_bridge"
+    refute session_connector =~ removed_session_bridge_id()
+    refute stream_connector =~ removed_stream_bridge_id()
 
     assert File.exists?(
              Path.join(
@@ -233,6 +235,10 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert stream_mix =~ "basis_repo_path(\"JIDO_HARNESS_PATH\""
     assert session_mix =~ "override: true"
     assert stream_mix =~ "override: true"
+    refute session_readme =~ removed_session_bridge_id()
+    refute session_readme =~ removed_stream_bridge_id()
+    refute stream_readme =~ removed_session_bridge_id()
+    refute stream_readme =~ removed_stream_bridge_id()
   end
 
   @tag timeout: 180_000
@@ -359,4 +365,12 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   end
 
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+
+  defp removed_session_bridge_id, do: removed_bridge_id("session")
+  defp removed_stream_bridge_id, do: removed_bridge_id("stream")
+
+  defp removed_bridge_id(kind) do
+    ["integration", kind, "bridge"]
+    |> Enum.join("_")
+  end
 end

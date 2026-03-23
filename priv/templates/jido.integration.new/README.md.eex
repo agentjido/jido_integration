@@ -27,11 +27,10 @@ This package starts with:
   driver in `lib/` so downstream package tests can load the same conformance surface
 
 This scaffold already publishes the selected Harness runtime driver
-`<%= @runtime_driver_id %>` on the authored contract. It never generates
-`integration_session_bridge` or `integration_stream_bridge` defaults. The
-generated non-direct capability intentionally stays `consumer_surface.mode:
-:connector_local` until you author a real shared common surface and canonical
-`metadata.runtime_family`.
+`<%= @runtime_driver_id %>` on the authored contract. It does not invent a
+legacy bridge default. The generated non-direct capability intentionally stays
+`consumer_surface.mode: :connector_local` until you author a real shared
+common surface and canonical `metadata.runtime_family`.
 <% end %>
 
 ## What You Must Author
