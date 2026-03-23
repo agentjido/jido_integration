@@ -477,6 +477,28 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert Enum.all?(events, &(&1.attempt_id == result.attempt.attempt_id))
   end
 
+  test "execute_run/3 rejects completed runs without mutating durable run truth" do
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    assert {:ok, result} =
+             ControlPlane.invoke("test.echo", %{value: "ok"}, invoke_opts(connection_id))
+
+    original_events = ControlPlane.events(result.run.run_id)
+
+    assert {:error, error} =
+             ControlPlane.execute_run(result.run.run_id, 2, invoke_opts(connection_id))
+
+    assert error.reason == :run_completed
+    assert error.run.status == :completed
+    assert error.run.result == %{value: "ok"}
+    assert error.attempt == nil
+
+    assert {:ok, stored_run} = ControlPlane.fetch_run(result.run.run_id)
+    assert stored_run == error.run
+    assert ControlPlane.events(result.run.run_id) == original_events
+  end
+
   test "uses capability sandbox defaults when invoke opts omit sandbox" do
     connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
@@ -650,6 +672,28 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert audit_payload.capability_id == "test.echo"
     assert audit_payload.runtime_class == :direct
     assert audit_payload.reasons == ["missing required scopes: echo:write"]
+  end
+
+  test "execute_run/3 rejects denied runs without mutating durable run truth" do
+    connection_id = install_connection!("tester", ["echo:read"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    assert {:error, denied} =
+             ControlPlane.invoke("test.echo", %{value: "nope"}, invoke_opts(connection_id))
+
+    original_events = ControlPlane.events(denied.run.run_id)
+
+    assert {:error, error} =
+             ControlPlane.execute_run(denied.run.run_id, 2, invoke_opts(connection_id))
+
+    assert error.reason == :run_denied
+    assert error.run.status == :denied
+    assert error.run.result == denied.run.result
+    assert error.attempt == nil
+
+    assert {:ok, stored_run} = ControlPlane.fetch_run(denied.run.run_id)
+    assert stored_run == error.run
+    assert ControlPlane.events(denied.run.run_id) == original_events
   end
 
   test "routes session work through the authored jido_session harness driver when a compatible target is selected" do

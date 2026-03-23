@@ -99,7 +99,7 @@ defmodule Jido.Integration.V2ExecuteRunTest do
     :ok
   end
 
-  test "execute_run/3 replays a failed run as a new attempt through the public facade" do
+  test "execute_run/3 retries a failed run as a new attempt through the public facade" do
     assert {:error, failed} =
              V2.invoke("platform.retry.echo", %{value: "stable", fail_attempts: 1},
                actor_id: "platform-test",
@@ -124,5 +124,34 @@ defmodule Jido.Integration.V2ExecuteRunTest do
     assert retried.attempt.attempt == 2
     assert retried.attempt.status == :completed
     assert retried.output == %{value: "stable", attempt: 2}
+  end
+
+  test "execute_run/3 rejects completed runs without mutating durable run truth" do
+    assert {:ok, completed} =
+             V2.invoke("platform.retry.echo", %{value: "stable", fail_attempts: 0},
+               actor_id: "platform-test",
+               tenant_id: "tenant-1",
+               environment: :prod,
+               allowed_operations: ["platform.retry.echo"]
+             )
+
+    original_events = V2.events(completed.run.run_id)
+
+    assert {:error, error} =
+             V2.execute_run(completed.run.run_id, 2,
+               actor_id: "platform-test",
+               tenant_id: "tenant-1",
+               environment: :prod,
+               allowed_operations: ["platform.retry.echo"]
+             )
+
+    assert error.reason == :run_completed
+    assert error.run.status == :completed
+    assert error.run.result == %{value: "stable", attempt: 1}
+    assert error.attempt == nil
+
+    assert {:ok, stored_run} = V2.fetch_run(completed.run.run_id)
+    assert stored_run == error.run
+    assert V2.events(completed.run.run_id) == original_events
   end
 end

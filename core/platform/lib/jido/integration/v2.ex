@@ -16,7 +16,8 @@ defmodule Jido.Integration.V2 do
     `connection_status/1`, `connections/1`, `request_lease/2`,
     `rotate_connection/2`, and `revoke_connection/2`
   - typed invocation through `InvocationRequest` and `invoke/1`
-  - direct invocation through `invoke/3` and replay through `execute_run/3`
+  - direct invocation through `invoke/3` and retry of accepted or failed runs
+    through `execute_run/3`
   - read-only operator review helpers through `targets/1`,
     `compatible_targets_for/2`, and `review_packet/2`
 
@@ -176,7 +177,11 @@ defmodule Jido.Integration.V2 do
   defdelegate invoke(capability_id, input, opts \\ []), to: ControlPlane
 
   @doc """
-  Re-execute an existing run as a new attempt through the control plane.
+  Re-execute an accepted or failed run as a new attempt through the control
+  plane.
+
+  Completed, denied, and shed runs are terminal and are rejected without
+  mutating durable run truth.
   """
   @spec execute_run(String.t(), pos_integer(), keyword()) ::
           {:ok, %{run: Run.t(), attempt: Jido.Integration.V2.Attempt.t(), output: map()}}

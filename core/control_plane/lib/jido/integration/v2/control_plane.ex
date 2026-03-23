@@ -280,6 +280,9 @@ defmodule Jido.Integration.V2.ControlPlane do
         attempt_number
       )
     else
+      {:error, reason} when reason in [:run_completed, :run_denied, :run_shed] ->
+        terminal_execute_run_error(run, reason)
+
       {:error, reason} ->
         fail_before_attempt(run, reason)
 
@@ -431,6 +434,16 @@ defmodule Jido.Integration.V2.ControlPlane do
         %{type: "run.failed", payload: %{reason: inspect(reason)}}
       ])
 
+    {:error,
+     %{
+       reason: reason,
+       run: fetch_run!(run.run_id),
+       attempt: nil,
+       policy_decision: nil
+     }}
+  end
+
+  defp terminal_execute_run_error(run, reason) do
     {:error,
      %{
        reason: reason,

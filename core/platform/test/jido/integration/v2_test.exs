@@ -414,8 +414,9 @@ defmodule Jido.Integration.V2Test do
              )
 
     spec = github_spec("github.issue.create")
+    github_client = github_fail_once_client_opts(self())
 
-    assert {:ok, first} =
+    assert {:error, first} =
              V2.invoke(
                "github.issue.create",
                %{
@@ -427,9 +428,14 @@ defmodule Jido.Integration.V2Test do
                  "github.issue.create",
                  connection_id,
                  spec,
-                 target_id: "target-shared-review-direct"
+                 target_id: "target-shared-review-direct",
+                 github_client: github_client
                )
              )
+
+    assert first.reason.code == "github.not_found"
+    assert first.run.status == :failed
+    assert first.attempt.attempt == 1
 
     assert {:ok, retried} =
              V2.execute_run(
@@ -439,7 +445,8 @@ defmodule Jido.Integration.V2Test do
                tenant_id: spec.tenant_id,
                environment: spec.environment,
                allowed_operations: ["github.issue.create"],
-               sandbox: spec.sandbox
+               sandbox: spec.sandbox,
+               github_client: github_client
              )
 
     assert {:ok, packet} =
@@ -456,6 +463,8 @@ defmodule Jido.Integration.V2Test do
     assert packet.connector.connector_id == "github"
     assert length(packet.artifacts) == 2
     assert Enum.count(packet.events, &(&1.type == "artifact.recorded")) == 2
+    assert Enum.any?(packet.events, &(&1.type == "run.failed"))
+    assert Enum.any?(packet.events, &(&1.type == "run.completed"))
   end
 
   test "session connector publishes Harness driver metadata on the shared common surface" do
@@ -891,6 +900,22 @@ defmodule Jido.Integration.V2Test do
           allowed_tools: capability.allowed_tools
         }
       }
+    )
+  end
+
+  defp github_fail_once_client_opts(test_pid) do
+    {:ok, attempts} = Agent.start_link(fn -> 0 end)
+
+    GitHubFixtures.client_opts(test_pid,
+      response: fn request, context ->
+        Agent.get_and_update(attempts, fn
+          0 ->
+            {GitHubFixtures.not_found_response().(request, context), 1}
+
+          count ->
+            {GitHubFixtures.response_for_request(request, context), count}
+        end)
+      end
     )
   end
 
