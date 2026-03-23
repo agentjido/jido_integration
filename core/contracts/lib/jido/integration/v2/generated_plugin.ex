@@ -24,6 +24,15 @@ defmodule Jido.Integration.V2.GeneratedPlugin do
       defoverridable plugin_spec: 1
 
       @impl Jido.Plugin
+      def subscriptions(config, context) do
+        unquote(consumer_projection).plugin_subscriptions(
+          @generated_plugin_projection,
+          config,
+          context
+        )
+      end
+
+      @impl Jido.Plugin
       def plugin_spec(config) do
         spec = super(config)
 

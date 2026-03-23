@@ -22,6 +22,7 @@ Public structs and behaviours for the greenfield platform:
 - `Connector`
 - `ConsumerProjection`
 - `GeneratedAction`
+- `GeneratedSensor`
 - `GeneratedPlugin`
 
 Current hardening guarantees:
@@ -49,8 +50,9 @@ Current hardening guarantees:
   - `:connector_local` remains the explicit authored escape hatch when a non-direct capability should stay off the generated common surface
   - target descriptors can advertise compatible runtime environments and workspace locations, but they must not rewrite authored runtime routing keys
 - `schema_policy` is explicit on authored operations and triggers so placeholder schemas cannot silently leak into published or projected surfaces
-- `ConsumerProjection` derives deterministic action and plugin projection rules only from authored entries marked as normalized common consumer surfaces, and rejects duplicate projected action names or module collisions within one connector
-- `GeneratedAction` and `GeneratedPlugin` project those rules into the current real `Jido.Action` and `Jido.Plugin` APIs
+- `ConsumerProjection` derives deterministic action, sensor, and plugin projection rules only from authored entries marked as normalized common consumer surfaces, and rejects duplicate projected action names or generated sensor collisions within one connector
+- common projected triggers must declare deterministic `jido.sensor.signal_type` and `jido.sensor.signal_source` metadata while `:connector_local` triggers remain explicit exclusions from the generated common sensor surface
+- `GeneratedAction`, `GeneratedSensor`, and `GeneratedPlugin` project those rules into the current real `Jido.Action`, `Jido.Sensor`, and `Jido.Plugin` APIs
 - generated actions build typed `InvocationRequest` structs and call the fixed `Jido.Integration.V2.invoke/1` facade path rather than honoring a caller-supplied invoker module
 - `CredentialRef` remains durable while `CredentialLease` is the short-lived execution boundary
 - `Credential` carries durable subject/scope/auth metadata plus secret-bearing fields that are meant to stay behind auth APIs
@@ -109,6 +111,7 @@ Current hardening guarantees:
 
 - projects only authored entries whose `consumer_surface.mode == :common`
 - derives generated action names from normalized surface semantics, not raw provider operation ids
+- derives generated sensor modules and plugin subscriptions from the same authored trigger projection instead of a second trigger-only authored plane
 - keeps provider operation ids stable as internal/runtime-facing capability ids
 - leaves provider-specific long-tail inventory at the connector or SDK boundary instead of auto-projecting it into `Jido.Action` or `Jido.Plugin`
 

@@ -505,6 +505,90 @@ defmodule Jido.Integration.V2.ConformanceTest do
     end
   end
 
+  defmodule ProjectedTriggerSignalMetadataDriftConnector do
+    @behaviour Connector
+
+    @trigger struct!(TriggerSpec, %{
+               trigger_id: "projected_trigger_signal_metadata.market.tick.detected",
+               name: "market_tick_detected",
+               display_name: "Market tick detected",
+               description: "Projected trigger missing deterministic signal metadata",
+               runtime_class: :direct,
+               delivery_mode: :poll,
+               handler: TriggerHandler,
+               config_schema:
+                 Zoi.object(%{
+                   interval_ms: Zoi.integer() |> Zoi.default(60_000)
+                 }),
+               signal_schema:
+                 Zoi.object(%{
+                   symbol: Zoi.string(),
+                   price: Zoi.number()
+                 }),
+               permissions: %{required_scopes: ["market:read"]},
+               checkpoint: %{strategy: :cursor},
+               dedupe: %{strategy: :event_id},
+               verification: %{},
+               policy: %{},
+               consumer_surface: %{
+                 mode: :common,
+                 normalized_id: "market.ticks.detected",
+                 sensor_name: "market_ticks_detected"
+               },
+               schema_policy: %{config: :defined, signal: :defined},
+               jido: %{sensor: %{name: "market_tick_sensor"}},
+               secret_requirements: [],
+               metadata: %{}
+             })
+
+    @impl true
+    def manifest do
+      %Manifest{
+        connector: "projected_trigger_signal_metadata",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :api_token,
+            install: %{required: false},
+            reauth: %{supported: false},
+            requested_scopes: ["market:read"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Projected Trigger Signal Metadata Drift",
+            description: "Connector with a manually drifted projected trigger",
+            category: "test",
+            tags: ["projection"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [],
+        triggers: [@trigger],
+        runtime_families: [:direct],
+        capabilities: [Capability.from_trigger!("projected_trigger_signal_metadata", @trigger)],
+        metadata: %{}
+      }
+    end
+
+    def ingress_definitions do
+      [
+        %{
+          source: :poll,
+          connector_id: "projected_trigger_signal_metadata",
+          trigger_id: "market.ticks.detected",
+          capability_id: "projected_trigger_signal_metadata.market.tick.detected",
+          signal_type: "market.tick.detected",
+          signal_source: "/ingress/poll/projected_trigger_signal_metadata/market.ticks.detected",
+          validator: nil,
+          dedupe_ttl_seconds: 300
+        }
+      ]
+    end
+  end
+
   test "returns the stable connector foundation profile names" do
     assert Conformance.profiles() == [:connector_foundation]
   end
@@ -640,6 +724,24 @@ defmodule Jido.Integration.V2.ConformanceTest do
     projection_suite = Enum.find(report.suite_results, &(&1.id == :consumer_surface_projection))
 
     assert projection_suite.status == :passed
+  end
+
+  test "fails conformance when a projected common trigger omits signal metadata" do
+    assert {:ok, report} =
+             Conformance.run(
+               ProjectedTriggerSignalMetadataDriftConnector,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-03-12 00:00:00Z]
+             )
+
+    projection_suite = Enum.find(report.suite_results, &(&1.id == :consumer_surface_projection))
+
+    assert projection_suite.status == :failed
+
+    assert failed_check?(
+             projection_suite.checks,
+             "projected_trigger_signal_metadata.market.tick.detected.common_surface.signal_metadata"
+           )
   end
 
   test "returns an error for an unknown profile" do

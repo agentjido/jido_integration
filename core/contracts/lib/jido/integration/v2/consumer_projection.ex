@@ -8,6 +8,8 @@ defmodule Jido.Integration.V2.ConsumerProjection do
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.Schema
+  alias Jido.Integration.V2.TriggerSpec
+  alias Jido.Signal
 
   @default_invoker :"Elixir.Jido.Integration.V2"
 
@@ -96,6 +98,54 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs)
   end
 
+  defmodule SensorProjection do
+    @moduledoc """
+    Projected metadata for a generated `Jido.Sensor` surface.
+    """
+
+    alias Jido.Integration.V2.Contracts
+    alias Jido.Integration.V2.Schema
+
+    @schema Zoi.struct(
+              __MODULE__,
+              %{
+                connector_module: Contracts.module_schema("sensor_projection.connector_module"),
+                plugin_module: Contracts.module_schema("sensor_projection.plugin_module"),
+                module: Contracts.module_schema("sensor_projection.module"),
+                trigger_id: Contracts.non_empty_string_schema("sensor_projection.trigger_id"),
+                normalized_id:
+                  Contracts.non_empty_string_schema("sensor_projection.normalized_id"),
+                sensor_name: Contracts.non_empty_string_schema("sensor_projection.sensor_name"),
+                jido_name: Contracts.non_empty_string_schema("sensor_projection.jido_name"),
+                description: Contracts.non_empty_string_schema("sensor_projection.description"),
+                category: Contracts.non_empty_string_schema("sensor_projection.category"),
+                tags: Contracts.string_list_schema("sensor_projection.tags"),
+                config_schema: Contracts.zoi_schema_schema("sensor_projection.config_schema"),
+                signal_schema: Contracts.zoi_schema_schema("sensor_projection.signal_schema"),
+                signal_type: Contracts.non_empty_string_schema("sensor_projection.signal_type"),
+                signal_source:
+                  Contracts.non_empty_string_schema("sensor_projection.signal_source")
+              },
+              coerce: true
+            )
+
+    @type t :: unquote(Zoi.type_spec(@schema))
+
+    @enforce_keys Zoi.Struct.enforce_keys(@schema)
+    defstruct Zoi.Struct.struct_fields(@schema)
+
+    @spec schema() :: Zoi.schema()
+    def schema, do: @schema
+
+    @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+    def new(%__MODULE__{} = projection), do: {:ok, projection}
+    def new(attrs), do: Schema.new(__MODULE__, @schema, attrs)
+
+    @spec new!(map() | keyword() | t()) :: t()
+    def new!(%__MODULE__{} = projection), do: projection
+    def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs)
+  end
+
   @spec action_projection!(module(), String.t()) :: ActionProjection.t()
   def action_projection!(connector_module, operation_id)
       when is_atom(connector_module) and is_binary(operation_id) do
@@ -134,6 +184,30 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     })
   end
 
+  @spec sensor_projection!(module(), String.t()) :: SensorProjection.t()
+  def sensor_projection!(connector_module, trigger_id)
+      when is_atom(connector_module) and is_binary(trigger_id) do
+    manifest = fetch_manifest!(connector_module)
+    trigger = fetch_projected_trigger!(manifest, trigger_id)
+
+    SensorProjection.new!(%{
+      connector_module: connector_module,
+      plugin_module: plugin_module(connector_module),
+      module: sensor_module(connector_module, trigger),
+      trigger_id: trigger.trigger_id,
+      normalized_id: TriggerSpec.normalized_surface_id(trigger),
+      sensor_name: sensor_name(trigger),
+      jido_name: jido_sensor_name(trigger),
+      description: trigger.description || "Generated sensor for #{trigger.trigger_id}",
+      category: manifest.catalog.category,
+      tags: sensor_tags(manifest, trigger),
+      config_schema: trigger.config_schema,
+      signal_schema: trigger.signal_schema,
+      signal_type: sensor_signal_type(trigger),
+      signal_source: sensor_signal_source(trigger)
+    })
+  end
+
   @spec action_module(module(), String.t() | OperationSpec.t()) :: module()
   def action_module(connector_module, operation_id_or_spec)
 
@@ -162,9 +236,42 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     |> Enum.map(&action_module(connector_module, &1))
   end
 
+  @spec sensor_module(module(), String.t() | TriggerSpec.t()) :: module()
+  def sensor_module(connector_module, trigger_id_or_spec)
+
+  def sensor_module(connector_module, %TriggerSpec{} = trigger)
+      when is_atom(connector_module) do
+    Module.concat([
+      connector_module,
+      Generated,
+      Sensors,
+      trigger |> sensor_name() |> Macro.camelize()
+    ])
+  end
+
+  def sensor_module(connector_module, trigger_id) when is_atom(connector_module) do
+    connector_module
+    |> fetch_manifest!()
+    |> fetch_projected_trigger!(trigger_id)
+    |> then(&sensor_module(connector_module, &1))
+  end
+
+  @spec sensor_modules(module()) :: [module()]
+  def sensor_modules(connector_module) when is_atom(connector_module) do
+    connector_module
+    |> fetch_manifest!()
+    |> projected_triggers()
+    |> Enum.map(&sensor_module(connector_module, &1))
+  end
+
   @spec projected_operations(Manifest.t()) :: [OperationSpec.t()]
   def projected_operations(%Manifest{} = manifest) do
     Enum.filter(manifest.operations, &OperationSpec.common_consumer_surface?/1)
+  end
+
+  @spec projected_triggers(Manifest.t()) :: [TriggerSpec.t()]
+  def projected_triggers(%Manifest{} = manifest) do
+    Enum.filter(manifest.triggers, &TriggerSpec.common_consumer_surface?/1)
   end
 
   @spec plugin_module(module()) :: module()
@@ -184,6 +291,15 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     ]
   end
 
+  @spec sensor_opts(SensorProjection.t()) :: keyword()
+  def sensor_opts(%SensorProjection{} = projection) do
+    [
+      name: projection.jido_name,
+      description: projection.description,
+      schema: projection.config_schema
+    ]
+  end
+
   @spec plugin_opts(PluginProjection.t()) :: keyword()
   def plugin_opts(%PluginProjection{} = projection) do
     [
@@ -194,7 +310,7 @@ defmodule Jido.Integration.V2.ConsumerProjection do
       category: projection.category,
       tags: projection.tags,
       config_schema: projection.config_schema,
-      subscriptions: []
+      subscriptions: plugin_subscriptions(projection)
     ]
   end
 
@@ -265,16 +381,82 @@ defmodule Jido.Integration.V2.ConsumerProjection do
           "generated actions expect params and context maps, got: #{inspect({params, context})}"
   end
 
+  @spec init_sensor(SensorProjection.t(), map(), map()) :: {:ok, map()}
+  def init_sensor(%SensorProjection{} = projection, config, context)
+      when is_map(config) and is_map(context) do
+    {:ok, %{projection: projection, config: config, context: context}}
+  end
+
+  def init_sensor(%SensorProjection{}, config, context) do
+    raise ArgumentError,
+          "generated sensors expect config and context maps, got: #{inspect({config, context})}"
+  end
+
+  @spec handle_sensor_event(SensorProjection.t(), term(), map()) ::
+          {:ok, map()} | {:ok, map(), [{:emit, Signal.t()}]}
+  def handle_sensor_event(%SensorProjection{} = projection, event, state) when is_map(state) do
+    case extract_sensor_payload(event) do
+      {:ok, payload} ->
+        {:ok, state, [{:emit, sensor_signal!(projection, payload)}]}
+
+      :ignore ->
+        {:ok, state}
+    end
+  end
+
+  def handle_sensor_event(%SensorProjection{}, event, state) do
+    raise ArgumentError,
+          "generated sensors expect a state map, got: #{inspect({event, state})}"
+  end
+
+  @spec sensor_signal!(SensorProjection.t(), term()) :: Signal.t()
+  def sensor_signal!(%SensorProjection{} = projection, payload) do
+    payload =
+      case Zoi.parse(projection.signal_schema, payload) do
+        {:ok, validated_payload} ->
+          validated_payload
+
+        {:error, errors} ->
+          raise ArgumentError,
+                "generated sensor #{inspect(projection.module)} received invalid signal payload: #{inspect(errors)}"
+      end
+
+    Signal.new!(projection.signal_type, payload, source: projection.signal_source)
+  end
+
+  @spec plugin_subscriptions(PluginProjection.t()) :: [{module(), map()}]
+  def plugin_subscriptions(%PluginProjection{} = projection) do
+    projection
+    |> projected_sensor_projections()
+    |> Enum.map(&subscription_tuple/1)
+  end
+
+  @spec plugin_subscriptions(PluginProjection.t(), map(), map()) :: [{module(), map()}]
+  def plugin_subscriptions(%PluginProjection{} = projection, config, context)
+      when is_map(config) and is_map(context) do
+    plugin_subscriptions(projection)
+  end
+
+  def plugin_subscriptions(%PluginProjection{}, config, context) do
+    raise ArgumentError,
+          "generated plugins expect config and context maps for subscriptions/2, got: #{inspect({config, context})}"
+  end
+
   defp fetch_manifest!(connector_module) do
     manifest = connector_module.manifest()
 
     if match?(%Manifest{}, manifest) do
-      validate_generated_action_projections!(connector_module, manifest)
+      validate_generated_consumer_projections!(connector_module, manifest)
       manifest
     else
       raise ArgumentError,
             "connector module #{inspect(connector_module)} must return a manifest, got: #{inspect(manifest)}"
     end
+  end
+
+  defp validate_generated_consumer_projections!(connector_module, %Manifest{} = manifest) do
+    validate_generated_action_projections!(connector_module, manifest)
+    validate_generated_trigger_projections!(connector_module, manifest)
   end
 
   defp validate_generated_action_projections!(connector_module, %Manifest{} = manifest) do
@@ -304,6 +486,33 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     end
   end
 
+  defp validate_generated_trigger_projections!(connector_module, %Manifest{} = manifest) do
+    triggers = projected_triggers(manifest)
+
+    duplicate_modules =
+      triggers
+      |> Enum.map(&sensor_module(connector_module, &1))
+      |> duplicate_values()
+
+    duplicate_sensor_names =
+      triggers
+      |> Enum.map(&sensor_name/1)
+      |> duplicate_values()
+
+    if duplicate_modules == [] and duplicate_sensor_names == [] do
+      :ok
+    else
+      details =
+        []
+        |> append_duplicate_detail("modules", duplicate_modules)
+        |> append_duplicate_detail("sensor names", duplicate_sensor_names)
+        |> Enum.join(", ")
+
+      raise ArgumentError,
+            "generated consumer trigger projections must be unique within a connector, duplicate #{details}"
+    end
+  end
+
   defp fetch_projected_operation!(manifest, operation_id) do
     case Manifest.fetch_operation(manifest, operation_id) do
       %OperationSpec{} = operation ->
@@ -319,15 +528,60 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     end
   end
 
+  defp fetch_projected_trigger!(manifest, trigger_id) do
+    case Manifest.fetch_trigger(manifest, trigger_id) do
+      %TriggerSpec{} = trigger ->
+        if TriggerSpec.common_consumer_surface?(trigger) do
+          trigger
+        else
+          raise ArgumentError,
+                "trigger #{inspect(trigger_id)} is not projected into the common consumer surface"
+        end
+
+      nil ->
+        raise ArgumentError, "unknown authored trigger #{inspect(trigger_id)}"
+    end
+  end
+
   defp action_name(%OperationSpec{} = operation) do
     operation
     |> OperationSpec.action_name()
     |> Contracts.validate_non_empty_string!("operation.consumer_surface.action_name")
   end
 
+  defp sensor_name(%TriggerSpec{} = trigger) do
+    trigger
+    |> TriggerSpec.sensor_name()
+    |> Contracts.validate_non_empty_string!("trigger.consumer_surface.sensor_name")
+  end
+
+  defp jido_sensor_name(%TriggerSpec{} = trigger) do
+    trigger
+    |> TriggerSpec.jido_sensor_name()
+    |> Contracts.validate_non_empty_string!("trigger.jido.sensor.name")
+  end
+
+  defp sensor_signal_type(%TriggerSpec{} = trigger) do
+    trigger
+    |> TriggerSpec.sensor_signal_type()
+    |> Contracts.validate_non_empty_string!("trigger.jido.sensor.signal_type")
+  end
+
+  defp sensor_signal_source(%TriggerSpec{} = trigger) do
+    trigger
+    |> TriggerSpec.sensor_signal_source()
+    |> Contracts.validate_non_empty_string!("trigger.jido.sensor.signal_source")
+  end
+
   defp action_tags(manifest, operation) do
     manifest.catalog.tags
     |> Kernel.++([manifest.connector, Atom.to_string(operation.runtime_class)])
+    |> Enum.uniq()
+  end
+
+  defp sensor_tags(manifest, trigger) do
+    manifest.catalog.tags
+    |> Kernel.++([manifest.connector, Atom.to_string(trigger.delivery_mode)])
     |> Enum.uniq()
   end
 
@@ -362,6 +616,20 @@ defmodule Jido.Integration.V2.ConsumerProjection do
         |> Zoi.default([])
     )
   end
+
+  defp projected_sensor_projections(%PluginProjection{connector_module: connector_module}) do
+    connector_module
+    |> fetch_manifest!()
+    |> projected_triggers()
+    |> Enum.map(&sensor_projection!(connector_module, &1.trigger_id))
+  end
+
+  defp subscription_tuple(%SensorProjection{} = projection), do: {projection.module, %{}}
+
+  defp extract_sensor_payload({:emit, payload}), do: {:ok, payload}
+  defp extract_sensor_payload({:signal, payload}), do: {:ok, payload}
+  defp extract_sensor_payload(%{} = payload), do: {:ok, payload}
+  defp extract_sensor_payload(_event), do: :ignore
 
   defp normalize_identifier(value) do
     value

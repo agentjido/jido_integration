@@ -62,10 +62,13 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
   defp trigger_checks(trigger) do
     consumer_surface = Map.get(trigger, :consumer_surface, %{})
     schema_policy = Map.get(trigger, :schema_policy, %{})
+    sensor_projection = trigger |> Map.get(:jido, %{}) |> Contracts.get(:sensor, %{})
     mode = SuiteSupport.fetch(consumer_surface, :mode)
     normalized_id = SuiteSupport.fetch(consumer_surface, :normalized_id)
     sensor_name = SuiteSupport.fetch(consumer_surface, :sensor_name)
     reason = SuiteSupport.fetch(consumer_surface, :reason)
+    signal_type = Contracts.get(sensor_projection, :signal_type)
+    signal_source = Contracts.get(sensor_projection, :signal_source)
     config_mode = SuiteSupport.fetch(schema_policy, :config)
     signal_mode = SuiteSupport.fetch(schema_policy, :signal)
     justification = SuiteSupport.fetch(schema_policy, :justification)
@@ -80,6 +83,11 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
         "#{trigger.trigger_id}.common_surface.metadata",
         common_surface_metadata_valid?(mode, normalized_id, sensor_name, reason),
         "common projected triggers require normalized_id and sensor_name; connector-local triggers require a reason"
+      ),
+      SuiteSupport.check(
+        "#{trigger.trigger_id}.common_surface.signal_metadata",
+        common_trigger_signal_metadata_valid?(mode, signal_type, signal_source),
+        "common projected triggers require jido.sensor.signal_type and jido.sensor.signal_source; connector-local triggers may omit them"
       ),
       SuiteSupport.check(
         "#{trigger.trigger_id}.common_surface.schemas_defined",
@@ -124,6 +132,15 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
 
   defp common_surface_schema_policy_valid?(:connector_local, _left_mode, _right_mode), do: true
   defp common_surface_schema_policy_valid?(_mode, _left_mode, _right_mode), do: false
+
+  defp common_trigger_signal_metadata_valid?(:common, signal_type, signal_source) do
+    present_string?(signal_type) and present_string?(signal_source)
+  end
+
+  defp common_trigger_signal_metadata_valid?(:connector_local, _signal_type, _signal_source),
+    do: true
+
+  defp common_trigger_signal_metadata_valid?(_mode, _signal_type, _signal_source), do: false
 
   defp placeholder_schema_policy_valid?(
          left_mode,

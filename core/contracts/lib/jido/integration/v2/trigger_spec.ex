@@ -124,6 +124,37 @@ defmodule Jido.Integration.V2.TriggerSpec do
 
   def connector_local_consumer_surface?(%__MODULE__{}), do: false
 
+  @spec normalized_surface_id(t()) :: String.t() | nil
+  def normalized_surface_id(%__MODULE__{consumer_surface: consumer_surface}) do
+    Contracts.get(consumer_surface, :normalized_id)
+  end
+
+  @spec sensor_name(t()) :: String.t() | nil
+  def sensor_name(%__MODULE__{consumer_surface: consumer_surface}) do
+    Contracts.get(consumer_surface, :sensor_name)
+  end
+
+  @spec jido_sensor_name(t()) :: String.t() | nil
+  def jido_sensor_name(%__MODULE__{} = trigger_spec) do
+    trigger_spec
+    |> sensor_projection()
+    |> Contracts.get(:name)
+  end
+
+  @spec sensor_signal_type(t()) :: String.t() | nil
+  def sensor_signal_type(%__MODULE__{} = trigger_spec) do
+    trigger_spec
+    |> sensor_projection()
+    |> Contracts.get(:signal_type)
+  end
+
+  @spec sensor_signal_source(t()) :: String.t() | nil
+  def sensor_signal_source(%__MODULE__{} = trigger_spec) do
+    trigger_spec
+    |> sensor_projection()
+    |> Contracts.get(:signal_source)
+  end
+
   defp validate(%__MODULE__{} = trigger_spec) do
     trigger_spec = %__MODULE__{
       trigger_spec
@@ -131,7 +162,8 @@ defmodule Jido.Integration.V2.TriggerSpec do
     }
 
     with :ok <- validate_consumer_surface(trigger_spec),
-         :ok <- validate_schema_policy(trigger_spec) do
+         :ok <- validate_schema_policy(trigger_spec),
+         :ok <- validate_sensor_projection_metadata(trigger_spec) do
       {:ok, trigger_spec}
     end
   end
@@ -217,6 +249,30 @@ defmodule Jido.Integration.V2.TriggerSpec do
     else
       :ok
     end
+  end
+
+  defp validate_sensor_projection_metadata(%__MODULE__{} = trigger_spec) do
+    if common_consumer_surface?(trigger_spec) do
+      cond do
+        not present_string?(jido_sensor_name(trigger_spec)) ->
+          error("trigger.jido.sensor.name is required for common projected surfaces")
+
+        not present_string?(sensor_signal_type(trigger_spec)) ->
+          error("trigger.jido.sensor.signal_type is required for common projected surfaces")
+
+        not present_string?(sensor_signal_source(trigger_spec)) ->
+          error("trigger.jido.sensor.signal_source is required for common projected surfaces")
+
+        true ->
+          :ok
+      end
+    else
+      :ok
+    end
+  end
+
+  defp sensor_projection(%__MODULE__{jido: jido}) do
+    Contracts.get(jido, :sensor, %{})
   end
 
   defp passthrough_mode?(:passthrough), do: true
