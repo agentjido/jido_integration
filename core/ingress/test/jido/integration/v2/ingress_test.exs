@@ -66,7 +66,13 @@ defmodule Jido.Integration.V2.IngressTest do
               justification:
                 "Ingress tests preserve webhook payload passthrough because these triggers are not projected common consumer surfaces"
             },
-            jido: %{sensor: %{name: "github_issue_ingest"}}
+            jido: %{
+              sensor: %{
+                name: "github_issue_ingest",
+                signal_type: "github.issue.opened",
+                signal_source: "/ingress/webhook/github/issues.opened"
+              }
+            }
           })
         ],
         runtime_families: [:direct]
@@ -176,7 +182,12 @@ defmodule Jido.Integration.V2.IngressTest do
     assert result.trigger.signal["type"] == "github.issue.opened"
 
     assert {:ok, recorded_trigger} =
-             ControlPlane.fetch_trigger("tenant-1", "github", "issues.opened", "delivery-1")
+             ControlPlane.fetch_trigger(
+               "tenant-1",
+               "github",
+               "github.issue.ingest",
+               "delivery-1"
+             )
 
     assert recorded_trigger.run_id == result.run.run_id
 
@@ -213,7 +224,7 @@ defmodule Jido.Integration.V2.IngressTest do
              ControlPlane.fetch_trigger(
                "tenant-1",
                "github",
-               "issues.opened",
+               "github.issue.ingest",
                "delivery-bad-signature"
              )
 
@@ -230,7 +241,12 @@ defmodule Jido.Integration.V2.IngressTest do
     assert error.trigger.status == :rejected
 
     assert {:ok, rejected_trigger} =
-             ControlPlane.fetch_trigger("tenant-1", "github", "issues.opened", "delivery-invalid")
+             ControlPlane.fetch_trigger(
+               "tenant-1",
+               "github",
+               "github.issue.ingest",
+               "delivery-invalid"
+             )
 
     assert rejected_trigger.rejection_reason == {:invalid_trigger, :missing_action}
   end
@@ -342,13 +358,9 @@ defmodule Jido.Integration.V2.IngressTest do
   end
 
   defp webhook_definition do
-    Definition.new!(%{
-      source: :webhook,
-      connector_id: "github",
-      trigger_id: "issues.opened",
-      capability_id: "github.issue.ingest",
-      signal_type: "github.issue.opened",
-      signal_source: "/ingress/webhook/github/issues.opened",
+    trigger = GitHubConnector.manifest().triggers |> List.first()
+
+    Definition.from_trigger!("github", trigger, %{
       dedupe_ttl_seconds: 86_400,
       verification: %{
         algorithm: :sha256,

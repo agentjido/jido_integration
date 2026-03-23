@@ -26,6 +26,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.MixProject do
       {:jido_integration_v2, path: "../../core/platform"},
       {:jido_integration_v2_auth, path: "../../core/auth"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
+      {:jido_integration_v2_ingress, path: "../../core/ingress"},
       {:jido_integration_v2_dispatch_runtime, path: "../../core/dispatch_runtime"},
       {:jido_integration_v2_webhook_router, path: "../../core/webhook_router"},
       {:jido_integration_v2_store_local, path: "../../core/store_local"},

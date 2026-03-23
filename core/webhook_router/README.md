@@ -7,6 +7,8 @@ Owns:
 
 - route registration, listing, fetch, and removal
 - callback-topology metadata for hosted webhook paths
+- hosted route records carrying explicit trigger capability identity plus
+  normalized signal metadata
 - secret-ref resolution through `core/auth`
 - assembly of `Ingress.Definition`
 - package-owned `:telemetry` for route resolution and failures
@@ -49,6 +51,10 @@ Registered routes include:
 - optional `tenant_resolution`
 - optional `dedupe_ttl_seconds`
 
+For hosted trigger routes, `trigger_id` and `capability_id` should name the
+same trigger capability. `signal_source` names the normalized ingress signal
+source, not the public callback path.
+
 ## Secret Resolution
 
 Route verification can use:
@@ -66,7 +72,8 @@ For hosted webhook requests:
 
 1. resolve the route from install or connector context
 2. resolve the verification secret when needed
-3. assemble `Jido.Integration.V2.Ingress.Definition`
+3. assemble `Jido.Integration.V2.Ingress.Definition` from the route's authored
+   trigger capability id and signal metadata
 4. delegate request admission to `core/ingress`
 5. enqueue the admitted trigger into `core/dispatch_runtime`
 
@@ -90,4 +97,5 @@ Current proofs:
 - `core/webhook_router/test/jido/integration/v2/webhook_router_route_store_test.exs`
 - `core/webhook_router/test/jido/integration/v2/webhook_router_bridge_test.exs`
 - `apps/devops_incident_response`, which proves a hosted signed webhook from
-  route registration through async replay
+  route registration through async replay while keeping the hosted trigger
+  manifest, explicit ingress-definition evidence, and route record aligned

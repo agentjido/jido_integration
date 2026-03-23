@@ -3,6 +3,8 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
 
   alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.Apps.DevopsIncidentResponse
+  alias Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector
+  alias Jido.Integration.V2.TriggerSpec
 
   setup do
     runtime_root = TestTmpDir.create!("jido_devops_incident_response_test")
@@ -124,5 +126,45 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
 
     assert restarted_run.result["incident_key"] == "acme/api#102"
     assert restarted_run.result["attempt"] == 2
+  end
+
+  test "publishes explicit hosted ingress evidence aligned with the app-local trigger and route",
+       %{runtime_root: runtime_root} do
+    manifest = GitHubIssueConnector.manifest()
+    [trigger] = manifest.triggers
+    conformance_module = Module.concat(GitHubIssueConnector, Conformance)
+
+    assert TriggerSpec.sensor_signal_type(trigger) == "github.issue.opened"
+    assert TriggerSpec.sensor_signal_source(trigger) == "/ingress/webhook/github/issues.opened"
+    assert Code.ensure_loaded?(conformance_module)
+    assert function_exported?(conformance_module, :ingress_definitions, 0)
+
+    [definition] = apply(conformance_module, :ingress_definitions, [])
+
+    assert definition.source == :webhook
+    assert definition.connector_id == manifest.connector
+    assert definition.trigger_id == trigger.trigger_id
+    assert definition.capability_id == trigger.trigger_id
+    assert definition.signal_type == TriggerSpec.sensor_signal_type(trigger)
+    assert definition.signal_source == TriggerSpec.sensor_signal_source(trigger)
+
+    assert {:ok, runtime} =
+             DevopsIncidentResponse.boot(%{
+               runtime_root: runtime_root
+             })
+
+    assert {:ok, install} =
+             DevopsIncidentResponse.provision_install(runtime, %{
+               tenant_id: "tenant-devops",
+               actor_id: "pager-operator",
+               subject: "octocat",
+               granted_scopes: ["repo"],
+               webhook_secret: "incident-secret"
+             })
+
+    assert install.route.trigger_id == trigger.trigger_id
+    assert install.route.capability_id == trigger.trigger_id
+    assert install.route.signal_type == definition.signal_type
+    assert install.route.signal_source == definition.signal_source
   end
 end

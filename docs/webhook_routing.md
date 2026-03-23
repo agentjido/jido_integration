@@ -54,6 +54,12 @@ Registered routes include:
 - optional `tenant_resolution`
 - optional `dedupe_ttl_seconds`
 
+For hosted trigger routes, `trigger_id` and `capability_id` should name the
+same trigger capability. `signal_type` and `signal_source` should match the
+explicit ingress-definition evidence published by the connector-local hosted
+proof. `signal_source` is the normalized ingress signal source, not the public
+callback path.
+
 Verification can use:
 
 - a direct `secret`
@@ -65,7 +71,8 @@ For hosted webhook requests:
 
 1. resolve the route from install or connector context
 2. resolve the verification secret when needed
-3. assemble an `Ingress.Definition`
+3. assemble an `Ingress.Definition` from the route's trigger capability id and
+   normalized signal metadata
 4. delegate request normalization and admission to `core/ingress`
 5. enqueue the admitted trigger into `core/dispatch_runtime`
 
@@ -91,4 +98,5 @@ Current proofs:
 - `apps/devops_incident_response`
 
 The app proof is the reference for a real hosted route, signed request, async
-handoff, replay, and restart recovery.
+handoff, replay, restart recovery, and explicit alignment between the
+connector-local manifest, ingress-definition evidence, and route record.

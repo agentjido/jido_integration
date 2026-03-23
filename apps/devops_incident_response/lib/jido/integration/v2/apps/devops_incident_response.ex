@@ -15,11 +15,6 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
   alias Jido.Integration.V2.WebhookRouter
   alias Jido.Integration.V2.WebhookRouter.Route
 
-  @connector_id "github"
-  @trigger_id "issues.opened"
-  @capability_id "github.issue.ingest"
-  @signal_type "github.issue.opened"
-  @signal_source "/webhooks/github/issues.opened"
   @wait_poll_ms 25
   @default_wait_attempts 200
 
@@ -73,7 +68,11 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
              backoff_cap_ms: backoff_cap_ms
            ),
          :ok <-
-           DispatchRuntime.register_handler(dispatch_runtime, @trigger_id, ExecuteTriggerHandler),
+           DispatchRuntime.register_handler(
+             dispatch_runtime,
+             GitHubIssueConnector.trigger_id(),
+             ExecuteTriggerHandler
+           ),
          {:ok, webhook_router} <- WebhookRouter.start_link(name: nil, storage_dir: router_dir) do
       {:ok,
        %{
@@ -108,7 +107,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
     now = Map.get(attrs, :now, ~U[2026-03-12 12:00:00Z])
 
     with {:ok, %{install: install, connection: connection}} <-
-           V2.start_install(@connector_id, tenant_id, %{
+           V2.start_install(GitHubIssueConnector.connector_id(), tenant_id, %{
              actor_id: actor_id,
              auth_type: :oauth2,
              subject: subject,
@@ -128,24 +127,15 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
              now: now
            }),
          {:ok, route} <-
-           WebhookRouter.register_route(runtime.webhook_router, %{
-             connector_id: @connector_id,
-             tenant_id: tenant_id,
-             connection_id: connection.connection_id,
-             install_id: install.install_id,
-             trigger_id: @trigger_id,
-             capability_id: @capability_id,
-             signal_type: @signal_type,
-             signal_source: @signal_source,
-             callback_topology: :dynamic_per_install,
-             delivery_id_headers: ["x-github-delivery"],
-             verification: %{
-               algorithm: :sha256,
-               signature_header: "x-hub-signature-256",
-               secret_ref: %{credential_ref: credential_ref, secret_key: "webhook_secret"}
-             },
-             validator: {__MODULE__, :validate_issue_opened}
-           }) do
+           WebhookRouter.register_route(
+             runtime.webhook_router,
+             GitHubIssueConnector.route_attrs(%{
+               tenant_id: tenant_id,
+               connection_id: connection.connection_id,
+               install_id: install.install_id,
+               credential_ref: credential_ref
+             })
+           ) do
       {:ok,
        %{
          install: completed_install,
@@ -198,7 +188,13 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
         backoff_cap_ms: runtime.backoff_cap_ms
       )
 
-    :ok = DispatchRuntime.register_handler(dispatch_runtime, @trigger_id, ExecuteTriggerHandler)
+    :ok =
+      DispatchRuntime.register_handler(
+        dispatch_runtime,
+        GitHubIssueConnector.trigger_id(),
+        ExecuteTriggerHandler
+      )
+
     %{runtime | dispatch_runtime: dispatch_runtime}
   end
 
@@ -214,10 +210,6 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
       when is_binary(run_id) and is_function(predicate, 1) do
     do_wait_for_run(run_id, predicate, attempts, :missing)
   end
-
-  def validate_issue_opened(%{action: "opened"}), do: :ok
-  def validate_issue_opened(%{"action" => "opened"}), do: :ok
-  def validate_issue_opened(_payload), do: {:error, :missing_action}
 
   defp do_wait_for_dispatch(_dispatch_runtime, dispatch_id, _predicate, 0, last_seen) do
     raise "dispatch #{dispatch_id} did not reach the expected state; last seen: #{inspect(last_seen)}"

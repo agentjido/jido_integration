@@ -97,10 +97,10 @@ defmodule Jido.Integration.V2.WebhookRouterRouteStoreTest do
         tenant_id: "tenant-1",
         connection_id: "connection-1",
         install_id: "install-1",
-        trigger_id: "issues.opened",
+        trigger_id: "github.issue.ingest",
         capability_id: "github.issue.ingest",
         signal_type: "github.issue.opened",
-        signal_source: "/webhooks/github/issues.opened",
+        signal_source: "/ingress/webhook/github/issues.opened",
         callback_topology: :dynamic_per_install,
         delivery_id_headers: ["x-github-delivery"],
         verification: %{

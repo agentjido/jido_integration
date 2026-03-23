@@ -57,7 +57,11 @@ Primary public functions:
 What it proves:
 
 - local durability with `core/store_local`
+- app-local hosted trigger authorship with explicit ingress-definition
+  evidence for `github.issue.ingest`
 - hosted route registration with `core/webhook_router`
+- alignment between the app-local trigger manifest, hosted route record, and
+  normalized signal metadata
 - signed webhook admission through `core/ingress`
 - async execution through `core/dispatch_runtime`
 - dead-letter, replay, and restart recovery

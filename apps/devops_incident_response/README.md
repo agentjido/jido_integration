@@ -27,6 +27,21 @@ The app-local connector is intentional. `connectors/github` remains the
 deterministic direct-capability package from prompt 04. This proof app does not
 silently widen that connector's contract with app-owned webhook behavior.
 
+The hosted trigger contract is now explicit and local to this app proof:
+
+- the manifest publishes trigger capability `github.issue.ingest`
+- the manifest publishes normalized signal metadata
+  `github.issue.opened` from `/ingress/webhook/github/issues.opened`
+- the companion conformance surface publishes matching `ingress_definitions/0`
+  evidence for that trigger capability
+- `core/webhook_router` reuses the same trigger and signal metadata when it
+  registers hosted routes, while still owning route persistence and secret-ref
+  lookup
+
+This keeps the hosted webhook lane connector-local and app-local without
+pretending it is the same generated sensor topology used by the common polling
+proof.
+
 ## Public Entry Points
 
 The host-level proof surface is:
@@ -56,6 +71,7 @@ The package declares explicit child-package deps on the modules it uses:
 - `core/platform`
 - `core/auth`
 - `core/contracts`
+- `core/ingress`
 - `core/store_local`
 - `core/webhook_router`
 - `core/dispatch_runtime`
@@ -71,6 +87,8 @@ The end-to-end proof lives in:
 It covers:
 
 - install provisioning and connected state
+- explicit alignment between the app-local trigger manifest, hosted route
+  record, and `ingress_definitions/0` evidence
 - webhook route provisioning
 - accepted webhook to async work handoff
 - dead-letter on repeated failure

@@ -16,6 +16,10 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
   alias Jido.Integration.V2.WebhookRouter
   alias Jido.Integration.V2.WebhookRouter.Telemetry, as: WebhookTelemetry
 
+  @trigger_id "github.issue.ingest"
+  @signal_type "github.issue.opened"
+  @signal_source "/ingress/webhook/github/issues.opened"
+
   defmodule WebhookCapability do
     def run(%{trigger: trigger}, context) do
       {:ok,
@@ -31,6 +35,9 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
 
   defmodule TestConnector do
     @behaviour Jido.Integration.V2.Connector
+    @trigger_id "github.issue.ingest"
+    @signal_type "github.issue.opened"
+    @signal_source "/ingress/webhook/github/issues.opened"
 
     @impl true
     def manifest do
@@ -59,7 +66,7 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
         operations: [],
         triggers: [
           TriggerSpec.new!(%{
-            trigger_id: "github.issue.ingest",
+            trigger_id: @trigger_id,
             name: "issue_ingest",
             display_name: "Issue ingest",
             description: "Receives hosted webhook issue events",
@@ -82,7 +89,13 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
               justification:
                 "Webhook router tests preserve payload passthrough because these triggers are not projected common consumer surfaces"
             },
-            jido: %{sensor: %{name: "github_issue_ingest"}}
+            jido: %{
+              sensor: %{
+                name: "github_issue_ingest",
+                signal_type: @signal_type,
+                signal_source: @signal_source
+              }
+            }
           })
         ],
         runtime_families: [:direct]
@@ -122,7 +135,7 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
       )
 
     Process.unlink(runtime)
-    assert :ok = DispatchRuntime.register_handler(runtime, "issues.opened", ExecuteTriggerHandler)
+    assert :ok = DispatchRuntime.register_handler(runtime, @trigger_id, ExecuteTriggerHandler)
     {:ok, router} = WebhookRouter.start_link(name: nil, storage_dir: router_dir)
     Process.unlink(router)
 
@@ -150,10 +163,10 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
                tenant_id: "tenant-1",
                connection_id: connection_id,
                install_id: install_id,
-               trigger_id: "issues.opened",
-               capability_id: "github.issue.ingest",
-               signal_type: "github.issue.opened",
-               signal_source: "/webhooks/github/issues.opened",
+               trigger_id: @trigger_id,
+               capability_id: @trigger_id,
+               signal_type: @signal_type,
+               signal_source: @signal_source,
                callback_topology: :dynamic_per_install,
                delivery_id_headers: ["x-github-delivery"],
                verification: %{
@@ -214,10 +227,10 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
                tenant_id: "tenant-1",
                connection_id: connection_id,
                install_id: install_id,
-               trigger_id: "issues.opened",
-               capability_id: "github.issue.ingest",
-               signal_type: "github.issue.opened",
-               signal_source: "/webhooks/github/issues.opened",
+               trigger_id: @trigger_id,
+               capability_id: @trigger_id,
+               signal_type: @signal_type,
+               signal_source: @signal_source,
                callback_topology: :dynamic_per_install,
                delivery_id_headers: ["x-github-delivery"],
                verification: %{
@@ -261,10 +274,10 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
                tenant_id: "tenant-1",
                connection_id: connection_id,
                install_id: install_id,
-               trigger_id: "issues.opened",
-               capability_id: "github.issue.ingest",
-               signal_type: "github.issue.opened",
-               signal_source: "/webhooks/github/issues.opened",
+               trigger_id: @trigger_id,
+               capability_id: @trigger_id,
+               signal_type: @signal_type,
+               signal_source: @signal_source,
                callback_topology: :dynamic_per_install,
                delivery_id_headers: ["x-github-delivery"],
                verification: %{
@@ -276,6 +289,10 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
              })
 
     refute Map.has_key?(route.verification, :secret)
+    assert route.trigger_id == @trigger_id
+    assert route.capability_id == @trigger_id
+    assert route.signal_type == @signal_type
+    assert route.signal_source == @signal_source
 
     request = signed_request(install_id, "delivery-accepted", %{action: "opened"})
 
@@ -284,9 +301,17 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
 
     assert result.route.route_id == route.route_id
     assert result.definition.connector_id == "github"
+    assert result.definition.trigger_id == @trigger_id
+    assert result.definition.capability_id == @trigger_id
+    assert result.definition.signal_type == @signal_type
+    assert result.definition.signal_source == @signal_source
     assert result.definition.verification.secret == "super-secret"
     assert result.ingress.status == :accepted
     assert result.dispatch_status == :accepted
+    assert result.trigger.trigger_id == @trigger_id
+    assert result.trigger.capability_id == @trigger_id
+    assert result.trigger.signal["type"] == @signal_type
+    assert result.trigger.signal["source"] == @signal_source
     assert result.trigger.external_id == "delivery-accepted"
 
     completed_dispatch =
@@ -320,10 +345,10 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
                tenant_id: "tenant-1",
                connection_id: connection_id,
                install_id: install_id,
-               trigger_id: "issues.opened",
-               capability_id: "github.issue.ingest",
-               signal_type: "github.issue.opened",
-               signal_source: "/webhooks/github/issues.opened",
+               trigger_id: @trigger_id,
+               capability_id: @trigger_id,
+               signal_type: @signal_type,
+               signal_source: @signal_source,
                callback_topology: :dynamic_per_install,
                delivery_id_headers: ["x-github-delivery"],
                verification: %{
