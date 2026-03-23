@@ -27,8 +27,8 @@ jido_integration/
     policy/                 # pre-attempt policy and shed decisions
     direct_runtime/         # direct capability execution
     runtime_asm_bridge/     # integration-owned `asm` Harness driver projection
-    session_kernel/         # reusable session execution
-    stream_runtime/         # reusable stream execution
+    session_kernel/         # bridge-era residue slated for Phase 6A removal
+    stream_runtime/         # bridge-era residue slated for Phase 6A removal
     store_local/            # restart-safe local durability tier
     store_postgres/         # database-backed durable tier
     dispatch_runtime/       # async queue, retry, replay, recovery
@@ -59,6 +59,9 @@ jido_integration/
   `Jido.Harness` is the stable runtime-driver contract seam; the authored
   `asm` driver is implemented by `core/runtime_asm_bridge`, which projects
   into `agent_session_manager` above `cli_subprocess_core`.
+- `core/session_kernel` and `core/stream_runtime` still exist only as
+  bridge-era residue slated for Phase 6A removal; they are not part of the
+  target runtime architecture.
 - `core/dispatch_runtime` and `core/webhook_router` stay as child packages.
   Hosted async and webhook behavior does not move back into the root or the
   facade package.
@@ -68,6 +71,23 @@ jido_integration/
   - `core/store_postgres` is the shared database-backed durable tier.
 - Child packages depend on each other only through explicit `path:` deps.
 - No child package depends on the repo root.
+
+## Direct Versus Runtime Boundary
+
+GitHub and Notion stay on the direct provider-SDK path and do not inherit
+session or stream runtime-kernel coupling merely because the repo also ships
+non-direct capability families.
+
+`Jido.Integration.V2 -> DirectRuntime -> connector -> provider SDK -> pristine`
+
+Only actual `:session` and `:stream` capabilities use
+`/home/home/p/g/n/jido_harness` via `Jido.Harness`.
+
+`Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
+
+`core/session_kernel` and `core/stream_runtime` still exist only as bridge-era
+residue slated for Phase 6A removal; they are not part of the target runtime
+architecture.
 
 ## Public API Highlights
 
@@ -154,6 +174,9 @@ The current surface also proves:
   truth
 - public invocation binds auth through `connection_id`; `credential_ref`
   remains internal execution plumbing
+- GitHub and Notion connector packages depend on `core/direct_runtime` plus
+  provider SDKs only; they do not take `jido_harness`, `agent_session_manager`,
+  `cli_subprocess_core`, or `jido_session` as package dependencies
 - session and stream connector packages depend on `jido_harness` for the
   shared seam; they do not take direct `agent_session_manager` or
   `cli_subprocess_core` package dependencies

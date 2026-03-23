@@ -3,6 +3,10 @@
 Thin direct Notion connector package backed by `notion_sdk`, with deterministic
 offline tests and package-local, opt-in live proofs.
 
+This connector stays on the direct provider-SDK path and does not inherit
+session or stream runtime-kernel coupling merely because the repo also ships
+non-direct capability families.
+
 This package keeps the boundary explicit:
 
 - `notion_sdk` owns the provider HTTP and OAuth implementation
@@ -17,6 +21,8 @@ This package keeps the boundary explicit:
 - public auth binding is `connection_id`
 - the connector mints short-lived credential leases and builds
   `NotionSDK.Client` instances from those leases only
+- the live execution path is
+  `Jido.Integration.V2 -> DirectRuntime -> connector -> notion_sdk -> pristine`
 - the package uses semantic permission bundles for install and invoke posture
   instead of pretending Notion capability toggles map 1:1 to OAuth scopes
 - OAuth control endpoints stay in install/auth flow rather than widening the

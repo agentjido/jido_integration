@@ -3,6 +3,10 @@
 Thin direct GitHub connector package backed by `github_ex`, with deterministic
 offline tests and package-local, opt-in live proofs.
 
+This connector stays on the direct provider-SDK path and does not inherit
+session or stream runtime-kernel coupling merely because the repo also ships
+non-direct capability families.
+
 Proves:
 
 - direct capability publishing against the shared `RuntimeResult` substrate
@@ -19,6 +23,8 @@ Proves:
 - public auth binding is `connection_id`
 - the connector mints short-lived credential leases and builds `GitHubEx.Client`
   instances from those leases only
+- the live execution path is
+  `Jido.Integration.V2 -> DirectRuntime -> connector -> github_ex -> pristine`
 - the current authored capability slice requires the GitHub `repo` scope
 - hosted webhook routing stays out of this package and lives above the direct
   connector contract

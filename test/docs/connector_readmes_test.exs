@@ -56,5 +56,27 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
              "`Jido.Integration.V2.ConsumerProjection.sensor_module/2`"
   end
 
+  test "direct connector READMEs keep the provider-SDK boundary explicit" do
+    for {path, sdk_dep} <- [
+          {Path.expand("../../connectors/github/README.md", __DIR__), "`github_ex`"},
+          {Path.expand("../../connectors/notion/README.md", __DIR__), "`notion_sdk`"}
+        ] do
+      readme = path |> readme() |> normalize_whitespace()
+
+      assert readme =~ "stays on the direct provider-SDK path",
+             "#{path} must describe the direct provider-SDK lane explicitly"
+
+      assert readme =~ "does not inherit session or stream runtime-kernel coupling",
+             "#{path} must reject non-direct runtime coupling explicitly"
+
+      assert readme =~ sdk_dep, "#{path} must name its provider SDK boundary"
+      refute readme =~ "Jido.Harness", "#{path} must not describe a Harness-routed path"
+      refute readme =~ "integration_session_bridge", "#{path} must not preserve bridge wording"
+      refute readme =~ "integration_stream_bridge", "#{path} must not preserve bridge wording"
+    end
+  end
+
   defp readme(path), do: File.read!(path)
+
+  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
 end

@@ -29,7 +29,11 @@ Core runtime graph:
     `/home/home/p/g/n/jido_harness` (`Jido.Harness`) `asm` driver into
     `/home/home/p/g/n/agent_session_manager`
 - `core/session_kernel`
+- bridge-era residue slated for Phase 6A removal, not part of the target
+  runtime architecture
 - `core/stream_runtime`
+- bridge-era residue slated for Phase 6A removal, not part of the target
+  runtime architecture
 - `core/dispatch_runtime`
   - async queueing, retry, replay, and transport recovery above the control
     plane
@@ -44,9 +48,27 @@ Durability tiers:
 - `core/store_local` for restart-safe local durability
 - `core/store_postgres` for the shared database-backed tier
 
+## Direct Versus Runtime Boundary
+
+GitHub and Notion stay on the direct provider-SDK path and do not inherit
+session or stream runtime-kernel coupling merely because the repo also ships
+non-direct capability families.
+
+`Jido.Integration.V2 -> DirectRuntime -> connector -> provider SDK -> pristine`
+
+Only actual `:session` and `:stream` capabilities use
+`/home/home/p/g/n/jido_harness` via `Jido.Harness`.
+
+`Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
+
+`core/session_kernel` and `core/stream_runtime` still exist only as bridge-era
+residue slated for Phase 6A removal; they are not part of the target runtime
+architecture.
+
 ## Runtime Basis Below Non-Direct Capabilities
 
-Session and stream capabilities stay above a provider-neutral runtime lane:
+Only actual session and stream capabilities stay above a provider-neutral
+runtime lane:
 
 - `/home/home/p/g/n/jido_harness` exposes `Jido.Harness`, the stable
   runtime-driver contract consumed by `core/control_plane`
@@ -87,6 +109,11 @@ Proof apps:
 - `core/platform` does not pull connectors at runtime; connector packages are
   test-only deps there
 - apps declare every child package whose modules they reference directly
+- direct connector packages depend on `core/direct_runtime` plus provider SDKs;
+  they do not take `/home/home/p/g/n/jido_harness`,
+  `/home/home/p/g/n/agent_session_manager`,
+  `/home/home/p/g/n/cli_subprocess_core`, or `/home/home/p/g/n/jido_session`
+  as package dependencies
 - session and stream connector packages depend on
   `/home/home/p/g/n/jido_harness` for the shared seam rather than taking
   direct `/home/home/p/g/n/agent_session_manager` or
