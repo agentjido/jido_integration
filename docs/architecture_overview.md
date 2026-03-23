@@ -61,6 +61,10 @@ Only actual `:session` and `:stream` capabilities use
 
 `Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
 
+`asm` routes through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
+and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
+through `/home/home/p/g/n/jido_session` via `Jido.Session.HarnessDriver`.
+
 `core/session_kernel` and `core/stream_runtime` still exist only as bridge-era
 residue slated for Phase 6A removal; they are not part of the target runtime
 architecture.
@@ -77,6 +81,9 @@ runtime lane:
 - `core/runtime_asm_bridge` is the integration-owned projection for the `asm`
   driver; it adapts the Harness seam to
   `/home/home/p/g/n/agent_session_manager`
+- `/home/home/p/g/n/jido_session` is the other intended non-direct target via
+  `Jido.Session.HarnessDriver`; `jido_integration` consumes it through
+  authored `runtime.driver` metadata rather than a local compatibility shim
 - `/home/home/p/g/n/agent_session_manager` keeps provider-neutral session
   orchestration and lane selection below `jido_integration` ownership
 - `/home/home/p/g/n/cli_subprocess_core` remains the subprocess, event, and

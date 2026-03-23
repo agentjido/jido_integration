@@ -37,6 +37,19 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
              "Do not move connector proof code into the workspace root."
   end
 
+  test "documents the runtime basis for both supported non-direct drivers" do
+    guide = @guide_path |> File.read!() |> normalize_whitespace()
+
+    assert guide =~
+             "`runtime.driver: \"asm\"` selects `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` in `/home/home/p/g/n/jido_integration`."
+
+    assert guide =~
+             "`runtime.driver: \"jido_session\"` selects `Jido.Session.HarnessDriver` in `/home/home/p/g/n/jido_session`."
+
+    assert guide =~
+             "Only the `asm` branch projects further into provider-neutral `/home/home/p/g/n/agent_session_manager`, which itself uses `/home/home/p/g/n/cli_subprocess_core` for subprocess, event, and provider profile foundations."
+  end
+
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
 
   defp removed_session_bridge_id, do: removed_bridge_id("session")

@@ -32,5 +32,15 @@ defmodule Jido.Integration.Docs.RootBoundaryDocsTest do
     end)
   end
 
+  test "root docs describe both supported non-direct runtime targets explicitly" do
+    Enum.each(@root_docs, fn path ->
+      doc = path |> File.read!() |> normalize_whitespace()
+
+      assert doc =~
+               "`asm` routes through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager` and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes through `/home/home/p/g/n/jido_session` via `Jido.Session.HarnessDriver`.",
+             "#{path} must describe both supported non-direct runtime targets explicitly"
+    end)
+  end
+
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
 end

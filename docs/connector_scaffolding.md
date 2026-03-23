@@ -68,13 +68,15 @@ this order:
 
 1. `/home/home/p/g/n/jido_harness` exposes `Jido.Harness`, the stable
    runtime-driver contract referenced by `runtime.driver`
-2. `runtime.driver: "asm"` selects the integration-owned
+2. `runtime.driver: "asm"` selects
    `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` in
-   `/home/home/p/g/n/jido_integration`
-3. that bridge projects into provider-neutral
+   `/home/home/p/g/n/jido_integration`.
+3. `runtime.driver: "jido_session"` selects `Jido.Session.HarnessDriver` in
+   `/home/home/p/g/n/jido_session`.
+4. Only the `asm` branch projects further into provider-neutral
    `/home/home/p/g/n/agent_session_manager`, which itself uses
    `/home/home/p/g/n/cli_subprocess_core` for subprocess, event, and provider
-   profile foundations
+   profile foundations.
 
 Connector packages should usually stop their direct dependencies at
 `/home/home/p/g/n/jido_harness`. Do not add

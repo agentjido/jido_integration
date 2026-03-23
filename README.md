@@ -56,9 +56,10 @@ jido_integration/
 - `core/conformance` owns reusable connector review logic behind the root
   `mix jido.conformance` connector acceptance command.
 - non-direct runtime ownership stays below the integration layer.
-  `Jido.Harness` is the stable runtime-driver contract seam; the authored
-  `asm` driver is implemented by `core/runtime_asm_bridge`, which projects
-  into `agent_session_manager` above `cli_subprocess_core`.
+  `Jido.Harness` is the stable runtime-driver contract seam. `asm` routes
+  through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
+  and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
+  through `/home/home/p/g/n/jido_session` via `Jido.Session.HarnessDriver`.
 - `core/session_kernel` and `core/stream_runtime` still exist only as
   bridge-era residue slated for Phase 6A removal; they are not part of the
   target runtime architecture.
@@ -84,6 +85,10 @@ Only actual `:session` and `:stream` capabilities use
 `/home/home/p/g/n/jido_harness` via `Jido.Harness`.
 
 `Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
+
+`asm` routes through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
+and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
+through `/home/home/p/g/n/jido_session` via `Jido.Session.HarnessDriver`.
 
 `core/session_kernel` and `core/stream_runtime` still exist only as bridge-era
 residue slated for Phase 6A removal; they are not part of the target runtime
