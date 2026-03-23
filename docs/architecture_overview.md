@@ -75,13 +75,16 @@ Discovery surface:
 - `capabilities/0`
 - `fetch_connector/1`
 - `fetch_capability/1`
+- `catalog_entries/0`
 
 Auth lifecycle surface:
 
 - `start_install/3`
 - `complete_install/2`
 - `fetch_install/1`
+- `installs/1`
 - `connection_status/1`
+- `connections/1`
 - `request_lease/2`
 - `rotate_connection/2`
 - `revoke_connection/2`
@@ -104,7 +107,24 @@ Durable review surface:
 - `fetch_artifact/1`
 - `announce_target/1`
 - `fetch_target/1`
+- `targets/1`
 - `compatible_targets/1`
+- `compatible_targets_for/2`
+- `review_packet/2`
+
+The shared operator surface is intentionally read-only. It packages durable
+truth that already lives in `core/auth` and `core/control_plane`:
+
+- `installs/1` and `connections/1` list durable auth state without copying it
+- `catalog_entries/0` summarizes authored connector and capability catalog
+  truth for downstream consumers
+- `targets/1` lists announced durable target descriptors
+- `compatible_targets_for/2` derives authored compatibility requirements from
+  the durable capability contract instead of forcing apps to restitch that
+  logic locally
+- `review_packet/2` bundles one run's durable attempts, events, artifacts,
+  trigger context, target context, connection/install context, and connector
+  catalog context into one reusable operator packet
 
 ## Async And Webhook Boundary
 
@@ -136,6 +156,8 @@ The current app proofs are:
   - cross-runtime operator workflow
   - consumption of the connector-authored `market.alert.detected` poll trigger
     before the explicit downstream `market.ticks.pull` invocation
+  - workflow-local shaping over the shared `Jido.Integration.V2.review_packet/2`
+    operator packet
 - `apps/devops_incident_response`
   - hosted webhook to async replay and restart recovery
 

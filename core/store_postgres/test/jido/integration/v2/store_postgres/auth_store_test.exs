@@ -6,6 +6,8 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.CredentialRef
+  alias Jido.Integration.V2.StorePostgres.ConnectionStore
+  alias Jido.Integration.V2.StorePostgres.InstallStore
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.ConnectionRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.CredentialRecord
@@ -167,5 +169,42 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
     refute inspect(lease_row) =~ "fresh-access-token"
     refute inspect(lease_row) =~ "rotated-refresh-token"
     assert lease_row.payload_keys == ["access_token"]
+  end
+
+  test "lists durable installs and connections with stable filtering" do
+    now = ~U[2026-03-09 12:30:00Z]
+
+    assert {:ok, %{install: first_install, connection: first_connection}} =
+             Auth.start_install("github", "tenant-ops", %{
+               actor_id: "user-ops",
+               auth_type: :oauth2,
+               subject: "octocat",
+               requested_scopes: ["repo"],
+               now: now
+             })
+
+    assert {:ok, %{install: second_install, connection: second_connection}} =
+             Auth.start_install("codex_cli", "tenant-ops", %{
+               actor_id: "user-ops",
+               auth_type: :oauth2,
+               subject: "desk-analyst",
+               requested_scopes: ["session:execute"],
+               now: DateTime.add(now, 1, :second)
+             })
+
+    assert Enum.map(
+             ConnectionStore.list_connections(%{tenant_id: "tenant-ops"}),
+             & &1.connection_id
+           ) ==
+             [first_connection.connection_id, second_connection.connection_id]
+
+    assert Enum.map(InstallStore.list_installs(%{connector_id: "github"}), & &1.install_id) == [
+             first_install.install_id
+           ]
+
+    assert Enum.map(InstallStore.list_installs(%{tenant_id: "tenant-ops"}), & &1.install_id) == [
+             first_install.install_id,
+             second_install.install_id
+           ]
   end
 end

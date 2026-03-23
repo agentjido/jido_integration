@@ -16,14 +16,14 @@ and runtime session state remains outside `jido_integration`.
 - admits one market-alert poll trigger through the connector-authored
   `market_data` ingress definition
 - invokes one review workflow across stream, session, and direct runtimes
-- builds an operator review packet from durable run, attempt, event, artifact,
-  target, and connection truth
+- reshapes the shared `Jido.Integration.V2.review_packet/2` operator packet for
+  one workflow-local market review
 
 The app stays thin by design:
 
 - connector registration still belongs to the control plane
-- target compatibility and durable review truth still belong to the control
-  plane
+- authored-compatible target selection and durable review assembly still belong
+  to the shared platform surface
 - trigger admission still belongs to `core/ingress`
 - auth lifecycle still belongs to `core/auth`
 
@@ -42,8 +42,8 @@ These functions are the host-level reference for:
 - install and connection provisioning
 - connector registration through the public facade
 - trigger admission
-- target announcement and compatibility lookup
-- durable review packet assembly
+- target announcement and authored-compatible lookup
+- workflow-local review shaping above the shared durable packet
 
 ## Proof
 

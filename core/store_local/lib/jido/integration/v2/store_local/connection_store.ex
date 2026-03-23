@@ -17,6 +17,11 @@ defmodule Jido.Integration.V2.StoreLocal.ConnectionStore do
     Storage.read(&State.fetch_connection(&1, connection_id))
   end
 
+  @impl true
+  def list_connections(filters \\ %{}) do
+    Storage.read(&State.list_connections(&1, filters))
+  end
+
   def reset! do
     Storage.mutate(&State.reset_connections/1)
   end

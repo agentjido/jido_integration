@@ -18,6 +18,11 @@ defmodule Jido.Integration.V2.StoreLocal.AttemptStore do
   end
 
   @impl true
+  def list_attempts(run_id) do
+    Storage.read(&State.list_attempts(&1, run_id))
+  end
+
+  @impl true
   def update_attempt(attempt_id, status, output, runtime_ref_id, opts \\ []) do
     Storage.mutate(&State.update_attempt(&1, attempt_id, status, output, runtime_ref_id, opts))
   end

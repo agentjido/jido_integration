@@ -125,9 +125,19 @@ defmodule Jido.Integration.V2.Auth do
   @spec fetch_install(String.t()) :: {:ok, Install.t()} | {:error, :unknown_install}
   def fetch_install(install_id), do: Stores.install_store().fetch_install(install_id)
 
+  @spec installs(map()) :: [Install.t()]
+  def installs(filters \\ %{}) when is_map(filters) do
+    Stores.install_store().list_installs(filters)
+  end
+
   @spec connection_status(String.t()) :: {:ok, Connection.t()} | {:error, :unknown_connection}
   def connection_status(connection_id),
     do: Stores.connection_store().fetch_connection(connection_id)
+
+  @spec connections(map()) :: [Connection.t()]
+  def connections(filters \\ %{}) when is_map(filters) do
+    Stores.connection_store().list_connections(filters)
+  end
 
   @spec request_lease(String.t(), map()) ::
           {:ok, CredentialLease.t()}

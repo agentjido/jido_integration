@@ -148,10 +148,65 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert packet.connections.analyst.state == :connected
     assert packet.connections.operator.state == :connected
 
+    assert packet.runs.market_pull.install.connection_id ==
+             packet.connections.market_data.connection_id
+
+    assert packet.runs.analyst_session.install.connection_id ==
+             packet.connections.analyst.connection_id
+
+    assert packet.runs.escalation_issue.install.connection_id ==
+             packet.connections.operator.connection_id
+
+    assert packet.runs.market_pull.capability.capability_id == "market.ticks.pull"
+    assert packet.runs.analyst_session.capability.capability_id == "codex.exec.session"
+    assert packet.runs.escalation_issue.capability.capability_id == "github.issue.create"
+    assert packet.runs.market_pull.connector.connector_id == "market_data"
+    assert packet.runs.analyst_session.connector.connector_id == "codex_cli"
+    assert packet.runs.escalation_issue.connector.connector_id == "github"
+    assert Enum.map(packet.runs.market_pull.attempts, & &1.attempt) == [1]
+    assert Enum.map(packet.runs.analyst_session.attempts, & &1.attempt) == [1]
+    assert Enum.map(packet.runs.escalation_issue.attempts, & &1.attempt) == [1]
+
     assert [%{artifact_type: :log}] = packet.runs.market_pull.artifacts
     assert [%{artifact_type: :event_log}] = packet.runs.analyst_session.artifacts
     assert [%{artifact_type: :tool_output}] = packet.runs.escalation_issue.artifacts
     assert workflow.escalation_issue.output.title == "ES alert review for trading ops"
+  end
+
+  test "shared public review packet exposes admitted trigger context where applicable" do
+    assert {:ok, stack} =
+             TradingOps.bootstrap_reference_stack(%{
+               tenant_id: "tenant-trigger-review",
+               actor_id: "desk-operator"
+             })
+
+    assert {:ok, workflow} =
+             TradingOps.run_market_review(stack, %{
+               external_id: "alert-es-trigger",
+               cursor: "cursor-es-trigger",
+               last_event_id: "event-es-trigger",
+               observed_at: ~U[2026-03-09 13:20:00Z],
+               symbol: "ES",
+               price: 5_091.25,
+               threshold: 5_080.00,
+               venue: "CME",
+               issue_repo: "trading/ops-review",
+               desk_note: "review trigger surface"
+             })
+
+    assert {:ok, packet} = V2.review_packet(workflow.trigger.run.run_id)
+
+    assert packet.run.run_id == workflow.trigger.run.run_id
+    assert packet.attempt == nil
+    assert packet.attempts == []
+    assert packet.connection == nil
+    assert packet.install == nil
+    assert packet.target == nil
+    assert packet.capability.capability_id == "market.alert.detected"
+    assert packet.connector.connector_id == "market_data"
+    assert [trigger] = packet.triggers
+    assert trigger.trigger_id == workflow.trigger.trigger.trigger_id
+    assert trigger.dedupe_key == workflow.trigger.trigger.dedupe_key
   end
 
   test "selects the authored asm analyst target when a mismatched session target is also advertised" do

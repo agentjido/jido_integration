@@ -156,6 +156,14 @@ defmodule Jido.Integration.V2.StoreLocal.State do
     end
   end
 
+  @spec list_connections(t(), map()) :: [Connection.t()]
+  def list_connections(%__MODULE__{} = state, filters \\ %{}) do
+    state.connections
+    |> Map.values()
+    |> filter_records(filters)
+    |> Enum.sort_by(&{&1.inserted_at, &1.connection_id})
+  end
+
   @spec store_install(t(), Install.t()) :: {:ok, t()}
   def store_install(%__MODULE__{} = state, %Install{} = install) do
     {:ok, %{state | installs: Map.put(state.installs, install.install_id, install)}}
@@ -167,6 +175,14 @@ defmodule Jido.Integration.V2.StoreLocal.State do
       nil -> {:error, :unknown_install}
       install -> {:ok, install}
     end
+  end
+
+  @spec list_installs(t(), map()) :: [Install.t()]
+  def list_installs(%__MODULE__{} = state, filters \\ %{}) do
+    state.installs
+    |> Map.values()
+    |> filter_records(filters)
+    |> Enum.sort_by(&{&1.inserted_at, &1.install_id})
   end
 
   @spec store_lease(t(), LeaseRecord.t()) :: {:ok, t()}
@@ -234,6 +250,14 @@ defmodule Jido.Integration.V2.StoreLocal.State do
       nil -> :error
       attempt -> {:ok, attempt}
     end
+  end
+
+  @spec list_attempts(t(), String.t()) :: [Attempt.t()]
+  def list_attempts(%__MODULE__{} = state, run_id) do
+    state.attempts
+    |> Map.values()
+    |> Enum.filter(&(&1.run_id == run_id))
+    |> Enum.sort_by(&{&1.attempt, &1.attempt_id})
   end
 
   @spec update_attempt(t(), String.t(), atom(), map() | nil, String.t() | nil, keyword()) ::
@@ -524,6 +548,12 @@ defmodule Jido.Integration.V2.StoreLocal.State do
 
   defp sanitize_event(%Event{} = event) do
     %{event | payload: Redaction.redact(event.payload)}
+  end
+
+  defp filter_records(records, filters) when is_map(filters) do
+    Enum.filter(records, fn record ->
+      Enum.all?(filters, fn {key, value} -> Map.get(record, key) == value end)
+    end)
   end
 
   defp same_position?(%Event{} = left, %Event{} = right) do

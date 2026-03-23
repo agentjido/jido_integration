@@ -77,6 +77,18 @@ defmodule Jido.Integration.V2.StorePostgres.ControlPlaneStoreTest do
     assert length(EventStore.list_events(run.run_id)) == 1
   end
 
+  test "lists run attempt history in attempt order" do
+    run = run_fixture()
+    first_attempt = attempt_fixture(run, %{attempt: 1})
+    second_attempt = attempt_fixture(run, %{attempt: 2, aggregator_epoch: 2})
+
+    assert :ok = RunStore.put_run(run)
+    assert :ok = AttemptStore.put_attempt(first_attempt)
+    assert :ok = AttemptStore.put_attempt(second_attempt)
+
+    assert Enum.map(AttemptStore.list_attempts(run.run_id), & &1.attempt) == [1, 2]
+  end
+
   test "parameterizes identifiers and redacts secrets in durable run and event truth" do
     run =
       run_fixture(%{

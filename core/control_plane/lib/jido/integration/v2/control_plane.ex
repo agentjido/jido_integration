@@ -124,6 +124,9 @@ defmodule Jido.Integration.V2.ControlPlane do
   @spec fetch_attempt(String.t()) :: {:ok, Attempt.t()} | :error
   def fetch_attempt(attempt_id), do: Stores.attempt_store().fetch_attempt(attempt_id)
 
+  @spec attempts(String.t()) :: [Attempt.t()]
+  def attempts(run_id), do: Stores.attempt_store().list_attempts(run_id)
+
   @spec events(String.t()) :: [Event.t()]
   def events(run_id), do: Stores.event_store().list_events(run_id)
 
@@ -189,6 +192,15 @@ defmodule Jido.Integration.V2.ControlPlane do
   @spec fetch_target(String.t()) :: {:ok, TargetDescriptor.t()} | :error
   def fetch_target(target_id), do: Stores.target_store().fetch_target_descriptor(target_id)
 
+  @spec targets(map()) :: [TargetDescriptor.t()]
+  def targets(filters \\ %{}) when is_map(filters) do
+    Stores.target_store().list_target_descriptors()
+    |> filter_records(filters)
+  end
+
+  @spec run_triggers(String.t()) :: [TriggerRecord.t()]
+  def run_triggers(run_id), do: Stores.ingress_store().list_run_triggers(run_id)
+
   @spec compatible_targets(map()) :: [
           %{target: TargetDescriptor.t(), negotiated_versions: map()}
         ]
@@ -218,6 +230,12 @@ defmodule Jido.Integration.V2.ControlPlane do
     Auth.reset!()
     RuntimeRouter.reset!()
     :ok
+  end
+
+  defp filter_records(records, filters) when is_map(filters) do
+    Enum.filter(records, fn record ->
+      Enum.all?(filters, fn {key, value} -> Map.get(record, key) == value end)
+    end)
   end
 
   defp continue_invoke(capability, run, input, opts, auth_binding) do

@@ -153,9 +153,9 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     trigger_definition = MarketData.market_alert_definition()
 
     with {:ok, trigger} <- Ingress.admit_poll(trigger_request, trigger_definition),
-         {:ok, market_target} <- choose_target("market.ticks.pull", :stream),
-         {:ok, analyst_target} <- choose_target("codex.exec.session", :session),
-         {:ok, ops_target} <- choose_target("github.issue.create", :direct),
+         {:ok, market_target} <- choose_target("market.ticks.pull"),
+         {:ok, analyst_target} <- choose_target("codex.exec.session"),
+         {:ok, ops_target} <- choose_target("github.issue.create"),
          {:ok, market_pull} <-
            V2.invoke(
              "market.ticks.pull",
@@ -215,34 +215,38 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     end
   end
 
-  @spec review_packet(workflow()) :: {:ok, map()}
+  @spec review_packet(workflow()) :: {:ok, map()} | {:error, term()}
   def review_packet(%{
         trigger: trigger,
         market_pull: market_pull,
         analyst_session: analyst_session,
         escalation_issue: escalation_issue,
-        connections: connections,
-        targets: targets
+        connections: _connections,
+        targets: _targets
       }) do
-    {:ok,
-     %{
-       trigger: trigger,
-       connections: %{
-         market_data: fetch_connection!(connections.market_data.connection.connection_id),
-         analyst: fetch_connection!(connections.analyst.connection.connection_id),
-         operator: fetch_connection!(connections.operator.connection.connection_id)
-       },
-       targets: %{
-         market_data: fetch_target!(targets.market_data.target_id),
-         analyst: fetch_target!(targets.analyst.target_id),
-         operator: fetch_target!(targets.operator.target_id)
-       },
-       runs: %{
-         market_pull: review_surface(market_pull),
-         analyst_session: review_surface(analyst_session),
-         escalation_issue: review_surface(escalation_issue)
-       }
-     }}
+    with {:ok, market_pull_review} <- review_surface(market_pull),
+         {:ok, analyst_session_review} <- review_surface(analyst_session),
+         {:ok, escalation_issue_review} <- review_surface(escalation_issue) do
+      {:ok,
+       %{
+         trigger: trigger,
+         connections: %{
+           market_data: market_pull_review.connection,
+           analyst: analyst_session_review.connection,
+           operator: escalation_issue_review.connection
+         },
+         targets: %{
+           market_data: market_pull_review.target,
+           analyst: analyst_session_review.target,
+           operator: escalation_issue_review.target
+         },
+         runs: %{
+           market_pull: market_pull_review,
+           analyst_session: analyst_session_review,
+           escalation_issue: escalation_issue_review
+         }
+       }}
+    end
   end
 
   defp register_connectors do
@@ -354,33 +358,15 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     }
   end
 
-  defp choose_target(capability_id, runtime_class) do
-    requirements =
-      authored_target_requirements(capability_id, runtime_class, %{
-        capability_id: capability_id,
-        runtime_class: runtime_class,
-        version_requirement: "~> 1.0",
-        accepted_runspec_versions: ["1.0.0"],
-        accepted_event_schema_versions: ["1.0.0"]
-      })
-
-    case V2.compatible_targets(requirements) do
-      [%{target: target} | _rest] -> {:ok, target}
-      [] -> {:error, {:no_compatible_target, capability_id}}
-    end
-  end
-
-  defp authored_target_requirements(capability_id, runtime_class, requirements) do
-    case V2.fetch_capability(capability_id) do
-      {:ok, capability} ->
-        TargetDescriptor.authored_requirements(capability, requirements)
-
-      {:error, _reason} ->
-        %{
-          capability_id: capability_id,
-          runtime_class: runtime_class
-        }
-        |> Map.merge(requirements)
+  defp choose_target(capability_id) do
+    case V2.compatible_targets_for(capability_id, %{
+           version_requirement: "~> 1.0",
+           accepted_runspec_versions: ["1.0.0"],
+           accepted_event_schema_versions: ["1.0.0"]
+         }) do
+      {:ok, [%{target: target} | _rest]} -> {:ok, target}
+      {:ok, []} -> {:error, {:no_compatible_target, capability_id}}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -441,13 +427,10 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
   end
 
   defp review_surface(step) do
-    %{
-      run: fetch_run!(step.run.run_id),
-      attempt: fetch_attempt!(step.attempt.attempt_id),
-      events: V2.events(step.run.run_id),
-      artifacts: V2.run_artifacts(step.run.run_id),
-      output: step.output
-    }
+    with {:ok, packet} <-
+           V2.review_packet(step.run.run_id, %{attempt_id: step.attempt.attempt_id}) do
+      {:ok, Map.put(packet, :output, step.output)}
+    end
   end
 
   defp fetch_install!(install_id) do
@@ -461,27 +444,6 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     case V2.connection_status(connection_id) do
       {:ok, connection} -> connection
       {:error, reason} -> raise KeyError, key: connection_id, term: reason
-    end
-  end
-
-  defp fetch_run!(run_id) do
-    case V2.fetch_run(run_id) do
-      {:ok, run} -> run
-      :error -> raise KeyError, key: run_id, term: :run
-    end
-  end
-
-  defp fetch_attempt!(attempt_id) do
-    case V2.fetch_attempt(attempt_id) do
-      {:ok, attempt} -> attempt
-      :error -> raise KeyError, key: attempt_id, term: :attempt
-    end
-  end
-
-  defp fetch_target!(target_id) do
-    case V2.fetch_target(target_id) do
-      {:ok, target} -> target
-      :error -> raise KeyError, key: target_id, term: :target
     end
   end
 

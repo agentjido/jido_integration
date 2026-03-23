@@ -161,6 +161,16 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
     end)
   end
 
+  @impl Jido.Integration.V2.ControlPlane.AttemptStore
+  def list_attempts(run_id) do
+    Agent.get(__MODULE__, fn state ->
+      state.attempts
+      |> Map.values()
+      |> Enum.filter(&(&1.run_id == run_id))
+      |> Enum.sort_by(&{&1.attempt, &1.attempt_id})
+    end)
+  end
+
   def fetch_attempt!(attempt_id) do
     Agent.get(__MODULE__, fn state -> Map.fetch!(state.attempts, attempt_id) end)
   end

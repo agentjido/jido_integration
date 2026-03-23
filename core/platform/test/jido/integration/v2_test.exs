@@ -9,6 +9,7 @@ defmodule Jido.Integration.V2Test do
   alias Jido.Integration.V2.Connectors.MarketData
   alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.InvocationRequest
+  alias Jido.Integration.V2.TargetDescriptor
 
   @github %{
     connector: GitHub,
@@ -221,6 +222,240 @@ defmodule Jido.Integration.V2Test do
     assert {:ok, closed_issue} = V2.fetch_capability("github.issue.close")
     assert closed_issue.metadata.policy.sandbox.allowed_tools == ["github.api.issue.close"]
     assert {:error, :unknown_capability} = V2.fetch_capability("github.issue.reopen")
+  end
+
+  test "exposes shared operator discovery for installs connections catalog entries and targets" do
+    register_connector!(@github.connector)
+    register_connector!(@codex_cli.connector)
+
+    github_connection_id =
+      install_connection!(
+        @github.connector_id,
+        "tenant-operator-surface",
+        "ops-github",
+        ["repo"],
+        %{access_token: "gho-operator", refresh_token: "ghr-operator"}
+      )
+
+    analyst_connection_id =
+      install_connection!(
+        @codex_cli.connector_id,
+        "tenant-operator-surface",
+        "ops-analyst",
+        ["session:execute"],
+        %{access_token: "codex-operator"}
+      )
+
+    assert :ok =
+             V2.announce_target(
+               TargetDescriptor.new!(%{
+                 target_id: "target-operator-direct",
+                 capability_id: "github.issue.create",
+                 runtime_class: :direct,
+                 version: "1.0.0",
+                 features: %{
+                   feature_ids: ["github.issue.create"],
+                   runspec_versions: ["1.0.0"],
+                   event_schema_versions: ["1.0.0"]
+                 },
+                 constraints: %{workspace_root: "/srv/operator/direct"},
+                 health: :healthy,
+                 location: %{mode: :beam, region: "test", workspace_root: "/srv/operator/direct"},
+                 extensions: %{}
+               })
+             )
+
+    assert :ok =
+             V2.announce_target(
+               TargetDescriptor.new!(%{
+                 target_id: "target-operator-session",
+                 capability_id: "codex.exec.session",
+                 runtime_class: :session,
+                 version: "1.0.0",
+                 features: %{
+                   feature_ids: ["asm", "codex.exec.session"],
+                   runspec_versions: ["1.0.0"],
+                   event_schema_versions: ["1.0.0"]
+                 },
+                 constraints: %{workspace_root: "/srv/operator/session"},
+                 health: :healthy,
+                 location: %{mode: :beam, region: "test", workspace_root: "/srv/operator/session"},
+                 extensions: %{"runtime" => %{"driver" => "asm"}}
+               })
+             )
+
+    assert Enum.map(V2.connections(%{tenant_id: "tenant-operator-surface"}), & &1.connection_id) ==
+             [github_connection_id, analyst_connection_id]
+
+    assert Enum.map(V2.installs(%{tenant_id: "tenant-operator-surface"}), & &1.connector_id) == [
+             "github",
+             "codex_cli"
+           ]
+
+    assert Enum.map(V2.targets(%{runtime_class: :session}), & &1.target_id) == [
+             "target-operator-session"
+           ]
+
+    catalog_entries = V2.catalog_entries()
+    assert Enum.map(catalog_entries, & &1.connector_id) == ["codex_cli", "github"]
+
+    assert %{
+             connector_id: "codex_cli",
+             runtime_families: [:session],
+             capability_ids: ["codex.exec.session"],
+             capabilities: [%{capability_id: "codex.exec.session", runtime_class: :session}]
+           } = Enum.find(catalog_entries, &(&1.connector_id == "codex_cli"))
+
+    assert %{
+             connector_id: "github",
+             runtime_families: [:direct],
+             capabilities: github_capabilities
+           } = Enum.find(catalog_entries, &(&1.connector_id == "github"))
+
+    assert Enum.map(github_capabilities, & &1.capability_id) == @github_capability_ids
+  end
+
+  test "derives authored compatible target matches through the shared operator surface" do
+    register_connector!(@codex_cli.connector)
+
+    assert :ok =
+             V2.announce_target(
+               TargetDescriptor.new!(%{
+                 target_id: "target-authored-asm-session",
+                 capability_id: "codex.exec.session",
+                 runtime_class: :session,
+                 version: "1.0.0",
+                 features: %{
+                   feature_ids: ["asm", "codex.exec.session"],
+                   runspec_versions: ["1.0.0"],
+                   event_schema_versions: ["1.0.0"]
+                 },
+                 constraints: %{workspace_root: "/srv/operator/asm"},
+                 health: :healthy,
+                 location: %{mode: :beam, region: "test", workspace_root: "/srv/operator/asm"},
+                 extensions: %{"runtime" => %{"driver" => "asm"}}
+               })
+             )
+
+    assert :ok =
+             V2.announce_target(
+               TargetDescriptor.new!(%{
+                 target_id: "target-mismatched-session-driver",
+                 capability_id: "codex.exec.session",
+                 runtime_class: :session,
+                 version: "1.0.0",
+                 features: %{
+                   feature_ids: ["jido_session", "codex.exec.session"],
+                   runspec_versions: ["1.0.0"],
+                   event_schema_versions: ["1.0.0"]
+                 },
+                 constraints: %{workspace_root: "/srv/operator/jido-session"},
+                 health: :healthy,
+                 location: %{
+                   mode: :beam,
+                   region: "test",
+                   workspace_root: "/srv/operator/jido-session"
+                 },
+                 extensions: %{"runtime" => %{"driver" => "jido_session"}}
+               })
+             )
+
+    assert {:ok, [match]} =
+             V2.compatible_targets_for("codex.exec.session", %{
+               version_requirement: "~> 1.0",
+               accepted_runspec_versions: ["1.0.0"],
+               accepted_event_schema_versions: ["1.0.0"]
+             })
+
+    assert match.target.target_id == "target-authored-asm-session"
+
+    assert match.negotiated_versions == %{
+             runspec_version: "1.0.0",
+             event_schema_version: "1.0.0"
+           }
+
+    assert match.capability.capability_id == "codex.exec.session"
+    assert match.connector.connector_id == "codex_cli"
+  end
+
+  test "assembles a shared durable review packet with attempt target and auth context" do
+    register_connector!(@github.connector)
+
+    connection_id =
+      install_connection!(
+        @github.connector_id,
+        @github.tenant_id,
+        "review-operator",
+        ["repo"],
+        %{access_token: "gho-review", refresh_token: "ghr-review"}
+      )
+
+    assert :ok =
+             V2.announce_target(
+               TargetDescriptor.new!(%{
+                 target_id: "target-shared-review-direct",
+                 capability_id: "github.issue.create",
+                 runtime_class: :direct,
+                 version: "1.0.0",
+                 features: %{
+                   feature_ids: ["github.issue.create"],
+                   runspec_versions: ["1.0.0"],
+                   event_schema_versions: ["1.0.0"]
+                 },
+                 constraints: %{workspace_root: "/srv/operator/direct-review"},
+                 health: :healthy,
+                 location: %{
+                   mode: :beam,
+                   region: "test",
+                   workspace_root: "/srv/operator/direct-review"
+                 },
+                 extensions: %{}
+               })
+             )
+
+    spec = github_spec("github.issue.create")
+
+    assert {:ok, first} =
+             V2.invoke(
+               "github.issue.create",
+               %{
+                 repo: "agentjido/jido_integration_v2",
+                 title: "Shared review packet",
+                 body: "Exercise the operator helper"
+               },
+               invoke_opts(
+                 "github.issue.create",
+                 connection_id,
+                 spec,
+                 target_id: "target-shared-review-direct"
+               )
+             )
+
+    assert {:ok, retried} =
+             V2.execute_run(
+               first.run.run_id,
+               2,
+               actor_id: "connector-contract",
+               tenant_id: spec.tenant_id,
+               environment: spec.environment,
+               allowed_operations: ["github.issue.create"],
+               sandbox: spec.sandbox
+             )
+
+    assert {:ok, packet} =
+             V2.review_packet(first.run.run_id, %{attempt_id: retried.attempt.attempt_id})
+
+    assert packet.run.run_id == first.run.run_id
+    assert packet.attempt.attempt_id == retried.attempt.attempt_id
+    assert Enum.map(packet.attempts, & &1.attempt) == [1, 2]
+    assert packet.target.target_id == "target-shared-review-direct"
+    assert packet.connection.connection_id == connection_id
+    assert packet.install.connection_id == connection_id
+    assert packet.triggers == []
+    assert packet.capability.capability_id == "github.issue.create"
+    assert packet.connector.connector_id == "github"
+    assert length(packet.artifacts) == 2
+    assert Enum.count(packet.events, &(&1.type == "artifact.recorded")) == 2
   end
 
   test "session connector publishes the shared asm-backed common surface metadata" do

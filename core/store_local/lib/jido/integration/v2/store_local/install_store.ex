@@ -17,6 +17,11 @@ defmodule Jido.Integration.V2.StoreLocal.InstallStore do
     Storage.read(&State.fetch_install(&1, install_id))
   end
 
+  @impl true
+  def list_installs(filters \\ %{}) do
+    Storage.read(&State.list_installs(&1, filters))
+  end
+
   def reset! do
     Storage.mutate(&State.reset_installs/1)
   end

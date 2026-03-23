@@ -79,6 +79,16 @@ defmodule Jido.Integration.V2.Auth.Store do
     end)
   end
 
+  @impl Jido.Integration.V2.Auth.ConnectionStore
+  def list_connections(filters \\ %{}) do
+    Agent.get(__MODULE__, fn state ->
+      state.connections
+      |> Map.values()
+      |> filter_records(filters)
+      |> Enum.sort_by(&{&1.inserted_at, &1.connection_id})
+    end)
+  end
+
   @impl Jido.Integration.V2.Auth.InstallStore
   def store_install(%Install{} = install) do
     Agent.update(__MODULE__, fn state ->
@@ -96,6 +106,16 @@ defmodule Jido.Integration.V2.Auth.Store do
     end)
   end
 
+  @impl Jido.Integration.V2.Auth.InstallStore
+  def list_installs(filters \\ %{}) do
+    Agent.get(__MODULE__, fn state ->
+      state.installs
+      |> Map.values()
+      |> filter_records(filters)
+      |> Enum.sort_by(&{&1.inserted_at, &1.install_id})
+    end)
+  end
+
   def set_refresh_handler(handler) when is_function(handler, 2) or is_nil(handler) do
     Agent.update(__MODULE__, &Map.put(&1, :refresh_handler, handler))
   end
@@ -110,6 +130,12 @@ defmodule Jido.Integration.V2.Auth.Store do
   def reset! do
     Agent.update(__MODULE__, fn _ ->
       %{credentials: %{}, leases: %{}, connections: %{}, installs: %{}, refresh_handler: nil}
+    end)
+  end
+
+  defp filter_records(records, filters) when is_map(filters) do
+    Enum.filter(records, fn record ->
+      Enum.all?(filters, fn {key, value} -> Map.get(record, key) == value end)
     end)
   end
 end

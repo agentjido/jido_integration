@@ -26,9 +26,12 @@ What it proves:
   `connectors/market_data` poll trigger definition
 - separation between trigger capability identity (`market.alert.detected`) and
   the downstream stream operation identity (`market.ticks.pull`)
-- target announcement and compatibility lookup
-- durable review of runs, attempts, events, artifacts, targets, and
-  connections
+- target announcement and authored-compatible lookup through
+  `Jido.Integration.V2.compatible_targets_for/2`
+- workflow-local shaping over the shared `Jido.Integration.V2.review_packet/2`
+- durable review of runs, attempts, events, artifacts, triggers, targets,
+  connections, installs, and catalog context without app-local restitching of
+  low-level store calls
 
 Primary proof:
 

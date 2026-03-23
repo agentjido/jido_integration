@@ -7,4 +7,5 @@ defmodule Jido.Integration.V2.Auth.InstallStore do
 
   @callback store_install(Install.t()) :: :ok | {:error, term()}
   @callback fetch_install(String.t()) :: {:ok, Install.t()} | {:error, :unknown_install}
+  @callback list_installs(map()) :: [Install.t()]
 end

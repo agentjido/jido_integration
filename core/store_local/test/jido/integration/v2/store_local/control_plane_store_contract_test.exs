@@ -84,6 +84,18 @@ defmodule Jido.Integration.V2.StoreLocal.ControlPlaneStoreContractTest do
     assert stored_attempt.aggregator_epoch == 2
   end
 
+  test "lists run attempt history in attempt order" do
+    run = run_fixture()
+    first_attempt = attempt_fixture(run, %{attempt: 1})
+    second_attempt = attempt_fixture(run, %{attempt: 2, aggregator_epoch: 2})
+
+    assert :ok = RunStore.put_run(run)
+    assert :ok = AttemptStore.put_attempt(first_attempt)
+    assert :ok = AttemptStore.put_attempt(second_attempt)
+
+    assert Enum.map(AttemptStore.list_attempts(run.run_id), & &1.attempt) == [1, 2]
+  end
+
   test "enforces event idempotency and epoch fencing" do
     run = run_fixture()
     attempt = attempt_fixture(run, %{aggregator_id: "agg-9", aggregator_epoch: 2})

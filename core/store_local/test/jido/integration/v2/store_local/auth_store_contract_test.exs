@@ -76,6 +76,53 @@ defmodule Jido.Integration.V2.StoreLocal.AuthStoreContractTest do
     assert {:ok, ^lease} = LeaseStore.fetch_lease(lease.lease_id)
   end
 
+  test "lists durable installs and connections with stable filtering" do
+    first_connection =
+      connection_fixture(%{
+        connection_id: "connection-alpha",
+        tenant_id: "tenant-ops",
+        connector_id: "github"
+      })
+
+    second_connection =
+      connection_fixture(%{
+        connection_id: "connection-beta",
+        tenant_id: "tenant-ops",
+        connector_id: "codex_cli"
+      })
+
+    first_install =
+      install_fixture(%{
+        install_id: "install-alpha",
+        connection_id: first_connection.connection_id,
+        tenant_id: "tenant-ops",
+        connector_id: "github"
+      })
+
+    second_install =
+      install_fixture(%{
+        install_id: "install-beta",
+        connection_id: second_connection.connection_id,
+        tenant_id: "tenant-ops",
+        connector_id: "codex_cli"
+      })
+
+    assert :ok = ConnectionStore.store_connection(first_connection)
+    assert :ok = ConnectionStore.store_connection(second_connection)
+    assert :ok = InstallStore.store_install(first_install)
+    assert :ok = InstallStore.store_install(second_install)
+
+    assert Enum.map(
+             ConnectionStore.list_connections(%{tenant_id: "tenant-ops"}),
+             & &1.connection_id
+           ) ==
+             ["connection-alpha", "connection-beta"]
+
+    assert Enum.map(InstallStore.list_installs(%{connector_id: "github"}), & &1.install_id) == [
+             "install-alpha"
+           ]
+  end
+
   test "supports explicit local durability configuration through the public auth API" do
     now = ~U[2026-03-12 12:00:00Z]
 

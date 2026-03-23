@@ -29,6 +29,7 @@ defmodule Jido.Integration.V2 do
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.InvocationRequest
+  alias Jido.Integration.V2.Operator
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.TargetDescriptor
 
@@ -88,10 +89,22 @@ defmodule Jido.Integration.V2 do
   defdelegate fetch_install(install_id), to: Auth
 
   @doc """
+  List durable installs through the shared operator surface.
+  """
+  @spec installs(map()) :: [Install.t()]
+  defdelegate installs(filters \\ %{}), to: Auth
+
+  @doc """
   Fetch safe connection status through the host-facing auth boundary.
   """
   @spec connection_status(String.t()) :: {:ok, Connection.t()} | {:error, :unknown_connection}
   defdelegate connection_status(connection_id), to: Auth
+
+  @doc """
+  List durable connections through the shared operator surface.
+  """
+  @spec connections(map()) :: [Connection.t()]
+  defdelegate connections(filters \\ %{}), to: Auth
 
   @doc """
   Issue a short-lived lease for runtime execution.
@@ -210,10 +223,37 @@ defmodule Jido.Integration.V2 do
   defdelegate fetch_target(target_id), to: ControlPlane
 
   @doc """
+  List durable target descriptors through the shared operator surface.
+  """
+  @spec targets(map()) :: [TargetDescriptor.t()]
+  defdelegate targets(filters \\ %{}), to: ControlPlane
+
+  @doc """
   Return targets compatible with the requested capability/runtime/version posture.
   """
   @spec compatible_targets(map()) :: [%{target: TargetDescriptor.t(), negotiated_versions: map()}]
   defdelegate compatible_targets(requirements), to: ControlPlane
+
+  @doc """
+  Summarize connector catalog entries for operator-facing discovery.
+  """
+  @spec catalog_entries() :: [map()]
+  defdelegate catalog_entries(), to: Operator
+
+  @doc """
+  Derive authored-compatible target matches for a capability.
+  """
+  @spec compatible_targets_for(String.t(), map()) ::
+          {:ok, [map()]} | {:error, :unknown_capability | :unknown_connector}
+  defdelegate compatible_targets_for(capability_id, requirements \\ %{}), to: Operator
+
+  @doc """
+  Assemble a shared review packet from durable auth and control-plane truth.
+  """
+  @spec review_packet(String.t(), map()) ::
+          {:ok, map()}
+          | {:error, :unknown_run | :unknown_attempt | :unknown_capability | :unknown_connector}
+  defdelegate review_packet(run_id, opts \\ %{}), to: Operator
 
   @doc """
   Reset in-memory state for tests and local exploration.

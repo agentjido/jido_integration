@@ -7,4 +7,5 @@ defmodule Jido.Integration.V2.Auth.ConnectionStore do
 
   @callback store_connection(Connection.t()) :: :ok | {:error, term()}
   @callback fetch_connection(String.t()) :: {:ok, Connection.t()} | {:error, :unknown_connection}
+  @callback list_connections(map()) :: [Connection.t()]
 end

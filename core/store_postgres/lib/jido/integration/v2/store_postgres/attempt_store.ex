@@ -33,6 +33,16 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
   end
 
   @impl true
+  def list_attempts(run_id) do
+    from(attempt in AttemptRecord,
+      where: attempt.run_id == ^run_id,
+      order_by: [asc: attempt.attempt, asc: attempt.attempt_id]
+    )
+    |> Repo.all()
+    |> Enum.map(&to_contract/1)
+  end
+
+  @impl true
   def update_attempt(attempt_id, status, output, runtime_ref_id, opts \\ []) do
     Repo.transaction(fn ->
       record =

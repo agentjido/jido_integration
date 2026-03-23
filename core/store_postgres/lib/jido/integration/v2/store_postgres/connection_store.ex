@@ -3,6 +3,8 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
 
   @behaviour Jido.Integration.V2.Auth.ConnectionStore
 
+  import Ecto.Query
+
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.StorePostgres.Repo
@@ -73,33 +75,52 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
         {:error, :unknown_connection}
 
       record ->
-        {:ok,
-         Connection.new!(%{
-           connection_id: record.connection_id,
-           tenant_id: record.tenant_id,
-           connector_id: record.connector_id,
-           auth_type: String.to_existing_atom(record.auth_type),
-           subject: record.subject,
-           state: String.to_existing_atom(record.state),
-           credential_ref_id: record.credential_ref_id,
-           install_id: record.install_id,
-           requested_scopes: record.requested_scopes || [],
-           granted_scopes: record.granted_scopes || [],
-           lease_fields: record.lease_fields || [],
-           token_expires_at: record.token_expires_at,
-           last_rotated_at: record.last_rotated_at,
-           revoked_at: record.revoked_at,
-           revocation_reason: record.revocation_reason,
-           actor_id: record.actor_id,
-           metadata: Serialization.load(record.metadata || %{}),
-           inserted_at: record.inserted_at,
-           updated_at: record.updated_at
-         })}
+        {:ok, to_contract(record)}
     end
+  end
+
+  @impl true
+  def list_connections(filters \\ %{}) do
+    from(connection in ConnectionRecord,
+      order_by: [asc: connection.inserted_at, asc: connection.connection_id]
+    )
+    |> Repo.all()
+    |> Enum.map(&to_contract/1)
+    |> filter_records(filters)
   end
 
   def reset! do
     Repo.delete_all(ConnectionRecord)
     :ok
+  end
+
+  defp filter_records(records, filters) when is_map(filters) do
+    Enum.filter(records, fn record ->
+      Enum.all?(filters, fn {key, value} -> Map.get(record, key) == value end)
+    end)
+  end
+
+  defp to_contract(record) do
+    Connection.new!(%{
+      connection_id: record.connection_id,
+      tenant_id: record.tenant_id,
+      connector_id: record.connector_id,
+      auth_type: String.to_existing_atom(record.auth_type),
+      subject: record.subject,
+      state: String.to_existing_atom(record.state),
+      credential_ref_id: record.credential_ref_id,
+      install_id: record.install_id,
+      requested_scopes: record.requested_scopes || [],
+      granted_scopes: record.granted_scopes || [],
+      lease_fields: record.lease_fields || [],
+      token_expires_at: record.token_expires_at,
+      last_rotated_at: record.last_rotated_at,
+      revoked_at: record.revoked_at,
+      revocation_reason: record.revocation_reason,
+      actor_id: record.actor_id,
+      metadata: Serialization.load(record.metadata || %{}),
+      inserted_at: record.inserted_at,
+      updated_at: record.updated_at
+    })
   end
 end

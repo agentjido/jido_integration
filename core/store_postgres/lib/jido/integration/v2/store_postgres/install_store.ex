@@ -3,6 +3,8 @@ defmodule Jido.Integration.V2.StorePostgres.InstallStore do
 
   @behaviour Jido.Integration.V2.Auth.InstallStore
 
+  import Ecto.Query
+
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.StorePostgres.Repo
@@ -67,30 +69,49 @@ defmodule Jido.Integration.V2.StorePostgres.InstallStore do
         {:error, :unknown_install}
 
       record ->
-        {:ok,
-         Install.new!(%{
-           install_id: record.install_id,
-           connection_id: record.connection_id,
-           tenant_id: record.tenant_id,
-           connector_id: record.connector_id,
-           actor_id: record.actor_id,
-           auth_type: String.to_existing_atom(record.auth_type),
-           subject: record.subject,
-           state: String.to_existing_atom(record.state),
-           callback_token: record.callback_token,
-           requested_scopes: record.requested_scopes || [],
-           granted_scopes: record.granted_scopes || [],
-           expires_at: record.expires_at,
-           completed_at: record.completed_at,
-           metadata: Serialization.load(record.metadata || %{}),
-           inserted_at: record.inserted_at,
-           updated_at: record.updated_at
-         })}
+        {:ok, to_contract(record)}
     end
+  end
+
+  @impl true
+  def list_installs(filters \\ %{}) do
+    from(install in InstallRecord,
+      order_by: [asc: install.inserted_at, asc: install.install_id]
+    )
+    |> Repo.all()
+    |> Enum.map(&to_contract/1)
+    |> filter_records(filters)
   end
 
   def reset! do
     Repo.delete_all(InstallRecord)
     :ok
+  end
+
+  defp filter_records(records, filters) when is_map(filters) do
+    Enum.filter(records, fn record ->
+      Enum.all?(filters, fn {key, value} -> Map.get(record, key) == value end)
+    end)
+  end
+
+  defp to_contract(record) do
+    Install.new!(%{
+      install_id: record.install_id,
+      connection_id: record.connection_id,
+      tenant_id: record.tenant_id,
+      connector_id: record.connector_id,
+      actor_id: record.actor_id,
+      auth_type: String.to_existing_atom(record.auth_type),
+      subject: record.subject,
+      state: String.to_existing_atom(record.state),
+      callback_token: record.callback_token,
+      requested_scopes: record.requested_scopes || [],
+      granted_scopes: record.granted_scopes || [],
+      expires_at: record.expires_at,
+      completed_at: record.completed_at,
+      metadata: Serialization.load(record.metadata || %{}),
+      inserted_at: record.inserted_at,
+      updated_at: record.updated_at
+    })
   end
 end
