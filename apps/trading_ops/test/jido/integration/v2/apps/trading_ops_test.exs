@@ -13,7 +13,11 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
       Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
 
     ensure_started(
-      [Jido.Integration.V2.ControlPlane.Registry, Jido.Integration.V2.ControlPlane.RunLedger],
+      [
+        Jido.Integration.V2.ControlPlane.Registry,
+        Jido.Integration.V2.ControlPlane.RunLedger,
+        Jido.Integration.V2.HarnessRuntime.SessionStore
+      ],
       Jido.Integration.V2.ControlPlane.Supervisor,
       Jido.Integration.V2.ControlPlane.Application
     )
@@ -22,18 +26,6 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
       [Jido.Integration.V2.Auth.Store],
       Jido.Integration.V2.Auth.Supervisor,
       Jido.Integration.V2.Auth.Application
-    )
-
-    ensure_started(
-      [Jido.Integration.V2.SessionKernel.SessionStore],
-      Jido.Integration.V2.SessionKernel.Supervisor,
-      Jido.Integration.V2.SessionKernel.Application
-    )
-
-    ensure_started(
-      [Jido.Integration.V2.StreamRuntime.Store],
-      Jido.Integration.V2.StreamRuntime.Supervisor,
-      Jido.Integration.V2.StreamRuntime.Application
     )
 
     V2.reset!()

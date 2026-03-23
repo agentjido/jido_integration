@@ -9,10 +9,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.LiveSupport do
 
   @runtime_apps [
     :jido_integration_v2_auth,
-    :jido_integration_v2_control_plane,
-    :jido_integration_v2_direct_runtime,
-    :jido_integration_v2_session_kernel,
-    :jido_integration_v2_stream_runtime
+    :jido_integration_v2_control_plane
   ]
 
   @spec run_auth_lifecycle!() :: map()

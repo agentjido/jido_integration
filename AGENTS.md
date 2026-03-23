@@ -35,10 +35,8 @@ Current core packages:
 - `core/policy`
 - `core/direct_runtime`
 - `core/runtime_asm_bridge`
-- `core/session_kernel`
 - `core/store_local`
 - `core/store_postgres`
-- `core/stream_runtime`
 
 Current connector packages:
 

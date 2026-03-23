@@ -32,8 +32,6 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       {:jido_integration_v2_policy, path: "../policy"},
       {:jido_integration_v2_direct_runtime, path: "../direct_runtime"},
       {:jido_integration_v2_runtime_asm_bridge, path: "../runtime_asm_bridge"},
-      {:jido_integration_v2_session_kernel, path: "../session_kernel"},
-      {:jido_integration_v2_stream_runtime, path: "../stream_runtime"},
       {:jido_harness,
        path: basis_repo_path("JIDO_HARNESS_PATH", "../../../jido_harness"), override: true},
       {:agent_session_manager, path: agent_session_manager_path, env: :dev},

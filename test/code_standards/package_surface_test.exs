@@ -97,6 +97,13 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     end
   end
 
+  test "Phase 6A bridge packages are absent from the workspace package graph" do
+    for relative_path <- ["core/session_kernel", "core/stream_runtime"] do
+      refute File.exists?(Path.join(repo_root(), relative_path)),
+             "#{relative_path} must be deleted from the workspace"
+    end
+  end
+
   test "packages that compile agent_session_manager expose boundary explicitly" do
     for relative_path <- ["core/control_plane/mix.exs", "core/runtime_asm_bridge/mix.exs"] do
       mix_exs = repo_root() |> Path.join(relative_path) |> File.read!()

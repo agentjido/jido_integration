@@ -22,13 +22,13 @@ defmodule Jido.Integration.Docs.RootBoundaryDocsTest do
     end)
   end
 
-  test "root docs describe bridge packages as residue rather than target architecture" do
+  test "root docs describe the bridge packages as removed cleanup targets" do
     Enum.each(@root_docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 
       assert doc =~
-               "`core/session_kernel` and `core/stream_runtime` still exist only as bridge-era residue slated for Phase 6A removal; they are not part of the target runtime architecture.",
-             "#{path} must describe the bridge packages as residue"
+               "Phase 6A removed the old `core/session_kernel` and `core/stream_runtime` bridge packages. They are not part of the repo or the target runtime architecture.",
+             "#{path} must describe the bridge packages as removed"
     end)
   end
 

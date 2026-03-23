@@ -27,8 +27,6 @@ jido_integration/
     policy/                 # pre-attempt policy and shed decisions
     direct_runtime/         # direct capability execution
     runtime_asm_bridge/     # integration-owned `asm` Harness driver projection
-    session_kernel/         # bridge-era residue slated for Phase 6A removal
-    stream_runtime/         # bridge-era residue slated for Phase 6A removal
     store_local/            # restart-safe local durability tier
     store_postgres/         # database-backed durable tier
     dispatch_runtime/       # async queue, retry, replay, recovery
@@ -60,9 +58,9 @@ jido_integration/
   through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
   and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
   through `/home/home/p/g/n/jido_session` via `Jido.Session.HarnessDriver`.
-- `core/session_kernel` and `core/stream_runtime` still exist only as
-  bridge-era residue slated for Phase 6A removal; they are not part of the
-  target runtime architecture.
+- Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
+  bridge packages. They are not part of the repo or the target runtime
+  architecture.
 - `core/dispatch_runtime` and `core/webhook_router` stay as child packages.
   Hosted async and webhook behavior does not move back into the root or the
   facade package.
@@ -90,8 +88,8 @@ Only actual `:session` and `:stream` capabilities use
 and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
 through `/home/home/p/g/n/jido_session` via `Jido.Session.HarnessDriver`.
 
-`core/session_kernel` and `core/stream_runtime` still exist only as bridge-era
-residue slated for Phase 6A removal; they are not part of the target runtime
+Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
+bridge packages. They are not part of the repo or the target runtime
 architecture.
 
 ## Public API Highlights

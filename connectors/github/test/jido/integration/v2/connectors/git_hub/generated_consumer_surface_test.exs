@@ -26,7 +26,11 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
 
   setup do
     ensure_started(
-      [Jido.Integration.V2.ControlPlane.Registry, Jido.Integration.V2.ControlPlane.RunLedger],
+      [
+        Jido.Integration.V2.ControlPlane.Registry,
+        Jido.Integration.V2.ControlPlane.RunLedger,
+        Jido.Integration.V2.HarnessRuntime.SessionStore
+      ],
       Jido.Integration.V2.ControlPlane.Supervisor,
       Jido.Integration.V2.ControlPlane.Application
     )
@@ -37,8 +41,6 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
       Jido.Integration.V2.Auth.Application
     )
 
-    ensure_stopped(Jido.Integration.V2.SessionKernel.Supervisor)
-    ensure_stopped(Jido.Integration.V2.StreamRuntime.Supervisor)
     V2.reset!()
     :ok
   end
@@ -114,8 +116,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
     refute_receive {:generated_invoke, _request}
   end
 
-  test "generated actions execute the full GitHub A0 slice through the real facade without bridge-era runtime apps" do
-    assert_bridge_runtime_apps_stopped()
+  test "generated actions execute the full GitHub A0 slice through the real direct facade" do
     register_connector!()
     connection_id = install_connection!()
 
@@ -144,8 +145,6 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
       assert_receive {:transport_request, request, _context}
       Fixtures.assert_request(spec.capability_id, request)
     end)
-
-    assert_bridge_runtime_apps_stopped()
   end
 
   test "generated plugin exposes the real Jido.Plugin contract over the generated action bundle" do
@@ -246,10 +245,5 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
         :exit, _reason -> :ok
       end
     end
-  end
-
-  defp assert_bridge_runtime_apps_stopped do
-    refute Process.whereis(Jido.Integration.V2.SessionKernel.Supervisor)
-    refute Process.whereis(Jido.Integration.V2.StreamRuntime.Supervisor)
   end
 end

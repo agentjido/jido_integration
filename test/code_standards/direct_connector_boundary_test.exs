@@ -57,27 +57,34 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
     end)
   end
 
-  test "direct connector tests do not boot bridge-era runtime packages" do
-    Enum.each(@direct_connectors, fn %{test_root: test_root} ->
-      test_suite =
-        test_root
-        |> Path.join("**/*.exs")
+  test "direct connector proofs and example support do not mention removed bridge runtimes" do
+    session_kernel_module = "Jido.Integration.V2." <> "SessionKernel"
+    stream_runtime_module = "Jido.Integration.V2." <> "StreamRuntime"
+    session_kernel_app = ":jido_integration_v2_" <> "session_kernel"
+    stream_runtime_app = ":jido_integration_v2_" <> "stream_runtime"
+
+    Enum.each(@direct_connectors, fn %{mix_path: mix_path, test_root: test_root} ->
+      package_root = Path.dirname(mix_path)
+
+      proof_suite =
+        package_root
+        |> Path.join("{test,examples}/**/*.{ex,exs}")
         |> Path.wildcard()
         |> Enum.map_join("\n", &File.read!/1)
 
-      refute test_suite =~ "Jido.Integration.V2.SessionKernel.Application",
-             "#{test_root} must not start SessionKernel for direct connector proofs"
+      refute proof_suite =~ session_kernel_module,
+             "#{package_root} must not mention SessionKernel in proofs or example support"
 
-      refute test_suite =~ "Jido.Integration.V2.SessionKernel.SessionStore",
-             "#{test_root} must not require SessionKernel storage for direct connector proofs"
+      refute proof_suite =~ stream_runtime_module,
+             "#{package_root} must not mention StreamRuntime in proofs or example support"
 
-      refute test_suite =~ "Jido.Integration.V2.StreamRuntime.Application",
-             "#{test_root} must not start StreamRuntime for direct connector proofs"
+      refute proof_suite =~ session_kernel_app,
+             "#{package_root} must not boot the removed session bridge app"
 
-      refute test_suite =~ "Jido.Integration.V2.StreamRuntime.Store",
-             "#{test_root} must not require StreamRuntime storage for direct connector proofs"
+      refute proof_suite =~ stream_runtime_app,
+             "#{package_root} must not boot the removed stream bridge app"
 
-      refute test_suite =~ "Jido.Harness",
+      refute proof_suite =~ "Jido.Harness",
              "#{test_root} must not route direct connector proofs through Jido.Harness"
     end)
   end
