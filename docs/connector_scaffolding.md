@@ -119,6 +119,10 @@ If an authored runtime capability is useful but still provider-specific, keep it
 
 If a provider SDK method is long-tail inventory that should remain at the SDK boundary, leave it out of the manifest entirely instead of inflating the generated Jido surface.
 
+Generated actions, sensors, and plugins are always derivative. They are
+reviewable consumer outputs built from authored manifest truth. Do not treat
+the generated files or modules as a second authoring plane.
+
 For non-direct authored operations, keep routing metadata on the authored
 contract itself:
 
@@ -133,6 +137,10 @@ authored capability instead of guessing.
 Targets must align to those authored routing keys. A `TargetDescriptor` is a
 compatibility and location advertisement, not a second place to override the
 selected runtime driver, provider, or options.
+
+When a caller needs target requirements, build them from authored capability
+truth through `Jido.Integration.V2.TargetDescriptor.authored_requirements/2`
+instead of re-inventing the merge at each call site.
 
 For non-direct target lookup, require the authored `runtime.driver` as a target
 feature as well. That keeps a `:session` or `:stream` capability from matching

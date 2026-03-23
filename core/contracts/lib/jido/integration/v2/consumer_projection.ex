@@ -1,6 +1,12 @@
 defmodule Jido.Integration.V2.ConsumerProjection do
   @moduledoc """
-  Shared projection rules for generated consumer surfaces built from authored manifests.
+  Shared projection rules for generated consumer surfaces built from authored
+  manifests.
+
+  Only authored entries marked `consumer_surface.mode == :common` project into
+  generated actions, sensors, and plugins. Connector-local inventory remains
+  authored runtime truth, but it stays outside the shared generated consumer
+  surface until a connector author explicitly opts it in.
   """
 
   alias Jido.Integration.V2.Contracts

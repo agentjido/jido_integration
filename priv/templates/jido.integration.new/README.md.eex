@@ -40,6 +40,11 @@ The scaffold is intentionally honest and minimal. It is the starting contract,
 not the finished connector package. Replace these placeholders as you turn it
 into a real connector:
 
+Keep provider inventory, parity catalogs, and long-tail SDK helpers
+connector-local unless you explicitly publish them through the manifest.
+Target descriptors advertise compatibility and location only. They do not
+override authored runtime.driver, runtime.provider, or runtime.options.
+
 1. auth, catalog, operation ids, schemas, scopes, and policy metadata in `[<%= @module_file %>]`
 2. handler logic in `[<%= @handler_file %>]`
 3. deterministic fixture expectations in `[<%= @conformance_file %>]`

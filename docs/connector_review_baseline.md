@@ -26,6 +26,7 @@ Every connector README in this baseline should let a reviewer answer the same
 questions without guessing. The minimum package sections are:
 
 - runtime family and auth posture
+- authored-vs-generated boundary, including which inventory stays connector-local and which entries project into the shared generated consumer surface
 - package-local `mix compile --warnings-as-errors`, `mix test`, and `mix docs`
   plus the root conformance and `mix ci` acceptance loop
 - live-proof status, including an explicit "none yet" when no live proof exists
@@ -39,6 +40,9 @@ questions without guessing. The minimum package sections are:
   `fetch_capability/1`
 - connector manifests are authored through explicit auth, catalog, operation,
   and trigger contracts, with executable capabilities derived from that source
+- generated consumer surfaces remain derivative of authored manifest truth and
+  do not silently absorb provider inventory or connector-local long-tail
+  helpers
 - authored auth remains internally consistent with the published slice:
   `requested_scopes` cover all operation and trigger scope requirements, and
   `secret_names` cover every trigger verification or webhook secret reference
@@ -48,6 +52,9 @@ questions without guessing. The minimum package sections are:
 - direct, session, and stream connectors all emit runtime-specific
   `RuntimeResult` evidence while keeping durable review truth in the control
   plane
+- target lookup starts from authored capability posture through
+  `TargetDescriptor.authored_requirements/2`; target descriptors only
+  advertise compatibility and location
 - the session example connector publishes the shared `codex.exec.session`
   common surface on the accepted ASM-backed Harness seam instead of staying
   connector-local

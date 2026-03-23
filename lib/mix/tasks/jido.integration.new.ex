@@ -8,7 +8,9 @@ defmodule Mix.Tasks.Jido.Integration.New do
   connector package. The scaffold gives you package-local manifest, handler,
   companion-module, and test seams, but the real connector contract, package
   README, deterministic expectations, and any live proof code still must be
-  authored by hand.
+  authored by hand. Keep provider inventory connector-local unless you
+  explicitly author it into the manifest, and keep target descriptors as
+  compatibility plus location advertisements rather than runtime overrides.
 
   Connector proof code belongs in the generated connector package rather than
   the workspace root.
@@ -65,8 +67,10 @@ defmodule Mix.Tasks.Jido.Integration.New do
     Next steps:
       1. Treat the generated package as a starting contract, not the finished connector package.
       2. Replace the placeholder authored manifest entries and provider logic with the real connector contract.
+         Keep provider inventory connector-local unless you explicitly author it into the manifest.
       3. Update #{Path.relative_to(Path.join(context.package_root, context.conformance_file), context.workspace_root)} so the deterministic fixture matches the real behavior.
       4. Update #{Path.join(context.package_root_relative, "README.md")} so it states the runtime family, auth posture, package-local verification commands, and live-proof status.
+         Target descriptors only advertise compatibility and location; they do not override authored runtime posture.
       5. Keep connector-local proof code inside #{context.package_root_relative}; move hosted webhook or async composition into an app only when that behavior is not part of the connector contract.
       6. Run: cd #{context.package_root_relative} && mix deps.get
       7. Run: cd #{context.package_root_relative} && mix compile --warnings-as-errors

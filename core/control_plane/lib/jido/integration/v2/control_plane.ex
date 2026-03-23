@@ -697,31 +697,8 @@ defmodule Jido.Integration.V2.ControlPlane do
   end
 
   defp target_selection_requirements(%Capability{} = capability) do
-    %{
-      capability_id: capability.id,
-      runtime_class: capability.runtime_class
-    }
-    |> maybe_put_authored_runtime_feature(capability)
+    TargetDescriptor.authored_requirements(capability)
   end
-
-  defp maybe_put_authored_runtime_feature(
-         requirements,
-         %Capability{runtime_class: runtime_class} = capability
-       )
-       when runtime_class in [:session, :stream] do
-    case capability.metadata |> Contracts.get(:runtime, %{}) |> Contracts.get(:driver) do
-      driver when is_atom(driver) ->
-        Map.put(requirements, :required_features, [Atom.to_string(driver)])
-
-      driver when is_binary(driver) and driver != "" ->
-        Map.put(requirements, :required_features, [driver])
-
-      _other ->
-        requirements
-    end
-  end
-
-  defp maybe_put_authored_runtime_feature(requirements, %Capability{}), do: requirements
 
   defp append_specs(run_id, attempt, specs) do
     event_store = Stores.event_store()

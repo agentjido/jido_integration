@@ -58,6 +58,7 @@ Current hardening guarantees:
 - `Credential` carries durable subject/scope/auth metadata plus secret-bearing fields that are meant to stay behind auth APIs
 - `CredentialLease` carries only the execution-time payload needed for a bounded lease lifetime
 - `TargetDescriptor` uses a separate target-capability namespace from connector capabilities
+- `TargetDescriptor.authored_requirements/2` turns authored capability truth into compatibility requirements so non-direct runtime drivers stay primary and target lookups do not drift into ad hoc override logic
 - `TriggerRecord` preserves trigger-to-run causation plus rejection truth at the control-plane boundary
 - `TriggerCheckpoint` keeps polling cursors explicit and durable
 
@@ -74,6 +75,7 @@ Current hardening guarantees:
 - stores `target_id`, `capability_id`, `runtime_class`, `version`, `features`, `constraints`, `health`, and `location`
 - keeps unknown fields in `extensions` so mixed-version descriptors remain survivable
 - exposes explicit compatibility checks plus runspec/event-schema version negotiation
+- exposes `authored_requirements/2` so target selection starts from authored capability id, runtime class, and non-direct runtime-driver posture instead of letting call sites guess
 
 `InvocationRequest`
 
@@ -110,6 +112,7 @@ Current hardening guarantees:
 `ConsumerProjection`
 
 - projects only authored entries whose `consumer_surface.mode == :common`
+- keeps generated consumer surfaces derivative of authored manifest truth rather than a second authoring plane
 - derives generated action names from normalized surface semantics, not raw provider operation ids
 - derives generated sensor modules and plugin subscriptions from the same authored trigger projection instead of a second trigger-only authored plane
 - keeps provider operation ids stable as internal/runtime-facing capability ids

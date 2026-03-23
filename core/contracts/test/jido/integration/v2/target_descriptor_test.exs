@@ -1,7 +1,43 @@
 defmodule Jido.Integration.V2.TargetDescriptorTest do
   use ExUnit.Case
 
+  alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.TargetDescriptor
+
+  test "derives compatibility requirements from authored capability posture" do
+    capability =
+      Capability.new!(%{
+        id: "codex.exec.session",
+        connector: "codex_cli",
+        runtime_class: :session,
+        kind: :operation,
+        transport_profile: :stdio,
+        handler: __MODULE__,
+        metadata: %{
+          runtime: %{
+            driver: "asm",
+            provider: :codex,
+            options: %{"lane" => "sdk"}
+          }
+        }
+      })
+
+    assert TargetDescriptor.authored_requirements(capability, %{
+             capability_id: "override.capability",
+             runtime_class: :stream,
+             version_requirement: "~> 1.0",
+             required_features: ["tenant_isolated"],
+             accepted_runspec_versions: ["1.0.0"],
+             accepted_event_schema_versions: ["1.0.0"]
+           }) == %{
+             capability_id: "codex.exec.session",
+             runtime_class: :session,
+             version_requirement: "~> 1.0",
+             required_features: ["asm", "tenant_isolated"],
+             accepted_runspec_versions: ["1.0.0"],
+             accepted_event_schema_versions: ["1.0.0"]
+           }
+  end
 
   test "preserves unknown fields and negotiates compatible protocol versions" do
     descriptor =
@@ -71,6 +107,34 @@ defmodule Jido.Integration.V2.TargetDescriptorTest do
                runtime_class: :direct,
                version_requirement: "~> 2.0"
              })
+  end
+
+  test "rejects compatibility requirements that try to override authored runtime posture" do
+    descriptor =
+      TargetDescriptor.new!(%{
+        target_id: "target-runtime",
+        capability_id: "codex.exec.session",
+        runtime_class: :session,
+        version: "1.0.0",
+        features: %{
+          feature_ids: ["asm", "codex.exec.session"],
+          runspec_versions: ["1.0.0"],
+          event_schema_versions: ["1.0.0"]
+        },
+        constraints: %{},
+        health: :healthy,
+        location: %{mode: :beam, region: "us-west-2"}
+      })
+
+    assert_raise ArgumentError,
+                 ~r/target compatibility requirements must not declare runtime override keys/,
+                 fn ->
+                   TargetDescriptor.compatibility(descriptor, %{
+                     capability_id: "codex.exec.session",
+                     runtime_class: :session,
+                     runtime: %{driver: "override_driver"}
+                   })
+                 end
   end
 
   test "normalizes persisted string-backed target enums" do

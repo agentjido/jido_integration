@@ -5,8 +5,14 @@ defmodule Jido.Integration.V2.TargetDescriptor do
   A target is an execution environment advertisement, not a connector
   identity. Compatibility is explicit through runtime class, target
   capability, semantic versioning, and protocol version negotiation.
+
+  Authored connector/runtime posture stays primary. Build compatibility
+  requirements from the authored capability contract and treat target
+  descriptors as compatibility plus location advertisements only. Targets do
+  not override authored runtime driver, provider, or options.
   """
 
+  alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Schema
 
@@ -23,6 +29,15 @@ defmodule Jido.Integration.V2.TargetDescriptor do
   ]
   @runtime_classes [:direct, :session, :stream]
   @target_health [:healthy, :degraded, :unavailable]
+  @compatibility_requirement_keys [
+    :capability_id,
+    :runtime_class,
+    :version_requirement,
+    :required_features,
+    :accepted_runspec_versions,
+    :accepted_event_schema_versions
+  ]
+  @runtime_override_requirement_keys [:runtime, :driver, :provider, :options]
 
   @schema Zoi.struct(
             __MODULE__,
@@ -80,11 +95,44 @@ defmodule Jido.Integration.V2.TargetDescriptor do
     end
   end
 
+  @doc """
+  Builds target compatibility requirements from authored capability truth.
+
+  Callers may add version or protocol preferences, but authored capability id,
+  runtime class, and any non-direct runtime-driver requirement remain primary.
+  """
+  @spec authored_requirements(Capability.t(), map()) :: map()
+  def authored_requirements(%Capability{} = capability, requirements \\ %{})
+      when is_map(requirements) do
+    requirements = requirements |> Map.new() |> normalize_requirements!()
+
+    required_features =
+      capability
+      |> authored_runtime_features()
+      |> Kernel.++(Map.get(requirements, :required_features, []))
+      |> Enum.uniq()
+
+    %{
+      capability_id: capability.id,
+      runtime_class: capability.runtime_class
+    }
+    |> maybe_put(:version_requirement, Map.get(requirements, :version_requirement))
+    |> maybe_put(:required_features, empty_list_to_nil(required_features))
+    |> maybe_put(
+      :accepted_runspec_versions,
+      Map.get(requirements, :accepted_runspec_versions)
+    )
+    |> maybe_put(
+      :accepted_event_schema_versions,
+      Map.get(requirements, :accepted_event_schema_versions)
+    )
+  end
+
   @spec compatibility(t(), map()) ::
           {:ok, %{runspec_version: String.t() | nil, event_schema_version: String.t() | nil}}
           | {:error, atom()}
   def compatibility(%__MODULE__{} = descriptor, requirements) when is_map(requirements) do
-    requirements = Map.new(requirements)
+    requirements = requirements |> Map.new() |> normalize_requirements!()
 
     with :ok <- match_capability(descriptor, requirements),
          :ok <- match_runtime_class(descriptor, requirements),
@@ -306,6 +354,70 @@ defmodule Jido.Integration.V2.TargetDescriptor do
     end
   end
 
+  defp authored_runtime_features(%Capability{runtime_class: runtime_class, metadata: metadata})
+       when runtime_class in [:session, :stream] and is_map(metadata) do
+    case metadata |> Contracts.get(:runtime, %{}) |> Contracts.get(:driver) do
+      driver when is_atom(driver) -> [Atom.to_string(driver)]
+      driver when is_binary(driver) and driver != "" -> [driver]
+      _other -> []
+    end
+  end
+
+  defp authored_runtime_features(%Capability{}), do: []
+
+  defp normalize_requirements!(requirements) when is_map(requirements) do
+    reject_runtime_override_requirement_keys!(requirements)
+
+    requirements
+    |> collect_known_fields(@compatibility_requirement_keys)
+    |> put_optional_field(requirements, :capability_id, fn value ->
+      Contracts.validate_non_empty_string!(value, "compatibility.capability_id")
+    end)
+    |> put_optional_field(requirements, :runtime_class, &Contracts.validate_runtime_class!/1)
+    |> put_optional_field(
+      requirements,
+      :version_requirement,
+      &Contracts.validate_version_requirement!/1
+    )
+    |> put_optional_field(requirements, :required_features, fn values ->
+      Contracts.normalize_string_list!(values, "required_features")
+    end)
+    |> put_optional_field(requirements, :accepted_runspec_versions, fn versions ->
+      Contracts.normalize_version_list!(versions, "accepted_runspec_versions")
+    end)
+    |> put_optional_field(requirements, :accepted_event_schema_versions, fn versions ->
+      Contracts.normalize_version_list!(versions, "accepted_event_schema_versions")
+    end)
+  end
+
+  defp reject_runtime_override_requirement_keys!(requirements) do
+    override_keys =
+      requirements
+      |> Map.keys()
+      |> Enum.filter(&(normalize_requirement_key(&1) in @runtime_override_requirement_keys))
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    if override_keys == [] do
+      :ok
+    else
+      raise ArgumentError,
+            "target compatibility requirements must not declare runtime override keys #{inspect(override_keys)}; authored runtime posture belongs on the capability contract and targets only advertise compatibility"
+    end
+  end
+
+  defp collect_known_fields(map, known_keys) do
+    Enum.reduce(map, %{}, fn {key, value}, acc ->
+      normalized_key = normalize_requirement_key(key)
+
+      if normalized_key in known_keys do
+        Map.put(acc, normalized_key, value)
+      else
+        acc
+      end
+    end)
+  end
+
   defp collect_unknown_fields(map, known_keys) do
     known_string_keys = Enum.map(known_keys, &Atom.to_string/1)
 
@@ -340,4 +452,21 @@ defmodule Jido.Integration.V2.TargetDescriptor do
         Map.fetch(map, Atom.to_string(key))
     end
   end
+
+  defp normalize_requirement_key(key) when key in @compatibility_requirement_keys, do: key
+  defp normalize_requirement_key(key) when key in @runtime_override_requirement_keys, do: key
+
+  defp normalize_requirement_key(key) when is_binary(key) do
+    key
+    |> String.to_existing_atom()
+  rescue
+    ArgumentError -> key
+  end
+
+  defp normalize_requirement_key(key), do: key
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
+  defp empty_list_to_nil([]), do: nil
+  defp empty_list_to_nil(values), do: values
 end

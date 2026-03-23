@@ -27,6 +27,12 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert output =~ "starting contract, not the finished connector package"
 
     assert output =~
+             "Keep provider inventory connector-local unless you explicitly author it into the manifest."
+
+    assert output =~
+             "Target descriptors only advertise compatibility and location; they do not override authored runtime posture."
+
+    assert output =~
              "Update connectors/acme_crm/README.md so it states the runtime family, auth posture, package-local verification commands, and live-proof status."
 
     assert output =~ "Keep connector-local proof code inside connectors/acme_crm"
@@ -108,6 +114,12 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert readme =~ "## What You Must Author"
     assert readme =~ "## Proof Code Homes"
     assert readme =~ "mix ci"
+
+    assert readme =~
+             "Keep provider inventory, parity catalogs, and long-tail SDK helpers connector-local unless you explicitly publish them through the manifest."
+
+    assert readme =~
+             "Target descriptors advertise compatibility and location only. They do not override authored runtime.driver, runtime.provider, or runtime.options."
 
     assert readme =~
              "Keep deterministic fixtures, companion modules, examples, scripts, and live acceptance inside this package."
