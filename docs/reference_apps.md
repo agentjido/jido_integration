@@ -16,7 +16,8 @@ Primary public functions:
 
 - `bootstrap_reference_stack/1`
 - `run_market_review/2`
-- `review_packet/1`
+- `review_packet/1` for workflow-local aggregation over shared
+  `Jido.Integration.V2.review_packet/2` packets
 
 What it proves:
 
@@ -29,6 +30,8 @@ What it proves:
 - target announcement and authored-compatible lookup through
   `Jido.Integration.V2.compatible_targets_for/2`
 - workflow-local shaping over the shared `Jido.Integration.V2.review_packet/2`
+- no app-local restitching of raw auth or control-plane stores for common
+  operator review data
 - durable review of runs, attempts, events, artifacts, triggers, targets,
   connections, installs, and catalog context without app-local restitching of
   low-level store calls

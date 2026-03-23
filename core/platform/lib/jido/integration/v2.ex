@@ -8,15 +8,23 @@ defmodule Jido.Integration.V2 do
 
   The public surface includes:
 
+  - deterministic connector and capability discovery through `connectors/0`,
+    `capabilities/0`, `fetch_connector/1`, `fetch_capability/1`, and
+    `catalog_entries/0`
+  - durable auth lifecycle operations through `start_install/3`,
+    `complete_install/2`, `fetch_install/1`, `installs/1`,
+    `connection_status/1`, `connections/1`, `request_lease/2`,
+    `rotate_connection/2`, and `revoke_connection/2`
   - typed invocation through `InvocationRequest` and `invoke/1`
-  - direct invocation through `invoke/3`
-  - deterministic connector discovery through `connectors/0`
-  - connector and capability lookup through `fetch_connector/1` and
-    `fetch_capability/1`
+  - direct invocation through `invoke/3` and replay through `execute_run/3`
+  - read-only operator review helpers through `targets/1`,
+    `compatible_targets_for/2`, and `review_packet/2`
 
   Public invocation binds auth through `connection_id` when a capability
   requires a durable connection. Credential resolution and lease issuance stay
-  behind the auth and control-plane seam.
+  behind the auth and control-plane seam. The shared operator helpers remain
+  read-only projections over durable auth and control-plane truth rather than
+  becoming a second store, policy engine, or runtime owner.
   """
 
   alias Jido.Integration.V2.ArtifactRef
