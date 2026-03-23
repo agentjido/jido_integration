@@ -78,6 +78,18 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     end
   end
 
+  test "packages that compile agent_session_manager expose boundary explicitly" do
+    for relative_path <- ["core/control_plane/mix.exs", "core/runtime_asm_bridge/mix.exs"] do
+      mix_exs = repo_root() |> Path.join(relative_path) |> File.read!()
+
+      assert mix_exs =~ "{:agent_session_manager, path: \"../../../agent_session_manager\"}"
+
+      assert mix_exs =~
+               "{:boundary, path: \"../../../agent_session_manager/vendor/boundary\"",
+             "#{relative_path} must expose boundary explicitly so isolated workspace builds can compile ASM"
+    end
+  end
+
   defp child_package_roots do
     repo_root()
     |> Path.join("{core,connectors,apps}/*/mix.exs")

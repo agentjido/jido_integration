@@ -4,6 +4,15 @@ defmodule Mix.Tasks.Jido.Integration.New do
   @moduledoc """
   Scaffold a new v2 connector package in the workspace root.
 
+  The generated package is a generated starting contract, not a finished
+  connector package. The scaffold gives you package-local manifest, handler,
+  companion-module, and test seams, but the real connector contract, package
+  README, deterministic expectations, and any live proof code still must be
+  authored by hand.
+
+  Connector proof code belongs in the generated connector package rather than
+  the workspace root.
+
   ## Usage
 
       mix jido.integration.new github
@@ -54,12 +63,17 @@ defmodule Mix.Tasks.Jido.Integration.New do
     #{Enum.map_join(ConnectorScaffold.generated_relative_paths(context), "\n", &"  #{&1}")}
 
     Next steps:
-      1. Replace the placeholder authored manifest entries and provider logic with the real connector contract.
-      2. Update #{Path.relative_to(Path.join(context.package_root, context.conformance_file), context.workspace_root)} so the deterministic fixture matches the real behavior.
-      3. Run: cd #{context.package_root_relative} && mix deps.get
-      4. Run: cd #{context.package_root_relative} && mix test
-      5. Run: cd #{context.package_root_relative} && mix docs
-      6. Run: mix jido.conformance #{context.connector_module}
+      1. Treat the generated package as a starting contract, not the finished connector package.
+      2. Replace the placeholder authored manifest entries and provider logic with the real connector contract.
+      3. Update #{Path.relative_to(Path.join(context.package_root, context.conformance_file), context.workspace_root)} so the deterministic fixture matches the real behavior.
+      4. Update #{Path.join(context.package_root_relative, "README.md")} so it states the runtime family, auth posture, package-local verification commands, and live-proof status.
+      5. Keep connector-local proof code inside #{context.package_root_relative}; move hosted webhook or async composition into an app only when that behavior is not part of the connector contract.
+      6. Run: cd #{context.package_root_relative} && mix deps.get
+      7. Run: cd #{context.package_root_relative} && mix compile --warnings-as-errors
+      8. Run: cd #{context.package_root_relative} && mix test
+      9. Run: cd #{context.package_root_relative} && mix docs
+      10. Run: mix jido.conformance #{context.connector_module}
+      11. Run: mix ci
     """)
   end
 

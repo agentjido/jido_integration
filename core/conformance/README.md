@@ -13,6 +13,11 @@ This package owns:
 The root workspace exposes this package through `mix jido.conformance`, but
 the implementation stays here so the repo root remains tooling-only.
 
+`mix jido.conformance <ConnectorModule>` is the stable root connector
+acceptance command. Package-local fixtures, runtime-driver evidence, and
+ingress definitions stay package-local even though the task runs from the
+workspace root.
+
 ## Current Stable Profile
 
 `connector_foundation` is the current deterministic connector baseline.
@@ -84,6 +89,9 @@ same companion module.
 Non-direct connectors may also publish `runtime_drivers/0` from the same
 companion module so conformance can bind accepted Harness driver ids such as
 `asm` or `jido_session` to deterministic package-local test drivers.
+
+The companion module is the connector-owned publication point for deterministic
+fixtures, runtime-driver evidence, and ingress definitions.
 
 ## Direct Package Use
 

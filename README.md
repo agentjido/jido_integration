@@ -53,7 +53,7 @@ jido_integration/
   capabilities remain available as a derived projection for runtime lookup and
   invocation.
 - `core/conformance` owns reusable connector review logic behind the root
-  `mix jido.conformance` task.
+  `mix jido.conformance` connector acceptance command.
 - `core/dispatch_runtime` and `core/webhook_router` stay as child packages.
   Hosted async and webhook behavior does not move back into the root or the
   facade package.
@@ -153,6 +153,8 @@ The current surface also proves:
   normal invoke surface
 - `InvocationRequest` is the typed public invoke object
 - conformance runs from the root while connector evidence stays package-local
+- connector READMEs carry runtime/auth posture, package verification, live
+  proof status, and package-boundary notes as part of connector review
 - local durability, async queue state, and webhook route state are all explicit
   opt-in packages
 

@@ -83,6 +83,27 @@ When the workspace root already has a `mix.lock`, the scaffold copies that lock
 snapshot into the new package so it participates in the same monorepo
 dependency surface as the existing child packages.
 
+## Generated Versus Authored Checklist
+
+The scaffold output is the starting contract, not the finished connector
+package.
+
+The scaffold generates:
+
+- package-local project wiring and explicit child-package deps
+- a manifest-shaped connector module and derived executable projection seam
+- package-local conformance publication through `<ConnectorModule>.Conformance`
+- baseline tests and docs structure
+
+Connector authors still need to author by hand:
+
+- the real auth, catalog, operation, and trigger contract
+- the real deterministic fixture expectations and any non-direct runtime driver
+  behavior
+- the package README sections for runtime family, auth posture, package-local
+  verification, live-proof status, and package boundary
+- any package-local examples, scripts, or live acceptance proofs
+
 ## Inventory, Runtime Publication, And Consumer Projection
 
 Connector authors now need to keep three layers distinct:
@@ -172,6 +193,17 @@ After generation:
 7. run package-local tests and docs
 8. run root conformance from the workspace root
 
+## Proof Code Homes
+
+Keep deterministic fixtures, companion modules, examples, scripts, and live
+acceptance inside the connector package.
+
+Do not move connector proof code into the workspace root.
+
+If hosted routing, webhook registration, async recovery, or operator
+composition is needed, keep that proof in an app or package above the
+connector rather than widening the connector scaffold.
+
 ## Package Boundary Rules
 
 - Do not make the connector depend on the repo root.
@@ -188,6 +220,7 @@ Typical loop after implementation:
 
 ```bash
 cd connectors/<name> && mix deps.get
+cd connectors/<name> && mix compile --warnings-as-errors
 cd connectors/<name> && mix test
 cd connectors/<name> && mix docs
 mix jido.conformance <ConnectorModule>

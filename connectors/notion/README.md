@@ -11,6 +11,17 @@ This package keeps the boundary explicit:
 - OAuth control endpoints stay in the install/auth flow and are not published as
   invoke capabilities
 
+## Runtime And Auth Posture
+
+- runtime family: `:direct`
+- public auth binding is `connection_id`
+- the connector mints short-lived credential leases and builds
+  `NotionSDK.Client` instances from those leases only
+- the package uses semantic permission bundles for install and invoke posture
+  instead of pretending Notion capability toggles map 1:1 to OAuth scopes
+- OAuth control endpoints stay in install/auth flow rather than widening the
+  invoke surface
+
 ## Capability Surface
 
 The initial published A0 slice focuses on content publishing:
@@ -135,7 +146,7 @@ The package also groups those ids into reusable profiles for install flows:
 - `content_publishing`
 - `full_workspace`
 
-## Deterministic CI
+## Package Verification
 
 Default package tests stay offline and run through the `notion_sdk` transport
 seam. There is no second handwritten fake provider layer.
@@ -145,21 +156,21 @@ cd connectors/notion
 mix deps.get
 mix compile --warnings-as-errors
 mix test
-mix credo --strict
-mix dialyzer
 mix docs
 ```
 
-The connector should also pass the root conformance surface:
+From the workspace root, the connector should also pass the root acceptance
+surface:
 
 ```bash
 cd /home/home/p/g/n/jido_integration
 mix jido.conformance Jido.Integration.V2.Connectors.Notion
+mix ci
 ```
 
-## Live Proofs
+## Live Proof Status
 
-Live proofs stay package-local and opt-in:
+Package-local live proofs exist, but they stay opt-in:
 
 - `auth`
   Proves `start_install/3`, `NotionSDK.OAuth.authorization_request/1`,
@@ -229,6 +240,14 @@ The generic operation handler:
 Provider inventory beyond the published runtime slice stays in the local
 catalog metadata and at the `notion_sdk` boundary. It does not automatically
 become generated Jido consumer surface area.
+
+## Package Boundary
+
+This package owns the direct Notion connector contract, deterministic
+conformance evidence, and opt-in live proofs only.
+
+It does not own hosted webhook routing, async callbacks, or app composition
+above the connector boundary.
 
 ## Files
 

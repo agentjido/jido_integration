@@ -16,10 +16,21 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   test "generates a direct connector package under connectors/<name> by default" do
     workspace_root = temp_workspace!("default")
 
-    output = run_task(["acme_crm", "--workspace-root", workspace_root])
+    output =
+      ["acme_crm", "--workspace-root", workspace_root]
+      |> run_task()
+      |> normalize_whitespace()
+
     package_root = Path.join(workspace_root, "connectors/acme_crm")
 
     assert output =~ "Connector acme_crm scaffolded successfully"
+    assert output =~ "starting contract, not the finished connector package"
+
+    assert output =~
+             "Update connectors/acme_crm/README.md so it states the runtime family, auth posture, package-local verification commands, and live-proof status."
+
+    assert output =~ "Keep connector-local proof code inside connectors/acme_crm"
+    assert output =~ "Run: mix ci"
 
     assert File.exists?(Path.join(package_root, ".formatter.exs"))
     assert File.exists?(Path.join(package_root, ".gitignore"))
@@ -90,6 +101,16 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert Regex.match?(~r/input_schema:\s+Zoi\.object/s, connector_content)
     assert Regex.match?(~r/output_schema:\s+Zoi\.object/s, connector_content)
     refute connector_content =~ "Capability.new!("
+
+    readme = package_root |> Path.join("README.md") |> File.read!() |> normalize_whitespace()
+
+    assert readme =~ "## Scaffold Output"
+    assert readme =~ "## What You Must Author"
+    assert readme =~ "## Proof Code Homes"
+    assert readme =~ "mix ci"
+
+    assert readme =~
+             "Keep deterministic fixtures, companion modules, examples, scripts, and live acceptance inside this package."
   end
 
   test "requires explicit runtime-driver selection for non-direct scaffolds" do
@@ -322,4 +343,6 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
         """)
     end
   end
+
+  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
 end

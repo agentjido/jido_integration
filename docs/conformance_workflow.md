@@ -16,6 +16,24 @@ mix jido.conformance Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssue
 mix jido.conformance Jido.Integration.V2.Connectors.Notion
 ```
 
+## Connector Acceptance Contract
+
+A connector package is not review-complete until its package-local
+verification, root conformance, and root acceptance gates all pass.
+
+Treat `mix jido.conformance <ConnectorModule>` as the root connector
+acceptance command for package-local authored truth. Package-local fixtures
+stay package-local even though `mix jido.conformance <ConnectorModule>` runs
+from the workspace root.
+
+The minimum acceptance loop is:
+
+1. package-local `mix compile --warnings-as-errors`
+2. package-local `mix test`
+3. package-local `mix docs`
+4. root `mix jido.conformance <ConnectorModule>`
+5. root monorepo gates and `mix ci`
+
 ## Why It Exists
 
 Conformance keeps connector review semantics out of the workspace root while
@@ -90,10 +108,13 @@ companion module named `<ConnectorModule>.Conformance`.
 The companion module may expose:
 
 - `fixtures/0`: deterministic execution fixtures for runtime/result review
+- `runtime_drivers/0`: non-direct runtime-driver ids mapped to deterministic
+  package-local test drivers
 - `ingress_definitions/0`: ingress definitions for trigger-capable connectors
 
-The companion module returns plain maps so the publishing package does not need
-to depend on `core/conformance`.
+The companion module is the connector-owned publication point for deterministic
+fixtures, runtime-driver evidence, and ingress definitions. It returns plain
+maps so the publishing package does not need to depend on `core/conformance`.
 
 Hosted webhook proofs can use the same companion pattern from an app-local
 connector module when trigger ownership intentionally lives above the shared

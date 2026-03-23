@@ -33,6 +33,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       {:jido_integration_v2_stream_runtime, path: "../stream_runtime"},
       {:jido_harness, path: "../../../jido_harness"},
       {:agent_session_manager, path: "../../../agent_session_manager"},
+      {:boundary, path: "../../../agent_session_manager/vendor/boundary", runtime: false},
       {:jido_session, path: "../../../jido_session"},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

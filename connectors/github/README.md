@@ -13,6 +13,16 @@ Proves:
 - lease-bound auth handling with redacted `auth_binding` digests
 - opt-in live auth, read, and write proofs through `Jido.Integration.V2`
 
+## Runtime And Auth Posture
+
+- runtime family: `:direct`
+- public auth binding is `connection_id`
+- the connector mints short-lived credential leases and builds `GitHubEx.Client`
+  instances from those leases only
+- the current authored capability slice requires the GitHub `repo` scope
+- hosted webhook routing stays out of this package and lives above the direct
+  connector contract
+
 ## Capability Surface
 
 The connector publishes these direct runtime capabilities:
@@ -75,7 +85,7 @@ Webhook routing is intentionally not part of this package. Hosted webhook proof
 code lives in `apps/devops_incident_response` so the direct connector contract
 stays honest.
 
-## Deterministic CI
+## Package Verification
 
 Default package tests stay offline and deterministic through the `github_ex`
 transport seam. There is no second handwritten GitHub HTTP client inside
@@ -83,23 +93,28 @@ transport seam. There is no second handwritten GitHub HTTP client inside
 
 ```bash
 cd connectors/github
+mix deps.get
 mix compile --warnings-as-errors
 mix test
+mix docs
 ```
 
-The root monorepo gates use that same deterministic surface. Live proofs are not
-part of default `mix test`, `mix monorepo.test`, or `mix ci`.
+The root monorepo gates use that same deterministic surface. Live proofs are
+not part of default `mix test`, `mix monorepo.test`, or `mix ci`.
 
-The connector should also pass the root conformance surface:
+From the workspace root, the connector should also pass the root acceptance
+surface:
 
 ```bash
+cd /home/home/p/g/n/jido_integration
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix ci
 ```
 
-## Live Proofs
+## Live Proof Status
 
-Live proofs stay package-local and opt-in. They always run through the current
-v2 auth and platform surface:
+Package-local live proofs exist, but they stay opt-in. They always run through
+the current v2 auth and platform surface:
 
 - `Jido.Integration.V2.start_install/3`
 - `Jido.Integration.V2.complete_install/2`
@@ -168,11 +183,11 @@ The connector owns:
 - retry and rate-limit behavior
 - generated REST operation wrappers such as `GitHubEx.Issues.*`
 
-Live proofs override the connector client config to use the real SDK transport.
-Offline tests override the transport with fixture responses. Neither path moves
-provider HTTP logic back into `jido_integration`.
+Live proofs override the connector client config to use the real SDK
+transport. Offline tests override the transport with fixture responses.
+Neither path moves provider HTTP logic back into `jido_integration`.
 
-## Architecture Boundary
+## Package Boundary
 
 This package owns direct GitHub capability execution only.
 

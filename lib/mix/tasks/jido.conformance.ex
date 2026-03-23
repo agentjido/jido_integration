@@ -4,8 +4,14 @@ defmodule Mix.Tasks.Jido.Conformance do
   @moduledoc """
   Run v2-native connector conformance from the repo root.
 
-  The reusable engine lives in `core/conformance`. This task stays in the root
-  so the human-facing command surface remains stable while runtime logic
+  This task is the stable root connector acceptance contract for package-level
+  conformance. Package-local fixtures stay package-local, but the review
+  command runs from the workspace root so every connector is judged through one
+  repo-owned surface.
+
+  Use it after package-local verification and before the root `mix ci`
+  acceptance gate. The reusable engine lives in `core/conformance`; the root
+  task exists so the human-facing contract stays stable while runtime logic
   remains package-owned.
 
   ## Usage

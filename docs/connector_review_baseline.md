@@ -20,6 +20,18 @@ Supporting proof surfaces:
 - cross-runtime operator proof in `apps/trading_ops`
 - hosted webhook and async recovery proof in `apps/devops_incident_response`
 
+## Connector README Minimums
+
+Every connector README in this baseline should let a reviewer answer the same
+questions without guessing. The minimum package sections are:
+
+- runtime family and auth posture
+- package-local verification commands plus the root conformance and `mix ci`
+  acceptance loop
+- live-proof status, including an explicit "none yet" when no live proof exists
+- package boundary notes that keep hosted or app-only proof out of the
+  connector contract
+
 ## What The Final Baseline Proves
 
 - connector discovery is public and deterministic through
@@ -108,9 +120,13 @@ mix ci
 Package and app proof commands:
 
 ```bash
+cd connectors/github && mix compile --warnings-as-errors
 cd connectors/github && mix test
+cd connectors/notion && mix compile --warnings-as-errors
 cd connectors/notion && mix test
+cd connectors/codex_cli && mix compile --warnings-as-errors
 cd connectors/codex_cli && mix test
+cd connectors/market_data && mix compile --warnings-as-errors
 cd connectors/market_data && mix test
 cd apps/trading_ops && mix test
 cd apps/devops_incident_response && mix test
