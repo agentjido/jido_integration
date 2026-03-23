@@ -87,7 +87,7 @@ defmodule Jido.Integration.V2.IngressTest do
             auth_type: :api_token,
             install: %{required: false},
             reauth: %{supported: false},
-            requested_scopes: [],
+            requested_scopes: ["market:read"],
             lease_fields: ["access_token"],
             secret_names: []
           }),
@@ -104,30 +104,53 @@ defmodule Jido.Integration.V2.IngressTest do
         operations: [],
         triggers: [
           TriggerSpec.new!(%{
-            trigger_id: "market.tick.ingest",
-            name: "tick_ingest",
-            display_name: "Tick ingest",
-            description: "Receives poll tick events",
+            trigger_id: "market.alert.detected",
+            name: "market_alert_detected",
+            display_name: "Market alert detected",
+            description: "Receives poll alert events through the common trigger proof",
             runtime_class: :direct,
             delivery_mode: :poll,
             handler: NoopHandler,
-            config_schema: Zoi.map(description: "Poll config"),
-            signal_schema: Zoi.map(description: "Poll signal"),
-            permissions: %{required_scopes: []},
-            checkpoint: %{},
-            dedupe: %{},
+            config_schema:
+              Zoi.object(%{
+                interval_ms: Zoi.integer() |> Zoi.default(60_000)
+              }),
+            signal_schema:
+              Zoi.object(%{
+                symbol: Zoi.string(),
+                price: Zoi.number(),
+                threshold: Zoi.number(),
+                direction: Zoi.string()
+              }),
+            permissions: %{required_scopes: ["market:read"]},
+            checkpoint: %{strategy: :cursor},
+            dedupe: %{strategy: :event_id},
             verification: %{},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :blocked,
+                approvals: :auto,
+                allowed_tools: ["market.feed.pull"]
+              }
+            },
             consumer_surface: %{
-              mode: :connector_local,
-              reason: "Ingress polling proofs stay connector-local"
+              mode: :common,
+              normalized_id: "market.alerts.detected",
+              sensor_name: "market_alerts_detected"
             },
             schema_policy: %{
-              config: :passthrough,
-              signal: :passthrough,
-              justification:
-                "Ingress tests preserve polling payload passthrough because these triggers are not projected common consumer surfaces"
+              config: :defined,
+              signal: :defined
             },
-            jido: %{sensor: %{name: "market_tick_ingest"}}
+            jido: %{
+              sensor: %{
+                name: "market_alert_sensor",
+                signal_type: "market.alert.detected",
+                signal_source: "/ingress/poll/market_data/market.alert.detected"
+              }
+            }
           })
         ],
         runtime_families: [:direct]
@@ -222,7 +245,7 @@ defmodule Jido.Integration.V2.IngressTest do
       cursor: "cursor-1",
       last_event_id: "poll-event-1",
       last_event_time: ~U[2026-03-09 12:00:00Z],
-      event: %{symbol: "AAPL", price: 201.25}
+      event: %{symbol: "AAPL", price: 201.25, threshold: 200.0, direction: "above"}
     }
 
     assert {:ok, first} = Ingress.admit_poll(request, definition)
@@ -231,7 +254,7 @@ defmodule Jido.Integration.V2.IngressTest do
              ControlPlane.fetch_trigger_checkpoint(
                "tenant-1",
                "market_data",
-               "ticks.pull",
+               "market.alert.detected",
                "AAPL"
              )
 
@@ -247,7 +270,7 @@ defmodule Jido.Integration.V2.IngressTest do
              ControlPlane.fetch_trigger_checkpoint(
                "tenant-1",
                "market_data",
-               "ticks.pull",
+               "market.alert.detected",
                "AAPL"
              )
 
@@ -340,12 +363,12 @@ defmodule Jido.Integration.V2.IngressTest do
     Definition.new!(%{
       source: :poll,
       connector_id: "market_data",
-      trigger_id: "ticks.pull",
-      capability_id: "market.tick.ingest",
-      signal_type: "market.tick.detected",
-      signal_source: "/ingress/poll/market_data/ticks.pull",
+      trigger_id: "market.alert.detected",
+      capability_id: "market.alert.detected",
+      signal_type: "market.alert.detected",
+      signal_source: "/ingress/poll/market_data/market.alert.detected",
       dedupe_ttl_seconds: 86_400,
-      validator: &validate_tick/1
+      validator: &validate_market_alert/1
     })
   end
 
@@ -371,13 +394,25 @@ defmodule Jido.Integration.V2.IngressTest do
   defp validate_issue_opened(%{"action" => "opened"}), do: :ok
   defp validate_issue_opened(_payload), do: {:error, :missing_action}
 
-  defp validate_tick(%{symbol: symbol, price: price})
-       when is_binary(symbol) and is_number(price),
+  defp validate_market_alert(%{
+         symbol: symbol,
+         price: price,
+         threshold: threshold,
+         direction: direction
+       })
+       when is_binary(symbol) and is_number(price) and is_number(threshold) and
+              is_binary(direction),
        do: :ok
 
-  defp validate_tick(%{"symbol" => symbol, "price" => price})
-       when is_binary(symbol) and is_number(price),
+  defp validate_market_alert(%{
+         "symbol" => symbol,
+         "price" => price,
+         "threshold" => threshold,
+         "direction" => direction
+       })
+       when is_binary(symbol) and is_number(price) and is_number(threshold) and
+              is_binary(direction),
        do: :ok
 
-  defp validate_tick(_payload), do: {:error, :invalid_tick}
+  defp validate_market_alert(_payload), do: {:error, :invalid_market_alert}
 end

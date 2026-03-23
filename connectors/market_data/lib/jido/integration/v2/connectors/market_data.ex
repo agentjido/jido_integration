@@ -20,6 +20,15 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
   @market_alert_trigger_id "market.alert.detected"
   @market_alert_signal_type @market_alert_trigger_id
   @market_alert_signal_source "/ingress/poll/market_data/#{@market_alert_trigger_id}"
+  @market_alert_policy %{
+    environment: %{allowed: [:prod]},
+    sandbox: %{
+      level: :standard,
+      egress: :blocked,
+      approvals: :auto,
+      allowed_tools: ["market.feed.pull"]
+    }
+  }
 
   @impl true
   def manifest do
@@ -139,6 +148,7 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
           checkpoint: %{strategy: :cursor},
           dedupe: %{strategy: :event_id},
           verification: %{},
+          policy: @market_alert_policy,
           consumer_surface: %{
             mode: :common,
             normalized_id: "market.alerts.detected",

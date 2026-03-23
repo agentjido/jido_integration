@@ -21,6 +21,10 @@ defmodule Jido.Integration.V2.Connectors.MarketDataTest do
     assert capability.id == "market.ticks.pull"
     assert trigger_capability.runtime_class == :direct
     assert trigger_capability.transport_profile == :poll
+    assert trigger_capability.metadata.required_scopes == ["market:read"]
+    assert trigger_capability.metadata.policy.environment.allowed == [:prod]
+    assert trigger_capability.metadata.policy.sandbox.egress == :blocked
+    assert trigger_capability.metadata.policy.sandbox.allowed_tools == ["market.feed.pull"]
 
     assert capability.metadata.runtime == %{
              driver: "asm",

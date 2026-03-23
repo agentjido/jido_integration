@@ -15,13 +15,15 @@ It also now publishes one Phase 5 common poll trigger:
   `Jido.Integration.V2.Connectors.MarketData.Generated.Sensors.MarketAlertsDetected`
 - generated plugin subscription surface derived from that trigger projection
 - matching `ingress_definitions/0` evidence for the poll trigger boundary
+- explicit `policy.environment.allowed` and `policy.sandbox.allowed_tools`
+  metadata for the published trigger capability
 
 Proves:
 
 - stream-class capability publishing against the shared `RuntimeResult` substrate
 - common-surface projection through the single consumer projection contract
 - common trigger projection through the same authored-to-generated spine
-- explicit environment and sandbox posture for feed-style pulls
+- explicit environment and sandbox posture for feed-style pulls and poll triggers
 - generated sensor and plugin subscription surfaces remain derivative of
   authored trigger truth
 - durable checkpoint, dedupe, and ingress admission truth stay in
