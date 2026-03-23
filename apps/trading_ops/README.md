@@ -13,7 +13,8 @@ and runtime session state remains outside `jido_integration`.
 ## Current Scope
 
 - provisions one reference trading-ops stack through the host-facing auth API
-- admits one market-alert trigger through `core/ingress`
+- admits one market-alert poll trigger through the connector-authored
+  `market_data` ingress definition
 - invokes one review workflow across stream, session, and direct runtimes
 - builds an operator review packet from durable run, attempt, event, artifact,
   target, and connection truth
@@ -53,7 +54,10 @@ Primary end-to-end proof:
 It covers:
 
 - one accepted trigger admitted through `core/ingress`
+- trigger admission that now uses the authored trigger capability
+  `market.alert.detected` instead of overloading `market.ticks.pull`
 - one stream pull, one session execution, and one direct GitHub escalation
+- explicit downstream `market.ticks.pull` invocation after trigger admission
 - durable target ids on runs, attempts, and events
 - durable review artifacts for each runtime family
 - market target descriptors that advertise the ASM-backed stream seam instead of
@@ -68,6 +72,14 @@ Package tests keep the direct GitHub step offline by forcing the connector's
 client factory onto the deterministic fixture transport in
 `test/test_helper.exs`. Live GitHub proof remains package-local to
 `connectors/github`.
+
+That keeps the operator app boundary honest:
+
+- `market_data` authors the common poll trigger definition and trigger
+  capability
+- `core/ingress` owns admission, dedupe, and checkpoint truth
+- `trading_ops` consumes the authored trigger and decides what downstream
+  operations to run next
 
 ## Run
 

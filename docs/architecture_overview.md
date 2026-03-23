@@ -46,6 +46,10 @@ Connector packages:
 - `connectors/notion`
 - `connectors/codex_cli`
 - `connectors/market_data`
+  - publishes the ASM-backed stream operation proof plus the first common
+    projected poll trigger proof
+  - projects one generated `Jido.Sensor` and plugin subscription surface from
+    authored trigger truth
 
 Proof apps:
 
@@ -112,6 +116,8 @@ Instead:
 - `core/webhook_router` owns route registration, route lookup, callback
   topology, secret resolution, and ingress-definition assembly
 - `core/ingress` owns request normalization and durable trigger admission
+- generated common poll-trigger sensors and plugin subscriptions remain
+  projections of authored trigger truth, not durable subscription state
 - `core/dispatch_runtime` owns queueing, retry, dead-letter, replay, and
   recovery once work is admitted
 - app packages own host-controlled trigger handlers and any end-to-end proofs
@@ -128,6 +134,8 @@ The current app proofs are:
 
 - `apps/trading_ops`
   - cross-runtime operator workflow
+  - consumption of the connector-authored `market.alert.detected` poll trigger
+    before the explicit downstream `market.ticks.pull` invocation
 - `apps/devops_incident_response`
   - hosted webhook to async replay and restart recovery
 

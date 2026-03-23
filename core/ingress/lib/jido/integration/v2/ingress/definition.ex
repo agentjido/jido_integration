@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Ingress.Definition do
   """
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.TriggerSpec
 
   @enforce_keys [
     :source,
@@ -59,6 +60,33 @@ defmodule Jido.Integration.V2.Ingress.Definition do
       verification: normalize_verification(Map.get(attrs, :verification)),
       dedupe_ttl_seconds: normalize_ttl(Map.get(attrs, :dedupe_ttl_seconds, 86_400))
     })
+  end
+
+  @spec from_trigger!(String.t(), TriggerSpec.t(), map() | keyword()) :: t()
+  def from_trigger!(connector_id, %TriggerSpec{} = trigger_spec, attrs \\ %{}) do
+    attrs = if is_list(attrs), do: Map.new(attrs), else: Map.new(attrs)
+
+    new!(%{
+      source: trigger_spec.delivery_mode,
+      connector_id: connector_id,
+      trigger_id: Map.get(attrs, :trigger_id, trigger_spec.trigger_id),
+      capability_id: trigger_spec.trigger_id,
+      signal_type: Map.get(attrs, :signal_type) || TriggerSpec.sensor_signal_type(trigger_spec),
+      signal_source:
+        Map.get(attrs, :signal_source) || TriggerSpec.sensor_signal_source(trigger_spec),
+      validator: Map.get(attrs, :validator, schema_validator(trigger_spec.signal_schema)),
+      verification: Map.get(attrs, :verification),
+      dedupe_ttl_seconds: Map.get(attrs, :dedupe_ttl_seconds, 86_400)
+    })
+  end
+
+  defp schema_validator(signal_schema) do
+    fn payload ->
+      case Zoi.parse(signal_schema, payload) do
+        {:ok, _validated_payload} -> :ok
+        {:error, errors} -> {:error, {:schema_invalid, errors}}
+      end
+    end
   end
 
   defp normalize_validator(nil), do: nil

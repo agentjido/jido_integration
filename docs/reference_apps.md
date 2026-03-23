@@ -22,7 +22,10 @@ What it proves:
 
 - install and connection provisioning through the public auth surface
 - connector registration through the public facade
-- trigger admission through `core/ingress`
+- trigger admission through `core/ingress` using the authored
+  `connectors/market_data` poll trigger definition
+- separation between trigger capability identity (`market.alert.detected`) and
+  the downstream stream operation identity (`market.ticks.pull`)
 - target announcement and compatibility lookup
 - durable review of runs, attempts, events, artifacts, targets, and
   connections

@@ -254,6 +254,70 @@ defmodule Jido.Integration.V2.IngressTest do
     assert persisted_checkpoint.cursor == "cursor-1"
   end
 
+  test "derives poll ingress definitions from authored common trigger metadata" do
+    trigger =
+      TriggerSpec.new!(%{
+        trigger_id: "market.alert.detected",
+        name: "market_alert_detected",
+        display_name: "Market alert detected",
+        description: "Admits one authored market-alert polling trigger",
+        runtime_class: :direct,
+        delivery_mode: :poll,
+        handler: NoopHandler,
+        config_schema:
+          Zoi.object(%{
+            interval_ms: Zoi.integer() |> Zoi.default(60_000)
+          }),
+        signal_schema:
+          Zoi.object(%{
+            symbol: Zoi.string(),
+            price: Zoi.number(),
+            threshold: Zoi.number(),
+            direction: Zoi.string()
+          }),
+        permissions: %{required_scopes: ["market:read"]},
+        checkpoint: %{strategy: :cursor},
+        dedupe: %{strategy: :event_id},
+        verification: %{},
+        consumer_surface: %{
+          mode: :common,
+          normalized_id: "market.alerts.detected",
+          sensor_name: "market_alerts_detected"
+        },
+        schema_policy: %{config: :defined, signal: :defined},
+        jido: %{
+          sensor: %{
+            name: "market_alert_sensor",
+            signal_type: "market.alert.detected",
+            signal_source: "/ingress/poll/market_data/market.alert.detected"
+          }
+        }
+      })
+
+    definition =
+      Definition.from_trigger!("market_data", trigger, %{
+        dedupe_ttl_seconds: 300
+      })
+
+    assert definition.source == :poll
+    assert definition.connector_id == "market_data"
+    assert definition.trigger_id == "market.alert.detected"
+    assert definition.capability_id == "market.alert.detected"
+    assert definition.signal_type == "market.alert.detected"
+    assert definition.signal_source == "/ingress/poll/market_data/market.alert.detected"
+    assert definition.dedupe_ttl_seconds == 300
+
+    assert :ok ==
+             definition.validator.(%{
+               symbol: "AAPL",
+               price: 201.25,
+               threshold: 200.0,
+               direction: "above"
+             })
+
+    assert match?({:error, _reason}, definition.validator.(%{symbol: "AAPL"}))
+  end
+
   defp webhook_definition do
     Definition.new!(%{
       source: :webhook,

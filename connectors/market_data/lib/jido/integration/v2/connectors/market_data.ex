@@ -10,9 +10,16 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
 
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.CatalogSpec
+  alias Jido.Integration.V2.Connectors.MarketData.AlertTriggerHandler
   alias Jido.Integration.V2.Connectors.MarketData.Handler
+  alias Jido.Integration.V2.Ingress.Definition
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
+  alias Jido.Integration.V2.TriggerSpec
+
+  @market_alert_trigger_id "market.alert.detected"
+  @market_alert_signal_type @market_alert_trigger_id
+  @market_alert_signal_source "/ingress/poll/market_data/#{@market_alert_trigger_id}"
 
   @impl true
   def manifest do
@@ -108,8 +115,58 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
           }
         })
       ],
-      triggers: [],
-      runtime_families: [:stream]
+      triggers: [
+        TriggerSpec.new!(%{
+          trigger_id: @market_alert_trigger_id,
+          name: "market_alert_detected",
+          display_name: "Market alert detected",
+          description: "Admits a common projected polling alert before downstream pulls run",
+          runtime_class: :direct,
+          delivery_mode: :poll,
+          handler: AlertTriggerHandler,
+          config_schema:
+            Zoi.object(%{
+              interval_ms: Zoi.integer() |> Zoi.default(60_000)
+            }),
+          signal_schema:
+            Zoi.object(%{
+              symbol: Zoi.string(),
+              price: Zoi.number(),
+              threshold: Zoi.number(),
+              direction: Zoi.string()
+            }),
+          permissions: %{required_scopes: ["market:read"]},
+          checkpoint: %{strategy: :cursor},
+          dedupe: %{strategy: :event_id},
+          verification: %{},
+          consumer_surface: %{
+            mode: :common,
+            normalized_id: "market.alerts.detected",
+            sensor_name: "market_alerts_detected"
+          },
+          schema_policy: %{config: :defined, signal: :defined},
+          jido: %{
+            sensor: %{
+              name: "market_alert_sensor",
+              signal_type: @market_alert_signal_type,
+              signal_source: @market_alert_signal_source
+            }
+          }
+        })
+      ],
+      runtime_families: [:direct, :stream]
     })
+  end
+
+  @spec market_alert_definition() :: Definition.t()
+  def market_alert_definition do
+    manifest()
+    |> Manifest.fetch_trigger(@market_alert_trigger_id)
+    |> then(&Definition.from_trigger!("market_data", &1))
+  end
+
+  @spec ingress_definitions() :: [Definition.t()]
+  def ingress_definitions do
+    [market_alert_definition()]
   end
 end

@@ -10,7 +10,6 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
   alias Jido.Integration.V2.Connectors.MarketData
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Ingress
-  alias Jido.Integration.V2.Ingress.Definition
   alias Jido.Integration.V2.TargetDescriptor
 
   @market_target_id "target-trading-ops-market-feed"
@@ -151,7 +150,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
   def run_market_review(%{tenant_id: tenant_id, actor_id: actor_id} = stack, attrs)
       when is_map(attrs) do
     trigger_request = market_signal_request(tenant_id, attrs)
-    trigger_definition = market_signal_definition()
+    trigger_definition = MarketData.market_alert_definition()
 
     with {:ok, trigger} <- Ingress.admit_poll(trigger_request, trigger_definition),
          {:ok, market_target} <- choose_target("market.ticks.pull", :stream),
@@ -336,19 +335,6 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     }
   end
 
-  defp market_signal_definition do
-    Definition.new!(%{
-      source: :poll,
-      connector_id: "market_data",
-      trigger_id: "desk.alert",
-      capability_id: "market.ticks.pull",
-      signal_type: "trading_ops.market.alert",
-      signal_source: "/reference_apps/trading_ops/desk.alert",
-      dedupe_ttl_seconds: 86_400,
-      validator: &validate_market_signal/1
-    })
-  end
-
   defp market_signal_request(tenant_id, attrs) do
     now = Map.get(attrs, :observed_at, Contracts.now())
 
@@ -367,16 +353,6 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
       }
     }
   end
-
-  defp validate_market_signal(%{symbol: symbol, price: price, threshold: threshold})
-       when is_binary(symbol) and is_number(price) and is_number(threshold),
-       do: :ok
-
-  defp validate_market_signal(%{"symbol" => symbol, "price" => price, "threshold" => threshold})
-       when is_binary(symbol) and is_number(price) and is_number(threshold),
-       do: :ok
-
-  defp validate_market_signal(_payload), do: {:error, :invalid_market_signal}
 
   defp choose_target(capability_id, runtime_class) do
     requirements =

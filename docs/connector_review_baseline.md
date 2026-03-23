@@ -73,12 +73,15 @@ Deterministic connector capabilities:
 - `notion.data_sources.query`
 - `notion.comments.create`
 - `codex.exec.session`
+- `market.alert.detected`
 - `market.ticks.pull`
 
 Reference-app proofs:
 
 - `apps/trading_ops`
   - market-alert trigger admission through `core/ingress`
+  - authored trigger capability identity stays `market.alert.detected`
+  - downstream stream work stays the explicit `market.ticks.pull` invocation
   - one reviewable workflow across stream, session, and direct runtimes
   - durable run, attempt, event, artifact, target, and connection review
 - `apps/devops_incident_response`

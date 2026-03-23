@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Apps.TradingOps
   alias Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver
+  alias Jido.Integration.V2.Connectors.MarketData
   alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.TargetDescriptor
 
@@ -67,6 +68,8 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
   end
 
   test "builds one reviewable operator workflow from trigger ingress through all runtime families" do
+    definition = MarketData.market_alert_definition()
+
     assert {:ok, stack} =
              TradingOps.bootstrap_reference_stack(%{
                tenant_id: "tenant-trading-review",
@@ -95,8 +98,13 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
              })
 
     assert workflow.trigger.status == :accepted
-    assert workflow.trigger.trigger.signal["type"] == "trading_ops.market.alert"
+    assert workflow.trigger.trigger.trigger_id == definition.trigger_id
+    assert workflow.trigger.trigger.capability_id == definition.capability_id
+    assert workflow.trigger.trigger.signal["type"] == definition.signal_type
+    assert workflow.trigger.trigger.signal["source"] == definition.signal_source
     assert workflow.market_pull.run.runtime_class == :stream
+    assert workflow.market_pull.run.capability_id == "market.ticks.pull"
+    refute workflow.trigger.trigger.capability_id == workflow.market_pull.run.capability_id
     assert workflow.analyst_session.run.runtime_class == :session
     assert workflow.escalation_issue.run.runtime_class == :direct
 

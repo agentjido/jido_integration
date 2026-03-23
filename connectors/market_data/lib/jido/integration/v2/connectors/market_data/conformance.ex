@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2.Connectors.MarketData.Conformance do
   @moduledoc false
 
   alias Jido.Integration.V2.ArtifactBuilder
+  alias Jido.Integration.V2.Connectors.MarketData
   alias Jido.Integration.V2.Connectors.MarketData.ConformanceHarnessDriver
 
   @run_id "run-market-data-conformance"
@@ -43,6 +44,11 @@ defmodule Jido.Integration.V2.Connectors.MarketData.Conformance do
   @spec runtime_drivers() :: map()
   def runtime_drivers do
     %{asm: ConformanceHarnessDriver}
+  end
+
+  @spec ingress_definitions() :: list()
+  def ingress_definitions do
+    MarketData.ingress_definitions()
   end
 
   defp credential_ref do
