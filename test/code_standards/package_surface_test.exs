@@ -105,22 +105,38 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   end
 
   test "packages that compile agent_session_manager expose boundary explicitly" do
-    for relative_path <- ["core/control_plane/mix.exs", "core/runtime_asm_bridge/mix.exs"] do
-      mix_exs = repo_root() |> Path.join(relative_path) |> File.read!()
-      normalized_mix_exs = normalize_whitespace(mix_exs)
+    runtime_asm_bridge_mix =
+      repo_root()
+      |> Path.join("core/runtime_asm_bridge/mix.exs")
+      |> File.read!()
+      |> normalize_whitespace()
 
-      assert normalized_mix_exs =~
-               "agent_session_manager_path = basis_repo_path(\"AGENT_SESSION_MANAGER_PATH\", \"../../../agent_session_manager\")",
-             "#{relative_path} must resolve agent_session_manager through the shared basis-repo path helper"
+    assert runtime_asm_bridge_mix =~
+             "agent_session_manager_path = basis_repo_path(\"AGENT_SESSION_MANAGER_PATH\", \"../../../agent_session_manager\")",
+           "core/runtime_asm_bridge/mix.exs must resolve agent_session_manager through the shared basis-repo path helper"
 
-      assert normalized_mix_exs =~
-               "{:agent_session_manager, path: agent_session_manager_path, env: :dev}",
-             "#{relative_path} must pin agent_session_manager to :dev so ASM sees its boundary dependency during isolated workspace builds"
-
-      assert normalized_mix_exs =~
-               "{:boundary, path: Path.join(agent_session_manager_path, \"vendor/boundary\"), only: [:dev, :test], runtime: false}",
-             "#{relative_path} must expose boundary explicitly so isolated workspace builds can compile ASM"
+    for required_snippet <- [
+          "{:agent_session_manager, path: agent_session_manager_path, env: :dev}",
+          "{:boundary, path: Path.join(agent_session_manager_path, \"vendor/boundary\"), only: [:dev, :test], runtime: false}"
+        ] do
+      assert runtime_asm_bridge_mix =~ required_snippet,
+             "core/runtime_asm_bridge/mix.exs is missing #{required_snippet}"
     end
+
+    control_plane_mix =
+      repo_root()
+      |> Path.join("core/control_plane/mix.exs")
+      |> File.read!()
+      |> normalize_whitespace()
+
+    refute control_plane_mix =~ "agent_session_manager_path =",
+           "core/control_plane/mix.exs must not own agent_session_manager directly"
+
+    refute control_plane_mix =~ "{:agent_session_manager,",
+           "core/control_plane/mix.exs must route ASM through runtime_asm_bridge instead of depending on it directly"
+
+    refute control_plane_mix =~ "{:boundary,",
+           "core/control_plane/mix.exs must not expose ASM's boundary compiler directly"
   end
 
   defp child_package_roots do

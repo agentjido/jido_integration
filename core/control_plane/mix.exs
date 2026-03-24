@@ -23,9 +23,6 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
   end
 
   defp deps do
-    agent_session_manager_path =
-      basis_repo_path("AGENT_SESSION_MANAGER_PATH", "../../../agent_session_manager")
-
     [
       {:jido_integration_v2_contracts, path: "../contracts"},
       {:jido_integration_v2_auth, path: "../auth"},
@@ -34,11 +31,6 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       {:jido_integration_v2_runtime_asm_bridge, path: "../runtime_asm_bridge"},
       {:jido_harness,
        path: basis_repo_path("JIDO_HARNESS_PATH", "../../../jido_harness"), override: true},
-      {:agent_session_manager, path: agent_session_manager_path, env: :dev},
-      {:boundary,
-       path: Path.join(agent_session_manager_path, "vendor/boundary"),
-       only: [:dev, :test],
-       runtime: false},
       {:jido_session, path: "../../../jido_session"},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
