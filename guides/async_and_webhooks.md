@@ -24,3 +24,10 @@ hosted route lifecycle, and it does not own queue execution.
 Dispatch state and route state are intentionally separate. The router keeps
 hosted route records, while the async runtime keeps transport progress and
 retry state.
+
+## Consumer Surface Rule
+
+Hosted webhook proofs do not need to move into connector packages to share the
+same consumer contract posture. App-owned hosted triggers may publish the same
+generated sensor and plugin shape as common poll-backed triggers while
+remaining app-owned for routing, normalization, and dispatch composition.

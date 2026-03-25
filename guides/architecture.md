@@ -7,7 +7,9 @@ surfaces live in `core/`, `connectors/`, and `apps/`.
 ## Package Boundaries
 
 - `core/contracts` defines the public IR, behaviours, and projection rules.
-- `core/platform` exposes the stable public facade `Jido.Integration.V2`.
+- `core/platform` exposes the stable public facade `Jido.Integration.V2`,
+  including raw authored catalog summaries and the projected common consumer
+  catalog export.
 - `core/auth` owns installs, credentials, connection truth, and leases.
 - `core/control_plane` owns runs, attempts, events, triggers, artifacts, and
   target truth.
@@ -31,6 +33,20 @@ execution.
 
 Direct connectors stay on the provider SDK path. Only actual `:session` and
 `:stream` capabilities use `Jido.Harness`.
+
+## Consumer Surface Boundary
+
+The authored connector catalog and the published generated consumer surface are
+not the same thing.
+
+- connector-local inventory may stay authored and callable without becoming a
+  shared generated surface
+- only explicit `consumer_surface.mode: :common` operations and triggers
+  project into generated actions, sensors, and plugins
+- `core/platform` exposes that projected view through
+  `projected_catalog_entries/0`
+- hosted webhook proofs may stay app-local while still converging on the same
+  generated sensor contract family as common poll-backed triggers
 
 ## Durability Boundary
 

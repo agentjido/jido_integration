@@ -12,7 +12,9 @@ public invocation compose in practice.
 ## `apps/devops_incident_response`
 
 This app proves hosted webhook registration, async dispatch, dead-letter,
-replay, and restart recovery while keeping the webhook behavior app-local.
+replay, and restart recovery while keeping the webhook behavior app-local. Its
+hosted GitHub issue trigger now converges on the same generated sensor and
+plugin contract layer used by the common trigger path.
 
 ## Reading Rule
 

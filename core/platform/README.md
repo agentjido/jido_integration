@@ -24,6 +24,8 @@ Connector discovery:
 - `fetch_connector/1`
 - `fetch_capability/1`
 - `register_connector/1`
+- `catalog_entries/0`
+- `projected_catalog_entries/0`
 
 Auth lifecycle:
 
@@ -55,7 +57,15 @@ Durable review and target truth:
 - `run_artifacts/1`
 - `announce_target/1`
 - `fetch_target/1`
+- `targets/1`
 - `compatible_targets/1`
+- `compatible_targets_for/2`
+- `review_packet/2`
+
+`catalog_entries/0` remains the authored operator-facing summary surface.
+`projected_catalog_entries/0` exports the published generated common consumer
+surface, including generated action and sensor names, generated plugin
+identity, and JSON Schema derived from the canonical Zoi contracts.
 
 ## Design Boundary
 
@@ -105,6 +115,8 @@ Current public-facade proofs:
 - `apps/trading_ops`
 - `connectors/github` live acceptance, which drives the current auth and
   invocation surface through `Jido.Integration.V2`
+- `connectors/notion`, which now proves generated common action, plugin, and
+  sensor publication through the facade path
 
 ## Related Guides
 

@@ -16,11 +16,17 @@ mix jido.conformance <ConnectorModule>
 is intentionally fixed so review runs are comparable across connector packages.
 
 1. `manifest_contract`
-2. `capability_contracts`
-3. `runtime_class_fit`
-4. `policy_contract`
-5. `deterministic_fixtures`
-6. `ingress_definition_discipline`
+2. `consumer_surface_projection`
+3. `capability_contracts`
+4. `runtime_class_fit`
+5. `policy_contract`
+6. `deterministic_fixtures`
+7. `ingress_definition_discipline`
+
+`consumer_surface_projection` is the common-surface hardening suite. It proves
+that generated actions, sensors, and plugins for published common surfaces
+actually resolve and that their projection metadata stays internally
+consistent. Connector-local inventory is intentionally outside that check.
 
 ## Working Rule
 

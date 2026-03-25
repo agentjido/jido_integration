@@ -11,8 +11,8 @@ root invokes.
 - `Jido.Integration.V2.Conformance`
 - stable profile definitions such as `:connector_foundation`
 - human and JSON report rendering
-- suite modules for manifest, capability, runtime-fit, policy, fixture, and
-  ingress checks
+- suite modules for manifest, consumer-surface, capability, runtime-fit,
+  policy, fixture, and ingress checks
 
 The root workspace exposes this package through `mix jido.conformance`, but
 the implementation stays here so the repo root remains tooling-only.
@@ -29,11 +29,17 @@ workspace root.
 Suite order:
 
 1. `manifest_contract`
-2. `capability_contracts`
-3. `runtime_class_fit`
-4. `policy_contract`
-5. `deterministic_fixtures`
-6. `ingress_definition_discipline`
+2. `consumer_surface_projection`
+3. `capability_contracts`
+4. `runtime_class_fit`
+5. `policy_contract`
+6. `deterministic_fixtures`
+7. `ingress_definition_discipline`
+
+`consumer_surface_projection` proves that published common generated actions,
+sensors, and plugins resolve and still match the authored projection metadata.
+Connector-local inventory stays outside that suite so connectors can keep
+unstable or host-specific capability slices private.
 
 Future profiles should extend this model with more suites instead of changing
 the root task shape.

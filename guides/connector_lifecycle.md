@@ -27,6 +27,13 @@ engine. They should remain package-local, deterministic, and easy to inspect.
 metadata can project into public actions, sensors, and plugins, but only when
 it is explicitly marked as part of the shared consumer surface.
 
+- `:common` publication is for curated, stable surfaces only
+- published common operations and triggers must stay schema-backed rather than
+  passthrough placeholders
+- generated action, sensor, and plugin modules are part of the review claim
+- connector-local inventory can stay outside projection when schemas or
+  provider posture are still unstable
+
 ## Review Rule
 
 If a connector package cannot explain its runtime class, auth posture, and
