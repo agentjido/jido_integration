@@ -43,7 +43,10 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   @spec register_connector(module()) :: :ok | {:error, term()}
   def register_connector(connector) do
-    Registry.register_manifest(connector.manifest())
+    manifest = connector.manifest()
+    metadata = Map.put(manifest.metadata || %{}, :connector_module, connector)
+
+    Registry.register_manifest(%{manifest | metadata: metadata})
   end
 
   @spec connectors() :: [Manifest.t()]

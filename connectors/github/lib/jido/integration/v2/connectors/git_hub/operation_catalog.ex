@@ -509,7 +509,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   end
 
   defp request_opts_schema do
-    Zoi.any()
+    Zoi.object(%{}, description: "Optional github_ex request options forwarded as a map")
   end
 
   defp positive_integer_schema do

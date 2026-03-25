@@ -88,6 +88,8 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert mix_content =~ "defp dialyzer do"
     assert mix_content =~ "docs: docs()"
     assert mix_content =~ "defp docs do"
+    assert mix_content =~ ~s(extras: ["README.md"])
+    refute mix_content =~ "../../guides/architecture.md"
     assert mix_content =~ "{:credo,"
     assert mix_content =~ "{:dialyxir,"
     assert mix_content =~ "{:ex_doc,"

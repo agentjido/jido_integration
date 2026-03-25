@@ -23,6 +23,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.MixProject do
 
   defp deps do
     [
+      {:jido, "~> 2.1"},
       {:jido_integration_v2, path: "../../core/platform"},
       {:jido_integration_v2_auth, path: "../../core/auth"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},

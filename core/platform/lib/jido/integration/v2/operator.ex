@@ -11,6 +11,7 @@ defmodule Jido.Integration.V2.Operator do
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.ProjectedCatalog
   alias Jido.Integration.V2.TargetDescriptor
 
   @type connector_summary :: %{
@@ -25,6 +26,26 @@ defmodule Jido.Integration.V2.Operator do
           runtime_families: [atom()],
           capability_ids: [String.t()],
           capabilities: [capability_summary()]
+        }
+
+  @type projected_connector_summary :: %{
+          connector_id: String.t(),
+          display_name: String.t(),
+          description: String.t(),
+          category: String.t(),
+          tags: [String.t()],
+          docs_refs: [String.t()],
+          maturity: atom(),
+          publication: atom(),
+          generated_plugin: %{
+            module: module(),
+            name: String.t(),
+            state_key: atom()
+          },
+          generated_action_names: [String.t()],
+          generated_sensor_names: [String.t()],
+          common_projected_operations: [map()],
+          common_projected_triggers: [map()]
         }
 
   @type capability_summary :: %{
@@ -66,6 +87,12 @@ defmodule Jido.Integration.V2.Operator do
   def catalog_entries do
     ControlPlane.connectors()
     |> Enum.map(&connector_summary/1)
+  end
+
+  @spec projected_catalog_entries() :: [projected_connector_summary()]
+  def projected_catalog_entries do
+    ControlPlane.connectors()
+    |> Enum.map(&ProjectedCatalog.connector_entry/1)
   end
 
   @spec compatible_targets_for(String.t(), map()) ::

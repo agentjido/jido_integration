@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector d
   alias Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueHandler
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.CatalogSpec
+  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Ingress.Definition
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.TriggerSpec
@@ -14,7 +15,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector d
   @trigger_id "github.issue.ingest"
   @signal_type "github.issue.opened"
   @signal_source "/ingress/webhook/github/issues.opened"
-  @sensor_name "github_issue_ingest"
+  @sensor_name "github_issue_opened_sensor"
   @delivery_id_headers ["x-github-delivery"]
   @callback_topology :dynamic_per_install
   @signature_header "x-hub-signature-256"
@@ -109,8 +110,22 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector d
           runtime_class: :direct,
           delivery_mode: :webhook,
           handler: GitHubIssueHandler,
-          config_schema: Zoi.map(description: "Webhook config"),
-          signal_schema: Zoi.map(description: "Webhook signal"),
+          config_schema:
+            Contracts.strict_object!(
+              [],
+              description: "Hosted GitHub issue sensor configuration"
+            ),
+          signal_schema:
+            Contracts.strict_object!(
+              [
+                action: Zoi.string(),
+                repository_full_name: Zoi.string(),
+                issue_id: Zoi.integer(),
+                issue_number: Zoi.integer(),
+                issue_title: Zoi.string()
+              ],
+              description: "Normalized hosted GitHub issue-opened signal"
+            ),
           permissions: %{required_scopes: []},
           checkpoint: %{},
           dedupe: %{},
@@ -125,15 +140,11 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector d
             }
           },
           consumer_surface: %{
-            mode: :connector_local,
-            reason: "Hosted webhook composition stays app-local"
+            mode: :common,
+            normalized_id: "github.issue.opened",
+            sensor_name: "github_issue_opened"
           },
-          schema_policy: %{
-            config: :passthrough,
-            signal: :passthrough,
-            justification:
-              "App-level hosted webhook handling preserves payload passthrough because it is not a normalized projected common sensor surface"
-          },
+          schema_policy: %{config: :defined, signal: :defined},
           jido: %{
             sensor: %{
               name: @sensor_name,

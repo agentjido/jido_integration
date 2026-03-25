@@ -122,6 +122,7 @@ Key calls:
   - `capabilities/0`
   - `fetch_connector/1`
   - `fetch_capability/1`
+  - `projected_catalog_entries/0`
 - auth lifecycle:
   - `start_install/3`
   - `complete_install/2`
@@ -204,7 +205,16 @@ The current surface also proves:
   `cli_subprocess_core` package dependencies
 - Notion OAuth control flows stay in the auth/install lifecycle instead of the
   normal invoke surface
+- GitHub and Notion both publish generated common `Jido.Action` and
+  `Jido.Plugin` surfaces for their curated direct-provider slices
+- Notion now publishes one common poll trigger,
+  `notion.pages.recently_edited`, with generated `Jido.Sensor` and plugin
+  subscription publication
+- the hosted GitHub issue webhook proof in `apps/devops_incident_response`
+  stays app-owned while converging on the same generated sensor contract layer
 - `InvocationRequest` is the typed public invoke object
+- `projected_catalog_entries/0` exports the generated common consumer surface
+  with JSON Schema derived from the authored Zoi contracts
 - conformance runs from the root while connector evidence stays package-local
 - connector READMEs carry runtime/auth posture, package verification, live
   proof status, and package-boundary notes as part of connector review

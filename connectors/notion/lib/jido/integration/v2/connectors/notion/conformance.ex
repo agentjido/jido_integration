@@ -1,12 +1,30 @@
 defmodule Jido.Integration.V2.Connectors.Notion.Conformance do
   @moduledoc false
 
+  alias Jido.Integration.V2.Connectors.Notion
   alias Jido.Integration.V2.Connectors.Notion.Fixtures
   alias Jido.Integration.V2.Connectors.Notion.OperationCatalog
+  alias Jido.Integration.V2.TriggerSpec
 
   @spec fixtures() :: [map()]
   def fixtures do
     Enum.map(Fixtures.published_capability_ids(), &fixture_for/1)
+  end
+
+  @spec ingress_definitions() :: [map()]
+  def ingress_definitions do
+    connector_id = Notion.manifest().connector
+
+    Enum.map(Notion.manifest().triggers, fn trigger ->
+      %{
+        source: :poll,
+        connector_id: connector_id,
+        trigger_id: trigger.trigger_id,
+        capability_id: trigger.trigger_id,
+        signal_type: TriggerSpec.sensor_signal_type(trigger),
+        signal_source: TriggerSpec.sensor_signal_source(trigger)
+      }
+    end)
   end
 
   defp fixture_for(capability_id) do

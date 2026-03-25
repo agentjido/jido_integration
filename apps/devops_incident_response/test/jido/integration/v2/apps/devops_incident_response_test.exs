@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
   alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.Apps.DevopsIncidentResponse
   alias Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector
+  alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.TriggerSpec
 
   setup do
@@ -128,17 +129,24 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
     assert restarted_run.result["attempt"] == 2
   end
 
-  test "publishes explicit hosted ingress evidence aligned with the app-local trigger and route",
+  test "publishes explicit hosted ingress evidence through the generated sensor contract layer",
        %{runtime_root: runtime_root} do
     manifest = GitHubIssueConnector.manifest()
     [trigger] = manifest.triggers
     conformance_module = Module.concat(GitHubIssueConnector, Conformance)
+    sensor_module = ConsumerProjection.sensor_module(GitHubIssueConnector, trigger.trigger_id)
+    plugin_module = ConsumerProjection.plugin_module(GitHubIssueConnector)
 
-    assert TriggerSpec.connector_local_consumer_surface?(trigger)
+    assert TriggerSpec.common_consumer_surface?(trigger)
+    assert trigger.schema_policy.config == :defined
+    assert trigger.schema_policy.signal == :defined
     assert TriggerSpec.sensor_signal_type(trigger) == "github.issue.opened"
     assert TriggerSpec.sensor_signal_source(trigger) == "/ingress/webhook/github/issues.opened"
     assert Code.ensure_loaded?(conformance_module)
     assert function_exported?(conformance_module, :ingress_definitions, 0)
+    assert Code.ensure_loaded?(sensor_module)
+    assert Code.ensure_loaded?(plugin_module)
+    assert plugin_module.subscriptions() == [{sensor_module, %{}}]
 
     [definition] = conformance_module.ingress_definitions()
 

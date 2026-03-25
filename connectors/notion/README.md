@@ -47,22 +47,51 @@ out of the invoke surface on purpose. The connector catalog tracks them as
 auth-control inventory, but the package does not publish them as runtime
 capabilities.
 
-Those published runtime capability ids are intentionally not treated as a
-generated common consumer surface. In this connector they are marked
-`consumer_surface.mode: :connector_local`, which means:
+That published A0 slice is now the curated common consumer surface for this
+connector:
 
-- they remain stable runtime capabilities through `Jido.Integration.V2.invoke/3`
-- they do not auto-project into generated `Jido.Action` or `Jido.Plugin`
-  surfaces
-- they carry an explicit passthrough `schema_policy` justification because the
-  current Notion runtime slice preserves the SDK-shaped payload boundary
-- they now also carry authored schema-contract metadata in
-  `OperationSpec.metadata` so the connector can distinguish static operations
-  from late-bound schema-sensitive ones without widening the published A0
-  surface
+- the published A0 operations are marked `consumer_surface.mode: :common`
+- the package generates real `Jido.Action` modules for that curated slice
+- the package generates one real `Jido.Plugin` bundle that publishes only the
+  curated common operations
+- OAuth control endpoints and long-tail schema-uncertain inventory remain
+  connector-local and do not project into the shared generated surface
 
-This is the architecture stress test for large SDKs: the catalog can track wide
-Notion inventory without implying wrapper parity.
+This keeps the architecture honest for large SDKs: the connector can publish a
+curated generated surface without implying wrapper parity over the full SDK
+inventory.
+
+## Generated Consumer Surface
+
+The generated direct-action slice currently includes:
+
+- `notion.users.get_self`
+- `notion.search.search`
+- `notion.pages.create`
+- `notion.pages.retrieve`
+- `notion.pages.update`
+- `notion.blocks.list_children`
+- `notion.blocks.append_children`
+- `notion.data_sources.query`
+- `notion.comments.create`
+
+Static operations publish defined input/output schemas. Late-bound operations
+still project into the common action/plugin surface, but they keep explicit
+schema-contract metadata and use `schema_policy` `:dynamic` on the late-bound
+side instead of pretending their provider-shaped regions are fully static.
+
+The connector now also publishes one common generated trigger/sensor slice:
+
+- `notion.pages.recently_edited`
+  - delivery mode: `:poll`
+  - provider basis: `NotionSDK.Search.search/2`
+  - filter: `object == "page"`
+  - sort: `last_edited_time desc`
+  - checkpoint: timestamp cursor on `last_edited_time`
+  - dedupe: `page_id:last_edited_time`
+
+The generated plugin therefore publishes both the curated action bundle and one
+subscription for the recent-page-edits sensor.
 
 ## Authored Schema Classification
 
@@ -164,6 +193,13 @@ mix compile --warnings-as-errors
 mix test
 mix docs
 ```
+
+The package-local test surface now includes:
+
+- generated action/plugin publication tests for the curated A0 slice
+- generated sensor/plugin-subscription tests for
+  `notion.pages.recently_edited`
+- deterministic checkpoint and dedupe tests for the Search-backed poll trigger
 
 From the workspace root, the connector should also pass the root acceptance
 surface:

@@ -42,6 +42,8 @@ giving the repo one canonical connector acceptance command.
 It exists to prove that a connector:
 
 - publishes a valid authored manifest contract and derived executable capabilities
+- ships loadable generated common consumer surfaces whose action/plugin/sensor
+  metadata stays aligned with authored projection truth
 - fits the declared runtime family
 - declares policy posture explicitly
 - can execute deterministic fixtures through lease-only auth context
@@ -54,11 +56,12 @@ The default and current stable profile is `connector_foundation`.
 It runs these suites in order:
 
 1. `manifest_contract`
-2. `capability_contracts`
-3. `runtime_class_fit`
-4. `policy_contract`
-5. `deterministic_fixtures`
-6. `ingress_definition_discipline`
+2. `consumer_surface_projection`
+3. `capability_contracts`
+4. `runtime_class_fit`
+5. `policy_contract`
+6. `deterministic_fixtures`
+7. `ingress_definition_discipline`
 
 The task API is intentionally narrow:
 
@@ -144,6 +147,10 @@ Each fixture map should declare:
   - fix connector id stability, authored auth/catalog/operation/trigger completeness, auth scope or trigger-secret coverage, or derived capability ownership
 - `capability_contracts`
   - fix authored operation or trigger ids, projection drift, invalid policy metadata, or malformed derived capability structs
+- `consumer_surface_projection`
+  - fix common-surface metadata, generated action/plugin/sensor module
+    loadability, generated projection drift, plugin action drift, plugin
+    subscription drift, or placeholder-schema posture
 - `runtime_class_fit`
   - fix handler modules so they match `direct`, `session`, or `stream`
 - `policy_contract`

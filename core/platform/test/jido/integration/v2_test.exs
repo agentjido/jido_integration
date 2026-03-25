@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2Test do
   alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures, as: GitHubFixtures
   alias Jido.Integration.V2.Connectors.MarketData
+  alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.TargetDescriptor
@@ -376,6 +377,79 @@ defmodule Jido.Integration.V2Test do
 
     assert match.capability.capability_id == "codex.exec.session"
     assert match.connector.connector_id == "codex_cli"
+  end
+
+  test "exports projected consumer surfaces with generated identities and JSON Schema payloads" do
+    register_connector!(@github.connector)
+    register_connector!(@market_data.connector)
+
+    projected_entries = V2.projected_catalog_entries()
+
+    assert Enum.map(projected_entries, & &1.connector_id) == ["github", "market_data"]
+    assert Jason.encode!(projected_entries)
+
+    github_entry = Enum.find(projected_entries, &(&1.connector_id == "github"))
+    market_data_entry = Enum.find(projected_entries, &(&1.connector_id == "market_data"))
+    github_issue_fetch_module = ConsumerProjection.action_module(GitHub, "github.issue.fetch")
+
+    market_alert_sensor_module =
+      ConsumerProjection.sensor_module(MarketData, "market.alert.detected")
+
+    assert github_entry.display_name == GitHub.manifest().catalog.display_name
+    assert github_entry.docs_refs == GitHub.manifest().catalog.docs_refs
+
+    assert github_entry.generated_plugin == %{
+             module: ConsumerProjection.plugin_module(GitHub),
+             name: "github",
+             state_key: :github
+           }
+
+    assert github_entry.generated_action_names ==
+             Enum.map(ConsumerProjection.action_modules(GitHub), & &1.name())
+
+    assert github_entry.generated_sensor_names == []
+    assert github_entry.common_projected_triggers == []
+
+    assert %{
+             operation_id: "github.issue.fetch",
+             normalized_id: "work_item.fetch",
+             action_name: "work_item_fetch",
+             generated_module: ^github_issue_fetch_module,
+             input_json_schema: %{type: :object},
+             output_json_schema: %{type: :object}
+           } =
+             Enum.find(
+               github_entry.common_projected_operations,
+               &(&1.operation_id == "github.issue.fetch")
+             )
+
+    assert market_data_entry.display_name == MarketData.manifest().catalog.display_name
+    assert market_data_entry.docs_refs == MarketData.manifest().catalog.docs_refs
+
+    assert market_data_entry.generated_plugin == %{
+             module: ConsumerProjection.plugin_module(MarketData),
+             name: "market_data",
+             state_key: :market_data
+           }
+
+    assert market_data_entry.generated_action_names == ["market_ticks_pull"]
+    assert market_data_entry.generated_sensor_names == ["market_alert_sensor"]
+
+    assert %{
+             trigger_id: "market.alert.detected",
+             normalized_id: "market.alerts.detected",
+             sensor_name: "market_alerts_detected",
+             jido_sensor_name: "market_alert_sensor",
+             generated_module: ^market_alert_sensor_module,
+             signal_type: "market.alert.detected",
+             signal_source: "/ingress/poll/market_data/market.alert.detected",
+             config_json_schema: %{type: :object},
+             signal_json_schema: %{type: :object}
+           } =
+             Enum.find(
+               market_data_entry.common_projected_triggers,
+               &(&1.trigger_id == "market.alert.detected")
+             )
   end
 
   test "assembles a shared durable review packet with attempt target and auth context" do

@@ -32,15 +32,18 @@ The hosted trigger contract is now explicit and local to this app proof:
 - the manifest publishes trigger capability `github.issue.ingest`
 - the manifest publishes normalized signal metadata
   `github.issue.opened` from `/ingress/webhook/github/issues.opened`
+- the manifest publishes explicit config and signal schemas for the hosted
+  webhook trigger
+- the app package ships generated `Jido.Sensor` and `Jido.Plugin` modules for
+  that hosted trigger
 - the companion conformance surface publishes matching `ingress_definitions/0`
   evidence for that trigger capability
 - `core/webhook_router` reuses the same trigger and signal metadata when it
   registers hosted routes, while still owning route persistence and secret-ref
   lookup
 
-This keeps the hosted webhook lane connector-local and app-local without
-pretending it is the same generated sensor topology used by the common polling
-proof.
+This keeps the hosted webhook lane app-local while converging it onto the same
+generated sensor contract layer used by the common polling proofs.
 
 ## Public Entry Points
 
@@ -87,10 +90,11 @@ The end-to-end proof lives in:
 It covers:
 
 - install provisioning and connected state
-- preservation of the connector-local hosted trigger boundary instead of a fake
-  common generated sensor surface
+- preservation of the app-local hosted trigger boundary while publishing a real
+  generated sensor surface
 - explicit alignment between the app-local trigger manifest, hosted route
   record, and `ingress_definitions/0` evidence
+- generated sensor and plugin publication for the hosted GitHub issue trigger
 - webhook route provisioning
 - accepted webhook to async work handoff
 - dead-letter on repeated failure
@@ -109,6 +113,7 @@ mix docs
 From the repo root:
 
 ```bash
+mix jido.conformance Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector
 mix monorepo.test
 mix ci
 ```

@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
   @moduledoc false
 
   alias Jido.Integration.V2.Connectors.Notion.Operation
+  alias Jido.Integration.V2.Connectors.Notion.PublishedSurface
   alias Jido.Integration.V2.Connectors.Notion.SchemaContract
   alias Jido.Integration.V2.OperationSpec
 
@@ -102,16 +103,18 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
   end
 
   defp operation_spec(entry) do
+    consumer_surface = PublishedSurface.consumer_surface(entry.operation_id)
+
     OperationSpec.new!(%{
       operation_id: entry.operation_id,
       name: entry.event_suffix,
       display_name: display_name(entry.event_suffix),
-      description: "Connector-local Notion runtime capability for #{entry.operation_id}",
+      description: "Published Notion operation for #{entry.operation_id}",
       runtime_class: :direct,
       transport_mode: :sdk,
       handler: Operation,
-      input_schema: Zoi.map(description: "Input payload for #{entry.operation_id}"),
-      output_schema: Zoi.map(description: "Output payload for #{entry.operation_id}"),
+      input_schema: PublishedSurface.input_schema(entry.operation_id),
+      output_schema: PublishedSurface.output_schema(entry.operation_id),
       permissions: %{
         permission_bundle: entry.permission_bundle,
         required_scopes: entry.permission_bundle
@@ -127,20 +130,11 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
         path: entry.path,
         reference_page: entry.reference_page
       },
-      consumer_surface: %{
-        mode: :connector_local,
-        reason:
-          "Notion runtime capabilities stay connector-local until a normalized common consumer surface exists"
-      },
-      schema_policy: %{
-        input: :passthrough,
-        output: :passthrough,
-        justification:
-          "Published Notion runtime capabilities intentionally preserve the SDK-shaped payload boundary while wrapper parity is deferred"
-      },
+      consumer_surface: consumer_surface,
+      schema_policy: PublishedSurface.schema_policy(entry.operation_id),
       jido: %{
         action: %{
-          name: String.replace(entry.operation_id, ".", "_")
+          name: consumer_surface.action_name
         }
       },
       metadata:

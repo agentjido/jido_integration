@@ -107,4 +107,3 @@ root task.
 
 - [Connector Lifecycle](../../guides/connector_lifecycle.md)
 - [Conformance](../../guides/conformance.md)
-- [Observability](../../guides/observability.md)

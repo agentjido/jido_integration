@@ -90,6 +90,8 @@ Connector packages:
 
 - `connectors/github`
 - `connectors/notion`
+  - publishes a curated generated common action/plugin slice plus one common
+    poll-trigger sensor slice backed by `notion_sdk`
 - `connectors/codex_cli`
 - `connectors/market_data`
   - publishes the Harness-routed stream operation proof through the authored
@@ -131,6 +133,7 @@ Discovery surface:
 - `fetch_connector/1`
 - `fetch_capability/1`
 - `catalog_entries/0`
+- `projected_catalog_entries/0`
 
 Auth lifecycle surface:
 
@@ -173,6 +176,9 @@ truth that already lives in `core/auth` and `core/control_plane`:
 - `installs/1` and `connections/1` list durable auth state without copying it
 - `catalog_entries/0` summarizes authored connector and capability catalog
   truth for downstream consumers
+- `projected_catalog_entries/0` exports the published common generated
+  action/plugin/sensor surface with JSON Schema derived from the authored Zoi
+  contracts
 - `targets/1` lists announced durable target descriptors
 - `compatible_targets_for/2` derives authored compatibility requirements from
   the durable capability contract instead of forcing apps to restitch that
@@ -193,6 +199,9 @@ Instead:
 - `core/ingress` owns request normalization and durable trigger admission
 - generated common poll-trigger sensors and plugin subscriptions remain
   projections of authored trigger truth, not durable subscription state
+- app-owned hosted webhook triggers can converge on the same generated sensor
+  contract layer without moving route ownership or ingress ownership out of the
+  app package
 - `core/dispatch_runtime` owns queueing, retry, dead-letter, replay, and
   recovery once work is admitted
 - app packages own host-controlled trigger handlers and any end-to-end proofs
@@ -215,6 +224,8 @@ The current app proofs are:
     operator packet
 - `apps/devops_incident_response`
   - hosted webhook to async replay and restart recovery
+  - app-owned webhook trigger publication through the same generated
+    sensor-facing contract family used by common poll triggers
 
 Root `examples/` and `reference_apps/` are intentionally not part of the V2
 layout.

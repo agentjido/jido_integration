@@ -9,6 +9,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
   alias Jido.Integration.V2.Conformance.Suites.RuntimeClassFit
   alias Jido.Integration.V2.Connector
   alias Jido.Integration.V2.Connectors.GitHub
+  alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.TriggerSpec
@@ -784,6 +785,298 @@ defmodule Jido.Integration.V2.ConformanceTest do
     end
   end
 
+  defmodule MissingGeneratedConsumerSurfaceConnector do
+    @behaviour Connector
+
+    @operation OperationSpec.new!(%{
+                 operation_id: "missing_generated.issue.fetch",
+                 name: "issue_fetch",
+                 display_name: "Issue fetch",
+                 description: "Projected operation without generated action module coverage",
+                 runtime_class: :direct,
+                 transport_mode: :sdk,
+                 handler: TriggerHandler,
+                 input_schema:
+                   Zoi.object(%{
+                     issue_id: Zoi.string()
+                   }),
+                 output_schema:
+                   Zoi.object(%{
+                     issue_id: Zoi.string()
+                   }),
+                 permissions: %{required_scopes: ["issues:read"]},
+                 policy: %{
+                   environment: %{allowed: [:prod]},
+                   sandbox: %{
+                     level: :standard,
+                     egress: :restricted,
+                     approvals: :auto,
+                     allowed_tools: ["missing_generated.issue.fetch"]
+                   }
+                 },
+                 upstream: %{method: "GET", path: "/issues/{issue_id}"},
+                 consumer_surface: %{
+                   mode: :common,
+                   normalized_id: "work_item.fetch",
+                   action_name: "work_item_fetch"
+                 },
+                 schema_policy: %{input: :defined, output: :defined},
+                 jido: %{action: %{name: "work_item_fetch"}}
+               })
+
+    @trigger TriggerSpec.new!(%{
+               trigger_id: "missing_generated.issue.updated",
+               name: "issue_updated",
+               display_name: "Issue updated",
+               description: "Projected trigger without generated sensor module coverage",
+               runtime_class: :direct,
+               delivery_mode: :poll,
+               handler: TriggerHandler,
+               config_schema:
+                 Zoi.object(%{
+                   interval_ms: Zoi.integer() |> Zoi.default(60_000)
+                 }),
+               signal_schema:
+                 Zoi.object(%{
+                   issue_id: Zoi.string()
+                 }),
+               permissions: %{required_scopes: ["issues:read"]},
+               checkpoint: %{strategy: :cursor},
+               dedupe: %{strategy: :event_id},
+               verification: %{},
+               policy: %{
+                 environment: %{allowed: [:prod]},
+                 sandbox: %{
+                   level: :standard,
+                   egress: :restricted,
+                   approvals: :auto,
+                   allowed_tools: ["missing_generated.issue.updated"]
+                 }
+               },
+               consumer_surface: %{
+                 mode: :common,
+                 normalized_id: "work_item.updated",
+                 sensor_name: "work_item_updated"
+               },
+               schema_policy: %{config: :defined, signal: :defined},
+               jido: %{
+                 sensor: %{
+                   name: "work_item_updated_sensor",
+                   signal_type: "missing_generated.issue.updated",
+                   signal_source: "/ingress/poll/missing_generated/issue.updated"
+                 }
+               }
+             })
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "missing_generated",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :oauth2,
+          install: %{required: true},
+          reauth: %{supported: true},
+          requested_scopes: ["issues:read"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        },
+        catalog: %{
+          display_name: "Missing Generated Consumer Surface",
+          description: "Connector that opts into common publication but omits generated modules",
+          category: "test",
+          tags: ["projection"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [@operation],
+        triggers: [@trigger],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
+  defmodule DriftedGeneratedConsumerSurfaceConnector do
+    @behaviour Connector
+
+    @operation OperationSpec.new!(%{
+                 operation_id: "drifted_generated.issue.fetch",
+                 name: "issue_fetch",
+                 display_name: "Issue fetch",
+                 description: "Projected operation with a drifted generated action module",
+                 runtime_class: :direct,
+                 transport_mode: :sdk,
+                 handler: TriggerHandler,
+                 input_schema:
+                   Zoi.object(%{
+                     issue_id: Zoi.string()
+                   }),
+                 output_schema:
+                   Zoi.object(%{
+                     issue_id: Zoi.string()
+                   }),
+                 permissions: %{required_scopes: ["issues:read"]},
+                 policy: %{
+                   environment: %{allowed: [:prod]},
+                   sandbox: %{
+                     level: :standard,
+                     egress: :restricted,
+                     approvals: :auto,
+                     allowed_tools: ["drifted_generated.issue.fetch"]
+                   }
+                 },
+                 upstream: %{method: "GET", path: "/issues/{issue_id}"},
+                 consumer_surface: %{
+                   mode: :common,
+                   normalized_id: "work_item.fetch",
+                   action_name: "work_item_fetch"
+                 },
+                 schema_policy: %{input: :defined, output: :defined},
+                 jido: %{action: %{name: "work_item_fetch"}}
+               })
+
+    @trigger TriggerSpec.new!(%{
+               trigger_id: "drifted_generated.issue.updated",
+               name: "issue_updated",
+               display_name: "Issue updated",
+               description: "Projected trigger with a drifted generated sensor module",
+               runtime_class: :direct,
+               delivery_mode: :poll,
+               handler: TriggerHandler,
+               config_schema:
+                 Zoi.object(%{
+                   interval_ms: Zoi.integer() |> Zoi.default(60_000)
+                 }),
+               signal_schema:
+                 Zoi.object(%{
+                   issue_id: Zoi.string()
+                 }),
+               permissions: %{required_scopes: ["issues:read"]},
+               checkpoint: %{strategy: :cursor},
+               dedupe: %{strategy: :event_id},
+               verification: %{},
+               policy: %{
+                 environment: %{allowed: [:prod]},
+                 sandbox: %{
+                   level: :standard,
+                   egress: :restricted,
+                   approvals: :auto,
+                   allowed_tools: ["drifted_generated.issue.updated"]
+                 }
+               },
+               consumer_surface: %{
+                 mode: :common,
+                 normalized_id: "work_item.updated",
+                 sensor_name: "work_item_updated"
+               },
+               schema_policy: %{config: :defined, signal: :defined},
+               jido: %{
+                 sensor: %{
+                   name: "work_item_updated_sensor",
+                   signal_type: "drifted_generated.issue.updated",
+                   signal_source: "/ingress/poll/drifted_generated/issue.updated"
+                 }
+               }
+             })
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "drifted_generated",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :oauth2,
+          install: %{required: true},
+          reauth: %{supported: true},
+          requested_scopes: ["issues:read"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        },
+        catalog: %{
+          display_name: "Drifted Generated Consumer Surface",
+          description: "Connector with loadable but drifted generated consumer modules",
+          category: "test",
+          tags: ["projection"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [@operation],
+        triggers: [@trigger],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
+  defmodule DriftedGeneratedConsumerSurfaceConnector.Generated.Actions.WorkItemFetch do
+    @expected_projection ConsumerProjection.action_projection!(
+                           Jido.Integration.V2.ConformanceTest.DriftedGeneratedConsumerSurfaceConnector,
+                           "drifted_generated.issue.fetch"
+                         )
+
+    use Jido.Action,
+      name: @expected_projection.action_name,
+      description: @expected_projection.description,
+      category: @expected_projection.category,
+      tags: @expected_projection.tags,
+      schema: @expected_projection.schema,
+      output_schema: @expected_projection.output_schema
+
+    def generated_action_projection do
+      %{@expected_projection | normalized_id: "work_item.fetch.drifted"}
+    end
+
+    def operation_id, do: @expected_projection.operation_id
+
+    @impl true
+    def run(_params, _context), do: {:ok, %{issue_id: "demo"}}
+  end
+
+  defmodule DriftedGeneratedConsumerSurfaceConnector.Generated.Plugin do
+    @expected_projection ConsumerProjection.plugin_projection!(
+                           Jido.Integration.V2.ConformanceTest.DriftedGeneratedConsumerSurfaceConnector
+                         )
+
+    use Jido.Plugin,
+      name: @expected_projection.name,
+      state_key: @expected_projection.state_key,
+      actions: [],
+      description: @expected_projection.description,
+      category: @expected_projection.category,
+      tags: @expected_projection.tags,
+      config_schema: @expected_projection.config_schema,
+      subscriptions: []
+
+    def generated_plugin_projection do
+      %{@expected_projection | actions: []}
+    end
+  end
+
+  defmodule DriftedGeneratedConsumerSurfaceConnector.Generated.Sensors.WorkItemUpdated do
+    @expected_projection ConsumerProjection.sensor_projection!(
+                           Jido.Integration.V2.ConformanceTest.DriftedGeneratedConsumerSurfaceConnector,
+                           "drifted_generated.issue.updated"
+                         )
+
+    use Jido.Sensor,
+      name: @expected_projection.jido_name,
+      description: @expected_projection.description,
+      schema: @expected_projection.config_schema
+
+    def generated_sensor_projection do
+      %{@expected_projection | signal_type: "drifted.signal.type"}
+    end
+
+    def trigger_id, do: @expected_projection.trigger_id
+
+    @impl Jido.Sensor
+    def init(config, context), do: {:ok, %{config: config, context: context}}
+
+    @impl Jido.Sensor
+    def handle_event(_event, state), do: {:ok, state}
+  end
+
   test "returns the stable connector foundation profile names" do
     assert Conformance.profiles() == [:connector_foundation]
   end
@@ -817,6 +1110,87 @@ defmodule Jido.Integration.V2.ConformanceTest do
 
     assert Enum.find(report.suite_results, &(&1.id == :ingress_definition_discipline)).status ==
              :skipped
+  end
+
+  test "passes GitHub generated consumer surface loadability and projection checks" do
+    assert {:ok, report} =
+             Conformance.run(
+               GitHub,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-03-12 00:00:00Z]
+             )
+
+    projection_suite = Enum.find(report.suite_results, &(&1.id == :consumer_surface_projection))
+
+    assert projection_suite.status == :passed
+    assert passed_check?(projection_suite.checks, "github.generated.plugin.module_resolves")
+    assert passed_check?(projection_suite.checks, "github.generated.plugin.actions_match")
+
+    assert passed_check?(
+             projection_suite.checks,
+             "github.issue.fetch.generated_action.module_resolves"
+           )
+
+    assert passed_check?(
+             projection_suite.checks,
+             "github.issue.fetch.generated_action.projection_consistent"
+           )
+  end
+
+  test "fails conformance when projected common surfaces omit generated modules" do
+    assert {:ok, report} =
+             Conformance.run(
+               MissingGeneratedConsumerSurfaceConnector,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-03-12 00:00:00Z]
+             )
+
+    projection_suite = Enum.find(report.suite_results, &(&1.id == :consumer_surface_projection))
+
+    assert projection_suite.status == :failed
+
+    assert failed_check?(
+             projection_suite.checks,
+             "missing_generated.issue.fetch.generated_action.module_resolves"
+           )
+
+    assert failed_check?(
+             projection_suite.checks,
+             "missing_generated.generated.plugin.module_resolves"
+           )
+
+    assert failed_check?(
+             projection_suite.checks,
+             "missing_generated.issue.updated.generated_sensor.module_resolves"
+           )
+  end
+
+  test "fails conformance when generated consumer modules drift from authored projection metadata" do
+    assert {:ok, report} =
+             Conformance.run(
+               DriftedGeneratedConsumerSurfaceConnector,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-03-12 00:00:00Z]
+             )
+
+    projection_suite = Enum.find(report.suite_results, &(&1.id == :consumer_surface_projection))
+
+    assert projection_suite.status == :failed
+
+    assert failed_check?(
+             projection_suite.checks,
+             "drifted_generated.issue.fetch.generated_action.projection_consistent"
+           )
+
+    assert failed_check?(
+             projection_suite.checks,
+             "drifted_generated.generated.plugin.actions_match"
+           )
+
+    assert failed_check?(
+             projection_suite.checks,
+             "drifted_generated.issue.updated.generated_sensor.projection_consistent"
+           )
   end
 
   test "reports runtime fit and fixture failures for a broken connector" do
@@ -981,6 +1355,13 @@ defmodule Jido.Integration.V2.ConformanceTest do
   defp failed_check?(checks, id) do
     Enum.any?(checks, fn
       %CheckResult{id: ^id, status: :failed} -> true
+      _check -> false
+    end)
+  end
+
+  defp passed_check?(checks, id) do
+    Enum.any?(checks, fn
+      %CheckResult{id: ^id, status: :passed} -> true
       _check -> false
     end)
   end

@@ -9,8 +9,8 @@ defmodule Jido.Integration.V2 do
   The public surface includes:
 
   - deterministic connector and capability discovery through `connectors/0`,
-    `capabilities/0`, `fetch_connector/1`, `fetch_capability/1`, and
-    `catalog_entries/0`
+    `capabilities/0`, `fetch_connector/1`, `fetch_capability/1`,
+    `catalog_entries/0`, and `projected_catalog_entries/0`
   - durable auth lifecycle operations through `start_install/3`,
     `complete_install/2`, `fetch_install/1`, `installs/1`,
     `connection_status/1`, `connections/1`, `request_lease/2`,
@@ -260,6 +260,13 @@ defmodule Jido.Integration.V2 do
   """
   @spec catalog_entries() :: [map()]
   defdelegate catalog_entries(), to: Operator
+
+  @doc """
+  Export the common projected consumer surface with generated identities and
+  JSON Schema payloads for tools and docs consumers.
+  """
+  @spec projected_catalog_entries() :: [map()]
+  defdelegate projected_catalog_entries(), to: Operator
 
   @doc """
   Derive authored-compatible target matches for a capability.

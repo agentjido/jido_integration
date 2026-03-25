@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
   alias Jido.Integration.V2.Connectors.Notion.Operation
   alias Jido.Integration.V2.Connectors.Notion.OperationCatalog
   alias Jido.Integration.V2.OperationSpec
+  alias Jido.Integration.V2.TriggerSpec
 
   @published_capability_ids [
     "notion.users.get_self",
@@ -18,6 +19,7 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
     "notion.data_sources.query",
     "notion.comments.create"
   ]
+  @published_trigger_ids ["notion.pages.recently_edited"]
   @schema_contracts %{
     "notion.users.get_self" => %{
       strategy: :static,
@@ -130,9 +132,12 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
     assert Enum.map(manifest.operations, & &1.operation_id) ==
              Enum.sort(@published_capability_ids)
 
-    assert Enum.map(manifest.capabilities, & &1.id) == Enum.sort(@published_capability_ids)
+    assert Enum.map(manifest.capabilities, & &1.id) ==
+             Enum.sort(@published_capability_ids ++ @published_trigger_ids)
 
-    Enum.each(manifest.capabilities, fn capability ->
+    operation_capabilities = Enum.filter(manifest.capabilities, &(&1.kind == :operation))
+
+    Enum.each(operation_capabilities, fn capability ->
       assert capability.runtime_class == :direct
       assert capability.kind == :operation
       assert capability.transport_profile == :sdk
@@ -154,13 +159,29 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
       assert capability.metadata.policy.sandbox.allowed_tools == [capability.id]
     end)
 
+    assert trigger_capability =
+             Enum.find(manifest.capabilities, &(&1.id == "notion.pages.recently_edited"))
+
+    assert trigger_capability.kind == :trigger
+    assert trigger_capability.transport_profile == :poll
+    assert trigger_capability.metadata.checkpoint.strategy == :timestamp_cursor
+    assert trigger_capability.metadata.dedupe.strategy == :page_id_last_edited_time
+
     Enum.each(manifest.operations, fn operation ->
-      assert operation.consumer_surface.mode == :connector_local
-      assert is_binary(operation.consumer_surface.reason)
-      assert operation.schema_policy.input == :passthrough
-      assert operation.schema_policy.output == :passthrough
-      assert is_binary(operation.schema_policy.justification)
+      assert operation.consumer_surface.mode == :common
+      assert is_binary(operation.consumer_surface.normalized_id)
+      assert is_binary(operation.consumer_surface.action_name)
+      assert operation.schema_policy.input in [:defined, :dynamic]
+      assert operation.schema_policy.output in [:defined, :dynamic]
+      refute Map.has_key?(operation.schema_policy, :justification)
     end)
+
+    assert [trigger] = manifest.triggers
+    assert trigger.trigger_id == "notion.pages.recently_edited"
+    assert TriggerSpec.common_consumer_surface?(trigger)
+    assert trigger.delivery_mode == :poll
+    assert trigger.checkpoint.strategy == :timestamp_cursor
+    assert trigger.dedupe.strategy == :page_id_last_edited_time
   end
 
   test "registers through the public facade and exposes deterministic lookup by connector and capability id" do
@@ -170,7 +191,9 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
     assert connector.connector == "notion"
 
     assert Enum.map(V2.connectors(), & &1.connector) == ["notion"]
-    assert Enum.map(V2.capabilities(), & &1.id) == Enum.sort(@published_capability_ids)
+
+    assert Enum.map(V2.capabilities(), & &1.id) ==
+             Enum.sort(@published_capability_ids ++ @published_trigger_ids)
 
     assert {:ok, capability} = V2.fetch_capability("notion.pages.retrieve")
     assert capability.handler == Operation
