@@ -258,11 +258,11 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
 
   defp generated_action_projection_consistent?(module, expected_projection) do
     generated_action_module_resolves?(module) and
-      module.generated_action_projection() == expected_projection and
+      action_projection_equivalent?(module.generated_action_projection(), expected_projection) and
       module.operation_id() == expected_projection.operation_id and
       module.name() == expected_projection.action_name and
-      module.schema() == expected_projection.schema and
-      module.output_schema() == expected_projection.output_schema
+      zoi_schema_equivalent?(module.schema(), expected_projection.schema) and
+      zoi_schema_equivalent?(module.output_schema(), expected_projection.output_schema)
   end
 
   defp generated_plugin_module_resolves?(module) do
@@ -274,10 +274,10 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
 
   defp generated_plugin_projection_consistent?(module, expected_projection) do
     generated_plugin_module_resolves?(module) and
-      module.generated_plugin_projection() == expected_projection and
+      plugin_projection_equivalent?(module.generated_plugin_projection(), expected_projection) and
       module.name() == expected_projection.name and
       module.state_key() == expected_projection.state_key and
-      module.config_schema() == expected_projection.config_schema
+      zoi_schema_equivalent?(module.config_schema(), expected_projection.config_schema)
   end
 
   defp generated_plugin_actions_match?(module, projected_operations, connector_module) do
@@ -296,7 +296,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
 
     generated_plugin_module_resolves?(module) and
       module.subscriptions() == expected_subscriptions and
-      module.subscriptions(%{}, %{}) == expected_subscriptions and
+      module.subscriptions(%{}, %{}) == [] and
       module.manifest().subscriptions == expected_subscriptions
   rescue
     _error -> false
@@ -310,11 +310,105 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
 
   defp generated_sensor_projection_consistent?(module, expected_projection) do
     generated_sensor_module_resolves?(module) and
-      module.generated_sensor_projection() == expected_projection and
+      sensor_projection_equivalent?(module.generated_sensor_projection(), expected_projection) and
       module.trigger_id() == expected_projection.trigger_id and
       module.name() == expected_projection.jido_name and
-      module.schema() == expected_projection.config_schema
+      zoi_schema_equivalent?(module.schema(), expected_projection.sensor_schema)
   end
+
+  defp action_projection_equivalent?(left, right) do
+    projection_field_equal?(left, right, [
+      :connector_module,
+      :plugin_module,
+      :module,
+      :operation_id,
+      :normalized_id,
+      :action_name,
+      :description,
+      :category,
+      :tags
+    ]) and
+      zoi_schema_equivalent?(left.schema, right.schema) and
+      zoi_schema_equivalent?(left.output_schema, right.output_schema)
+  end
+
+  defp plugin_projection_equivalent?(left, right) do
+    projection_field_equal?(left, right, [
+      :connector_module,
+      :module,
+      :name,
+      :state_key,
+      :description,
+      :category,
+      :tags,
+      :actions
+    ]) and
+      zoi_schema_equivalent?(left.config_schema, right.config_schema)
+  end
+
+  defp sensor_projection_equivalent?(left, right) do
+    projection_field_equal?(left, right, [
+      :connector_id,
+      :connector_module,
+      :plugin_module,
+      :module,
+      :trigger_id,
+      :normalized_id,
+      :delivery_mode,
+      :auth_binding_kind,
+      :sensor_name,
+      :jido_name,
+      :description,
+      :category,
+      :tags,
+      :signal_type,
+      :signal_source,
+      :checkpoint,
+      :polling
+    ]) and
+      zoi_schema_equivalent?(left.config_schema, right.config_schema) and
+      zoi_schema_equivalent?(left.sensor_schema, right.sensor_schema) and
+      zoi_schema_equivalent?(left.signal_schema, right.signal_schema)
+  end
+
+  defp projection_field_equal?(left, right, fields) do
+    Enum.all?(fields, fn field ->
+      Map.get(left, field) == Map.get(right, field)
+    end)
+  end
+
+  defp zoi_schema_equivalent?(left, right) do
+    normalize_schema_term(left) == normalize_schema_term(right)
+  end
+
+  defp normalize_schema_term(%module{} = value) when is_atom(module) do
+    {module, value |> Map.from_struct() |> normalize_schema_term()}
+  end
+
+  defp normalize_schema_term(value) when is_map(value) do
+    value
+    |> Enum.map(fn {key, nested} -> {key, normalize_schema_term(nested)} end)
+    |> Enum.sort_by(fn {key, _nested} -> inspect(key) end)
+  end
+
+  defp normalize_schema_term(value) when is_list(value) do
+    if Keyword.keyword?(value) do
+      value
+      |> Enum.map(fn {key, nested} -> {key, normalize_schema_term(nested)} end)
+      |> Enum.sort_by(fn {key, _nested} -> inspect(key) end)
+    else
+      Enum.map(value, &normalize_schema_term/1)
+    end
+  end
+
+  defp normalize_schema_term(value) when is_tuple(value) do
+    value
+    |> Tuple.to_list()
+    |> Enum.map(&normalize_schema_term/1)
+    |> List.to_tuple()
+  end
+
+  defp normalize_schema_term(value), do: value
 
   defp generated_projection_error_checks(id, prefix, message) do
     [

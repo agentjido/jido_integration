@@ -11,6 +11,6 @@ defmodule <%= @connector_module %>ConformanceTest do
                generated_at: ~U[2026-03-12 00:00:00Z]
              )
 
-    assert report.status == :passed
+    assert report.status == :passed, inspect(report, pretty: true, limit: :infinity)
   end
 end

@@ -1,0 +1,54 @@
+defmodule <%= @trigger_handler_module %> do
+  @moduledoc false
+
+  alias Jido.Integration.V2.RuntimeResult
+
+  @trigger_id "<%= @trigger_id %>"
+  @event_type "connector.<%= @connector_name %>.sample.detected.completed"
+
+  @spec run(map(), map()) :: {:ok, RuntimeResult.t()}
+  def run(input, _context) when is_map(input) do
+    checkpoint_cursor =
+      case Map.get(input, :checkpoint_cursor) || Map.get(input, "checkpoint_cursor") do
+        value when is_binary(value) ->
+          value = String.trim(value)
+
+          if value == "" do
+            "2026-03-12T00:00:00Z"
+          else
+            value
+          end
+
+        _other -> "2026-03-12T00:00:00Z"
+      end
+
+    signal = %{
+      resource_id: "sample-resource",
+      message: Map.get(input, :message) || Map.get(input, "message") || "sample detected",
+      observed_at: checkpoint_cursor
+    }
+
+    {:ok,
+     RuntimeResult.new!(%{
+       output: %{
+         capability_id: @trigger_id,
+         signals: [signal],
+         checkpoint: %{
+           strategy: :timestamp_cursor,
+           cursor: signal.observed_at
+         },
+         dedupe_keys: ["#{signal.resource_id}:#{signal.observed_at}"]
+       },
+       events: [
+         %{
+           type: @event_type,
+           stream: :control,
+           payload: %{
+             capability_id: @trigger_id,
+             signal_count: 1
+           }
+         }
+       ]
+     })}
+  end
+end

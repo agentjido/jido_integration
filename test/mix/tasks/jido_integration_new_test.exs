@@ -54,6 +54,34 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
            )
 
     assert File.exists?(
+             Path.join(
+               package_root,
+               "lib/jido/integration/v2/connectors/acme_crm/triggers/sample_detected.ex"
+             )
+           )
+
+    assert File.exists?(
+             Path.join(
+               package_root,
+               "lib/jido/integration/v2/connectors/acme_crm/generated/actions.ex"
+             )
+           )
+
+    assert File.exists?(
+             Path.join(
+               package_root,
+               "lib/jido/integration/v2/connectors/acme_crm/generated/sensors.ex"
+             )
+           )
+
+    assert File.exists?(
+             Path.join(
+               package_root,
+               "lib/jido/integration/v2/connectors/acme_crm/generated/plugin.ex"
+             )
+           )
+
+    assert File.exists?(
              Path.join(package_root, "lib/jido/integration/v2/connectors/acme_crm/conformance.ex")
            )
 
@@ -73,6 +101,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert mix_content =~
              "{:jido_integration_v2_contracts, path: \"../../core/contracts\", override: true}"
 
+    assert mix_content =~ "{:jido_integration_v2_consumer_surfaces,"
     assert mix_content =~ "{:zoi, \"~> 0.17\"}"
 
     assert mix_content =~
@@ -105,7 +134,12 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert connector_content =~ "AuthSpec.new!("
     assert connector_content =~ "CatalogSpec.new!("
     assert connector_content =~ "OperationSpec.new!("
+    assert connector_content =~ "TriggerSpec.new!("
     assert connector_content =~ "runtime_families: [:direct]"
+    assert connector_content =~ "mode: :common"
+    assert connector_content =~ "action_name: \"acme_crm_sample_perform\""
+    assert connector_content =~ "sensor_name: \"sample_detected\""
+    assert connector_content =~ "def ingress_definitions do"
     assert Regex.match?(~r/input_schema:\s+Zoi\.object/s, connector_content)
     assert Regex.match?(~r/output_schema:\s+Zoi\.object/s, connector_content)
     refute connector_content =~ "Capability.new!("
@@ -212,8 +246,10 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     assert session_connector =~ ~s(driver: "jido_session")
     assert stream_connector =~ ~s(driver: "asm")
-    assert session_connector =~ "mode: :connector_local"
-    assert stream_connector =~ "mode: :connector_local"
+    assert session_connector =~ "mode: :common"
+    assert stream_connector =~ "mode: :common"
+    assert session_connector =~ "runtime_family"
+    assert stream_connector =~ "runtime_family"
     refute session_connector =~ removed_session_bridge_id()
     refute stream_connector =~ removed_stream_bridge_id()
 

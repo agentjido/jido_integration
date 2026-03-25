@@ -115,22 +115,33 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     @schema Zoi.struct(
               __MODULE__,
               %{
+                connector_id: Contracts.non_empty_string_schema("sensor_projection.connector_id"),
                 connector_module: Contracts.module_schema("sensor_projection.connector_module"),
                 plugin_module: Contracts.module_schema("sensor_projection.plugin_module"),
                 module: Contracts.module_schema("sensor_projection.module"),
                 trigger_id: Contracts.non_empty_string_schema("sensor_projection.trigger_id"),
                 normalized_id:
                   Contracts.non_empty_string_schema("sensor_projection.normalized_id"),
+                delivery_mode:
+                  Contracts.enumish_schema([:poll, :webhook], "sensor_projection.delivery_mode"),
+                auth_binding_kind:
+                  Contracts.enumish_schema(
+                    [:connection_id, :tenant, :none],
+                    "sensor_projection.auth_binding_kind"
+                  ),
                 sensor_name: Contracts.non_empty_string_schema("sensor_projection.sensor_name"),
                 jido_name: Contracts.non_empty_string_schema("sensor_projection.jido_name"),
                 description: Contracts.non_empty_string_schema("sensor_projection.description"),
                 category: Contracts.non_empty_string_schema("sensor_projection.category"),
                 tags: Contracts.string_list_schema("sensor_projection.tags"),
                 config_schema: Contracts.zoi_schema_schema("sensor_projection.config_schema"),
+                sensor_schema: Contracts.zoi_schema_schema("sensor_projection.sensor_schema"),
                 signal_schema: Contracts.zoi_schema_schema("sensor_projection.signal_schema"),
                 signal_type: Contracts.non_empty_string_schema("sensor_projection.signal_type"),
                 signal_source:
-                  Contracts.non_empty_string_schema("sensor_projection.signal_source")
+                  Contracts.non_empty_string_schema("sensor_projection.signal_source"),
+                checkpoint: Contracts.any_map_schema(),
+                polling: Contracts.any_map_schema()
               },
               coerce: true
             )
@@ -197,20 +208,26 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     trigger = fetch_projected_trigger!(manifest, trigger_id)
 
     SensorProjection.new!(%{
+      connector_id: manifest.connector,
       connector_module: connector_module,
       plugin_module: plugin_module(connector_module),
       module: sensor_module(connector_module, trigger),
       trigger_id: trigger.trigger_id,
       normalized_id: TriggerSpec.normalized_surface_id(trigger),
+      delivery_mode: trigger.delivery_mode,
+      auth_binding_kind: manifest.auth.binding_kind,
       sensor_name: sensor_name(trigger),
       jido_name: jido_sensor_name(trigger),
       description: trigger.description || "Generated sensor for #{trigger.trigger_id}",
       category: manifest.catalog.category,
       tags: sensor_tags(manifest, trigger),
       config_schema: trigger.config_schema,
+      sensor_schema: sensor_runtime_schema(manifest, trigger),
       signal_schema: trigger.signal_schema,
       signal_type: sensor_signal_type(trigger),
-      signal_source: sensor_signal_source(trigger)
+      signal_source: sensor_signal_source(trigger),
+      checkpoint: trigger.checkpoint,
+      polling: TriggerSpec.polling(trigger) || %{}
     })
   end
 
@@ -302,7 +319,7 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     [
       name: projection.jido_name,
       description: projection.description,
-      schema: projection.config_schema
+      schema: projection.sensor_schema
     ]
   end
 
@@ -316,6 +333,7 @@ defmodule Jido.Integration.V2.ConsumerProjection do
       category: projection.category,
       tags: projection.tags,
       config_schema: projection.config_schema,
+      signal_patterns: plugin_signal_patterns(projection),
       subscriptions: plugin_subscriptions(projection)
     ]
   end
@@ -435,17 +453,6 @@ defmodule Jido.Integration.V2.ConsumerProjection do
     projection
     |> projected_sensor_projections()
     |> Enum.map(&subscription_tuple/1)
-  end
-
-  @spec plugin_subscriptions(PluginProjection.t(), map(), map()) :: [{module(), map()}]
-  def plugin_subscriptions(%PluginProjection{} = projection, config, context)
-      when is_map(config) and is_map(context) do
-    plugin_subscriptions(projection)
-  end
-
-  def plugin_subscriptions(%PluginProjection{}, config, context) do
-    raise ArgumentError,
-          "generated plugins expect config and context maps for subscriptions/2, got: #{inspect({config, context})}"
   end
 
   defp fetch_manifest!(connector_module) do
@@ -600,6 +607,13 @@ defmodule Jido.Integration.V2.ConsumerProjection do
 
   defp plugin_name(manifest), do: normalize_identifier(manifest.connector)
 
+  defp plugin_signal_patterns(%PluginProjection{connector_module: connector_module}) do
+    connector_module
+    |> fetch_manifest!()
+    |> projected_triggers()
+    |> Enum.map(&sensor_signal_type/1)
+  end
+
   defp plugin_state_key(manifest) do
     manifest.connector
     |> normalize_identifier()
@@ -624,10 +638,142 @@ defmodule Jido.Integration.V2.ConsumerProjection do
 
     Contracts.ordered_object!(
       connection_id: connection_id_schema,
+      invoke_defaults:
+        Contracts.ordered_object!(
+          tenant_id:
+            Zoi.string(description: "Tenant id for generated trigger and action invokes")
+            |> Zoi.optional(),
+          actor_id:
+            Zoi.string(description: "Actor id for generated trigger and action invokes")
+            |> Zoi.optional(),
+          environment:
+            Zoi.atom(
+              description: "Execution environment for generated trigger and action invokes"
+            )
+            |> Zoi.default(:prod),
+          target_id:
+            Zoi.string(description: "Optional target id for generated invokes") |> Zoi.optional(),
+          sandbox: Zoi.map(description: "Optional sandbox posture override") |> Zoi.optional(),
+          extensions:
+            Zoi.map(description: "Optional invoke extensions for generated triggers and actions")
+            |> Zoi.default(%{})
+        )
+        |> Zoi.default(%{}),
+      trigger_subscriptions: trigger_subscriptions_schema(manifest),
       enabled_actions:
         Zoi.list(Zoi.string(), description: "Optional subset of generated actions to enable")
         |> Zoi.default([])
     )
+  end
+
+  defp trigger_subscriptions_schema(%Manifest{} = manifest) do
+    fields =
+      manifest
+      |> projected_triggers()
+      |> Enum.filter(&(&1.delivery_mode == :poll))
+      |> Enum.map(fn trigger ->
+        {String.to_atom(sensor_name(trigger)), trigger_subscription_schema(trigger)}
+      end)
+
+    Contracts.ordered_object!(fields)
+    |> Zoi.default(%{})
+  end
+
+  defp trigger_subscription_schema(%TriggerSpec{} = trigger) do
+    default_interval_ms = TriggerSpec.polling_default_interval_ms(trigger) || 60_000
+    min_interval_ms = TriggerSpec.polling_min_interval_ms(trigger) || default_interval_ms
+
+    Contracts.ordered_object!(
+      enabled:
+        Zoi.boolean(description: "Enable this generated poll subscription") |> Zoi.default(false),
+      interval_ms:
+        Zoi.integer(description: "Polling interval in milliseconds")
+        |> Zoi.refine({__MODULE__, :validate_min_interval, [min_interval_ms]})
+        |> Zoi.default(default_interval_ms),
+      partition_key:
+        Zoi.string(
+          description: "Stable checkpoint partition key for this generated poll subscription"
+        )
+        |> Zoi.optional(),
+      config:
+        trigger.config_schema
+        |> Zoi.optional()
+    )
+  end
+
+  @doc false
+  @spec validate_min_interval(integer(), [pos_integer()], keyword()) :: :ok | {:error, String.t()}
+  def validate_min_interval(value, [min_interval_ms], _opts)
+      when is_integer(value) and is_integer(min_interval_ms) do
+    if value >= min_interval_ms do
+      :ok
+    else
+      {:error, "must be greater than or equal to #{min_interval_ms}"}
+    end
+  end
+
+  def validate_min_interval(_value, _args, _opts), do: :ok
+
+  defp sensor_runtime_schema(%Manifest{}, %TriggerSpec{delivery_mode: :webhook} = trigger) do
+    trigger.config_schema
+  end
+
+  defp sensor_runtime_schema(%Manifest{} = manifest, %TriggerSpec{delivery_mode: :poll} = trigger) do
+    default_interval_ms = TriggerSpec.polling_default_interval_ms(trigger) || 60_000
+    min_interval_ms = TriggerSpec.polling_min_interval_ms(trigger) || default_interval_ms
+
+    base_fields =
+      [
+        interval_ms:
+          Zoi.integer(description: "Polling interval in milliseconds")
+          |> Zoi.refine({__MODULE__, :validate_min_interval, [min_interval_ms]})
+          |> Zoi.default(default_interval_ms),
+        tenant_id: Zoi.string(description: "Tenant id used for checkpoint and trigger admission"),
+        actor_id:
+          Zoi.string(description: "Actor id used for generated poll invokes")
+          |> Zoi.optional(),
+        environment:
+          Zoi.atom(description: "Execution environment used for generated poll invokes")
+          |> Zoi.default(:prod),
+        target_id:
+          Zoi.string(description: "Optional target id for generated poll invokes")
+          |> Zoi.optional(),
+        sandbox:
+          Zoi.map(description: "Optional sandbox posture override for generated poll invokes")
+          |> Zoi.optional(),
+        partition_key: partition_key_schema(trigger),
+        config:
+          trigger.config_schema
+          |> Zoi.optional(),
+        extensions:
+          Zoi.map(description: "Optional invoke extensions for generated poll invokes")
+          |> Zoi.default(%{})
+      ]
+
+    fields =
+      case manifest.auth.binding_kind do
+        :connection_id ->
+          [
+            {:connection_id,
+             Zoi.string(description: "Durable connection binding for generated poll invokes")}
+            | base_fields
+          ]
+
+        _other ->
+          base_fields
+      end
+
+    Contracts.ordered_object!(fields)
+  end
+
+  defp partition_key_schema(%TriggerSpec{} = trigger) do
+    if present_string?(Contracts.get(trigger.checkpoint, :partition_key)) do
+      Zoi.string(description: "Stable checkpoint partition key")
+      |> Zoi.optional()
+    else
+      Zoi.string(description: "Stable checkpoint partition key")
+      |> Zoi.optional()
+    end
   end
 
   defp projected_sensor_projections(%PluginProjection{connector_module: connector_module}) do

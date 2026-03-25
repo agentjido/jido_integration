@@ -106,14 +106,25 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       conformance_file: Path.join(module_root, "conformance.ex"),
       test_file: test_file(module_file, "_test.exs"),
       conformance_test_file: test_file(module_file, "_conformance_test.exs"),
+      generated_actions_file: Path.join(module_root, "generated/actions.ex"),
+      generated_sensors_file: Path.join(module_root, "generated/sensors.ex"),
+      generated_plugin_file: Path.join(module_root, "generated/plugin.ex"),
+      trigger_handler_module: connector_module <> ".Triggers.SampleDetected",
+      trigger_handler_alias: "SampleDetected",
+      trigger_handler_file: Path.join(module_root, "triggers/sample_detected.ex"),
       contracts_dep_path:
         relative_dep_path(package_root, Path.join(workspace_root, "core/contracts")),
+      consumer_surfaces_dep_path:
+        relative_dep_path(package_root, Path.join(workspace_root, "core/consumer_surfaces")),
+      direct_runtime_dep_path:
+        relative_dep_path(package_root, Path.join(workspace_root, "core/direct_runtime")),
       conformance_dep_path:
         relative_dep_path(package_root, Path.join(workspace_root, "core/conformance")),
       jido_harness_dep_path:
         relative_dep_path(package_root, external_repo_path(workspace_root, "jido_harness")),
       runtime_class: runtime_class,
       runtime_class_literal: inspect(runtime_class),
+      runtime_families_literal: inspect(runtime_families(runtime_class)),
       runtime_driver_id: runtime_driver_id,
       runtime_driver_atom_literal:
         if(is_binary(runtime_driver_id),
@@ -124,7 +135,61 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       include_test_support: runtime_class in [:session, :stream],
       generated_on: Date.utc_today() |> Date.to_iso8601(),
       workspace_lockfile_path: workspace_lockfile_path,
-      include_mix_lock: not is_nil(workspace_lockfile_path)
+      include_mix_lock: not is_nil(workspace_lockfile_path),
+      trigger_id: "#{connector_name}.sample.detected",
+      trigger_name: "sample_detected",
+      trigger_display_name: "Sample detected",
+      trigger_description: "Projection-ready poll trigger skeleton for the scaffolded connector",
+      trigger_signal_type: "#{connector_name}.sample.detected",
+      trigger_signal_source: "/ingress/poll/#{connector_name}/sample.detected",
+      trigger_consumer_surface_sensor_name: "sample_detected",
+      trigger_jido_sensor_name: "#{connector_name}_sample_detected_sensor",
+      trigger_polling_literal:
+        inspect(%{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
+          pretty: true,
+          limit: :infinity
+        ),
+      trigger_checkpoint_literal:
+        inspect(%{strategy: :timestamp_cursor, field: "observed_at", partition_key: "workspace"},
+          pretty: true,
+          limit: :infinity
+        ),
+      trigger_dedupe_literal:
+        inspect(%{strategy: :resource_version, fields: ["resource_id", "observed_at"]},
+          pretty: true,
+          limit: :infinity
+        ),
+      trigger_config_schema_literal:
+        """
+          Zoi.object(%{
+            window_minutes: Zoi.integer() |> Zoi.default(15)
+          })
+        """
+        |> String.trim_trailing(),
+      trigger_signal_schema_literal:
+        """
+          Zoi.object(%{
+            resource_id: Zoi.string(),
+            message: Zoi.string(),
+            observed_at: Zoi.string()
+          })
+        """
+        |> String.trim_trailing(),
+      ingress_definitions_literal:
+        inspect(
+          [
+            %{
+              source: :poll,
+              connector_id: connector_name,
+              trigger_id: "#{connector_name}.sample.detected",
+              capability_id: "#{connector_name}.sample.detected",
+              signal_type: "#{connector_name}.sample.detected",
+              signal_source: "/ingress/poll/#{connector_name}/sample.detected"
+            }
+          ],
+          pretty: true,
+          limit: :infinity
+        )
     }
 
     runtime_context =
@@ -173,6 +238,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       operation_name: "sample_perform",
       operation_display_name: "Sample perform",
       operation_description: "Placeholder authored operation for the scaffolded connector",
+      common_action_normalized_id: "sample.perform",
       transport_profile_literal: ":action",
       upstream_literal: "%{transport: :action}",
       required_scope: required_scope,
@@ -198,11 +264,9 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
           })
         """
         |> String.trim_trailing(),
-      consumer_surface_reason:
-        "Scaffold placeholder operation stays connector-local until a normalized common surface is authored",
       generated_action_name: "#{connector_name}_sample_perform",
       manifest_test_name:
-        "publishes an authored direct manifest and derived executable capability",
+        "publishes projection-ready direct operation and poll trigger contracts with generated consumer surfaces",
       direct_runtime: true,
       session_runtime: false,
       stream_runtime: false,
@@ -260,13 +324,13 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       conformance_event_type: "connector.#{connector_name}.sample.completed",
       fixture_auth_binding: fixture_digest(auth_token),
       include_runtime_metadata: false,
+      runtime_family_literal: nil,
       runtime_provider_literal: nil,
       runtime_options_literal: "%{}",
       auth_lease_field: "api_token",
       auth_lease_field_literal: ":api_token",
       conformance_harness_driver_file: nil,
-      publish_ingress_definitions: false,
-      ingress_definitions_literal: "[]",
+      publish_ingress_definitions: true,
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
     }
@@ -300,6 +364,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       operation_name: "sample_session",
       operation_display_name: "Sample session",
       operation_description: "Placeholder session capability for the scaffolded connector",
+      common_action_normalized_id: "sample.session",
       transport_profile_literal: ":stdio",
       upstream_literal: "%{transport: :stdio}",
       required_scope: required_scope,
@@ -325,10 +390,9 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
           })
         """
         |> String.trim_trailing(),
-      consumer_surface_reason:
-        "Scaffold placeholder session surface stays connector-local until a normalized common surface and runtime_family metadata are authored",
       generated_action_name: "#{connector_name}_sample_session",
-      manifest_test_name: "publishes a session manifest with explicit Harness runtime metadata",
+      manifest_test_name:
+        "publishes projection-ready session operation and poll trigger contracts with explicit Harness runtime metadata",
       direct_runtime: false,
       session_runtime: true,
       stream_runtime: false,
@@ -385,13 +449,25 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       conformance_event_type: "connector.#{connector_name}.session.completed",
       fixture_auth_binding: fixture_digest(auth_token),
       include_runtime_metadata: true,
+      runtime_family_literal:
+        inspect(
+          %{
+            session_affinity: :connection,
+            resumable: true,
+            approval_required: true,
+            stream_capable: true,
+            lifecycle_owner: String.to_atom(runtime_driver_id),
+            runtime_ref: :session
+          },
+          pretty: true,
+          limit: :infinity
+        ),
       runtime_provider_literal: nil,
       runtime_options_literal: "%{}",
       auth_lease_field: "access_token",
       auth_lease_field_literal: ":access_token",
       conformance_harness_driver_file: Path.join(module_root, "conformance_harness_driver.ex"),
-      publish_ingress_definitions: false,
-      ingress_definitions_literal: "[]",
+      publish_ingress_definitions: true,
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
     }
@@ -424,6 +500,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       operation_name: "sample_stream",
       operation_display_name: "Sample stream",
       operation_description: "Placeholder stream capability for the scaffolded connector",
+      common_action_normalized_id: "sample.stream",
       transport_profile_literal: ":stream",
       upstream_literal: "%{transport: :stream}",
       required_scope: required_scope,
@@ -459,10 +536,9 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
           })
         """
         |> String.trim_trailing(),
-      consumer_surface_reason:
-        "Scaffold placeholder stream surface stays connector-local until a normalized common surface and runtime_family metadata are authored",
       generated_action_name: "#{connector_name}_sample_stream",
-      manifest_test_name: "publishes a stream manifest with explicit Harness runtime metadata",
+      manifest_test_name:
+        "publishes projection-ready stream operation and poll trigger contracts with explicit Harness runtime metadata",
       direct_runtime: false,
       session_runtime: false,
       stream_runtime: true,
@@ -526,13 +602,25 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       conformance_event_type: "connector.#{connector_name}.stream.completed",
       fixture_auth_binding: fixture_digest(api_key),
       include_runtime_metadata: true,
+      runtime_family_literal:
+        inspect(
+          %{
+            session_affinity: :target,
+            resumable: false,
+            approval_required: false,
+            stream_capable: true,
+            lifecycle_owner: String.to_atom(runtime_driver_id),
+            runtime_ref: :session
+          },
+          pretty: true,
+          limit: :infinity
+        ),
       runtime_provider_literal: nil,
       runtime_options_literal: "%{}",
       auth_lease_field: "api_key",
       auth_lease_field_literal: ":api_key",
       conformance_harness_driver_file: Path.join(module_root, "conformance_harness_driver.ex"),
-      publish_ingress_definitions: false,
-      ingress_definitions_literal: "[]",
+      publish_ingress_definitions: true,
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
     }
@@ -546,6 +634,10 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       {"mix.exs.eex", "mix.exs"},
       {"connector.ex.eex", context.module_file},
       {context.handler_template, context.handler_file},
+      {"trigger_handler.ex.eex", context.trigger_handler_file},
+      {"generated_actions.ex.eex", context.generated_actions_file},
+      {"generated_sensors.ex.eex", context.generated_sensors_file},
+      {"generated_plugin.ex.eex", context.generated_plugin_file},
       {"conformance.ex.eex", context.conformance_file},
       {"test_helper.exs.eex", "test/test_helper.exs"},
       {"connector_test.exs.eex", context.test_file},
@@ -748,4 +840,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
 
     Enum.find(candidates, &File.exists?/1)
   end
+
+  defp runtime_families(:direct), do: [:direct]
+  defp runtime_families(runtime_class), do: [:direct, runtime_class]
 end

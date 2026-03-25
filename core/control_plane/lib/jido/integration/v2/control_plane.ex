@@ -176,6 +176,11 @@ defmodule Jido.Integration.V2.ControlPlane do
     Stores.ingress_store().fetch_checkpoint(tenant_id, connector_id, trigger_id, partition_key)
   end
 
+  @spec put_trigger_checkpoint(TriggerCheckpoint.t()) :: :ok | {:error, term()}
+  def put_trigger_checkpoint(%TriggerCheckpoint{} = checkpoint) do
+    Stores.ingress_store().put_checkpoint(checkpoint)
+  end
+
   @spec record_artifact(ArtifactRef.t()) :: :ok | {:error, term()}
   def record_artifact(%ArtifactRef{} = artifact_ref) do
     Stores.artifact_store().put_artifact_ref(artifact_ref)

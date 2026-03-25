@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.GeneratedConsumerSurfaceTest do
   alias Jido.Integration.V2.Connectors.Notion.FixtureTransport
   alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.DirectRuntime
   alias Jido.Integration.V2.TriggerSpec
   alias Pristine.Core.Response
@@ -123,6 +124,108 @@ defmodule Jido.Integration.V2.Connectors.Notion.GeneratedConsumerSurfaceTest do
     assert function_exported?(sensor_module, :handle_event, 2)
 
     assert plugin_module.subscriptions() == [{sensor_module, %{}}]
+  end
+
+  test "generated plugins materialize Notion poll subscriptions with invoke defaults and trigger config" do
+    plugin_module = ConsumerProjection.plugin_module(Notion)
+    sensor_module = ConsumerProjection.sensor_module(Notion, "notion.pages.recently_edited")
+
+    assert [{^sensor_module, sensor_config}] =
+             plugin_module.subscriptions(
+               %{
+                 connection_id: "conn-notion-1",
+                 invoke_defaults: %{
+                   tenant_id: "tenant-generated-notion",
+                   actor_id: "generated-consumer",
+                   environment: :staging,
+                   extensions: %{
+                     notion_client: [
+                       transport: FixtureTransport,
+                       transport_opts: [test_pid: self(), response: &recent_page_edits_response/2]
+                     ]
+                   }
+                 },
+                 trigger_subscriptions: %{
+                   page_recently_edited: %{
+                     enabled: true,
+                     interval_ms: 45_000,
+                     partition_key: "workspace",
+                     config: %{page_size: 3}
+                   }
+                 }
+               },
+               %{agent_id: "agent-notion-1"}
+             )
+
+    assert sensor_config == %{
+             actor_id: "generated-consumer",
+             config: %{page_size: 3},
+             connection_id: "conn-notion-1",
+             environment: :staging,
+             extensions: %{
+               notion_client: [
+                 transport: FixtureTransport,
+                 transport_opts: [test_pid: self(), response: &recent_page_edits_response/2]
+               ]
+             },
+             interval_ms: 45_000,
+             partition_key: "workspace",
+             tenant_id: "tenant-generated-notion"
+           }
+  end
+
+  test "generated notion poll sensors execute the shared durable sensor tick path" do
+    assert :ok = V2.register_connector(Notion)
+    connection_id = install_connection!()
+    sensor_module = ConsumerProjection.sensor_module(Notion, "notion.pages.recently_edited")
+
+    assert {:ok, config} =
+             Zoi.parse(sensor_module.schema(), %{
+               connection_id: connection_id,
+               tenant_id: "tenant-generated-notion",
+               actor_id: "generated-consumer",
+               partition_key: "workspace",
+               interval_ms: 45_000,
+               config: %{page_size: 3},
+               extensions: %{
+                 notion_client: [
+                   transport: FixtureTransport,
+                   transport_opts: [test_pid: self(), response: &recent_page_edits_response/2]
+                 ]
+               }
+             })
+
+    assert {:ok, state, [{:schedule, 45_000}]} = sensor_module.init(config, %{})
+
+    assert {:ok, next_state,
+            [
+              {:emit, signal},
+              {:emit, _second_signal},
+              {:emit, _third_signal},
+              {:schedule, 45_000}
+            ]} =
+             sensor_module.handle_event(:tick, state)
+
+    assert signal.type == "notion.page.recently_edited"
+    assert signal.source == "/ingress/poll/notion/pages.recently_edited"
+
+    assert {:ok, checkpoint} =
+             ControlPlane.fetch_trigger_checkpoint(
+               "tenant-generated-notion",
+               "notion",
+               "notion.pages.recently_edited",
+               "workspace"
+             )
+
+    assert checkpoint.cursor == "2026-03-12T10:00:00Z"
+
+    assert checkpoint.last_event_id ==
+             "00000000-0000-0000-0000-000000000010:2026-03-12T10:00:00Z"
+
+    assert %DateTime{} = checkpoint.last_event_time
+
+    assert {:ok, ^next_state, [{:schedule, 45_000}]} =
+             sensor_module.handle_event(:tick, next_state)
   end
 
   test "recent page edits polling uses Notion Search and emits stable checkpoint and dedupe posture" do

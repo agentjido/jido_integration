@@ -636,6 +636,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
                description: "Projected trigger missing deterministic signal metadata",
                runtime_class: :direct,
                delivery_mode: :poll,
+               polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
                handler: TriggerHandler,
                config_schema:
                  Zoi.object(%{
@@ -720,6 +721,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
                description: "Projected trigger missing the generated Jido sensor name",
                runtime_class: :direct,
                delivery_mode: :poll,
+               polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
                handler: TriggerHandler,
                config_schema:
                  Zoi.object(%{
@@ -831,6 +833,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
                description: "Projected trigger without generated sensor module coverage",
                runtime_class: :direct,
                delivery_mode: :poll,
+               polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
                handler: TriggerHandler,
                config_schema:
                  Zoi.object(%{
@@ -943,6 +946,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
                description: "Projected trigger with a drifted generated sensor module",
                runtime_class: :direct,
                delivery_mode: :poll,
+               polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
                handler: TriggerHandler,
                config_schema:
                  Zoi.object(%{

@@ -1,41 +1,83 @@
 defmodule <%= @connector_module %>Test do
   use ExUnit.Case, async: true
 
+  alias Jido.Integration.V2.ConsumerProjection
+
   test "<%= @manifest_test_name %>" do
     manifest = <%= @connector_module %>.manifest()
     [operation] = manifest.operations
-    [capability] = manifest.capabilities
+    [trigger] = manifest.triggers
+
+    operation_capability =
+      Enum.find(manifest.capabilities, &(&1.id == "<%= @operation_id %>"))
+
+    trigger_capability =
+      Enum.find(manifest.capabilities, &(&1.id == "<%= @trigger_id %>"))
 
     assert manifest.connector == "<%= @connector_name %>"
     assert manifest.auth.binding_kind == :connection_id
     assert manifest.auth.auth_type == :api_token
     assert manifest.catalog.display_name == "<%= @connector_display_name %>"
-    assert manifest.runtime_families == [<%= @runtime_class_literal %>]
+    assert manifest.runtime_families == <%= @runtime_families_literal %>
     assert operation.operation_id == "<%= @operation_id %>"
-    assert capability.id == operation.operation_id
-    assert capability.runtime_class == <%= @runtime_class_literal %>
-    assert capability.kind == :operation
-    assert capability.transport_profile == <%= @transport_profile_literal %>
-    assert capability.metadata.required_scopes == ["<%= @required_scope %>"]
-<%= if @include_runtime_metadata do %>    assert capability.metadata.runtime == %{
+    assert trigger.trigger_id == "<%= @trigger_id %>"
+    assert operation_capability
+    assert trigger_capability
+    assert operation_capability.id == operation.operation_id
+    assert operation_capability.runtime_class == <%= @runtime_class_literal %>
+    assert operation_capability.kind == :operation
+    assert operation_capability.transport_profile == <%= @transport_profile_literal %>
+    assert operation_capability.metadata.required_scopes == ["<%= @required_scope %>"]
+<%= if @include_runtime_metadata do %>    assert operation_capability.metadata.runtime == %{
              driver: "<%= @runtime_driver_id %>",
              options: %{}
            }
-<% end %>    assert capability.metadata.policy.environment.allowed == <%= @environment_allowed_literal %>
-    assert capability.metadata.policy.sandbox.allowed_tools == <%= @allowed_tools_literal %>
-    assert capability.metadata.input_schema |> is_struct()
-    assert capability.metadata.output_schema |> is_struct()
-    assert capability.metadata.consumer_surface == %{
-             mode: :connector_local,
-             reason: "<%= @consumer_surface_reason %>"
+    assert operation_capability.metadata.runtime_family == <%= @runtime_family_literal %>
+<% end %>    assert operation_capability.metadata.policy.environment.allowed == <%= @environment_allowed_literal %>
+    assert operation_capability.metadata.policy.sandbox.allowed_tools == <%= @allowed_tools_literal %>
+    assert operation_capability.metadata.input_schema |> is_struct()
+    assert operation_capability.metadata.output_schema |> is_struct()
+    assert operation_capability.metadata.consumer_surface == %{
+             mode: :common,
+             normalized_id: "<%= @common_action_normalized_id %>",
+             action_name: "<%= @generated_action_name %>"
            }
+    assert operation_capability.metadata.jido.action.name == "<%= @generated_action_name %>"
 
-    assert capability.metadata.jido.action.name == "<%= @generated_action_name %>"
+    assert trigger_capability.id == trigger.trigger_id
+    assert trigger_capability.runtime_class == :direct
+    assert trigger_capability.kind == :trigger
+    assert trigger_capability.transport_profile == :poll
+    assert trigger_capability.metadata.required_scopes == ["<%= @required_scope %>"]
+    assert trigger_capability.metadata.consumer_surface == %{
+             mode: :common,
+             normalized_id: "<%= String.replace(@trigger_name, "_", ".") %>",
+             sensor_name: "<%= @trigger_consumer_surface_sensor_name %>"
+           }
+    assert trigger_capability.metadata.jido.sensor == %{
+             name: "<%= @trigger_jido_sensor_name %>",
+             signal_type: "<%= @trigger_signal_type %>",
+             signal_source: "<%= @trigger_signal_source %>"
+           }
+    assert trigger_capability.metadata.checkpoint == <%= @trigger_checkpoint_literal %>
+    assert trigger_capability.metadata.dedupe == <%= @trigger_dedupe_literal %>
 <%= if @session_runtime do %>
-    assert capability.metadata.policy.sandbox.file_scope == <%= @sandbox_file_scope_literal %>
+    assert operation_capability.metadata.policy.sandbox.file_scope == <%= @sandbox_file_scope_literal %>
 <% end %>
-<%= if @non_direct_runtime do %>
-    assert Map.get(capability.metadata, :runtime_family) == nil
-<% end %>
+  end
+
+  test "publishes generated action, sensor, and plugin modules for the scaffolded common surface" do
+    action_module = ConsumerProjection.action_module(<%= @connector_module %>, "<%= @operation_id %>")
+    sensor_module = ConsumerProjection.sensor_module(<%= @connector_module %>, "<%= @trigger_id %>")
+    plugin_module = ConsumerProjection.plugin_module(<%= @connector_module %>)
+
+    assert Code.ensure_loaded?(action_module)
+    assert Code.ensure_loaded?(sensor_module)
+    assert Code.ensure_loaded?(plugin_module)
+    assert action_module.operation_id() == "<%= @operation_id %>"
+    assert sensor_module.trigger_id() == "<%= @trigger_id %>"
+    assert plugin_module.actions() == [action_module]
+    assert plugin_module.subscriptions() == [{sensor_module, %{}}]
+    assert plugin_module.subscriptions(%{}, %{}) == []
   end
 end

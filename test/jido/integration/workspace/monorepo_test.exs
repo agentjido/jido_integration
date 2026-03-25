@@ -6,6 +6,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              ".",
              "core/auth",
              "core/conformance",
+             "core/consumer_surfaces",
              "core/contracts",
              "core/control_plane",
              "core/direct_runtime",

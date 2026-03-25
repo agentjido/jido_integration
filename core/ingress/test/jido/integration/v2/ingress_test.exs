@@ -116,6 +116,7 @@ defmodule Jido.Integration.V2.IngressTest do
             description: "Receives poll alert events through the common trigger proof",
             runtime_class: :direct,
             delivery_mode: :poll,
+            polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
             handler: NoopHandler,
             config_schema:
               Zoi.object(%{
@@ -302,6 +303,7 @@ defmodule Jido.Integration.V2.IngressTest do
         description: "Admits one authored market-alert polling trigger",
         runtime_class: :direct,
         delivery_mode: :poll,
+        polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
         handler: NoopHandler,
         config_schema:
           Zoi.object(%{

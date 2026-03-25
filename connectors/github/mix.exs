@@ -30,6 +30,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
       {:jido, "~> 2.1"},
       {:jido_action, "~> 2.1"},
       {:jido_integration_v2_contracts, path: "../../core/contracts"},
+      {:jido_integration_v2_consumer_surfaces, path: "../../core/consumer_surfaces"},
       {:jido_integration_v2_direct_runtime, path: "../../core/direct_runtime"},
       {:jido_integration_v2_conformance,
        path: "../../core/conformance", only: :test, runtime: false},

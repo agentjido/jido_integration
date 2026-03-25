@@ -52,6 +52,7 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
             description: "Projects a normalized market tick signal",
             runtime_class: :direct,
             delivery_mode: :poll,
+            polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
             handler: Handler,
             config_schema:
               Zoi.object(%{
@@ -87,6 +88,7 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
             description: "Stays outside the common generated trigger surface",
             runtime_class: :direct,
             delivery_mode: :poll,
+            polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
             handler: Handler,
             config_schema: Zoi.map(),
             signal_schema: Zoi.map(),
@@ -167,6 +169,7 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
         description: "Duplicate projected trigger",
         runtime_class: :direct,
         delivery_mode: :poll,
+        polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
         handler: Handler,
         config_schema:
           Zoi.object(%{
@@ -249,6 +252,7 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
         description: "Duplicate generated Jido sensor name",
         runtime_class: :direct,
         delivery_mode: :poll,
+        polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
         handler: Handler,
         config_schema:
           Zoi.object(%{
@@ -297,12 +301,19 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
     assert projection.category == "market_data"
     assert projection.tags == ["market", "market_signals", "poll"]
     assert projection.config_schema == trigger.config_schema
+    assert projection.sensor_schema == ConsumerProjection.sensor_opts(projection)[:schema]
     assert projection.signal_schema == trigger.signal_schema
     assert projection.signal_type == "market.tick.detected"
     assert projection.signal_source == "/sensors/market/ticks"
 
+    assert projection.polling == %{
+             default_interval_ms: 60_000,
+             min_interval_ms: 5_000,
+             jitter: false
+           }
+
     assert ConsumerProjection.sensor_opts(projection)[:name] == "market_tick_sensor"
-    assert ConsumerProjection.sensor_opts(projection)[:schema] == trigger.config_schema
+    assert ConsumerProjection.sensor_opts(projection)[:schema] == projection.sensor_schema
 
     assert %Jido.Signal{
              type: "market.tick.detected",
@@ -311,35 +322,24 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
            } = ConsumerProjection.sensor_signal!(projection, %{symbol: "AAPL", price: 201.25})
   end
 
-  test "generated sensors target the real Jido.Sensor contract and emit deterministic signals" do
+  test "generated sensors expose the real Jido.Sensor contract with the projected runtime schema" do
     sensor_module = CommonTriggerConnector.Generated.Sensors.MarketTicksDetected
+
+    projection =
+      ConsumerProjection.sensor_projection!(CommonTriggerConnector, "market.tick.detected")
 
     assert Code.ensure_loaded?(sensor_module)
     assert sensor_module.trigger_id() == "market.tick.detected"
     assert sensor_module.name() == "market_tick_sensor"
-
-    assert {:ok, parsed_config} = Zoi.parse(sensor_module.schema(), %{})
-    assert parsed_config.interval_ms == 60_000
-
-    assert {:ok, state} = sensor_module.init(parsed_config, %{agent_id: "agent-market-1"})
-
-    assert {:ok, ^state, [{:emit, %Jido.Signal{} = signal}]} =
-             sensor_module.handle_event(%{symbol: "AAPL", price: 201.25}, state)
-
-    assert signal.type == "market.tick.detected"
-    assert signal.source == "/sensors/market/ticks"
-    assert signal.data == %{symbol: "AAPL", price: 201.25}
+    assert sensor_module.schema() == projection.sensor_schema
   end
 
-  test "generated plugin subscriptions derive from the trigger projection" do
+  test "generated plugin subscriptions expose the projected static poll inventory" do
     plugin = CommonTriggerConnector.Generated.Plugin
     sensor_module = CommonTriggerConnector.Generated.Sensors.MarketTicksDetected
 
     assert plugin.subscriptions() == [{sensor_module, %{}}]
     assert plugin.manifest().subscriptions == [{sensor_module, %{}}]
-
-    assert plugin.subscriptions(%{connection_id: "conn-market-1"}, %{agent_id: "agent-market-1"}) ==
-             [{sensor_module, %{}}]
   end
 
   test "projects only explicitly common trigger surfaces" do

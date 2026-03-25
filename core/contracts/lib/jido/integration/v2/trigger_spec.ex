@@ -8,6 +8,12 @@ defmodule Jido.Integration.V2.TriggerSpec do
 
   @consumer_surface_modes [:common, :connector_local]
   @schema_policy_modes [:defined, :dynamic, :passthrough]
+  @delivery_modes [:webhook, :poll]
+  @polling_schema Contracts.strict_object!(
+                    default_interval_ms: Zoi.integer(),
+                    min_interval_ms: Zoi.integer() |> Zoi.optional(),
+                    jitter: Zoi.boolean() |> Zoi.default(false)
+                  )
 
   @consumer_surface_schema Contracts.strict_object!(
                              mode:
@@ -60,10 +66,11 @@ defmodule Jido.Integration.V2.TriggerSpec do
               description: Zoi.string() |> Zoi.nullish() |> Zoi.optional(),
               runtime_class:
                 Contracts.enumish_schema([:direct, :session, :stream], "runtime_class"),
-              delivery_mode: Contracts.enumish_schema([:webhook, :poll], "trigger.delivery_mode"),
+              delivery_mode: Contracts.enumish_schema(@delivery_modes, "trigger.delivery_mode"),
               handler: Contracts.module_schema("trigger.handler"),
               config_schema: Contracts.zoi_schema_schema("config_schema"),
               signal_schema: Contracts.zoi_schema_schema("signal_schema"),
+              polling: @polling_schema |> Zoi.nullish() |> Zoi.optional(),
               permissions: Contracts.any_map_schema(),
               checkpoint: Contracts.any_map_schema(),
               dedupe: Contracts.any_map_schema(),
@@ -81,6 +88,7 @@ defmodule Jido.Integration.V2.TriggerSpec do
 
   @type consumer_surface_mode :: :common | :connector_local
   @type schema_policy_mode :: :defined | :dynamic | :passthrough
+  @type delivery_mode :: :webhook | :poll
   @type t :: unquote(Zoi.type_spec(@schema))
 
   @enforce_keys Zoi.Struct.enforce_keys(@schema)
@@ -155,6 +163,28 @@ defmodule Jido.Integration.V2.TriggerSpec do
     |> Contracts.get(:signal_source)
   end
 
+  @spec polling(t()) :: map() | nil
+  def polling(%__MODULE__{polling: polling}), do: polling
+
+  @spec polling_default_interval_ms(t()) :: pos_integer() | nil
+  def polling_default_interval_ms(%__MODULE__{polling: %{default_interval_ms: value}})
+      when is_integer(value) and value > 0,
+      do: value
+
+  def polling_default_interval_ms(%__MODULE__{}), do: nil
+
+  @spec polling_min_interval_ms(t()) :: pos_integer() | nil
+  def polling_min_interval_ms(%__MODULE__{polling: %{min_interval_ms: value}})
+      when is_integer(value) and value > 0,
+      do: value
+
+  def polling_min_interval_ms(%__MODULE__{} = trigger_spec),
+    do: polling_default_interval_ms(trigger_spec)
+
+  @spec polling_jitter?(t()) :: boolean()
+  def polling_jitter?(%__MODULE__{polling: %{jitter: value}}), do: value == true
+  def polling_jitter?(%__MODULE__{}), do: false
+
   defp validate(%__MODULE__{} = trigger_spec) do
     trigger_spec = %__MODULE__{
       trigger_spec
@@ -162,10 +192,49 @@ defmodule Jido.Integration.V2.TriggerSpec do
     }
 
     with :ok <- validate_consumer_surface(trigger_spec),
+         :ok <- validate_delivery_contract(trigger_spec),
          :ok <- validate_schema_policy(trigger_spec),
          :ok <- validate_sensor_projection_metadata(trigger_spec) do
       {:ok, trigger_spec}
     end
+  end
+
+  defp validate_delivery_contract(%__MODULE__{delivery_mode: :poll} = trigger_spec) do
+    validate_polling_spec(trigger_spec.polling)
+  end
+
+  defp validate_delivery_contract(%__MODULE__{delivery_mode: :webhook, polling: nil}), do: :ok
+
+  defp validate_delivery_contract(%__MODULE__{delivery_mode: :webhook}) do
+    error("trigger.polling is only valid for poll delivery_mode triggers")
+  end
+
+  defp validate_polling_spec(nil) do
+    error("trigger.polling is required for poll delivery_mode triggers")
+  end
+
+  defp validate_polling_spec(%{default_interval_ms: default_interval_ms} = polling) do
+    min_interval_ms = Contracts.get(polling, :min_interval_ms)
+
+    cond do
+      not positive_integer?(default_interval_ms) ->
+        error("trigger.polling.default_interval_ms must be a positive integer")
+
+      not is_nil(min_interval_ms) and not positive_integer?(min_interval_ms) ->
+        error("trigger.polling.min_interval_ms must be a positive integer when present")
+
+      is_integer(min_interval_ms) and min_interval_ms > default_interval_ms ->
+        error(
+          "trigger.polling.min_interval_ms must be less than or equal to trigger.polling.default_interval_ms"
+        )
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_polling_spec(_other) do
+    error("trigger.polling must be a map that matches the polling contract")
   end
 
   defp validate_consumer_surface(%__MODULE__{
@@ -279,6 +348,8 @@ defmodule Jido.Integration.V2.TriggerSpec do
   defp passthrough_mode?(_mode), do: false
 
   defp present_string?(value), do: is_binary(value) and byte_size(String.trim(value)) > 0
+
+  defp positive_integer?(value), do: is_integer(value) and value > 0
 
   defp error(message), do: {:error, ArgumentError.exception(message)}
 end

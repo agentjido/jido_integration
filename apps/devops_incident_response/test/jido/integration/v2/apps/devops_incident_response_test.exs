@@ -147,6 +147,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
     assert Code.ensure_loaded?(sensor_module)
     assert Code.ensure_loaded?(plugin_module)
     assert plugin_module.subscriptions() == [{sensor_module, %{}}]
+    assert plugin_module.subscriptions(%{}, %{}) == []
 
     [definition] = conformance_module.ingress_definitions()
 

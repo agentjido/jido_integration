@@ -20,6 +20,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.TriggerCatalog do
           "Polls Notion Search for recently edited pages and emits normalized page signals",
         runtime_class: :direct,
         delivery_mode: :poll,
+        polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
         handler: RecentPageEditsTrigger,
         config_schema:
           Contracts.strict_object!(

@@ -9,11 +9,11 @@ defmodule Jido.Integration.V2.GeneratedPlugin do
   """
 
   alias Jido.Integration.V2.ConsumerProjection
+  @runtime_module :"Elixir.Jido.Integration.V2.ConsumerSurfaceRuntime"
 
   defmacro __using__(opts_ast) do
     {opts, _binding} = Code.eval_quoted(opts_ast, [], __CALLER__)
     connector_module = Keyword.fetch!(opts, :connector)
-    consumer_projection = ConsumerProjection
 
     projection = ConsumerProjection.plugin_projection!(connector_module)
     plugin_opts = ConsumerProjection.plugin_opts(projection)
@@ -30,10 +30,10 @@ defmodule Jido.Integration.V2.GeneratedPlugin do
 
       @impl Jido.Plugin
       def subscriptions(config, context) do
-        unquote(consumer_projection).plugin_subscriptions(
-          @generated_plugin_projection,
-          config,
-          context
+        :erlang.apply(
+          unquote(@runtime_module),
+          :plugin_subscriptions,
+          [@generated_plugin_projection, config, context]
         )
       end
 
@@ -44,7 +44,7 @@ defmodule Jido.Integration.V2.GeneratedPlugin do
         %{
           spec
           | actions:
-              unquote(consumer_projection).filtered_actions!(
+              unquote(ConsumerProjection).filtered_actions!(
                 @generated_plugin_projection,
                 config
               )

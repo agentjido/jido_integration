@@ -8,12 +8,12 @@ defmodule Jido.Integration.V2.GeneratedSensor do
   """
 
   alias Jido.Integration.V2.ConsumerProjection
+  @runtime_module :"Elixir.Jido.Integration.V2.ConsumerSurfaceRuntime"
 
   defmacro __using__(opts_ast) do
     {opts, _binding} = Code.eval_quoted(opts_ast, [], __CALLER__)
     connector_module = Keyword.fetch!(opts, :connector)
     trigger_id = Keyword.fetch!(opts, :trigger_id)
-    consumer_projection = ConsumerProjection
 
     projection = ConsumerProjection.sensor_projection!(connector_module, trigger_id)
     sensor_opts = ConsumerProjection.sensor_opts(projection)
@@ -31,19 +31,19 @@ defmodule Jido.Integration.V2.GeneratedSensor do
 
       @impl Jido.Sensor
       def init(config, context) do
-        unquote(consumer_projection).init_sensor(
-          @generated_sensor_projection,
-          config,
-          context
+        :erlang.apply(
+          unquote(@runtime_module),
+          :init_sensor,
+          [@generated_sensor_projection, config, context]
         )
       end
 
       @impl Jido.Sensor
       def handle_event(event, state) do
-        unquote(consumer_projection).handle_sensor_event(
-          @generated_sensor_projection,
-          event,
-          state
+        :erlang.apply(
+          unquote(@runtime_module),
+          :handle_sensor_event,
+          [@generated_sensor_projection, event, state]
         )
       end
     end

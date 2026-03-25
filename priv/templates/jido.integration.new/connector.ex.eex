@@ -7,9 +7,16 @@ defmodule <%= @connector_module %> do
 
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.CatalogSpec
+  alias Jido.Integration.V2.Ingress.Definition
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
+  alias Jido.Integration.V2.TriggerSpec
   alias <%= @handler_module %>
+  alias <%= @trigger_handler_module %>
+
+  @trigger_id "<%= @trigger_id %>"
+  @signal_type "<%= @trigger_signal_type %>"
+  @signal_source "<%= @trigger_signal_source %>"
 
   @impl true
   def manifest do
@@ -66,15 +73,67 @@ defmodule <%= @connector_module %> do
           },
           upstream: <%= @upstream_literal %>,
           consumer_surface: %{
-            mode: :connector_local,
-            reason: "<%= @consumer_surface_reason %>"
+            mode: :common,
+            normalized_id: "<%= @common_action_normalized_id %>",
+            action_name: "<%= @generated_action_name %>"
           },
           schema_policy: %{input: :defined, output: :defined},
-          jido: %{action: %{name: "<%= @generated_action_name %>"}}
+          jido: %{action: %{name: "<%= @generated_action_name %>"}},
+<%= if @runtime_family_literal do %>          metadata: %{
+            runtime_family: <%= @runtime_family_literal %>
+          }
+<% else %>          metadata: %{}
+<% end %>        })
+      ],
+      triggers: [
+        TriggerSpec.new!(%{
+          trigger_id: @trigger_id,
+          name: "<%= @trigger_name %>",
+          display_name: "<%= @trigger_display_name %>",
+          description: "<%= @trigger_description %>",
+          runtime_class: :direct,
+          delivery_mode: :poll,
+          polling: <%= @trigger_polling_literal %>,
+          handler: <%= @trigger_handler_alias %>,
+          config_schema:
+<%= @trigger_config_schema_literal %>,
+          signal_schema:
+<%= @trigger_signal_schema_literal %>,
+          permissions: %{required_scopes: ["<%= @required_scope %>"]},
+          checkpoint: <%= @trigger_checkpoint_literal %>,
+          dedupe: <%= @trigger_dedupe_literal %>,
+          verification: %{},
+          policy: %{
+            environment: %{allowed: <%= @environment_allowed_literal %>},
+            sandbox: %{
+              level: :standard,
+              egress: :restricted,
+              approvals: :auto,
+              allowed_tools: [@trigger_id]
+            }
+          },
+          consumer_surface: %{
+            mode: :common,
+            normalized_id: "<%= String.replace(@trigger_name, "_", ".") %>",
+            sensor_name: "<%= @trigger_consumer_surface_sensor_name %>"
+          },
+          schema_policy: %{config: :defined, signal: :defined},
+          jido: %{
+            sensor: %{
+              name: "<%= @trigger_jido_sensor_name %>",
+              signal_type: @signal_type,
+              signal_source: @signal_source
+            }
+          }
         })
       ],
-      triggers: [],
-      runtime_families: [<%= @runtime_class_literal %>]
+      runtime_families: <%= @runtime_families_literal %>
     })
+  end
+
+  @spec ingress_definitions() :: [Definition.t()]
+  def ingress_definitions do
+    <%= @ingress_definitions_literal %>
+    |> Enum.map(&Definition.new!/1)
   end
 end

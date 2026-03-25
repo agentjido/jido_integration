@@ -133,6 +133,7 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
           description: "Admits a common projected polling alert before downstream pulls run",
           runtime_class: :direct,
           delivery_mode: :poll,
+          polling: %{default_interval_ms: 60_000, min_interval_ms: 5_000, jitter: false},
           handler: AlertTriggerHandler,
           config_schema:
             Zoi.object(%{

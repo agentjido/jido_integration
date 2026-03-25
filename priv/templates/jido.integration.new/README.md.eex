@@ -5,7 +5,7 @@ workspace root.
 
 ## Runtime And Auth Posture
 
-- runtime family: `<%= @runtime_class_literal %>`
+- runtime families: `<%= @runtime_families_literal %>`
 - public auth binding is `connection_id`
 - deterministic execution still uses short-lived credential leases published by
   the connector contract
@@ -17,9 +17,13 @@ workspace root.
 
 This package starts with:
 
-- one authored manifest contract built from `AuthSpec`, `CatalogSpec`, and `OperationSpec`
-- one derived executable capability projected from that authored operation
+- one authored manifest contract built from `AuthSpec`, `CatalogSpec`, `OperationSpec`, and `TriggerSpec`
+- one authored poll trigger skeleton with explicit checkpoint, dedupe, and ingress metadata
+- one generated `Jido.Action` surface derived from the authored common operation
+- one generated poll-backed `Jido.Sensor` surface derived from the authored common trigger
+- one generated `Jido.Plugin` bundle derived from the shared consumer projection
 - a runtime-class-appropriate handler skeleton
+- a trigger handler skeleton for the generated poll surface
 - a deterministic conformance companion module
 - package-local tests that prove the scaffold passes the baseline conformance flow
 <%= if @include_runtime_metadata do %>
@@ -28,9 +32,8 @@ This package starts with:
 
 This scaffold already publishes the selected Harness runtime driver
 `<%= @runtime_driver_id %>` on the authored contract. It does not invent a
-legacy bridge default. The generated non-direct capability intentionally stays
-`consumer_surface.mode: :connector_local` until you author a real shared
-common surface and canonical `metadata.runtime_family`.
+legacy bridge default. The generated non-direct common surface already carries
+canonical `metadata.runtime_family` for the selected runtime family.
 <% end %>
 
 ## What You Must Author
@@ -44,13 +47,13 @@ connector-local unless you explicitly publish them through the manifest.
 Target descriptors advertise compatibility and location only. They do not
 override authored runtime.driver, runtime.provider, or runtime.options.
 
-1. auth, catalog, operation ids, schemas, scopes, and policy metadata in `[<%= @module_file %>]`
-2. handler logic in `[<%= @handler_file %>]`
-3. deterministic fixture expectations in `[<%= @conformance_file %>]`
-<%= if @include_test_support do %>4. deterministic Harness runtime behavior in `[<%= @conformance_harness_driver_file %>]`
-<% end %>
-5. this package `README.md` so it states the runtime family, auth posture,
-   package-local verification commands, and live-proof status
+- auth, catalog, operation ids, trigger ids, schemas, scopes, and policy metadata in `[<%= @module_file %>]`
+- handler logic in `[<%= @handler_file %>]`
+- poll trigger logic in `[<%= @trigger_handler_file %>]`
+- deterministic fixture expectations in `[<%= @conformance_file %>]`
+<%= if @include_test_support do %>- deterministic Harness runtime behavior in `[<%= @conformance_harness_driver_file %>]`
+<% end %>- this package `README.md` so it states the runtime families, auth posture,
+  package-local verification commands, and live-proof status
 
 ## Proof Code Homes
 
