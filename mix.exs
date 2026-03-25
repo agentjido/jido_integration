@@ -86,6 +86,10 @@ defmodule Jido.Integration.Workspace.MixProject do
         "guides/async_and_webhooks.md",
         "guides/reference_apps.md",
         "guides/observability.md",
+        "guides/developer/index.md",
+        "guides/developer/core_packages.md",
+        "guides/developer/request_lifecycle.md",
+        "guides/developer/state_and_verification.md",
         "docs/architecture_overview.md",
         "docs/connector_review_baseline.md",
         "docs/connector_scaffolding.md",
@@ -123,6 +127,12 @@ defmodule Jido.Integration.Workspace.MixProject do
           "docs/reference_apps.md",
           "guides/observability.md",
           "docs/observability_and_pressure_semantics.md"
+        ],
+        Developer: [
+          "guides/developer/index.md",
+          "guides/developer/core_packages.md",
+          "guides/developer/request_lifecycle.md",
+          "guides/developer/state_and_verification.md"
         ]
       ]
     ]

@@ -9,6 +9,8 @@ navigation layer plus workspace guidance, not a second runtime surface.
 
 ## Documentation Menu
 
+### General
+
 - [Guide Index](guides/index.md)
 - [Architecture](guides/architecture.md)
 - [Runtime Model](guides/runtime_model.md)
@@ -18,6 +20,10 @@ navigation layer plus workspace guidance, not a second runtime surface.
 - [Async And Webhooks](guides/async_and_webhooks.md)
 - [Reference Apps](guides/reference_apps.md)
 - [Observability](guides/observability.md)
+
+### Developer
+
+- [Developer Index](guides/developer/index.md)
 
 ## Workspace Model
 

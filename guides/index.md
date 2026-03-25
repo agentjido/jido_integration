@@ -6,6 +6,8 @@ more implementation-specific workspace notes.
 
 ## Menu
 
+### General
+
 - [Architecture](architecture.md)
 - [Runtime Model](runtime_model.md)
 - [Durability](durability.md)
@@ -14,6 +16,10 @@ more implementation-specific workspace notes.
 - [Async And Webhooks](async_and_webhooks.md)
 - [Reference Apps](reference_apps.md)
 - [Observability](observability.md)
+
+### Developer
+
+- [Developer Index](developer/index.md)
 
 ## Reading Order
 
@@ -25,3 +31,4 @@ more implementation-specific workspace notes.
 6. read `async_and_webhooks.md` before using hosted async or webhook paths
 7. read `reference_apps.md` to see end-to-end proof surfaces
 8. read `observability.md` for telemetry and pressure semantics
+9. read `developer/index.md` when you need the internals and package map
