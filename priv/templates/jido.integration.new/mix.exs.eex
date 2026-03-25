@@ -48,7 +48,22 @@ defmodule <%= @project_module %> do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: [
+        "README.md",
+        "../../guides/architecture.md",
+        "../../guides/runtime_model.md",
+        "../../guides/connector_lifecycle.md",
+        "../../guides/conformance.md"
+      ],
+      groups_for_extras: [
+        Overview: ["README.md"],
+        Guides: [
+          "../../guides/architecture.md",
+          "../../guides/runtime_model.md",
+          "../../guides/connector_lifecycle.md",
+          "../../guides/conformance.md"
+        ]
+      ]
     ]
   end
 

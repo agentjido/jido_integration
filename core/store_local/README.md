@@ -1,22 +1,22 @@
 # Jido Integration V2 Store Local
 
-Restart-safe local durability package for the current `auth` and
-`control_plane` store behaviours.
+Restart-safe local durability package for `auth` and `control_plane`.
 
-Owns:
+## Owns
 
 - explicit local adapters for:
   - credential, connection, install, and lease truth from `core/auth`
   - run, attempt, event, artifact, ingress, and target truth from
     `core/control_plane`
-- a package-owned local storage server that persists one restart-safe state file
+- a package-owned local storage server that persists one restart-safe state
+  file
 - package-local contract tests and restart-recovery tests
 - a configuration surface for local development, proof apps, and tests that do
   not want to require Postgres
 
 This package intentionally does not replace the in-memory defaults inside
-`core/auth` and `core/control_plane`. If a host only needs process-scoped state,
-keep those defaults. `core/store_local` is the middle tier between that
+`core/auth` and `core/control_plane`. If a host only needs process-scoped
+state, keep those defaults. `core/store_local` is the middle tier between that
 in-memory posture and `core/store_postgres`.
 
 ## Configuration
@@ -67,15 +67,16 @@ For full local hosted-webhook recovery, pair it with:
 - `core/dispatch_runtime` storage for async transport state
 - `core/webhook_router` storage for hosted route state
 
-That split is intentional. The package does not absorb transport or route state
-from the higher-level packages.
+That split is intentional. The package does not absorb transport or route
+state from the higher-level packages.
 
 ## Semantics
 
 Compared with the owner-package in-memory defaults:
 
 - `store_local` survives BEAM restarts
-- ingress dedupe, checkpoint, transaction, and rollback semantics stay explicit
+- ingress dedupe, checkpoint, transaction, and rollback semantics stay
+  explicit
 - run, attempt, and event truth stay redacted at persistence time
 - credential truth stays behind `auth` and is persisted with
   `Auth.SecretEnvelope` encryption rather than plain text
@@ -98,13 +99,20 @@ Compared with `core/store_postgres`:
   process lifetime is enough.
 - Use `core/store_local` when you need restart-safe local truth without
   provisioning Postgres.
-- Use `core/store_postgres` when you need the canonical durable tier for shared
-  environments, migrations, and stronger operational guarantees.
+- Use `core/store_postgres` when you need the canonical durable tier for
+  shared environments, migrations, and stronger operational guarantees.
 
 ## Proof Surface
 
 Current proofs:
 
 - package-local contract and restart-recovery tests in `core/store_local/test`
-- `apps/devops_incident_response`, which uses `StoreLocal.configure_defaults!/1`
-  to prove restart-safe auth and control-plane truth in the hosted async path
+- `apps/devops_incident_response`, which uses
+  `StoreLocal.configure_defaults!/1` to prove restart-safe auth and
+  control-plane truth in the hosted async path
+
+## Related Guides
+
+- [Durability](../../guides/durability.md)
+- [Architecture](../../guides/architecture.md)
+- [Observability](../../guides/observability.md)

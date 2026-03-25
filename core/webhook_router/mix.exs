@@ -42,7 +42,20 @@ defmodule Jido.Integration.V2.WebhookRouter.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: [
+        "README.md",
+        "../../guides/async_and_webhooks.md",
+        "../../guides/architecture.md",
+        "../../guides/observability.md"
+      ],
+      groups_for_extras: [
+        Overview: ["README.md"],
+        Guides: [
+          "../../guides/async_and_webhooks.md",
+          "../../guides/architecture.md",
+          "../../guides/observability.md"
+        ]
+      ]
     ]
   end
 end

@@ -44,7 +44,20 @@ defmodule Jido.Integration.V2.Platform.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: [
+        "README.md",
+        "../../guides/architecture.md",
+        "../../guides/runtime_model.md",
+        "../../guides/connector_lifecycle.md"
+      ],
+      groups_for_extras: [
+        Overview: ["README.md"],
+        Guides: [
+          "../../guides/architecture.md",
+          "../../guides/runtime_model.md",
+          "../../guides/connector_lifecycle.md"
+        ]
+      ]
     ]
   end
 end

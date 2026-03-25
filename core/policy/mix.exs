@@ -38,7 +38,18 @@ defmodule Jido.Integration.V2.Policy.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: [
+        "README.md",
+        "../../guides/architecture.md",
+        "../../guides/observability.md"
+      ],
+      groups_for_extras: [
+        Overview: ["README.md"],
+        Guides: [
+          "../../guides/architecture.md",
+          "../../guides/observability.md"
+        ]
+      ]
     ]
   end
 end

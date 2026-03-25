@@ -2,7 +2,11 @@
 
 Reusable V2-native connector conformance package.
 
-This package owns:
+This package owns `Jido.Integration.V2.Conformance`, stable profile
+definitions, report rendering, and the reusable suite engine that the workspace
+root invokes.
+
+## Owns
 
 - `Jido.Integration.V2.Conformance`
 - stable profile definitions such as `:connector_foundation`
@@ -96,5 +100,11 @@ fixtures, runtime-driver evidence, and ingress definitions.
 ## Direct Package Use
 
 Inside this monorepo, depend on `core/conformance` only when another child
-package truly needs the engine directly. The more common path is still the root
-task.
+package truly needs the engine directly. The more common path is still the
+root task.
+
+## Related Guides
+
+- [Connector Lifecycle](../../guides/connector_lifecycle.md)
+- [Conformance](../../guides/conformance.md)
+- [Observability](../../guides/observability.md)

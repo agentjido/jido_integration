@@ -2,7 +2,11 @@
 
 Public facade package for the final V2 surface.
 
-This package owns:
+This is the package consumers depend on when they want the stable
+`Jido.Integration.V2` entrypoint without wiring the internal control-plane
+packages directly.
+
+## Owns
 
 - the public app identity `:jido_integration_v2`
 - the stable `Jido.Integration.V2` facade module
@@ -37,9 +41,9 @@ Invocation:
 - `invoke/1`
 - `invoke/3`
 
-Public invocation uses `connection_id` as the consumer-facing auth binding when
-the capability requires a durable connection. Credential refs stay behind the
-auth and control-plane seam.
+Public invocation uses `connection_id` as the consumer-facing auth binding
+when the capability requires a durable connection. Credential refs stay behind
+the auth and control-plane seam.
 
 Durable review and target truth:
 
@@ -101,3 +105,9 @@ Current public-facade proofs:
 - `apps/trading_ops`
 - `connectors/github` live acceptance, which drives the current auth and
   invocation surface through `Jido.Integration.V2`
+
+## Related Guides
+
+- [Architecture](../../guides/architecture.md)
+- [Runtime Model](../../guides/runtime_model.md)
+- [Connector Lifecycle](../../guides/connector_lifecycle.md)

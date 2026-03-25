@@ -43,7 +43,18 @@ defmodule Jido.Integration.V2.Conformance.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: [
+        "README.md",
+        "../../guides/connector_lifecycle.md",
+        "../../guides/conformance.md"
+      ],
+      groups_for_extras: [
+        Overview: ["README.md"],
+        Guides: [
+          "../../guides/connector_lifecycle.md",
+          "../../guides/conformance.md"
+        ]
+      ]
     ]
   end
 end

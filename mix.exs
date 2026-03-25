@@ -77,6 +77,15 @@ defmodule Jido.Integration.Workspace.MixProject do
       extras: [
         "README.md",
         "AGENTS.md",
+        "guides/index.md",
+        "guides/architecture.md",
+        "guides/runtime_model.md",
+        "guides/durability.md",
+        "guides/connector_lifecycle.md",
+        "guides/conformance.md",
+        "guides/async_and_webhooks.md",
+        "guides/reference_apps.md",
+        "guides/observability.md",
         "docs/architecture_overview.md",
         "docs/connector_review_baseline.md",
         "docs/connector_scaffolding.md",
@@ -86,6 +95,35 @@ defmodule Jido.Integration.Workspace.MixProject do
         "docs/webhook_routing.md",
         "docs/reference_apps.md",
         "docs/observability_and_pressure_semantics.md"
+      ],
+      groups_for_extras: [
+        Overview: ["README.md", "guides/index.md"],
+        Architecture: [
+          "guides/architecture.md",
+          "docs/architecture_overview.md",
+          "guides/runtime_model.md"
+        ],
+        Durability: ["guides/durability.md", "docs/local_durability.md"],
+        "Connector Lifecycle": [
+          "guides/connector_lifecycle.md",
+          "docs/connector_review_baseline.md",
+          "docs/connector_scaffolding.md"
+        ],
+        Conformance: [
+          "guides/conformance.md",
+          "docs/conformance_workflow.md"
+        ],
+        "Async And Webhooks": [
+          "guides/async_and_webhooks.md",
+          "docs/async_dispatch_and_replay.md",
+          "docs/webhook_routing.md"
+        ],
+        Operations: [
+          "guides/reference_apps.md",
+          "docs/reference_apps.md",
+          "guides/observability.md",
+          "docs/observability_and_pressure_semantics.md"
+        ]
       ]
     ]
   end

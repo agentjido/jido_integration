@@ -1,16 +1,20 @@
 # Jido Integration V2 Policy
 
-Owns the admission and execution governor for connector capabilities.
+Admission and execution governor for connector capabilities.
 
-Current responsibilities:
+## Owns
 
 - normalize the shared `Gateway` request shape before attempt creation
-- compose actor, tenant, environment, runtime-class, operation, scope, and sandbox rules
-- return `PolicyDecision` values with durable audit context plus normalized execution policy
-- translate host-supplied pressure snapshots into `:shed` admission verdicts when requested
-- keep sandbox and egress posture as explicit policy data instead of ad hoc runtime flags
+- compose actor, tenant, environment, runtime-class, operation, scope, and
+  sandbox rules
+- return `PolicyDecision` values with durable audit context plus normalized
+  execution policy
+- translate host-supplied pressure snapshots into `:shed` admission verdicts
+  when requested
+- keep sandbox and egress posture as explicit policy data instead of ad hoc
+  runtime flags
 
-Current built-in rule set:
+## Built-In Rules
 
 - `RequireOperation`
 - `RequireActor`
@@ -20,13 +24,15 @@ Current built-in rule set:
 - `RequireScopes`
 - `EnforceSandbox`
 
-Security floor:
+## Security Floor
 
 - denials happen before attempt creation
 - denials stay durable through `PolicyDecision.audit_context`
-- shed decisions also happen before attempt creation and remain durable through `PolicyDecision.audit_context`
+- shed decisions also happen before attempt creation and remain durable through
+  `PolicyDecision.audit_context`
 - `sandbox: :none` requires manual approvals
-- runtime code receives execution policy separately from pre-dispatch admission facts
+- runtime code receives execution policy separately from pre-dispatch
+  admission facts
 
 ## Pressure Semantics
 
@@ -40,3 +46,8 @@ Current pressure input:
 - deny reasons still win over shed reasons when both are present
 - `:backoff` is intentionally ignored here because async runtimes own retry
   timing
+
+## Related Guides
+
+- [Architecture](../../guides/architecture.md)
+- [Observability](../../guides/observability.md)

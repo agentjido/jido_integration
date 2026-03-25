@@ -40,7 +40,20 @@ defmodule Jido.Integration.V2.StoreLocal.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: [
+        "README.md",
+        "../../guides/durability.md",
+        "../../guides/architecture.md",
+        "../../guides/observability.md"
+      ],
+      groups_for_extras: [
+        Overview: ["README.md"],
+        Guides: [
+          "../../guides/durability.md",
+          "../../guides/architecture.md",
+          "../../guides/observability.md"
+        ]
+      ]
     ]
   end
 end

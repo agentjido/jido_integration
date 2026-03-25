@@ -90,3 +90,10 @@ when the real connector contract needs it, and keep that proof opt-in.
 Do not widen this scaffold into root-level examples, provider code generation,
 or app-only routing surfaces. Keep the connector package reviewable as an
 isolated deliverable.
+
+## Related Guides
+
+- [Architecture](../../guides/architecture.md)
+- [Runtime Model](../../guides/runtime_model.md)
+- [Connector Lifecycle](../../guides/connector_lifecycle.md)
+- [Conformance](../../guides/conformance.md)

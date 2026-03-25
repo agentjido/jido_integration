@@ -1,0 +1,26 @@
+# Async And Webhooks
+
+Hosted async and webhook behavior are explicit packages.
+
+## Async Dispatch
+
+`core/dispatch_runtime` owns durable dispatch acceptance, handler scheduling,
+retry and backoff, dead-letter transitions, replay, and process restart
+recovery.
+
+## Webhook Routing
+
+`core/webhook_router` owns hosted route registration, callback-topology
+resolution, secret lookup, and bridge handoff into `core/ingress` and
+`core/dispatch_runtime` when the route represents a hosted trigger.
+
+## Boundary Rule
+
+`core/ingress` remains the normalization and admission owner. It does not own
+hosted route lifecycle, and it does not own queue execution.
+
+## Recovery Rule
+
+Dispatch state and route state are intentionally separate. The router keeps
+hosted route records, while the async runtime keeps transport progress and
+retry state.

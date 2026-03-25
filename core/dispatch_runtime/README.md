@@ -99,3 +99,9 @@ Current proofs:
 - `apps/devops_incident_response`, which uses this package together with
   `core/store_local` and `core/webhook_router` to prove dead-letter, replay,
   and restart recovery
+
+## Related Guides
+
+- [Async And Webhooks](../../guides/async_and_webhooks.md)
+- [Durability](../../guides/durability.md)
+- [Observability](../../guides/observability.md)

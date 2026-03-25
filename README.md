@@ -3,9 +3,21 @@
 Tooling-root, non-umbrella Elixir monorepo for the final V2 integration
 platform.
 
-The repo root owns workspace tooling, quality gates, and repo-level guides
-only. Runtime code, connector code, and proof surfaces live in child packages
-and top-level apps. We do not restore root `examples/` or `reference_apps/`.
+The repo root stays thin. Core runtime code, connector code, and proof
+surfaces live in child packages and top-level apps. Root-level docs are a
+navigation layer plus workspace guidance, not a second runtime surface.
+
+## Documentation Menu
+
+- [Guide Index](guides/index.md)
+- [Architecture](guides/architecture.md)
+- [Runtime Model](guides/runtime_model.md)
+- [Durability](guides/durability.md)
+- [Connector Lifecycle](guides/connector_lifecycle.md)
+- [Conformance](guides/conformance.md)
+- [Async And Webhooks](guides/async_and_webhooks.md)
+- [Reference Apps](guides/reference_apps.md)
+- [Observability](guides/observability.md)
 
 ## Workspace Model
 
@@ -16,7 +28,8 @@ jido_integration/
   AGENTS.md                  # working contract for future agents
   lib/                       # root Mix tasks and workspace helpers only
   test/                      # root tooling tests only
-  docs/                      # repo-level architecture and operational guides
+  guides/                    # HexDocs-facing guides and menu pages
+  docs/                      # repo-level architecture and operational notes
   core/
     platform/               # public facade package (`:jido_integration_v2`)
     contracts/              # shared public structs and behaviours
@@ -32,13 +45,13 @@ jido_integration/
     dispatch_runtime/       # async queue, retry, replay, recovery
     webhook_router/         # hosted route lifecycle and ingress bridge
   connectors/
-    github/                # direct GitHub connector + live acceptance runbook
-    notion/                # direct Notion connector + package-local live proofs
-    codex_cli/             # Harness-routed session connector via `asm`
-    market_data/           # Harness-routed stream connector via `asm`
+    github/                 # direct GitHub connector + live acceptance runbook
+    notion/                 # direct Notion connector + package-local live proofs
+    codex_cli/              # Harness-routed session connector via `asm`
+    market_data/            # Harness-routed stream connector via `asm`
   apps/
-    trading_ops/           # cross-runtime operator proof
-    devops_incident_response/ # hosted webhook + async recovery proof
+    trading_ops/            # cross-runtime operator proof
+    devops_incident_response # hosted webhook + async recovery proof
 ```
 
 ## Final V2 Surface
@@ -192,19 +205,10 @@ The current surface also proves:
 - local durability, async queue state, and webhook route state are all explicit
   opt-in packages
 
-## Guide Index
+## HexDocs Layout
 
-Repo-level guides in `docs/`:
-
-- [Architecture Overview](docs/architecture_overview.md)
-- [Connector Review Baseline](docs/connector_review_baseline.md)
-- [Connector Authoring And Scaffolding](docs/connector_scaffolding.md)
-- [Connector Conformance Guide](docs/conformance_workflow.md)
-- [Local Durability Guide](docs/local_durability.md)
-- [Async Dispatch And Replay Guide](docs/async_dispatch_and_replay.md)
-- [Webhook Routing Guide](docs/webhook_routing.md)
-- [Reference Apps Guide](docs/reference_apps.md)
-- [Observability And Pressure Semantics](docs/observability_and_pressure_semantics.md)
+HexDocs-facing guides live under `guides/`. Repo-level operational notes remain
+under `docs/`.
 
 Package and app runbooks:
 

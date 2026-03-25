@@ -1,13 +1,16 @@
 # Jido Integration V2 Store Postgres
 
-Owns the foundation-phase durability surface:
+Canonical Postgres durability surface for the platform.
+
+## Owns
 
 - the canonical `Ecto.Repo`
 - migrations for control-plane and auth truth
 - SQL sandbox helpers for durability tests
 - Postgres adapters for `control_plane` and `auth` behaviours
 - durable tables for `ArtifactRef` and `TargetDescriptor`
-- encrypted durable credential rows plus safe connection/install/lease rows for auth lifecycle truth
+- encrypted durable credential rows plus safe connection/install/lease rows
+  for auth lifecycle truth
 
 Repo ownership and migration ownership are explicit here by design. During the
 foundation phase, owner packages define behaviours while `store_postgres`
@@ -19,7 +22,7 @@ without provisioning Postgres. Use `core/store_postgres` when the environment
 needs the canonical shared durable tier, migrations, sandbox support, and
 database-backed operational guarantees.
 
-Current control-plane durability includes:
+## Current Control-Plane Durability
 
 - runs, attempts, and append-only run events
 - trigger records, dedupe keys, and polling checkpoints
@@ -37,9 +40,9 @@ Current control-plane durability includes:
 that validate the public platform and ingress layers against the canonical
 database-backed stores.
 
-That means root validation commands such as `mix mr.test` and `mix ci` expect a
-reachable Postgres test database unless the relevant packages are reconfigured
-explicitly.
+That means root validation commands such as `mix mr.test` and `mix ci` expect
+a reachable Postgres test database unless the relevant packages are
+reconfigured explicitly.
 
 Before calling the root acceptance surface blocked on Postgres reachability,
 run the root preflight task:
@@ -66,3 +69,9 @@ Default test settings:
 
 If you validate against a socket-mounted local Postgres instead of TCP, set
 `JIDO_INTEGRATION_V2_DB_SOCKET_DIR`.
+
+## Related Guides
+
+- [Durability](../../guides/durability.md)
+- [Architecture](../../guides/architecture.md)
+- [Observability](../../guides/observability.md)

@@ -99,3 +99,9 @@ Current proofs:
 - `apps/devops_incident_response`, which proves a hosted signed webhook from
   route registration through async replay while keeping the hosted trigger
   manifest, explicit ingress-definition evidence, and route record aligned
+
+## Related Guides
+
+- [Async And Webhooks](../../guides/async_and_webhooks.md)
+- [Architecture](../../guides/architecture.md)
+- [Observability](../../guides/observability.md)
