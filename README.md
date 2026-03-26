@@ -1,13 +1,28 @@
 # Jido Integration
 
-Tooling-root, non-umbrella Elixir monorepo for the final V2 integration
-platform.
+Jido Integration is an Elixir integration platform for publishing connector
+capabilities, managing auth lifecycle, invoking work across direct and
+Harness-backed runtimes, and reviewing durable execution state.
 
-The repo root stays thin. Core runtime code, connector code, and proof
-surfaces live in child packages and top-level apps. Root-level docs are a
-navigation layer plus workspace guidance, not a second runtime surface.
+This repository includes the public platform facade, connector packages,
+durability tiers, and app-level proofs for hosted webhook and async flows. If
+you are evaluating or using the platform, start here. If you are changing the
+internals of the monorepo itself, use the developer guides linked below.
 
-## Documentation Menu
+## Start Here
+
+- read [Architecture](guides/architecture.md) for the platform shape and
+  package responsibilities
+- read [Runtime Model](guides/runtime_model.md) to choose between direct,
+  session, and stream execution
+- read [Durability](guides/durability.md) before selecting in-memory,
+  local-file, or Postgres-backed state
+- read [Reference Apps](guides/reference_apps.md) for end-to-end proof
+  surfaces
+- read [Developer Index](guides/developer/index.md) only if you are working on
+  repo internals
+
+## Documentation
 
 ### General
 
@@ -25,126 +40,28 @@ navigation layer plus workspace guidance, not a second runtime surface.
 
 - [Developer Index](guides/developer/index.md)
 
-## Workspace Model
+## What The Platform Exposes
 
-```text
-jido_integration/
-  mix.exs                    # tooling/workspace root only
-  README.md                  # repo architecture + command index
-  AGENTS.md                  # working contract for future agents
-  lib/                       # root Mix tasks and workspace helpers only
-  test/                      # root tooling tests only
-  guides/                    # HexDocs-facing guides and menu pages
-  docs/                      # repo-level architecture and operational notes
-  core/
-    platform/               # public facade package (`:jido_integration_v2`)
-    contracts/              # shared public structs and behaviours
-    control_plane/          # connector registry + durable run/trigger truth
-    conformance/            # reusable connector conformance engine
-    auth/                   # install, connection, credential, and lease truth
-    ingress/                # trigger normalization and durable admission
-    policy/                 # pre-attempt policy and shed decisions
-    direct_runtime/         # direct capability execution
-    runtime_asm_bridge/     # integration-owned `asm` Harness driver projection
-    store_local/            # restart-safe local durability tier
-    store_postgres/         # database-backed durable tier
-    dispatch_runtime/       # async queue, retry, replay, recovery
-    webhook_router/         # hosted route lifecycle and ingress bridge
-  connectors/
-    github/                 # direct GitHub connector + live acceptance runbook
-    notion/                 # direct Notion connector + package-local live proofs
-    codex_cli/              # Harness-routed session connector via `asm`
-    market_data/            # Harness-routed stream connector via `asm`
-  apps/
-    trading_ops/            # cross-runtime operator proof
-    devops_incident_response # hosted webhook + async recovery proof
-```
+- `Jido.Integration.V2` is the stable public entrypoint for connector
+  discovery, auth lifecycle calls, invocation, review lookups, and target
+  lookup.
+- connector packages publish authored capability contracts and may also expose
+  curated generated `Jido.Action`, `Jido.Sensor`, and `Jido.Plugin` surfaces.
+- `core/dispatch_runtime` and `core/webhook_router` provide the hosted async
+  and webhook APIs above the main facade.
 
-## Final V2 Surface
+Key public capabilities today include:
 
-- `core/platform` owns the public app identity `:jido_integration_v2` and the
-  stable facade module `Jido.Integration.V2`.
-- `Jido.Integration.V2` exposes typed invocation, connector discovery, auth
-  lifecycle calls, durable review lookups, and target lookup through a single
-  public surface.
-- connector packages author rich manifests in `core/contracts`; executable
-  capabilities remain available as a derived projection for runtime lookup and
-  invocation.
-- `core/conformance` owns reusable connector review logic behind the root
-  `mix jido.conformance` connector acceptance command.
-- non-direct runtime ownership stays below the integration layer.
-  `Jido.Harness` is the stable runtime-driver contract seam. `asm` routes
-  through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
-  and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
-  through `/home/home/p/g/n/jido_session` via `Jido.Session.HarnessDriver`.
-- Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
-  bridge packages. They are not part of the repo or the target runtime
-  architecture.
-- `core/dispatch_runtime` and `core/webhook_router` stay as child packages.
-  Hosted async and webhook behavior does not move back into the root or the
-  facade package.
-- Durability is explicit and package-owned:
-  - `core/auth` and `core/control_plane` still ship in-memory defaults.
-  - `core/store_local` is the restart-safe local durability tier.
-  - `core/store_postgres` is the shared database-backed durable tier.
-- Child packages depend on each other only through explicit `path:` deps.
-- No child package depends on the repo root.
-
-## Direct Versus Runtime Boundary
-
-GitHub and Notion stay on the direct provider-SDK path and do not inherit
-session or stream runtime-kernel coupling merely because the repo also ships
-non-direct capability families.
-
-`Jido.Integration.V2 -> DirectRuntime -> connector -> provider SDK -> pristine`
-
-Only actual `:session` and `:stream` capabilities use
-`/home/home/p/g/n/jido_harness` via `Jido.Harness`.
-
-`Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
-
-`asm` routes through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
-and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
-through `/home/home/p/g/n/jido_session` via `Jido.Session.HarnessDriver`.
-
-Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
-bridge packages. They are not part of the repo or the target runtime
-architecture.
-
-## Public API Highlights
-
-The stable public entrypoint is `Jido.Integration.V2`.
-
-Key calls:
-
-- connector discovery:
-  - `connectors/0`
-  - `capabilities/0`
-  - `fetch_connector/1`
-  - `fetch_capability/1`
-  - `projected_catalog_entries/0`
-- auth lifecycle:
-  - `start_install/3`
-  - `complete_install/2`
-  - `fetch_install/1`
-  - `connection_status/1`
-  - `request_lease/2`
-  - `rotate_connection/2`
-  - `revoke_connection/2`
-- invocation:
-  - `InvocationRequest.new!/1`
-  - `invoke/1`
-  - `invoke/3`
-- durable review truth:
-  - `fetch_run/1`
-  - `fetch_attempt/1`
-  - `events/1`
-  - `run_artifacts/1`
-  - `fetch_artifact/1`
-- target announcement and lookup:
-  - `announce_target/1`
-  - `fetch_target/1`
-  - `compatible_targets/1`
+- connector discovery through `connectors/0`, `capabilities/0`,
+  `fetch_connector/1`, `fetch_capability/1`, and
+  `projected_catalog_entries/0`
+- auth lifecycle through `start_install/3`, `complete_install/2`,
+  `fetch_install/1`, `connection_status/1`, `request_lease/2`,
+  `rotate_connection/2`, and `revoke_connection/2`
+- invocation through `InvocationRequest.new!/1`, `invoke/1`, and `invoke/3`
+- review and targeting through `fetch_run/1`, `fetch_attempt/1`, `events/1`,
+  `run_artifacts/1`, `fetch_artifact/1`, `announce_target/1`, `fetch_target/1`,
+  and `compatible_targets/1`
 
 Hosted webhook routing and async replay are intentionally separate public
 package APIs:
@@ -157,23 +74,8 @@ package APIs:
 Runtime families proved in-tree:
 
 - `:direct`
-  - `github.issue.list`
-  - `github.issue.fetch`
-  - `github.issue.create`
-  - `github.issue.update`
-  - `github.issue.label`
-  - `github.issue.close`
-  - `github.comment.create`
-  - `github.comment.update`
-  - `notion.users.get_self`
-  - `notion.search.search`
-  - `notion.pages.create`
-  - `notion.pages.retrieve`
-  - `notion.pages.update`
-  - `notion.blocks.list_children`
-  - `notion.blocks.append_children`
-  - `notion.data_sources.query`
-  - `notion.comments.create`
+  - GitHub issue and comment operations
+  - Notion user, search, page, block, data-source, and comment operations
 - `:session`
   - `codex.exec.session`
 - `:stream`
@@ -197,39 +99,83 @@ The current surface also proves:
   truth
 - public invocation binds auth through `connection_id`; `credential_ref`
   remains internal execution plumbing
-- GitHub and Notion connector packages depend on `core/direct_runtime` plus
-  provider SDKs only; they do not take `jido_harness`, `agent_session_manager`,
-  `cli_subprocess_core`, or `jido_session` as package dependencies
-- session and stream connector packages depend on `jido_harness` for the
-  shared seam; they do not take direct `agent_session_manager` or
-  `cli_subprocess_core` package dependencies
-- Notion OAuth control flows stay in the auth/install lifecycle instead of the
-  normal invoke surface
-- GitHub and Notion both publish generated common `Jido.Action` and
-  `Jido.Plugin` surfaces for their curated direct-provider slices
-- Notion now publishes one common poll trigger,
-  `notion.pages.recently_edited`, with generated `Jido.Sensor` and plugin
-  subscription publication
-- the hosted GitHub issue webhook proof in `apps/devops_incident_response`
-  stays app-owned while converging on the same generated sensor contract layer
-- `InvocationRequest` is the typed public invoke object
-- `projected_catalog_entries/0` exports the generated common consumer surface
-  with JSON Schema derived from the authored Zoi contracts
+- GitHub and Notion both publish generated common consumer surfaces from
+  authored contracts
 - conformance runs from the root while connector evidence stays package-local
-- connector READMEs carry runtime/auth posture, package verification, live
-  proof status, and package-boundary notes as part of connector review
-- local durability, async queue state, and webhook route state are all explicit
-  opt-in packages
+- local durability, async queue state, and webhook route state are all
+  explicit opt-in packages
 
-## HexDocs Layout
+## Repository Layout
 
-HexDocs-facing guides live under `guides/`. Repo-level operational notes remain
-under `docs/`.
+The repo root is a workspace and documentation layer. Runtime code lives in
+child packages and top-level apps.
 
-Package and app runbooks:
+```text
+jido_integration/
+  mix.exs                    # workspace root only
+  README.md                  # user-facing repo entry point
+  guides/                    # user-facing and developer guide entry points
+  docs/                      # repo-level developer notes and workflows
+  lib/                       # root Mix tasks and workspace helpers only
+  test/                      # root tooling tests only
+  core/
+    platform/                # public facade package (`:jido_integration_v2`)
+    contracts/               # shared public structs and behaviours
+    auth/                    # install, connection, credential, and lease truth
+    control_plane/           # durable run, trigger, and artifact truth
+    consumer_surfaces/       # generated common Jido surface runtime support
+    direct_runtime/          # direct capability execution
+    runtime_asm_bridge/      # integration-owned `asm` Harness driver projection
+    session_runtime/         # integration-owned `jido_session` Harness driver
+    ingress/                 # trigger normalization and durable admission
+    policy/                  # pre-attempt policy and shed decisions
+    dispatch_runtime/        # async queue, retry, replay, recovery
+    webhook_router/          # hosted route lifecycle and ingress bridge
+    conformance/             # reusable connector conformance engine
+    store_local/             # restart-safe local durability tier
+    store_postgres/          # database-backed durable tier
+  connectors/
+    github/                  # direct GitHub connector + live acceptance runbook
+    notion/                  # direct Notion connector + package-local live proofs
+    codex_cli/               # Harness-routed session connector via `asm`
+    market_data/             # Harness-routed stream connector via `asm`
+  apps/
+    trading_ops/             # cross-runtime operator proof
+    devops_incident_response # hosted webhook + async recovery proof
+```
+
+## Direct Versus Runtime Boundary
+
+GitHub and Notion stay on the direct provider-SDK path and do not inherit
+session or stream runtime-kernel coupling merely because the repo also ships
+non-direct capability families.
+
+`Jido.Integration.V2 -> DirectRuntime -> connector -> provider SDK -> pristine`
+
+Only actual `:session` and `:stream` capabilities use
+`/home/home/p/g/n/jido_harness` via `Jido.Harness`.
+
+`Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
+
+`asm` routes through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
+and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
+through `core/session_runtime` via `Jido.Session.HarnessDriver`.
+
+Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
+bridge packages. They are not part of the repo or the target runtime
+architecture.
+
+## Developer Docs
+
+User-facing guides live under `guides/`. Developer-focused repo notes remain in
+`docs/`, and package-specific workflows remain in package-local READMEs.
+
+Primary package and app runbooks:
 
 - `core/platform/README.md`
+- `core/consumer_surfaces/README.md`
 - `core/conformance/README.md`
+- `core/session_runtime/README.md`
 - `core/store_local/README.md`
 - `core/dispatch_runtime/README.md`
 - `core/webhook_router/README.md`
@@ -258,92 +204,3 @@ repo still supports the other two durability tiers in parallel:
 - in-memory defaults in `core/auth` and `core/control_plane`
 - `core/store_local` for restart-safe local durability
 - `core/store_postgres` for the shared database-backed tier
-
-The default test configuration uses:
-
-- `JIDO_INTEGRATION_V2_DB_HOST=127.0.0.1`
-- `JIDO_INTEGRATION_V2_DB_PORT=5432`
-- `JIDO_INTEGRATION_V2_DB_NAME=jido_integration_v2_test`
-- `JIDO_INTEGRATION_V2_DB_USER=postgres`
-- `JIDO_INTEGRATION_V2_DB_PASSWORD=postgres`
-
-If your local environment exposes Postgres through a socket directory instead
-of TCP, set `JIDO_INTEGRATION_V2_DB_SOCKET_DIR`.
-
-`core/store_postgres/README.md` is the canonical home for the durable-tier test
-configuration.
-
-## Monorepo Commands
-
-Run these from the repo root:
-
-```bash
-mix test
-mix monorepo.deps.get
-mix monorepo.format
-mix monorepo.compile
-mix monorepo.test
-mix monorepo.credo --strict
-mix monorepo.dialyzer
-mix monorepo.docs
-mix mr.pg.preflight
-mix quality
-mix docs.all
-mix ci
-mix jido.conformance Jido.Integration.V2.Connectors.GitHub
-mix jido.conformance Jido.Integration.V2.Connectors.MarketData
-mix jido.conformance Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector
-mix jido.conformance Jido.Integration.V2.Connectors.Notion
-mix jido.integration.new acme_crm --runtime-class direct
-mix jido.integration.new analyst_cli --runtime-class session --runtime-driver asm
-```
-
-`mix ci` is the main acceptance gate.
-
-Trigger-capable proof surfaces now include both connector-local common poll
-proofs and app-local hosted webhook proofs. Run root conformance against the
-module that actually owns the published `ingress_definitions/0` evidence.
-
-## Shortcuts
-
-The root `mix.exs` also defines `mr.*` aliases for the same monorepo task
-surface:
-
-```bash
-mix mr.deps.get
-mix mr.format
-mix mr.compile
-mix mr.test
-mix mr.pg.preflight
-mix mr.credo --strict
-mix mr.dialyzer
-mix mr.docs
-```
-
-These are shortcuts for the corresponding `mix monorepo.*` commands above.
-
-The repo no longer carries its own monorepo runner implementation. The
-`monorepo.*` commands are root aliases to the generic `mix blitz.workspace
-<task>` runner from the `blitz` Hex package.
-
-Workspace policy now lives in the root `mix.exs` under `:blitz_workspace`:
-
-- project discovery comes from the configured `projects` list
-- task behavior comes from the configured `tasks` list
-- concurrency weights come from `parallelism.base`
-- the default machine scaler comes from `parallelism.multiplier: :auto`
-- optional per-task overrides still let the repo pin exceptional tasks
-- `--max-concurrency N` and `JIDO_MONOREPO_MAX_CONCURRENCY` still override the
-  current invocation directly
-
-The intended model is:
-
-- task weight lives in `base`
-- machine size lives in `multiplier`
-- hard per-run overrides still win when you need them
-
-For `mix monorepo.test` and `mix ci`, each package test run gets its own
-isolated Postgres database name derived from the base
-`JIDO_INTEGRATION_V2_DB_NAME`. That keeps DB-backed package tests parallel
-without cross-package resets colliding in the shared store, and the child
-`mix test` processes run with `--color` so ExUnit ANSI output is preserved.

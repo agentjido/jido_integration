@@ -15,6 +15,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "core/platform",
              "core/policy",
              "core/runtime_asm_bridge",
+             "core/session_runtime",
              "core/store_local",
              "core/store_postgres",
              "core/webhook_router",

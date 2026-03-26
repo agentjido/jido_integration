@@ -21,6 +21,8 @@ Core runtime graph:
 - `core/control_plane`
   - connector registry, capability lookup, run truth, event truth, artifact
     truth, trigger truth, and target truth
+- `core/consumer_surfaces`
+  - generated common action, sensor, and plugin runtime support
 - `core/policy`
   - pre-attempt allow, deny, and shed decisions
 - `core/direct_runtime`
@@ -28,6 +30,8 @@ Core runtime graph:
   - integration-owned projection from the authored
     `/home/home/p/g/n/jido_harness` (`Jido.Harness`) `asm` driver into
     `/home/home/p/g/n/agent_session_manager`
+- `core/session_runtime`
+  - integration-owned home for the authored `jido_session` Harness driver
 - `core/dispatch_runtime`
   - async queueing, retry, replay, and transport recovery above the control
     plane
@@ -57,7 +61,7 @@ Only actual `:session` and `:stream` capabilities use
 
 `asm` routes through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
 and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
-through `/home/home/p/g/n/jido_session` via `Jido.Session.HarnessDriver`.
+through `core/session_runtime` via `Jido.Session.HarnessDriver`.
 
 Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
 bridge packages. They are not part of the repo or the target runtime
@@ -75,8 +79,8 @@ runtime lane:
 - `core/runtime_asm_bridge` is the integration-owned projection for the `asm`
   driver; it adapts the Harness seam to
   `/home/home/p/g/n/agent_session_manager`
-- `/home/home/p/g/n/jido_session` is the other intended non-direct target via
-  `Jido.Session.HarnessDriver`; `jido_integration` consumes it through
+- `core/session_runtime` is the integration-owned home for `jido_session` via
+  `Jido.Session.HarnessDriver`; `jido_integration` still consumes it through
   authored `runtime.driver` metadata rather than a local compatibility shim
 - `/home/home/p/g/n/agent_session_manager` keeps provider-neutral session
   orchestration and lane selection below `jido_integration` ownership
@@ -115,11 +119,11 @@ Proof apps:
 - direct connector packages depend on `core/direct_runtime` plus provider SDKs;
   they do not take `/home/home/p/g/n/jido_harness`,
   `/home/home/p/g/n/agent_session_manager`,
-  `/home/home/p/g/n/cli_subprocess_core`, or `/home/home/p/g/n/jido_session`
+  `/home/home/p/g/n/cli_subprocess_core`, or `core/session_runtime`
   as package dependencies
 - session and stream connector packages depend on
   `/home/home/p/g/n/jido_harness` for the shared seam rather than taking
-  direct `/home/home/p/g/n/agent_session_manager` or
+  direct `core/session_runtime`, `/home/home/p/g/n/agent_session_manager`, or
   `/home/home/p/g/n/cli_subprocess_core` deps
 
 ## Public Invocation And Discovery

@@ -1,7 +1,9 @@
 # Connector Lifecycle
 
 Connectors are authored in `core/contracts` and reviewed through the conformance
-engine. They should remain package-local, deterministic, and easy to inspect.
+engine. The important user-facing point is that connectors stay package-local,
+publish explicit capability contracts, and are reviewed against deterministic
+evidence rather than hidden repo-wide behavior.
 
 ## Lifecycle
 

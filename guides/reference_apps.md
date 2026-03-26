@@ -1,6 +1,7 @@
 # Reference Apps
 
-The reference apps are proof surfaces, not the place to reintroduce runtime
+The reference apps show how the platform is composed in real host-facing
+workflows. They are proof surfaces, not the place to reintroduce platform
 ownership.
 
 ## `apps/trading_ops`

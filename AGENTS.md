@@ -26,6 +26,7 @@ Current core packages:
 
 - `core/platform`
 - `core/conformance`
+- `core/consumer_surfaces`
 - `core/contracts`
 - `core/control_plane`
 - `core/dispatch_runtime`
@@ -35,6 +36,7 @@ Current core packages:
 - `core/policy`
 - `core/direct_runtime`
 - `core/runtime_asm_bridge`
+- `core/session_runtime`
 - `core/store_local`
 - `core/store_postgres`
 

@@ -1,6 +1,8 @@
 # Observability
 
-Observability is part of the contract, not an afterthought.
+Observability is part of the contract, not an afterthought. Packages emit
+telemetry where they own behavior, and the docs should make that ownership
+clear to operators.
 
 ## Telemetry
 

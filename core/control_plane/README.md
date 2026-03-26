@@ -14,6 +14,8 @@ Capability registry, run ledger, and execution admission for the platform.
 - credential lease issuance through `core/auth`
 - admission policy evaluation through `core/policy`
 - dispatch into direct, session, or stream runtimes
+- authored Harness routing through `core/runtime_asm_bridge` or
+  `core/session_runtime`
 
 ## Contract
 

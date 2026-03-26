@@ -1,6 +1,7 @@
 # Durability
 
-Durability is a package-owned concern, not a hidden default.
+Durability is explicit. The platform does not hide a storage choice behind the
+facade. Hosts choose the tier that matches their environment.
 
 ## Default State
 

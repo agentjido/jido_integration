@@ -72,17 +72,17 @@ this order:
    `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` in
    `/home/home/p/g/n/jido_integration`.
 3. `runtime.driver: "jido_session"` selects `Jido.Session.HarnessDriver` in
-   `/home/home/p/g/n/jido_session`.
+   `/home/home/p/g/n/jido_integration/core/session_runtime`.
 4. Only the `asm` branch projects further into provider-neutral
    `/home/home/p/g/n/agent_session_manager`, which itself uses
    `/home/home/p/g/n/cli_subprocess_core` for subprocess, event, and provider
    profile foundations.
 
 Connector packages should usually stop their direct dependencies at
-`/home/home/p/g/n/jido_harness`. Do not add
-`/home/home/p/g/n/agent_session_manager` or
-`/home/home/p/g/n/cli_subprocess_core` directly to session or stream
-connector packages just to restate the shared runtime basis.
+`/home/home/p/g/n/jido_harness`. Do not add `core/session_runtime`,
+`/home/home/p/g/n/agent_session_manager`, or
+`/home/home/p/g/n/cli_subprocess_core` directly to session or stream connector
+packages just to restate the shared runtime basis.
 
 `metadata.runtime_family.runtime_ref` names the stable public Harness handle,
 not the runtime class itself. A `:stream` capability may still publish

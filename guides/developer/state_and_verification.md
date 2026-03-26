@@ -25,8 +25,13 @@ use to verify changes.
 2. package-level `mix docs`
 3. root `mix jido.conformance <ConnectorModule>` for connector packages
 4. root `mix mr.pg.preflight` when the test surface needs Postgres
-5. root `mix monorepo.test`
-6. root `mix ci`
+5. root `mix monorepo.format`
+6. root `mix monorepo.compile`
+7. root `mix monorepo.credo --strict`
+8. root `mix monorepo.dialyzer`
+9. root `mix monorepo.docs`
+10. root `mix monorepo.test`
+11. root `mix ci`
 
 ## What To Check First
 

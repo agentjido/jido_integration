@@ -1,7 +1,8 @@
 # Developer Index
 
 This section is for contributors who need the internal map of the repo rather
-than the public operating model.
+than the public operating model. Use it when you are changing package
+boundaries, runtime flow, persistence wiring, or repo validation behavior.
 
 ## What To Read First
 
@@ -20,6 +21,8 @@ This section covers:
 - what owns state, replay, and durability
 - how to verify changes locally
 - where to place new code so the boundaries stay clean
+- how the workspace root coordinates child packages without reclaiming runtime
+  ownership
 
 Use the other root guides for the external model. Use this section when you are
 changing the internals.

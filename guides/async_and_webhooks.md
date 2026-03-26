@@ -1,6 +1,8 @@
 # Async And Webhooks
 
-Hosted async and webhook behavior are explicit packages.
+Hosted async and webhook behavior are explicit packages. They are not folded
+into the main facade or hidden inside a connector package just because a host
+needs them.
 
 ## Async Dispatch
 

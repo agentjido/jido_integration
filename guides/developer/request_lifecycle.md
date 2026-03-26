@@ -21,8 +21,10 @@ This is the internal path a request takes through the repo.
 2. `core/control_plane` resolves the authored target requirements
 3. `core/runtime_asm_bridge` projects the authored `asm` driver into Harness
    when that driver is selected
-4. `Jido.Harness` executes the runtime driver and returns session-aware output
-5. `core/control_plane` persists attempts, events, and artifacts
+4. `core/session_runtime` owns the in-repo `jido_session` driver when that
+   driver is selected
+5. `Jido.Harness` executes the runtime driver and returns session-aware output
+6. `core/control_plane` persists attempts, events, and artifacts
 
 ## Async And Hosted Webhook Flow
 
@@ -45,3 +47,5 @@ This is the internal path a request takes through the repo.
 When you are debugging a flow, ask which package owns the first durable write
 and which package owns the last runtime action. That usually identifies the
 place to instrument or modify.
+
+If the answer is "the workspace root", the ownership is probably wrong.

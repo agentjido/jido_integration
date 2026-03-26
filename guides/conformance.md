@@ -2,6 +2,11 @@
 
 `core/conformance` owns the reusable connector review engine.
 
+For platform users, conformance is the acceptance contract behind connector
+publication claims. For connector authors, it is the root-level review command
+that checks whether package-local evidence really matches the published
+surface.
+
 ## Stable Entry Point
 
 The workspace root exposes the stable acceptance command:

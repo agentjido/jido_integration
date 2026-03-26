@@ -139,6 +139,20 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            "core/control_plane/mix.exs must not expose ASM's boundary compiler directly"
   end
 
+  test "control_plane takes jido_session from the in-repo session runtime package" do
+    control_plane_mix =
+      repo_root()
+      |> Path.join("core/control_plane/mix.exs")
+      |> File.read!()
+      |> normalize_whitespace()
+
+    assert control_plane_mix =~ "{:jido_session, path: \"../session_runtime\"}",
+           "core/control_plane/mix.exs must depend on the in-repo session runtime package"
+
+    refute control_plane_mix =~ "{:jido_session, path: \"../../../jido_session\"}",
+           "core/control_plane/mix.exs must not depend on the sibling jido_session repo"
+  end
+
   defp child_package_roots do
     repo_root()
     |> Path.join("{core,connectors,apps}/*/mix.exs")
