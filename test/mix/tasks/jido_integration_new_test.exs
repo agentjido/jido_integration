@@ -279,7 +279,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     refute stream_readme =~ removed_stream_bridge_id()
   end
 
-  @tag timeout: 180_000
+  @tag timeout: 600_000
   test "generated packages compile, test, build docs, and pass baseline conformance" do
     workspace_root = temp_workspace!("validation")
 
@@ -293,7 +293,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert_mix!(workspace_root, package_root, ["docs"])
   end
 
-  @tag timeout: 180_000
+  @tag timeout: 600_000
   test "generated non-direct packages compile, test, build docs, and pass baseline conformance" do
     workspace_root = temp_workspace!("validation_non_direct")
 

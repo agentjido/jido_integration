@@ -93,7 +93,7 @@ defmodule Jido.Integration.V2.Auth do
              Map.fetch!(attrs, :subject),
              :install_subject_mismatch
            ),
-         {:ok, next_connection} <- transition_connection(connection, :connected),
+         {:ok, %Connection{} = next_connection} <- transition_connection(connection, :connected),
          credential <- build_credential(next_connection, attrs),
          credential_ref <- build_credential_ref(credential, next_connection, install),
          completed_install <- complete_install_record(install, attrs, now),
@@ -307,7 +307,7 @@ defmodule Jido.Integration.V2.Auth do
 
     with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
          {:ok, credential} <- fetch_durable_credential(connection.credential_ref_id),
-         {:ok, next_connection} <- transition_connection(connection, :connected),
+         {:ok, %Connection{} = next_connection} <- transition_connection(connection, :connected),
          rotated_credential <- build_rotated_credential(credential, next_connection, attrs),
          credential_ref <- build_credential_ref(rotated_credential, next_connection, nil),
          rotated_connection <-
@@ -335,8 +335,9 @@ defmodule Jido.Integration.V2.Auth do
     now = now(attrs)
 
     with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
-         {:ok, next_connection} <- transition_connection(connection, :revoked),
-         {:ok, credential} <- fetch_durable_credential(connection.credential_ref_id) do
+         {:ok, %Connection{} = next_connection} <- transition_connection(connection, :revoked),
+         {:ok, %Credential{} = credential} <-
+           fetch_durable_credential(connection.credential_ref_id) do
       revoked_connection =
         %Connection{
           next_connection
@@ -397,7 +398,8 @@ defmodule Jido.Integration.V2.Auth do
         with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
              :ok <-
                ensure_subject_match(connection.subject, subject, :connection_subject_mismatch),
-             {:ok, installing_connection} <- transition_connection(connection, :installing) do
+             {:ok, %Connection{} = installing_connection} <-
+               transition_connection(connection, :installing) do
           installing_connection =
             %Connection{
               installing_connection
@@ -512,7 +514,8 @@ defmodule Jido.Integration.V2.Auth do
   end
 
   defp mark_reauth_required(%Connection{} = connection, now) do
-    with {:ok, reauth_connection} <- transition_connection(connection, :reauth_required) do
+    with {:ok, %Connection{} = reauth_connection} <-
+           transition_connection(connection, :reauth_required) do
       reauth_connection = %Connection{
         reauth_connection
         | state: :reauth_required,

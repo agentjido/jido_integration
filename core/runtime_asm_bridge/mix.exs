@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.MixProject do
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      consolidate_protocols: false,
       deps: deps(),
       dialyzer: dialyzer(),
       docs: docs(),

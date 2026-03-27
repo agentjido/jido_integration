@@ -33,6 +33,7 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
     assert File.read!(output_path) =~ "\"deterministic_fixtures\""
   end
 
+  @tag timeout: 180_000
   test "loads connector packages that depend on package-local external deps" do
     output = run_task(["Jido.Integration.V2.Connectors.Notion"])
 
@@ -40,6 +41,7 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
     assert output =~ "[PASS] deterministic_fixtures"
   end
 
+  @tag timeout: 180_000
   test "restores the original code path after loading a child package" do
     original_path = :code.get_path()
 

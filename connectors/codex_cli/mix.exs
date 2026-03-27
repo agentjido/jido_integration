@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
+      consolidate_protocols: false,
       deps: deps(),
       dialyzer: dialyzer(),
       docs: docs(),
