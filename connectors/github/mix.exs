@@ -44,7 +44,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
       WorkspaceDependencyResolver.jido_integration_v2_conformance(only: :test, runtime: false),
       WorkspaceDependencyResolver.jido_integration_v2(only: [:dev, :test]),
       {:zoi, "~> 0.17"},
-      ConnectorDependencyResolver.pristine_runtime(runtime: false),
+      ConnectorDependencyResolver.pristine_runtime(runtime: false, override: true),
       ConnectorDependencyResolver.github_ex(),
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

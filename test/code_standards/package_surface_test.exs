@@ -124,12 +124,12 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       |> normalize_whitespace()
 
     assert runtime_asm_bridge_mix =~
-             "agent_session_manager_path = basis_repo_path(\"AGENT_SESSION_MANAGER_PATH\", \"../../../agent_session_manager\")",
-           "core/runtime_asm_bridge/mix.exs must resolve agent_session_manager through the shared basis-repo path helper"
+             "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)",
+           "core/runtime_asm_bridge/mix.exs must load the shared dependency resolver"
 
     for required_snippet <- [
-          "{:agent_session_manager, path: agent_session_manager_path, env: :dev}",
-          "{:boundary, path: Path.join(agent_session_manager_path, \"vendor/boundary\"), only: [:dev, :test], runtime: false}"
+          "DependencyResolver.agent_session_manager(env: :dev)",
+          "DependencyResolver.boundary(only: [:dev, :test], runtime: false)"
         ] do
       assert runtime_asm_bridge_mix =~ required_snippet,
              "core/runtime_asm_bridge/mix.exs is missing #{required_snippet}"
@@ -158,11 +158,11 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       |> File.read!()
       |> normalize_whitespace()
 
-    assert control_plane_mix =~ "{:jido_session, path: \"../session_runtime\"}",
-           "core/control_plane/mix.exs must depend on the in-repo session runtime package"
+    assert control_plane_mix =~ "DependencyResolver.jido_session()",
+           "core/control_plane/mix.exs must depend on the shared session runtime package through the dependency resolver"
 
-    refute control_plane_mix =~ "{:jido_session, path: \"../../../jido_session\"}",
-           "core/control_plane/mix.exs must not depend on the sibling jido_session repo"
+    refute control_plane_mix =~ "../../../jido_session",
+           "core/control_plane/mix.exs must not depend on a sibling jido_session repo checkout"
   end
 
   defp child_package_roots do

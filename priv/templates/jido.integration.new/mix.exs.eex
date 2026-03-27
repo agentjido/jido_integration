@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule <%= @project_module %> do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -27,18 +31,14 @@ defmodule <%= @project_module %> do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "<%= @contracts_dep_path %>", override: true},
-      {:jido_integration_v2_consumer_surfaces,
-       path: "<%= @consumer_surfaces_dep_path %>",
-       override: true},
-      {:jido_integration_v2_direct_runtime, path: "<%= @direct_runtime_dep_path %>", override: true},
+      DependencyResolver.jido_integration_v2_contracts(override: true),
+      DependencyResolver.jido_integration_v2_consumer_surfaces(override: true),
+      DependencyResolver.jido_integration_v2_direct_runtime(override: true),
       {:jido, "~> 2.1"},
       {:jido_action, "~> 2.1"},
       {:zoi, "~> 0.17"},
-      {:jido_integration_v2_conformance, path: "<%= @conformance_dep_path %>", only: :test, runtime: false},
-<%= if @include_test_support do %>      {:jido_harness,
-       path: basis_repo_path("JIDO_HARNESS_PATH", "<%= @jido_harness_dep_path %>"),
-       override: true},
+      DependencyResolver.jido_integration_v2_conformance(only: :test, runtime: false),
+<%= if @include_test_support do %>      DependencyResolver.jido_harness(override: true),
 <% end %>      {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
@@ -59,8 +59,4 @@ defmodule <%= @project_module %> do
     ]
   end
 
-<%= if @include_test_support do %>  defp basis_repo_path(env_var, default_path) do
-    System.get_env(env_var, default_path)
-  end
-
-<% end %>end
+end

@@ -1,5 +1,9 @@
+Code.require_file("build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.Workspace.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -26,8 +30,8 @@ defmodule Jido.Integration.Workspace.MixProject do
   defp deps do
     [
       {:blitz, "~> 0.1.0", runtime: false},
-      {:jido_integration_v2_conformance, path: "core/conformance"},
-      {:jido_integration_v2_contracts, path: "core/contracts"},
+      DependencyResolver.jido_integration_v2_conformance(),
+      DependencyResolver.jido_integration_v2_contracts(),
       {:jason, "~> 1.4", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

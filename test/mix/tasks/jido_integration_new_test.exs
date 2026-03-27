@@ -92,16 +92,20 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     mix_content = File.read!(Path.join(package_root, "mix.exs"))
 
     assert mix_content =~
-             "{:jido_integration_v2_contracts, path: \"../../core/contracts\", override: true}"
+             "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)"
 
-    assert mix_content =~ "{:jido_integration_v2_consumer_surfaces,"
+    assert mix_content =~ "alias Jido.Integration.Build.DependencyResolver"
+    assert mix_content =~ "DependencyResolver.jido_integration_v2_contracts(override: true)"
+
+    assert mix_content =~
+             "DependencyResolver.jido_integration_v2_consumer_surfaces(override: true)"
+
     assert mix_content =~ "{:zoi, \"~> 0.17\"}"
 
-    assert mix_content =~
-             "{:jido_integration_v2_direct_runtime, path: \"../../core/direct_runtime\", override: true}"
+    assert mix_content =~ "DependencyResolver.jido_integration_v2_direct_runtime(override: true)"
 
     assert mix_content =~
-             "{:jido_integration_v2_conformance, path: \"../../core/conformance\", only: :test, runtime: false}"
+             "DependencyResolver.jido_integration_v2_conformance(only: :test, runtime: false)"
 
     assert mix_content =~ "{:jido, \"~> 2.1\"}"
     assert mix_content =~ "{:jido_action, \"~> 2.1\"}"
@@ -262,8 +266,8 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     refute session_mix =~ ~s(["lib", "test_support"])
     refute stream_mix =~ ~s(["lib", "test_support"])
-    assert session_mix =~ "basis_repo_path(\"JIDO_HARNESS_PATH\""
-    assert stream_mix =~ "basis_repo_path(\"JIDO_HARNESS_PATH\""
+    assert session_mix =~ "DependencyResolver.jido_harness(override: true)"
+    assert stream_mix =~ "DependencyResolver.jido_harness(override: true)"
     assert session_mix =~ "override: true"
     assert stream_mix =~ "override: true"
     refute session_readme =~ removed_session_bridge_id()
@@ -344,6 +348,12 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     on_exit(fn -> TestTmpDir.cleanup!(root) end)
     File.mkdir_p!(Path.join(root, "connectors"))
+
+    File.ln_s!(
+      Path.join(Blitz.MixWorkspace.root_dir(), "build_support"),
+      Path.join(root, "build_support")
+    )
+
     File.ln_s!(Path.join(Blitz.MixWorkspace.root_dir(), "core"), Path.join(root, "core"))
     File.ln_s!(Path.join(Blitz.MixWorkspace.root_dir(), "mix.lock"), Path.join(root, "mix.lock"))
     File.mkdir_p!(hex_home)

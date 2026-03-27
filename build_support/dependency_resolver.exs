@@ -2,7 +2,10 @@ defmodule Jido.Integration.Build.DependencyResolver do
   @moduledoc false
 
   @repo_root Path.expand("..", __DIR__)
-  @repo_fallback [github: "agentjido/jido_integration", branch: "main"]
+  @repo_fallback [
+    github: "agentjido/jido_integration",
+    branch: "feat/universal-contract-standards"
+  ]
 
   def jido_integration_v2(opts \\ []),
     do: resolve_internal(:jido_integration_v2, "core/platform", opts)
@@ -85,7 +88,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
     resolve_external(
       :agent_session_manager,
       local_root_path("AGENT_SESSION_MANAGER_PATH", "../agent_session_manager"),
-      [github: "nshkrdotcom/agent_session_manager", branch: "main"],
+      [github: "nshkrdotcom/agent_session_manager", branch: "rebuild/foundation-v1"],
       opts
     )
   end
@@ -98,7 +101,11 @@ defmodule Jido.Integration.Build.DependencyResolver do
         "../agent_session_manager",
         "vendor/boundary"
       ),
-      [github: "nshkrdotcom/agent_session_manager", branch: "main", subdir: "vendor/boundary"],
+      [
+        github: "nshkrdotcom/agent_session_manager",
+        branch: "rebuild/foundation-v1",
+        subdir: "vendor/boundary"
+      ],
       opts
     )
   end
@@ -123,7 +130,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
 
   defp internal_workspace_path(subdir) do
     cond do
-      root = local_root_path("JIDO_INTEGRATION_PATH", ".") ->
+      root = env_root_path("JIDO_INTEGRATION_PATH") ->
         existing_path(Path.join(root, subdir))
 
       prefer_workspace_internal_paths?() ->
@@ -139,6 +146,13 @@ defmodule Jido.Integration.Build.DependencyResolver do
     |> System.get_env(default_relative_path)
     |> Path.expand(@repo_root)
     |> existing_path()
+  end
+
+  defp env_root_path(env_var) do
+    case System.get_env(env_var) do
+      nil -> nil
+      value -> value |> Path.expand(@repo_root) |> existing_path()
+    end
   end
 
   defp local_subdir_path(env_var, default_relative_path, subdir) do

@@ -14,11 +14,13 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         ),
       sdk_resolver_call: "DependencyResolver.github_ex()",
       sdk_local_path: "[\"../../../github_ex\"]",
-      sdk_fallback: "[github: \"nshkrdotcom/github_ex\", ref:",
-      pristine_resolver_call: "DependencyResolver.pristine_runtime(runtime: false)",
+      sdk_fallback:
+        "[github: \"nshkrdotcom/github_ex\", branch: \"pristine/generated-runtime-and-auth-migration\"]",
+      pristine_resolver_call:
+        "DependencyResolver.pristine_runtime(runtime: false, override: true)",
       pristine_local_path: "[\"../../../pristine/apps/pristine_runtime\"]",
       pristine_fallback:
-        "[github: \"nshkrdotcom/pristine\", ref: @pristine_ref, subdir: \"apps/pristine_runtime\"]"
+        "[github: \"nshkrdotcom/pristine\", branch: \"master\", subdir: \"apps/pristine_runtime\"]"
     },
     %{
       mix_path: Path.expand("../../connectors/notion/mix.exs", __DIR__),
@@ -32,11 +34,13 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         ),
       sdk_resolver_call: "DependencyResolver.notion_sdk()",
       sdk_local_path: "[\"../../../notion_sdk\"]",
-      sdk_fallback: "[github: \"nshkrdotcom/notion_sdk\", ref:",
-      pristine_resolver_call: "DependencyResolver.pristine_runtime(runtime: false)",
+      sdk_fallback:
+        "[github: \"nshkrdotcom/notion_sdk\", branch: \"pristine/generated-surface-migration\"]",
+      pristine_resolver_call:
+        "DependencyResolver.pristine_runtime(runtime: false, override: true)",
       pristine_local_path: "[\"../../../pristine/apps/pristine_runtime\"]",
       pristine_fallback:
-        "[github: \"nshkrdotcom/pristine\", ref: @pristine_ref, subdir: \"apps/pristine_runtime\"]"
+        "[github: \"nshkrdotcom/pristine\", branch: \"master\", subdir: \"apps/pristine_runtime\"]"
     }
   ]
 
@@ -50,11 +54,15 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
          } ->
         mix_exs = File.read!(mix_path)
 
-        assert mix_exs =~ "{:jido_integration_v2_direct_runtime,",
+        assert mix_exs =~ "WorkspaceDependencyResolver.jido_integration_v2_direct_runtime()",
                "#{mix_path} must depend on direct_runtime"
 
+        assert mix_exs =~
+                 "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)",
+               "#{mix_path} must load the shared workspace dependency resolver"
+
         assert mix_exs =~ "Code.require_file(\"build_support/dependency_resolver.exs\", __DIR__)",
-               "#{mix_path} must load its dependency resolver"
+               "#{mix_path} must load its provider-specific dependency resolver"
 
         assert mix_exs =~ sdk_resolver_call,
                "#{mix_path} must resolve its provider SDK through DependencyResolver"
@@ -73,7 +81,7 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
     )
   end
 
-  test "direct connector packages resolve provider stacks from sibling paths or pinned git refs" do
+  test "direct connector packages resolve provider stacks from sibling paths or hard-coded git branches" do
     Enum.each(
       @direct_connectors,
       fn %{
@@ -100,13 +108,13 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
                "#{resolver_path} must check for a sibling provider SDK checkout first"
 
         assert resolver =~ sdk_fallback,
-               "#{resolver_path} must pin its provider SDK fallback to a git ref"
+               "#{resolver_path} must resolve its provider SDK fallback through the hard-coded branch"
 
         assert resolver =~ pristine_local_path,
                "#{resolver_path} must check for a sibling pristine checkout first"
 
         assert resolver =~ pristine_fallback,
-               "#{resolver_path} must pin pristine fallback to a git ref and subdir"
+               "#{resolver_path} must resolve pristine fallback through the hard-coded branch and subdir"
       end
     )
   end
