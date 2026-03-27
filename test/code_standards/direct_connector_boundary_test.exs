@@ -4,75 +4,109 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
   @direct_connectors [
     %{
       mix_path: Path.expand("../../connectors/github/mix.exs", __DIR__),
+      resolver_path:
+        Path.expand("../../connectors/github/build_support/dependency_resolver.exs", __DIR__),
       test_root: Path.expand("../../connectors/github/test", __DIR__),
       catalog_path:
         Path.expand(
           "../../connectors/github/lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex",
           __DIR__
         ),
-      sdk_dep: "{:github_ex,",
-      sdk_path_dep: "{:github_ex, path: \"deps/github_ex\"}",
-      pristine_path_dep: "{:pristine, path: \"deps/pristine\", runtime: false}",
-      remote_sdk_dep: "{:github_ex, github:",
-      remote_pristine_dep: "{:pristine, \"~>"
+      sdk_resolver_call: "DependencyResolver.github_ex()",
+      sdk_local_path: "[\"../../../github_ex\"]",
+      sdk_fallback: "[github: \"nshkrdotcom/github_ex\", ref:",
+      pristine_resolver_call: "DependencyResolver.pristine_runtime(runtime: false)",
+      pristine_local_path: "[\"../../../pristine/apps/pristine_runtime\"]",
+      pristine_fallback:
+        "[github: \"nshkrdotcom/pristine\", ref: @pristine_ref, subdir: \"apps/pristine_runtime\"]"
     },
     %{
       mix_path: Path.expand("../../connectors/notion/mix.exs", __DIR__),
+      resolver_path:
+        Path.expand("../../connectors/notion/build_support/dependency_resolver.exs", __DIR__),
       test_root: Path.expand("../../connectors/notion/test", __DIR__),
       catalog_path:
         Path.expand(
           "../../connectors/notion/lib/jido/integration/v2/connectors/notion/operation_catalog.ex",
           __DIR__
         ),
-      sdk_dep: "{:notion_sdk,",
-      sdk_path_dep: "{:notion_sdk, path: \"deps/notion_sdk\"}",
-      pristine_path_dep: "{:pristine, path: \"deps/pristine\", runtime: false}",
-      remote_sdk_dep: "{:notion_sdk, github:",
-      remote_pristine_dep: "{:pristine, \"~>"
+      sdk_resolver_call: "DependencyResolver.notion_sdk()",
+      sdk_local_path: "[\"../../../notion_sdk\"]",
+      sdk_fallback: "[github: \"nshkrdotcom/notion_sdk\", ref:",
+      pristine_resolver_call: "DependencyResolver.pristine_runtime(runtime: false)",
+      pristine_local_path: "[\"../../../pristine/apps/pristine_runtime\"]",
+      pristine_fallback:
+        "[github: \"nshkrdotcom/pristine\", ref: @pristine_ref, subdir: \"apps/pristine_runtime\"]"
     }
   ]
 
   test "direct connector packages depend on direct_runtime and provider SDKs only" do
-    Enum.each(@direct_connectors, fn %{mix_path: mix_path, sdk_dep: sdk_dep} ->
-      mix_exs = File.read!(mix_path)
-
-      assert mix_exs =~ "{:jido_integration_v2_direct_runtime,",
-             "#{mix_path} must depend on direct_runtime"
-
-      assert mix_exs =~ sdk_dep, "#{mix_path} must depend on its provider SDK"
-      refute mix_exs =~ ":jido_harness", "#{mix_path} must not depend on jido_harness"
-      refute mix_exs =~ "agent_session_manager", "#{mix_path} must not depend on ASM directly"
-
-      refute mix_exs =~ "cli_subprocess_core",
-             "#{mix_path} must not depend on CLI subprocess core"
-
-      refute mix_exs =~ "jido_session", "#{mix_path} must not depend on jido_session"
-    end)
-  end
-
-  test "direct connector packages pin provider stacks through local path deps" do
     Enum.each(
       @direct_connectors,
       fn %{
            mix_path: mix_path,
-           sdk_path_dep: sdk_path_dep,
-           pristine_path_dep: pristine_path_dep,
-           remote_sdk_dep: remote_sdk_dep,
-           remote_pristine_dep: remote_pristine_dep
+           sdk_resolver_call: sdk_resolver_call,
+           pristine_resolver_call: pristine_resolver_call
          } ->
         mix_exs = File.read!(mix_path)
 
-        assert mix_exs =~ sdk_path_dep,
-               "#{mix_path} must pin its provider SDK through a local path dep"
+        assert mix_exs =~ "{:jido_integration_v2_direct_runtime,",
+               "#{mix_path} must depend on direct_runtime"
 
-        assert mix_exs =~ pristine_path_dep,
-               "#{mix_path} must pin pristine through a local path dep"
+        assert mix_exs =~ "Code.require_file(\"build_support/dependency_resolver.exs\", __DIR__)",
+               "#{mix_path} must load its dependency resolver"
 
-        refute mix_exs =~ remote_sdk_dep,
-               "#{mix_path} must not resolve its provider SDK from a remote Git dependency"
+        assert mix_exs =~ sdk_resolver_call,
+               "#{mix_path} must resolve its provider SDK through DependencyResolver"
 
-        refute mix_exs =~ remote_pristine_dep,
-               "#{mix_path} must not resolve pristine from Hex"
+        assert mix_exs =~ pristine_resolver_call,
+               "#{mix_path} must resolve pristine through DependencyResolver"
+
+        refute mix_exs =~ ":jido_harness", "#{mix_path} must not depend on jido_harness"
+        refute mix_exs =~ "agent_session_manager", "#{mix_path} must not depend on ASM directly"
+
+        refute mix_exs =~ "cli_subprocess_core",
+               "#{mix_path} must not depend on CLI subprocess core"
+
+        refute mix_exs =~ "jido_session", "#{mix_path} must not depend on jido_session"
+      end
+    )
+  end
+
+  test "direct connector packages resolve provider stacks from sibling paths or pinned git refs" do
+    Enum.each(
+      @direct_connectors,
+      fn %{
+           mix_path: mix_path,
+           resolver_path: resolver_path,
+           sdk_local_path: sdk_local_path,
+           sdk_fallback: sdk_fallback,
+           pristine_local_path: pristine_local_path,
+           pristine_fallback: pristine_fallback
+         } ->
+        mix_exs = File.read!(mix_path)
+        resolver = File.read!(resolver_path)
+
+        refute mix_exs =~ "deps/github_ex",
+               "#{mix_path} must not vendor provider SDKs under deps/"
+
+        refute mix_exs =~ "deps/notion_sdk",
+               "#{mix_path} must not vendor provider SDKs under deps/"
+
+        refute mix_exs =~ "deps/pristine",
+               "#{mix_path} must not vendor pristine under deps/"
+
+        assert resolver =~ sdk_local_path,
+               "#{resolver_path} must check for a sibling provider SDK checkout first"
+
+        assert resolver =~ sdk_fallback,
+               "#{resolver_path} must pin its provider SDK fallback to a git ref"
+
+        assert resolver =~ pristine_local_path,
+               "#{resolver_path} must check for a sibling pristine checkout first"
+
+        assert resolver =~ pristine_fallback,
+               "#{resolver_path} must pin pristine fallback to a git ref and subdir"
       end
     )
   end

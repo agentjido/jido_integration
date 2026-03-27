@@ -105,6 +105,11 @@ mix test
 mix docs
 ```
 
+For local multi-repo development, the connector now resolves `github_ex` and
+`pristine` from sibling checkouts when they exist and falls back to pinned git
+refs otherwise. The package no longer depends on a connector-local vendored
+`deps/` tree.
+
 The root monorepo gates use that same deterministic surface. Live proofs are
 not part of default `mix test`, `mix monorepo.test`, or `mix ci`.
 

@@ -12,6 +12,9 @@ This package keeps the boundary explicit:
 - `notion_sdk` owns the provider HTTP and OAuth implementation
 - Jido owns install state, durable credential truth, short-lived leases,
   policy, conformance, and connector docs
+- the connector owns its committed inventory artifact under
+  `connectors/notion/priv/` and does not compile against `notion_sdk`'s
+  transitive `priv/` path
 - OAuth control endpoints stay in the install/auth flow and are not published as
   invoke capabilities
 
@@ -193,6 +196,11 @@ mix compile --warnings-as-errors
 mix test
 mix docs
 ```
+
+For local multi-repo development, the connector now resolves `notion_sdk` and
+`pristine` from sibling checkouts when they exist and falls back to pinned git
+refs otherwise. The package no longer depends on a connector-local vendored
+`deps/` tree.
 
 The package-local test surface now includes:
 

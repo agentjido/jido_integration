@@ -94,6 +94,13 @@ handles.
 The emitted package lands under `connectors/<name>/` by default and uses
 explicit `path:` deps only for the child packages it actually needs.
 
+If the connector also needs external SDK/runtime repos outside this workspace,
+use the same policy:
+
+- prefer sibling-relative `path:` deps when the local checkout exists
+- otherwise fall back to pinned git `ref:` deps
+- do not vendor those repos into connector-local committed `deps/` directories
+
 Generated files include:
 
 - package-local `mix.exs`, `mix.lock`, `.formatter.exs`, and `.gitignore`
@@ -225,6 +232,8 @@ After generation:
    at real lookup sources.
 2. implement the action or provider logic inside the generated package
 3. declare every child-package dependency explicitly in that connector package
+   For external sibling repos, use sibling-path-or-pinned-git fallback rather
+   than connector-local vendored dependencies.
 4. update the companion fixtures so conformance reflects the real behavior
 5. update the package README with the real operation and trigger inventory plus validation
    commands

@@ -63,6 +63,9 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
     "OAuth.revoke" => [],
     "OAuth.introspect" => []
   }
+  @inventory_path Path.expand("../../../../../../priv/upstream/parity_inventory.json", __DIR__)
+  @external_resource @inventory_path
+  @inventory @inventory_path |> File.read!() |> Jason.decode!() |> Map.fetch!("operations")
 
   @type entry :: %{
           artifact_slug: String.t(),
@@ -203,18 +206,13 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
   defp function_atom("update_markdown"), do: :update_markdown
 
   defp inventory do
-    inventory_path()
-    |> File.read!()
-    |> Jason.decode!()
-    |> Map.fetch!("operations")
+    @inventory
   end
 
-  @spec inventory_path(String.t() | charlist() | {:error, atom()}) :: String.t()
-  def inventory_path(priv_dir \\ :code.priv_dir(:notion_sdk))
+  @spec inventory_path() :: String.t()
+  def inventory_path, do: @inventory_path
 
-  def inventory_path({:error, reason}),
-    do: raise("notion_sdk priv dir unavailable: #{inspect(reason)}")
-
+  @spec inventory_path(String.t() | charlist()) :: String.t()
   def inventory_path(priv_dir) when is_binary(priv_dir),
     do: Path.join(priv_dir, "upstream/parity_inventory.json")
 

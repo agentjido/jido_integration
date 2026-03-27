@@ -9,6 +9,11 @@ durability tiers, and app-level proofs for hosted webhook and async flows. If
 you are evaluating or using the platform, start here. If you are changing the
 internals of the monorepo itself, use the developer guides linked below.
 
+Connector packages that depend on external SDK or runtime repos should prefer
+sibling-relative paths during active local development and fall back to pinned
+git refs otherwise. They should not rely on connector-local vendored `deps/`
+trees for runtime dependency sourcing.
+
 ## Start Here
 
 - read [Architecture](guides/architecture.md) for the platform shape and

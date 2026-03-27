@@ -22,6 +22,10 @@ evidence rather than hidden repo-wide behavior.
 - `credential_ref` remains behind auth and control-plane internals
 - hosted webhook and async behavior stays above the connector package when it
   is not the connector's own responsibility
+- external SDK/runtime deps should resolve from sibling paths locally and from
+  pinned git refs otherwise, not from connector-local vendored `deps/` trees
+- compile-time inventory or generation inputs must be owned by the connector
+  package when they participate in connector compilation
 
 ## Projection Rules
 

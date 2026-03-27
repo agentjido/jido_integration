@@ -1,5 +1,9 @@
+Code.require_file("build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.V2.Connectors.GitHub.Build.DependencyResolver
 
   def project do
     [
@@ -36,8 +40,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
        path: "../../core/conformance", only: :test, runtime: false},
       {:jido_integration_v2, path: "../../core/platform", only: [:dev, :test]},
       {:zoi, "~> 0.17"},
-      {:pristine, path: "deps/pristine", runtime: false},
-      {:github_ex, path: "deps/github_ex"},
+      DependencyResolver.pristine_runtime(runtime: false),
+      DependencyResolver.github_ex(),
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
