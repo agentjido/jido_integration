@@ -13,9 +13,31 @@ while `jido_integration` itself stays at the Harness seam.
 - publish the `asm` Harness runtime driver used by the control plane
 - normalize ASM events and results into Harness Session Control IR structs
 - preserve external-runtime session reuse without leaking kernel-private refs
+- author generic execution-surface input from runtime, target, policy, and
+  lease context without exposing adapter-module identity
 - localize the `/home/home/p/g/n/agent_session_manager` dependency so
   connector packages can keep their shared dependency surface at
   `/home/home/p/g/n/jido_harness`
+
+## Phase C Carriage
+
+The bridge now authors only generic execution-surface data:
+
+- `surface_kind`
+- `transport_options`
+- `workspace_root`
+- `allowed_tools`
+- `approval_posture`
+- `permission_mode`
+- `lease_ref`
+- `surface_ref`
+- `target_id`
+- `boundary_class`
+- `observability`
+
+It does not emit public `transport_module` selection. For ephemeral surfaces,
+session reuse identity now widens with `surface_kind`, `lease_ref`, and
+`surface_ref` so leased or short-lived placements do not reuse stale sessions.
 
 ## Boundary
 

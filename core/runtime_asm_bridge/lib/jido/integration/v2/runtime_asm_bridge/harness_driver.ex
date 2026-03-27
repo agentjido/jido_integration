@@ -26,6 +26,19 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
   }
 
   @supported_providers [:amp, :claude, :codex, :gemini, :shell]
+  @execution_surface_option_keys [
+    :surface_kind,
+    :transport_options,
+    :workspace_root,
+    :allowed_tools,
+    :approval_posture,
+    :permission_mode,
+    :lease_ref,
+    :surface_ref,
+    :target_id,
+    :boundary_class,
+    :observability
+  ]
   @asm_session_option_keys [
     :provider,
     :permission_mode,
@@ -71,7 +84,10 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
       credential_ref_id: map_value(credential_ref, :id),
       target_id: map_value(target_descriptor, :target_id),
       provider: runtime_config_value(runtime_config, :provider),
-      workspace_root: workspace_root(context)
+      workspace_root: workspace_root(context),
+      surface_kind: runtime_option_value(runtime_config, :surface_kind),
+      lease_ref: credential_lease_ref(context),
+      surface_ref: runtime_option_value(runtime_config, :surface_ref)
     }
   end
 
@@ -318,15 +334,24 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
     opts
     |> Keyword.delete(:driver)
     |> Keyword.put(:provider, requested_provider)
-    |> Keyword.take(@asm_session_option_keys ++ Keyword.keys(provider.options_schema))
+    |> author_execution_surface_input()
+    |> Keyword.take(
+      @asm_session_option_keys ++
+        @execution_surface_option_keys ++ Keyword.keys(provider.options_schema)
+    )
   end
 
   defp stream_run_opts(%RunRequest{} = request, provider, opts, run_id) do
     filtered_request_opts(request, provider)
+    |> maybe_put(:workspace_root, request.cwd)
     |> Keyword.merge(opts)
     |> normalize_bridge_run_overrides()
+    |> author_execution_surface_input()
     |> Keyword.put(:run_id, run_id)
-    |> Keyword.take(@asm_run_option_keys ++ Keyword.keys(provider.options_schema))
+    |> Keyword.take(
+      @asm_run_option_keys ++
+        @execution_surface_option_keys ++ Keyword.keys(provider.options_schema)
+    )
   end
 
   defp normalize_bridge_run_overrides(opts) do
@@ -350,12 +375,10 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
     allowed_keys =
       provider.options_schema
       |> Keyword.keys()
-      |> Kernel.++([:cwd])
       |> Enum.uniq()
 
     provider_opts =
       [
-        cwd: request.cwd,
         model: request.model,
         max_turns: request.max_turns,
         system_prompt: request.system_prompt
@@ -368,6 +391,27 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
       |> maybe_put(:stream_timeout_ms, request.timeout_ms)
 
     provider_opts ++ stream_opts
+  end
+
+  defp author_execution_surface_input(opts) when is_list(opts) do
+    context = Keyword.get(opts, :context, %{})
+    approval_posture = approval_posture_value(opts, context)
+
+    opts
+    |> Keyword.delete(:cwd)
+    |> Keyword.delete(:provider_permission_mode)
+    |> Keyword.drop(@execution_surface_option_keys)
+    |> maybe_put(:surface_kind, Keyword.get(opts, :surface_kind))
+    |> maybe_put(:transport_options, Keyword.get(opts, :transport_options))
+    |> maybe_put(:workspace_root, workspace_root_value(opts, context))
+    |> maybe_put(:allowed_tools, allowed_tools_value(opts, context))
+    |> maybe_put(:approval_posture, approval_posture)
+    |> maybe_put(:permission_mode, permission_mode_value(opts, approval_posture))
+    |> maybe_put(:lease_ref, lease_ref_value(opts, context))
+    |> maybe_put(:surface_ref, Keyword.get(opts, :surface_ref))
+    |> maybe_put(:target_id, target_id_value(opts, context))
+    |> maybe_put(:boundary_class, Keyword.get(opts, :boundary_class))
+    |> maybe_put(:observability, Keyword.get(opts, :observability))
   end
 
   defp session_ref!(%SessionHandle{session_id: session_id}) when is_binary(session_id) do
@@ -390,11 +434,85 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
     map_value(target_location, :workspace_root) || map_value(sandbox, :file_scope)
   end
 
+  defp workspace_root_value(opts, context) do
+    Keyword.get(opts, :workspace_root) || Keyword.get(opts, :cwd) || workspace_root(context)
+  end
+
+  defp allowed_tools_value(opts, context) do
+    if Keyword.has_key?(opts, :allowed_tools) do
+      Keyword.get(opts, :allowed_tools)
+    else
+      allowed_tools(context)
+    end
+  end
+
+  defp approval_posture_value(opts, context) do
+    cond do
+      Keyword.has_key?(opts, :approval_posture) ->
+        Keyword.get(opts, :approval_posture)
+
+      Keyword.has_key?(opts, :approval_mode) ->
+        Keyword.get(opts, :approval_mode)
+
+      true ->
+        get_in(context, [:policy_inputs, :execution, :sandbox, :approvals])
+    end
+  end
+
+  defp permission_mode_value(opts, approval_posture) do
+    cond do
+      Keyword.has_key?(opts, :permission_mode) ->
+        Keyword.get(opts, :permission_mode)
+
+      approval_posture in ["manual", :manual] ->
+        :default
+
+      approval_posture in ["auto", :auto] ->
+        :auto
+
+      approval_posture in ["none", :none] ->
+        nil
+
+      true ->
+        nil
+    end
+  end
+
+  defp lease_ref_value(opts, context) do
+    Keyword.get(opts, :lease_ref) || credential_lease_ref(context)
+  end
+
+  defp target_id_value(opts, context) do
+    Keyword.get(opts, :target_id) || map_value(map_value(context, :target_descriptor), :target_id)
+  end
+
+  defp allowed_tools(context) do
+    get_in(context, [:policy_inputs, :execution, :sandbox, :allowed_tools]) || []
+  end
+
+  defp credential_lease_ref(context) do
+    context
+    |> map_value(:credential_lease)
+    |> map_value(:lease_id)
+  end
+
   defp runtime_config_value(runtime_config, key) when is_map(runtime_config) do
     Map.get(runtime_config, key) || Map.get(runtime_config, Atom.to_string(key))
   end
 
   defp runtime_config_value(_runtime_config, _key), do: nil
+
+  defp runtime_option_value(runtime_config, key) when is_map(runtime_config) do
+    runtime_config
+    |> runtime_config_value(:options)
+    |> map_value(key)
+    |> case do
+      nil -> runtime_config_value(runtime_config, key)
+      value -> value
+    end
+  end
+
+  defp runtime_option_value(_runtime_config, _key), do: nil
 
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)

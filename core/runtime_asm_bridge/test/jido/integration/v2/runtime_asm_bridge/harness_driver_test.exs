@@ -134,4 +134,86 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     assert result.error["kind"] == "user_cancelled"
     assert result.error["message"] == "Run interrupted"
   end
+
+  test "start_session/1 authors generic execution-surface input from context" do
+    context = %{
+      run_id: "run-1",
+      attempt_id: "run-1:1",
+      credential_ref: %{id: "cred-1"},
+      credential_lease: %{lease_id: "lease-1"},
+      target_descriptor: %{
+        target_id: "target-1",
+        location: %{workspace_root: "/tmp/runtime"}
+      },
+      policy_inputs: %{
+        execution: %{
+          sandbox: %{
+            approvals: :none,
+            allowed_tools: ["test.session.exec"],
+            file_scope: "/tmp/runtime"
+          }
+        }
+      }
+    }
+
+    assert {:ok, session} =
+             HarnessDriver.start_session(
+               provider: :claude,
+               capability: %{id: "test.session.exec", runtime_class: :session},
+               input: %{prompt: "hello"},
+               context: context,
+               surface_kind: :leased_ssh,
+               surface_ref: "surface-1",
+               boundary_class: :isolated,
+               observability: %{suite: :phase_c},
+               transport_options: %{startup_mode: :lazy}
+             )
+
+    on_exit(fn ->
+      _ = HarnessDriver.stop_session(session)
+    end)
+
+    assert {:ok, session_ref} = SessionStore.fetch(session.session_id)
+    assert {:ok, info} = ASM.session_info(session_ref)
+
+    assert info.options[:surface_kind] == :leased_ssh
+    assert info.options[:transport_options] == [startup_mode: :lazy]
+    assert info.options[:workspace_root] == "/tmp/runtime"
+    assert info.options[:allowed_tools] == ["test.session.exec"]
+    assert info.options[:approval_posture] == :none
+    assert info.options[:lease_ref] == "lease-1"
+    assert info.options[:surface_ref] == "surface-1"
+    assert info.options[:target_id] == "target-1"
+    assert info.options[:boundary_class] == :isolated
+    assert info.options[:observability] == %{suite: :phase_c}
+  end
+
+  test "reuse_key/4 widens identity for ephemeral execution surfaces" do
+    capability = %{id: "cap-1", runtime_class: :session}
+    input = %{prompt: "hello"}
+
+    context = %{
+      credential_ref: %{id: "cred-1"},
+      credential_lease: %{lease_id: "lease-1"},
+      target_descriptor: %{
+        target_id: "target-1",
+        location: %{workspace_root: "/tmp/runtime"}
+      },
+      policy_inputs: %{execution: %{sandbox: %{file_scope: "/tmp/runtime"}}}
+    }
+
+    runtime_config = %{
+      provider: :claude,
+      options: %{
+        surface_kind: :leased_ssh,
+        surface_ref: "surface-1"
+      }
+    }
+
+    reuse_key = HarnessDriver.reuse_key(capability, input, context, runtime_config)
+
+    assert reuse_key.surface_kind == :leased_ssh
+    assert reuse_key.lease_ref == "lease-1"
+    assert reuse_key.surface_ref == "surface-1"
+  end
 end
