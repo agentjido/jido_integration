@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.Conformance.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -24,12 +28,12 @@ defmodule Jido.Integration.V2.Conformance.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "../contracts"},
-      {:jido_integration_v2_control_plane, path: "../control_plane"},
-      {:jido_integration_v2_direct_runtime, path: "../direct_runtime"},
-      {:jido_integration_v2_ingress, path: "../ingress"},
-      {:jido_integration_v2, path: "../platform", only: :test, runtime: false},
-      {:jido_integration_v2_github, path: "../../connectors/github", only: :test},
+      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_v2_control_plane(),
+      DependencyResolver.jido_integration_v2_direct_runtime(),
+      DependencyResolver.jido_integration_v2_ingress(),
+      DependencyResolver.jido_integration_v2(only: :test, runtime: false),
+      DependencyResolver.jido_integration_v2_github(only: :test),
       {:zoi, "~> 0.17"},
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

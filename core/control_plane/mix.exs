@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.ControlPlane.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -25,14 +29,13 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "../contracts"},
-      {:jido_integration_v2_auth, path: "../auth"},
-      {:jido_integration_v2_policy, path: "../policy"},
-      {:jido_integration_v2_direct_runtime, path: "../direct_runtime"},
-      {:jido_integration_v2_runtime_asm_bridge, path: "../runtime_asm_bridge"},
-      {:jido_session, path: "../session_runtime"},
-      {:jido_harness,
-       path: basis_repo_path("JIDO_HARNESS_PATH", "../../../jido_harness"), override: true},
+      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_v2_auth(),
+      DependencyResolver.jido_integration_v2_policy(),
+      DependencyResolver.jido_integration_v2_direct_runtime(),
+      DependencyResolver.jido_integration_v2_runtime_asm_bridge(),
+      DependencyResolver.jido_session(),
+      DependencyResolver.jido_harness(override: true),
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
@@ -64,9 +67,5 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
         ]
       ]
     ]
-  end
-
-  defp basis_repo_path(env_var, default_path) do
-    System.get_env(env_var, default_path)
   end
 end

@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.DispatchRuntime.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -24,8 +28,8 @@ defmodule Jido.Integration.V2.DispatchRuntime.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "../contracts"},
-      {:jido_integration_v2_control_plane, path: "../control_plane"},
+      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_v2_control_plane(),
       {:zoi, "~> 0.17"},
       {:telemetry, "~> 1.0"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

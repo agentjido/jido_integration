@@ -1,9 +1,13 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
 Code.require_file("build_support/dependency_resolver.exs", __DIR__)
 
 defmodule Jido.Integration.V2.Connectors.Notion.MixProject do
   use Mix.Project
 
-  alias Jido.Integration.V2.Connectors.Notion.Build.DependencyResolver
+  alias Jido.Integration.Build.DependencyResolver, as: WorkspaceDependencyResolver
+
+  alias Jido.Integration.V2.Connectors.Notion.Build.DependencyResolver,
+    as: ConnectorDependencyResolver
 
   def project do
     [
@@ -34,15 +38,14 @@ defmodule Jido.Integration.V2.Connectors.Notion.MixProject do
     [
       {:jido, "~> 2.1"},
       {:jido_action, "~> 2.1"},
-      {:jido_integration_v2_contracts, path: "../../core/contracts"},
-      {:jido_integration_v2_consumer_surfaces, path: "../../core/consumer_surfaces"},
-      {:jido_integration_v2_direct_runtime, path: "../../core/direct_runtime"},
-      {:jido_integration_v2_conformance,
-       path: "../../core/conformance", only: :test, runtime: false},
-      {:jido_integration_v2, path: "../../core/platform", only: [:dev, :test]},
+      WorkspaceDependencyResolver.jido_integration_v2_contracts(),
+      WorkspaceDependencyResolver.jido_integration_v2_consumer_surfaces(),
+      WorkspaceDependencyResolver.jido_integration_v2_direct_runtime(),
+      WorkspaceDependencyResolver.jido_integration_v2_conformance(only: :test, runtime: false),
+      WorkspaceDependencyResolver.jido_integration_v2(only: [:dev, :test]),
       {:zoi, "~> 0.17"},
-      DependencyResolver.pristine_runtime(runtime: false),
-      DependencyResolver.notion_sdk(),
+      ConnectorDependencyResolver.pristine_runtime(runtime: false),
+      ConnectorDependencyResolver.notion_sdk(),
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

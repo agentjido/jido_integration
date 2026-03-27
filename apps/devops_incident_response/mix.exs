@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -25,14 +29,14 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.MixProject do
   defp deps do
     [
       {:jido, "~> 2.1"},
-      {:jido_integration_v2, path: "../../core/platform"},
-      {:jido_integration_v2_auth, path: "../../core/auth"},
-      {:jido_integration_v2_contracts, path: "../../core/contracts"},
-      {:jido_integration_v2_consumer_surfaces, path: "../../core/consumer_surfaces"},
-      {:jido_integration_v2_ingress, path: "../../core/ingress"},
-      {:jido_integration_v2_dispatch_runtime, path: "../../core/dispatch_runtime"},
-      {:jido_integration_v2_webhook_router, path: "../../core/webhook_router"},
-      {:jido_integration_v2_store_local, path: "../../core/store_local"},
+      DependencyResolver.jido_integration_v2(),
+      DependencyResolver.jido_integration_v2_auth(),
+      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_v2_consumer_surfaces(),
+      DependencyResolver.jido_integration_v2_ingress(),
+      DependencyResolver.jido_integration_v2_dispatch_runtime(),
+      DependencyResolver.jido_integration_v2_webhook_router(),
+      DependencyResolver.jido_integration_v2_store_local(),
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

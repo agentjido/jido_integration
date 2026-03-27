@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Session.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -25,8 +29,7 @@ defmodule Jido.Session.MixProject do
 
   defp deps do
     [
-      {:jido_harness,
-       path: basis_repo_path("JIDO_HARNESS_PATH", "../../../jido_harness"), override: true},
+      DependencyResolver.jido_harness(override: true),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
@@ -55,9 +58,5 @@ defmodule Jido.Session.MixProject do
         ]
       ]
     ]
-  end
-
-  defp basis_repo_path(env_var, default_path) do
-    System.get_env(env_var, default_path)
   end
 end

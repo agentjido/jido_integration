@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.DirectRuntime.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -24,7 +28,7 @@ defmodule Jido.Integration.V2.DirectRuntime.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "../contracts"},
+      DependencyResolver.jido_integration_v2_contracts(),
       {:jido_action, "~> 2.1"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

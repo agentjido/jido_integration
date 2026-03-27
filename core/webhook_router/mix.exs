@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.WebhookRouter.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -24,10 +28,10 @@ defmodule Jido.Integration.V2.WebhookRouter.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "../contracts"},
-      {:jido_integration_v2_auth, path: "../auth"},
-      {:jido_integration_v2_ingress, path: "../ingress"},
-      {:jido_integration_v2_dispatch_runtime, path: "../dispatch_runtime"},
+      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_v2_auth(),
+      DependencyResolver.jido_integration_v2_ingress(),
+      DependencyResolver.jido_integration_v2_dispatch_runtime(),
       {:zoi, "~> 0.17"},
       {:telemetry, "~> 1.0"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

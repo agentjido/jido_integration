@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.Ingress.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -24,11 +28,11 @@ defmodule Jido.Integration.V2.Ingress.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "../contracts"},
-      {:jido_integration_v2_control_plane, path: "../control_plane"},
+      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_v2_control_plane(),
       {:jido_signal, "~> 2.0"},
       {:zoi, "~> 0.17"},
-      {:jido_integration_v2_store_postgres, path: "../store_postgres", only: :test},
+      DependencyResolver.jido_integration_v2_store_postgres(only: :test),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

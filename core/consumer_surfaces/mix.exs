@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.ConsumerSurfaces.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -24,9 +28,9 @@ defmodule Jido.Integration.V2.ConsumerSurfaces.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "../contracts"},
-      {:jido_integration_v2_control_plane, path: "../control_plane"},
-      {:jido_integration_v2_ingress, path: "../ingress"},
+      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_v2_control_plane(),
+      DependencyResolver.jido_integration_v2_ingress(),
       {:jido, "~> 2.1"},
       {:jido_action, "~> 2.1"},
       {:jido_signal, "~> 2.0"},

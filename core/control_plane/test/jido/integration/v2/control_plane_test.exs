@@ -13,6 +13,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.HarnessRuntime
+  alias Jido.Integration.V2.HarnessRuntime.SessionStore
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.Redaction
@@ -784,8 +785,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                )
              )
 
-    assert [{_reuse_key, %{session: session}}] =
-             Jido.Integration.V2.HarnessRuntime.SessionStore.entries()
+    assert [{_reuse_key, %{session: session}}] = SessionStore.entries()
 
     assert first.attempt.runtime_ref_id == session.session_id
 
@@ -807,8 +807,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                )
              )
 
-    assert [{_reuse_key, %{session: reused_session}}] =
-             Jido.Integration.V2.HarnessRuntime.SessionStore.entries()
+    assert [{_reuse_key, %{session: reused_session}}] = SessionStore.entries()
 
     assert first.run.runtime_class == :stream
     assert first.attempt.runtime_ref_id == reused_session.session_id

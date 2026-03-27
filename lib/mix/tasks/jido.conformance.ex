@@ -141,10 +141,15 @@ defmodule Mix.Tasks.Jido.Conformance do
 
   defp run_in_project!(project_path, module_string, normalized_module_name, profile) do
     project_root = Path.expand(project_path, Blitz.MixWorkspace.root_dir())
-    build_path = project_build_path(project_root)
+    runtime_root = conformance_runtime_root(project_root)
+    build_path = project_build_path(runtime_root)
+    hex_home = project_hex_home(runtime_root)
 
-    deps_get_project!(project_root, build_path)
-    compile_project!(project_root, build_path)
+    File.mkdir_p!(build_path)
+    File.mkdir_p!(hex_home)
+
+    deps_get_project!(project_root, build_path, hex_home)
+    compile_project!(project_root, build_path, hex_home)
     hydrate_dependency_priv!(project_root, build_path)
 
     with_project_build_path(build_path, fn ->
@@ -202,11 +207,11 @@ defmodule Mix.Tasks.Jido.Conformance do
     :ok
   end
 
-  defp deps_get_project!(project_root, build_path) do
+  defp deps_get_project!(project_root, build_path, hex_home) do
     if File.dir?(Path.join(project_root, "deps")) do
       :ok
     else
-      env = project_command_env(project_root, build_path)
+      env = project_command_env(project_root, build_path, hex_home)
 
       case System.cmd("mix", ["deps.get"],
              cd: project_root,
@@ -228,8 +233,8 @@ defmodule Mix.Tasks.Jido.Conformance do
     end
   end
 
-  defp compile_project!(project_root, build_path) do
-    env = project_command_env(project_root, build_path)
+  defp compile_project!(project_root, build_path, hex_home) do
+    env = project_command_env(project_root, build_path, hex_home)
 
     case System.cmd("mix", ["compile", "--quiet"],
            cd: project_root,
@@ -304,17 +309,46 @@ defmodule Mix.Tasks.Jido.Conformance do
     end
   end
 
-  defp project_build_path(project_root) do
-    Path.join(project_root, "_build/#{Mix.env()}")
+  defp project_build_path(runtime_root) do
+    Path.join(runtime_root, "build")
   end
 
-  defp project_command_env(project_root, build_path) do
+  defp project_hex_home(runtime_root) do
+    Path.join(runtime_root, "hex")
+  end
+
+  defp conformance_runtime_root(project_root) do
+    Path.join([
+      Blitz.MixWorkspace.root_dir(),
+      "_build",
+      "jido_conformance",
+      Atom.to_string(Mix.env()),
+      stable_project_slug(project_root)
+    ])
+  end
+
+  defp stable_project_slug(project_root) do
+    digest =
+      :crypto.hash(:sha256, project_root)
+      |> Base.encode16(case: :lower)
+      |> binary_part(0, 12)
+
+    project_name =
+      project_root
+      |> Path.relative_to(Blitz.MixWorkspace.root_dir())
+      |> String.replace(~r/[^a-zA-Z0-9]+/, "_")
+      |> String.trim("_")
+
+    "#{project_name}_#{digest}"
+  end
+
+  defp project_command_env(project_root, build_path, hex_home) do
     [
       {"MIX_ENV", Atom.to_string(Mix.env())},
       {"MIX_BUILD_PATH", build_path},
       {"MIX_DEPS_PATH", Path.join(project_root, "deps")},
       {"MIX_LOCKFILE", Path.join(project_root, "mix.lock")},
-      {"HEX_HOME", Path.join(project_root, "_build/hex")},
+      {"HEX_HOME", hex_home},
       {"HEX_API_KEY", nil}
     ]
   end

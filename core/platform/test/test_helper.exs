@@ -1,6 +1,6 @@
 ExUnit.start()
 
-Code.require_file("support/connector_contract_case.exs", __DIR__)
+Code.require_file("support/connector_contract_case_helper.exs", __DIR__)
 
 Jido.Integration.V2.StorePostgres.TestSupport.setup_database!()
 Ecto.Adapters.SQL.Sandbox.mode(Jido.Integration.V2.StorePostgres.Repo, :auto)

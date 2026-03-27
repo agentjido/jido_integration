@@ -1,7 +1,7 @@
 defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   use ExUnit.Case, async: true
 
-  alias Jido.Integration.Workspace.MixProject
+  alias Jido.Integration.Workspace.{MixProject, MonorepoRunner}
 
   @required_package_paths [
     ".formatter.exs",
@@ -76,6 +76,17 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
     assert File.exists?(Path.join(repo_root(), "bin/mix")),
            "repo-local mix wrapper is missing from #{repo_root()}"
+  end
+
+  test "workspace runner resolves a real mix executable outside the repo wrapper" do
+    workspace = Blitz.MixWorkspace.load!(MixProject.project()[:blitz_workspace])
+    mix_command = MonorepoRunner.mix_command!(workspace)
+
+    assert File.exists?(mix_command),
+           "workspace runner must resolve an executable mix command, got: #{inspect(mix_command)}"
+
+    assert Path.expand(mix_command) != Path.join(repo_root(), "bin/mix") |> Path.expand(),
+           "workspace runner must not invoke the repo-local bin/mix wrapper directly"
   end
 
   test "child packages keep the baseline monorepo package structure" do

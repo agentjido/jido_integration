@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.StorePostgres.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -25,9 +29,9 @@ defmodule Jido.Integration.V2.StorePostgres.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "../contracts"},
-      {:jido_integration_v2_auth, path: "../auth"},
-      {:jido_integration_v2_control_plane, path: "../control_plane"},
+      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_v2_auth(),
+      DependencyResolver.jido_integration_v2_control_plane(),
       {:ecto, "~> 3.13.4"},
       {:ecto_sql, "~> 3.13.4"},
       {:postgrex, "~> 0.21.1"},

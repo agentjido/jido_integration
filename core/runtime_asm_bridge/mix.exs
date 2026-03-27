@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.RuntimeAsmBridge.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -28,17 +32,10 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
-    agent_session_manager_path =
-      basis_repo_path("AGENT_SESSION_MANAGER_PATH", "../../../agent_session_manager")
-
     [
-      {:jido_harness,
-       path: basis_repo_path("JIDO_HARNESS_PATH", "../../../jido_harness"), override: true},
-      {:agent_session_manager, path: agent_session_manager_path, env: :dev},
-      {:boundary,
-       path: Path.join(agent_session_manager_path, "vendor/boundary"),
-       only: [:dev, :test],
-       runtime: false},
+      DependencyResolver.jido_harness(override: true),
+      DependencyResolver.agent_session_manager(env: :dev),
+      DependencyResolver.boundary(only: [:dev, :test], runtime: false),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
@@ -65,9 +62,5 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.MixProject do
         ]
       ]
     ]
-  end
-
-  defp basis_repo_path(env_var, default_path) do
-    System.get_env(env_var, default_path)
   end
 end

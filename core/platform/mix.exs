@@ -1,5 +1,9 @@
+Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+
 defmodule Jido.Integration.V2.Platform.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -24,13 +28,13 @@ defmodule Jido.Integration.V2.Platform.MixProject do
 
   defp deps do
     [
-      {:jido_integration_v2_contracts, path: "../contracts"},
-      {:jido_integration_v2_auth, path: "../auth"},
-      {:jido_integration_v2_control_plane, path: "../control_plane"},
-      {:jido_integration_v2_store_postgres, path: "../store_postgres", only: :test},
-      {:jido_integration_v2_github, path: "../../connectors/github", only: :test},
-      {:jido_integration_v2_codex_cli, path: "../../connectors/codex_cli", only: :test},
-      {:jido_integration_v2_market_data, path: "../../connectors/market_data", only: :test},
+      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_v2_auth(),
+      DependencyResolver.jido_integration_v2_control_plane(),
+      DependencyResolver.jido_integration_v2_store_postgres(only: :test),
+      DependencyResolver.jido_integration_v2_github(only: :test),
+      DependencyResolver.jido_integration_v2_codex_cli(only: :test),
+      DependencyResolver.jido_integration_v2_market_data(only: :test),
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
