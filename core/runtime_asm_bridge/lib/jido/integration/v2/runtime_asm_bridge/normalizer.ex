@@ -26,7 +26,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.Normalizer do
       sequence: event.sequence,
       timestamp: DateTime.to_iso8601(event.timestamp),
       status: event_status(event.kind),
-      payload: normalize_payload(event.payload),
+      payload: normalize_payload(event.kind, event.payload),
       raw: event,
       metadata:
         %{}
@@ -81,9 +81,16 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.Normalizer do
   def normalize(list) when is_list(list), do: Enum.map(list, &normalize/1)
   def normalize(other), do: other
 
-  defp normalize_payload(nil), do: %{}
+  defp normalize_payload(_kind, nil), do: %{}
 
-  defp normalize_payload(payload) do
+  defp normalize_payload(:error, payload) do
+    payload
+    |> normalize()
+    |> default_payload_map()
+    |> maybe_put_error_kind()
+  end
+
+  defp normalize_payload(_kind, payload) do
     payload
     |> normalize()
     |> default_payload_map()
@@ -125,6 +132,12 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.Normalizer do
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp maybe_put_error_kind(%{"code" => code} = payload) when is_binary(code) and code != "" do
+    Map.put_new(payload, "kind", code)
+  end
+
+  defp maybe_put_error_kind(payload), do: payload
 
   defp default_payload_map(%{} = value), do: value
   defp default_payload_map(other), do: %{"value" => other}

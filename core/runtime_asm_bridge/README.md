@@ -39,6 +39,19 @@ It does not emit public `transport_module` selection. For ephemeral surfaces,
 session reuse identity now widens with `surface_kind`, `lease_ref`, and
 `surface_ref` so leased or short-lived placements do not reuse stale sessions.
 
+## Phase D SSH Proof
+
+The first alternate execution surface is now proven through this unchanged
+bridge seam:
+
+- `HarnessDriver` carries `:leased_ssh` surface input without exposing adapter
+  modules
+- streamed runs, interruption, terminal failures, and session shutdown all
+  work end to end over the SSH-backed core lane
+- execution-event error payloads keep the raw bridge-visible fields and also
+  expose `kind` when the upstream payload carries an error `code`
+- guest bridge remains explicitly deferred
+
 ## Boundary
 
 This package does not own control-plane truth, provider SDK logic, or durable
