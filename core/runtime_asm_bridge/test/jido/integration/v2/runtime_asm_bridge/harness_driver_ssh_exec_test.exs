@@ -1,8 +1,8 @@
 defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
   use ExUnit.Case, async: false
 
-  alias Jido.Integration.V2.RuntimeAsmBridge.{HarnessDriver, SessionStore}
   alias Jido.Harness.{ExecutionEvent, ExecutionResult, RunHandle, RunRequest}
+  alias Jido.Integration.V2.RuntimeAsmBridge.{HarnessDriver, SessionStore}
 
   setup do
     SessionStore.reset!()
@@ -48,6 +48,8 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
     manifest = File.read!(manifest_path)
     assert manifest =~ "destination=bridge.ssh.example"
     assert manifest =~ "port=2222"
+    assert :ok = HarnessDriver.stop_session(session)
+    assert :error = SessionStore.fetch(session.session_id)
   end
 
   test "cancel_run/2 interrupts the active leased SSHExec run end to end" do

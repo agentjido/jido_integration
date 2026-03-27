@@ -89,8 +89,10 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
       workspace_root:
         runtime_option_value(runtime_config, :workspace_root) || workspace_root(context),
       surface_kind: runtime_option_value(runtime_config, :surface_kind),
-      lease_ref:
-        runtime_option_value(runtime_config, :lease_ref) || credential_lease_ref(context),
+      # Credential leases are issued per invoke by the control plane, so they
+      # cannot define stable session reuse. Only authored execution-surface
+      # lease refs participate in the bridge session key.
+      lease_ref: runtime_option_value(runtime_config, :lease_ref),
       surface_ref: runtime_option_value(runtime_config, :surface_ref)
     }
   end

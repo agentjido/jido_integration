@@ -784,6 +784,11 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                )
              )
 
+    assert [{_reuse_key, %{session: session}}] =
+             Jido.Integration.V2.HarnessRuntime.SessionStore.entries()
+
+    assert first.attempt.runtime_ref_id == session.session_id
+
     assert {:ok, second} =
              ControlPlane.invoke(
                "test.asm.stream",
@@ -802,7 +807,12 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                )
              )
 
+    assert [{_reuse_key, %{session: reused_session}}] =
+             Jido.Integration.V2.HarnessRuntime.SessionStore.entries()
+
     assert first.run.runtime_class == :stream
+    assert first.attempt.runtime_ref_id == reused_session.session_id
+    assert second.attempt.runtime_ref_id == reused_session.session_id
     assert first.attempt.runtime_ref_id == second.attempt.runtime_ref_id
     assert first.output.text == "hello from control plane"
     assert second.output.text == "hello from control plane"

@@ -387,7 +387,7 @@ defmodule Jido.Integration.V2.HarnessRuntime do
     target_id = context[:target_descriptor] && context.target_descriptor.target_id
 
     reuse_key =
-      if function_exported?(driver_module, :reuse_key, 4) do
+      if Code.ensure_loaded?(driver_module) and function_exported?(driver_module, :reuse_key, 4) do
         driver_module.reuse_key(capability, input, context, runtime_config)
       else
         %{

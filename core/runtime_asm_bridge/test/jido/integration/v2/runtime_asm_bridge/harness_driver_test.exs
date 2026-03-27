@@ -188,7 +188,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     assert info.options[:observability] == %{suite: :phase_c}
   end
 
-  test "reuse_key/4 widens identity for ephemeral execution surfaces" do
+  test "reuse_key/4 keeps control-plane credential leases out of stable session identity" do
     capability = %{id: "cap-1", runtime_class: :session}
     input = %{prompt: "hello"}
 
@@ -213,7 +213,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     reuse_key = HarnessDriver.reuse_key(capability, input, context, runtime_config)
 
     assert reuse_key.surface_kind == :leased_ssh
-    assert reuse_key.lease_ref == "lease-1"
+    assert reuse_key.lease_ref == nil
     assert reuse_key.surface_ref == "surface-1"
   end
 
