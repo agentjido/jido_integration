@@ -216,4 +216,37 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     assert reuse_key.lease_ref == "lease-1"
     assert reuse_key.surface_ref == "surface-1"
   end
+
+  test "reuse_key/4 respects authored execution-surface overrides from runtime config" do
+    capability = %{id: "cap-1", runtime_class: :session}
+    input = %{prompt: "hello"}
+
+    context = %{
+      credential_ref: %{id: "cred-1"},
+      credential_lease: %{lease_id: "lease-from-context"},
+      target_descriptor: %{
+        target_id: "target-from-context",
+        location: %{workspace_root: "/tmp/runtime-context"}
+      },
+      policy_inputs: %{execution: %{sandbox: %{file_scope: "/tmp/runtime-context"}}}
+    }
+
+    runtime_config = %{
+      provider: :claude,
+      options: %{
+        surface_kind: :leased_ssh,
+        workspace_root: "/tmp/runtime-override",
+        lease_ref: "lease-from-runtime",
+        surface_ref: "surface-from-runtime",
+        target_id: "target-from-runtime"
+      }
+    }
+
+    reuse_key = HarnessDriver.reuse_key(capability, input, context, runtime_config)
+
+    assert reuse_key.workspace_root == "/tmp/runtime-override"
+    assert reuse_key.lease_ref == "lease-from-runtime"
+    assert reuse_key.surface_ref == "surface-from-runtime"
+    assert reuse_key.target_id == "target-from-runtime"
+  end
 end

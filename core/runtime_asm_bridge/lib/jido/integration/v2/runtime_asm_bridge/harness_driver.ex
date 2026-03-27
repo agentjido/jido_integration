@@ -82,11 +82,15 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
       capability_id: Map.get(capability, :id),
       runtime_class: Map.get(capability, :runtime_class),
       credential_ref_id: map_value(credential_ref, :id),
-      target_id: map_value(target_descriptor, :target_id),
+      target_id:
+        runtime_option_value(runtime_config, :target_id) ||
+          map_value(target_descriptor, :target_id),
       provider: runtime_config_value(runtime_config, :provider),
-      workspace_root: workspace_root(context),
+      workspace_root:
+        runtime_option_value(runtime_config, :workspace_root) || workspace_root(context),
       surface_kind: runtime_option_value(runtime_config, :surface_kind),
-      lease_ref: credential_lease_ref(context),
+      lease_ref:
+        runtime_option_value(runtime_config, :lease_ref) || credential_lease_ref(context),
       surface_ref: runtime_option_value(runtime_config, :surface_ref)
     }
   end
