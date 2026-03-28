@@ -13,12 +13,10 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Build.DependencyResolver do
   end
 
   def github_ex(opts \\ []) do
-    resolve(
-      :github_ex,
-      ["../../../github_ex"],
-      [github: "nshkrdotcom/github_ex", branch: "pristine/generated-runtime-and-auth-migration"],
-      opts
-    )
+    case env_path("GITHUB_EX_PATH") do
+      nil -> {:github_ex, "~> 0.1.0", opts}
+      path -> {:github_ex, Keyword.merge([path: path], opts)}
+    end
   end
 
   defp resolve(app, local_paths, fallback_opts, opts) do
@@ -37,6 +35,15 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Build.DependencyResolver do
   defp prefer_workspace_paths? do
     not Enum.member?(Path.split(@project_root), "deps")
   end
+
+  defp env_path(env_var) do
+    case System.get_env(env_var) do
+      nil -> nil
+      value -> existing_path(value)
+    end
+  end
+
+  defp existing_path(nil), do: nil
 
   defp existing_path(relative_path) do
     expanded_path = Path.expand(relative_path, @project_root)
