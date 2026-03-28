@@ -12,15 +12,10 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           "../../connectors/github/lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex",
           __DIR__
         ),
-      sdk_resolver_call: "DependencyResolver.github_ex()",
+      sdk_resolver_call: "ConnectorDependencyResolver.github_ex()",
       sdk_local_path: "[\"../../../github_ex\"]",
-      sdk_fallback:
-        "[github: \"nshkrdotcom/github_ex\", branch: \"pristine/generated-runtime-and-auth-migration\"]",
-      pristine_resolver_call:
-        "DependencyResolver.pristine_runtime(runtime: false, override: true)",
-      pristine_local_path: "[\"../../../pristine/apps/pristine_runtime\"]",
-      pristine_fallback:
-        "[github: \"nshkrdotcom/pristine\", branch: \"master\", subdir: \"apps/pristine_runtime\"]"
+      sdk_hex_dep: "{:github_ex, \"~> 0.1.0\", opts}",
+      forbidden_sdk_fallbacks: ["GITHUB_EX_PATH", "nshkrdotcom/github_ex"]
     },
     %{
       mix_path: Path.expand("../../connectors/notion/mix.exs", __DIR__),
@@ -32,25 +27,19 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           "../../connectors/notion/lib/jido/integration/v2/connectors/notion/operation_catalog.ex",
           __DIR__
         ),
-      sdk_resolver_call: "DependencyResolver.notion_sdk()",
+      sdk_resolver_call: "ConnectorDependencyResolver.notion_sdk()",
       sdk_local_path: "[\"../../../notion_sdk\"]",
-      sdk_fallback:
-        "[github: \"nshkrdotcom/notion_sdk\", branch: \"pristine/generated-surface-migration\"]",
-      pristine_resolver_call:
-        "DependencyResolver.pristine_runtime(runtime: false, override: true)",
-      pristine_local_path: "[\"../../../pristine/apps/pristine_runtime\"]",
-      pristine_fallback:
-        "[github: \"nshkrdotcom/pristine\", branch: \"master\", subdir: \"apps/pristine_runtime\"]"
+      sdk_hex_dep: "{:notion_sdk, \"~> 0.2.0\", opts}",
+      forbidden_sdk_fallbacks: ["NOTION_SDK_PATH", "nshkrdotcom/notion_sdk"]
     }
   ]
 
-  test "direct connector packages depend on direct_runtime and provider SDKs only" do
+  test "direct connector packages depend on direct_runtime and published provider SDKs only" do
     Enum.each(
       @direct_connectors,
       fn %{
            mix_path: mix_path,
-           sdk_resolver_call: sdk_resolver_call,
-           pristine_resolver_call: pristine_resolver_call
+           sdk_resolver_call: sdk_resolver_call
          } ->
         mix_exs = File.read!(mix_path)
 
@@ -67,8 +56,8 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         assert mix_exs =~ sdk_resolver_call,
                "#{mix_path} must resolve its provider SDK through DependencyResolver"
 
-        assert mix_exs =~ pristine_resolver_call,
-               "#{mix_path} must resolve pristine through DependencyResolver"
+        refute mix_exs =~ "pristine_runtime(",
+               "#{mix_path} must not carry a direct pristine runtime dependency"
 
         refute mix_exs =~ ":jido_harness", "#{mix_path} must not depend on jido_harness"
         refute mix_exs =~ "agent_session_manager", "#{mix_path} must not depend on ASM directly"
@@ -81,16 +70,15 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
     )
   end
 
-  test "direct connector packages resolve provider stacks from sibling paths or hard-coded git branches" do
+  test "direct connector packages resolve provider SDKs from sibling paths locally and Hex otherwise" do
     Enum.each(
       @direct_connectors,
       fn %{
            mix_path: mix_path,
            resolver_path: resolver_path,
            sdk_local_path: sdk_local_path,
-           sdk_fallback: sdk_fallback,
-           pristine_local_path: pristine_local_path,
-           pristine_fallback: pristine_fallback
+           sdk_hex_dep: sdk_hex_dep,
+           forbidden_sdk_fallbacks: forbidden_sdk_fallbacks
          } ->
         mix_exs = File.read!(mix_path)
         resolver = File.read!(resolver_path)
@@ -107,14 +95,13 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         assert resolver =~ sdk_local_path,
                "#{resolver_path} must check for a sibling provider SDK checkout first"
 
-        assert resolver =~ sdk_fallback,
-               "#{resolver_path} must resolve its provider SDK fallback through the hard-coded branch"
+        assert resolver =~ sdk_hex_dep,
+               "#{resolver_path} must fall back to a Hex dependency for its provider SDK"
 
-        assert resolver =~ pristine_local_path,
-               "#{resolver_path} must check for a sibling pristine checkout first"
-
-        assert resolver =~ pristine_fallback,
-               "#{resolver_path} must resolve pristine fallback through the hard-coded branch and subdir"
+        Enum.each(forbidden_sdk_fallbacks, fn forbidden_sdk_fallback ->
+          refute resolver =~ forbidden_sdk_fallback,
+                 "#{resolver_path} must not carry non-Hex, non-local SDK fallback #{inspect(forbidden_sdk_fallback)}"
+        end)
       end
     )
   end

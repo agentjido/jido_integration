@@ -197,9 +197,9 @@ mix test
 mix docs
 ```
 
-For local multi-repo development, the connector now resolves `notion_sdk` and
-`pristine` from sibling checkouts when they exist and falls back to pinned git
-refs otherwise. The package no longer depends on a connector-local vendored
+For local multi-repo development, the connector resolves `notion_sdk` from a
+sibling checkout when it exists and falls back to Hex otherwise. The package
+does not carry Git fallback wiring for that SDK or a connector-local vendored
 `deps/` tree.
 
 The package-local test surface now includes:
