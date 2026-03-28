@@ -116,7 +116,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     end
   end
 
-  test "packages that compile agent_session_manager expose boundary explicitly" do
+  test "packages that compile agent_session_manager do not vendor its boundary compiler" do
     runtime_asm_bridge_mix =
       repo_root()
       |> Path.join("core/runtime_asm_bridge/mix.exs")
@@ -128,12 +128,14 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            "core/runtime_asm_bridge/mix.exs must load the shared dependency resolver"
 
     for required_snippet <- [
-          "DependencyResolver.agent_session_manager(env: :dev)",
-          "DependencyResolver.boundary(only: [:dev, :test], runtime: false)"
+          "DependencyResolver.agent_session_manager(env: :dev)"
         ] do
       assert runtime_asm_bridge_mix =~ required_snippet,
              "core/runtime_asm_bridge/mix.exs is missing #{required_snippet}"
     end
+
+    refute runtime_asm_bridge_mix =~ "DependencyResolver.boundary(",
+           "core/runtime_asm_bridge/mix.exs must not depend on agent_session_manager/vendor/boundary"
 
     control_plane_mix =
       repo_root()

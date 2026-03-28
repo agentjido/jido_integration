@@ -93,23 +93,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
     )
   end
 
-  def boundary(opts \\ []) do
-    resolve_external(
-      :boundary,
-      local_subdir_path(
-        "AGENT_SESSION_MANAGER_PATH",
-        "../agent_session_manager",
-        "vendor/boundary"
-      ),
-      [
-        github: "nshkrdotcom/agent_session_manager",
-        branch: "rebuild/foundation-v1",
-        subdir: "vendor/boundary"
-      ],
-      opts
-    )
-  end
-
   def repo_root, do: @repo_root
 
   defp resolve_internal(app, subdir, opts) do
@@ -152,13 +135,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
     case System.get_env(env_var) do
       nil -> nil
       value -> value |> Path.expand(@repo_root) |> existing_path()
-    end
-  end
-
-  defp local_subdir_path(env_var, default_relative_path, subdir) do
-    case local_root_path(env_var, default_relative_path) do
-      nil -> nil
-      root -> Path.join(root, subdir)
     end
   end
 
