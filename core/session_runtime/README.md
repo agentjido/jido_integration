@@ -7,7 +7,7 @@ It keeps the public module surface as `Jido.Session` and the runtime id as
 `jido_session`, but the ownership now lives inside `jido_integration` rather
 than a sibling repo. The package owns the in-memory session kernel, the
 deterministic first session type, and the `Jido.Harness.RuntimeDriver`
-projection used by `core/control_plane`.
+projection used by `core/harness_runtime`.
 
 ## Responsibilities
 

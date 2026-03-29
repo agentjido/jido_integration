@@ -58,6 +58,9 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_github(opts \\ []),
     do: resolve_internal(:jido_integration_v2_github, "connectors/github", opts)
 
+  def jido_integration_v2_harness_runtime(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_harness_runtime, "core/harness_runtime", opts)
+
   def jido_integration_v2_market_data(opts \\ []),
     do: resolve_internal(:jido_integration_v2_market_data, "connectors/market_data", opts)
 
@@ -89,6 +92,15 @@ defmodule Jido.Integration.Build.DependencyResolver do
       :agent_session_manager,
       local_root_path("AGENT_SESSION_MANAGER_PATH", "../agent_session_manager"),
       [github: "nshkrdotcom/agent_session_manager", branch: "rebuild/foundation-v1"],
+      opts
+    )
+  end
+
+  def weld(opts \\ []) do
+    resolve_external(
+      :weld,
+      local_root_path("WELD_PATH", "../weld"),
+      [github: "nshkrdotcom/weld", ref: "67d6b7d58541ec8085f4d8e95d6d252b15bddff4"],
       opts
     )
   end

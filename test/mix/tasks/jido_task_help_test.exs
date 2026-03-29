@@ -34,5 +34,19 @@ defmodule Mix.Tasks.Jido.TaskHelpTest do
     assert output =~ "proof code belongs in the generated connector package"
   end
 
+  test "jido_integration.release.publish help describes bundle-first publication" do
+    Mix.Task.reenable("help")
+
+    output =
+      capture_io(fn ->
+        Help.run(["jido_integration.release.publish"])
+      end)
+      |> normalize_whitespace()
+
+    assert output =~ "prepared welded release bundle"
+    assert output =~ "publishes from the prepared bundle snapshot"
+    assert output =~ "mix release.prepare"
+  end
+
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
 end

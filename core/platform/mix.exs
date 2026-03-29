@@ -31,6 +31,7 @@ defmodule Jido.Integration.V2.Platform.MixProject do
       DependencyResolver.jido_integration_v2_contracts(),
       DependencyResolver.jido_integration_v2_auth(),
       DependencyResolver.jido_integration_v2_control_plane(),
+      DependencyResolver.jido_integration_v2_harness_runtime(only: :test),
       DependencyResolver.jido_integration_v2_store_postgres(only: :test),
       DependencyResolver.jido_integration_v2_github(only: :test),
       DependencyResolver.jido_integration_v2_codex_cli(only: :test),

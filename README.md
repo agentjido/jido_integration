@@ -22,6 +22,7 @@ trees for runtime dependency sourcing.
   session, and stream execution
 - read [Durability](guides/durability.md) before selecting in-memory,
   local-file, or Postgres-backed state
+- read [Publishing](guides/publishing.md) for the welded package release flow
 - read [Reference Apps](guides/reference_apps.md) for end-to-end proof
   surfaces
 - read [Developer Index](guides/developer/index.md) only if you are working on
@@ -38,6 +39,7 @@ trees for runtime dependency sourcing.
 - [Connector Lifecycle](guides/connector_lifecycle.md)
 - [Conformance](guides/conformance.md)
 - [Async And Webhooks](guides/async_and_webhooks.md)
+- [Publishing](guides/publishing.md)
 - [Reference Apps](guides/reference_apps.md)
 - [Observability](guides/observability.md)
 
@@ -110,6 +112,30 @@ The current surface also proves:
 - local durability, async queue state, and webhook route state are all
   explicit opt-in packages
 
+## Publishing The Unified Package
+
+The source monorepo remains the system of record. The publishable Hex package
+is generated from this repo through `weld`.
+
+The release path is explicit:
+
+1. `mix release.prepare`
+2. `mix release.publish.dry_run`
+3. `mix release.publish`
+4. `mix release.archive`
+
+`mix release.prepare` generates the welded package, runs the artifact quality
+lane, builds the tarball, and writes a durable release bundle under `dist/`.
+
+`mix release.publish` publishes from that prepared bundle snapshot rather than
+from the monorepo root. `mix release.archive` then preserves the prepared
+bundle in the archive tree so the exact released artifact remains inspectable.
+
+The first published welded artifact intentionally ships the direct-runtime,
+webhook, async, durability, auth, and public-facade surface. The Harness-backed
+session and stream packages stay source-repo packages until their external
+runtime dependencies become independently publishable.
+
 ## Repository Layout
 
 The repo root is a workspace and documentation layer. Runtime code lives in
@@ -128,6 +154,7 @@ jido_integration/
     contracts/               # shared public structs and behaviours
     auth/                    # install, connection, credential, and lease truth
     control_plane/           # durable run, trigger, and artifact truth
+    harness_runtime/         # Harness-backed session/stream adapter package
     consumer_surfaces/       # generated common Jido surface runtime support
     direct_runtime/          # direct capability execution
     runtime_asm_bridge/      # integration-owned `asm` Harness driver projection

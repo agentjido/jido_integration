@@ -431,6 +431,17 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     :ok
   end
 
+  test "reset tolerates the compiled harness runtime when its application is not started" do
+    assert :ok = Application.stop(:jido_integration_v2_harness_runtime)
+
+    on_exit(fn ->
+      assert {:ok, _apps} = Application.ensure_all_started(:jido_integration_v2_harness_runtime)
+    end)
+
+    assert Process.whereis(SessionStore) == nil
+    assert :ok = ControlPlane.reset!()
+  end
+
   test "asm resolves to the target Harness runtime driver" do
     assert {:ok, HarnessDriver} = HarnessRuntime.driver_module("asm")
   end

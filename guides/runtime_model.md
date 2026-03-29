@@ -19,6 +19,8 @@ Use it when:
 
 Sessioned and streamed capabilities go through `Jido.Harness`.
 
+- `core/harness_runtime` is the authored adapter layer used by the control
+  plane for all non-direct capability execution.
 - `asm` is projected by `core/runtime_asm_bridge` into the
   `agent_session_manager` and `cli_subprocess_core` lane.
 - `jido_session` is projected by `core/session_runtime` via

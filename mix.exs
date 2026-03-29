@@ -32,6 +32,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       {:blitz, "~> 0.1.0", runtime: false},
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.weld(runtime: false),
       {:jason, "~> 1.4", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
@@ -56,6 +57,7 @@ defmodule Jido.Integration.Workspace.MixProject do
 
     [
       ci: [
+        "monorepo.deps.get",
         "monorepo.format --check-formatted",
         "monorepo.compile",
         "monorepo.test",
@@ -64,14 +66,29 @@ defmodule Jido.Integration.Workspace.MixProject do
         "monorepo.docs"
       ],
       quality: ["monorepo.credo --strict", "monorepo.dialyzer"],
-      "docs.all": ["monorepo.docs"]
+      "docs.all": ["monorepo.docs"],
+      "weld.inspect": ["weld.inspect build_support/weld.exs --artifact jido_integration"],
+      "weld.graph": ["weld.graph build_support/weld.exs --artifact jido_integration"],
+      "weld.project": ["weld.project build_support/weld.exs --artifact jido_integration"],
+      "weld.verify": ["weld.verify build_support/weld.exs --artifact jido_integration"],
+      "weld.release.prepare": [
+        "weld.release.prepare build_support/weld.exs --artifact jido_integration"
+      ],
+      "weld.release.archive": [
+        "weld.release.archive build_support/weld.exs --artifact jido_integration"
+      ],
+      "release.prepare": ["weld.release.prepare"],
+      "release.publish.dry_run": ["jido_integration.release.publish --dry-run"],
+      "release.publish": ["jido_integration.release.publish"],
+      "release.archive": ["weld.release.archive"],
+      "release.candidate": ["release.prepare", "release.publish.dry_run"]
     ] ++ monorepo_aliases ++ mr_aliases
   end
 
   defp dialyzer do
     [
       plt_add_deps: :apps_direct,
-      plt_add_apps: [:mix, :blitz]
+      plt_add_apps: [:mix, :blitz, :weld]
     ]
   end
 
@@ -88,6 +105,7 @@ defmodule Jido.Integration.Workspace.MixProject do
         "guides/connector_lifecycle.md",
         "guides/conformance.md",
         "guides/async_and_webhooks.md",
+        "guides/publishing.md",
         "guides/reference_apps.md",
         "guides/observability.md",
         "guides/developer/index.md",
@@ -117,6 +135,7 @@ defmodule Jido.Integration.Workspace.MixProject do
           "docs/connector_review_baseline.md",
           "docs/connector_scaffolding.md"
         ],
+        Publication: ["guides/publishing.md"],
         Conformance: [
           "guides/conformance.md",
           "docs/conformance_workflow.md"

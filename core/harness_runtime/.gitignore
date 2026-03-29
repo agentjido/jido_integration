@@ -17,10 +17,7 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-jido_integration_v2-*.tar
+jido_integration_v2_harness_runtime-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
-
-# Welded package output is generated and archived explicitly.
-/dist/

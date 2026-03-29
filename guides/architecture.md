@@ -26,8 +26,11 @@ runtime behavior lives.
 - `core/consumer_surfaces` owns generated common action, sensor, and plugin
   runtime support.
 - `core/direct_runtime` handles direct provider-SDK execution.
+- `core/harness_runtime` owns the authored non-direct adapter and session
+  reuse boundary above Harness.
 - `core/runtime_asm_bridge` projects the authored `asm` driver into Harness.
-- `core/session_runtime` owns the internal `jido_session` Harness runtime.
+- `core/session_runtime` owns the integration-managed `jido_session` driver
+  implementation consumed by the harness adapter.
 - `core/dispatch_runtime` handles async transport, retry, replay, and recovery.
 - `core/ingress` normalizes triggers and admits them into the control plane.
 - `core/webhook_router` owns hosted route registration and route resolution.
@@ -50,8 +53,9 @@ execution.
 Direct connectors stay on the provider SDK path. Only actual `:session` and
 `:stream` capabilities use `Jido.Harness`.
 
-`asm` stays behind `core/runtime_asm_bridge`. `jido_session` stays behind
-`core/session_runtime`.
+`core/harness_runtime` is the package boundary that translates authored runtime
+metadata into Harness execution. `asm` stays behind `core/runtime_asm_bridge`.
+`jido_session` stays behind `core/session_runtime`.
 
 ## Consumer Surface Boundary
 

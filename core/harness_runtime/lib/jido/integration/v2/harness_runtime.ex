@@ -14,6 +14,7 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   alias Jido.Harness.{ExecutionResult, RunRequest, SessionHandle}
   alias Jido.Integration.V2.{Capability, Contracts, RuntimeResult, TargetDescriptor}
   alias Jido.Integration.V2.HarnessRuntime.SessionStore
+  @app :jido_integration_v2_harness_runtime
 
   @target_driver_modules %{
     "asm" => Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver,
@@ -33,7 +34,8 @@ defmodule Jido.Integration.V2.HarnessRuntime do
           {:ok, RuntimeResult.t()} | {:error, term(), RuntimeResult.t()}
   def execute(%Capability{runtime_class: runtime_class} = capability, input, context)
       when runtime_class in [:session, :stream] and is_map(input) and is_map(context) do
-    with {:ok, resolution} <- resolve_driver(capability, input, context),
+    with :ok <- ensure_started(),
+         {:ok, resolution} <- resolve_driver(capability, input, context),
          {:ok, %{session: session, lifecycle: lifecycle}} <-
            fetch_or_start_session(resolution, capability, input, context) do
       case run_driver(resolution, session, capability, input, context, lifecycle) do
@@ -45,6 +47,14 @@ defmodule Jido.Integration.V2.HarnessRuntime do
            failure_runtime_result(capability, context, reason, lifecycle, session.session_id)}
       end
     else
+      {:error, {:unable_to_start_harness_runtime, reason}} ->
+        {:error, {:unable_to_start_harness_runtime, reason},
+         failure_runtime_result(
+           capability,
+           context,
+           {:unable_to_start_harness_runtime, reason}
+         )}
+
       {:error, reason} ->
         {:error, reason, failure_runtime_result(capability, context, reason)}
     end
@@ -52,12 +62,29 @@ defmodule Jido.Integration.V2.HarnessRuntime do
 
   @spec reset!() :: :ok
   def reset! do
-    Enum.each(SessionStore.entries(), fn {key, %{driver_module: driver_module, session: session}} ->
-      _ = safe_stop_session(driver_module, session)
-      SessionStore.delete(key)
-    end)
+    if available?() do
+      Enum.each(SessionStore.entries(), fn {key,
+                                            %{driver_module: driver_module, session: session}} ->
+        _ = safe_stop_session(driver_module, session)
+        SessionStore.delete(key)
+      end)
 
-    SessionStore.reset!()
+      SessionStore.reset!()
+    else
+      :ok
+    end
+  end
+
+  @spec available?() :: boolean()
+  def available? do
+    Process.whereis(SessionStore) != nil
+  end
+
+  defp ensure_started do
+    case Application.ensure_all_started(@app) do
+      {:ok, _apps} -> :ok
+      {:error, reason} -> {:error, {:unable_to_start_harness_runtime, reason}}
+    end
   end
 
   @spec driver_modules() :: %{optional(String.t()) => module()}

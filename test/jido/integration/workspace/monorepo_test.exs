@@ -11,6 +11,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "core/control_plane",
              "core/direct_runtime",
              "core/dispatch_runtime",
+             "core/harness_runtime",
              "core/ingress",
              "core/platform",
              "core/policy",

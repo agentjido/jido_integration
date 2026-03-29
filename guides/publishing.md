@@ -1,0 +1,70 @@
+# Publishing
+
+`jido_integration` now treats publication as a welded artifact workflow, not as
+an ad hoc branch rewrite.
+
+## Release Shape
+
+The source-of-truth stays in the monorepo. Publishing happens from a prepared
+release bundle generated from `build_support/weld.exs`.
+
+The default published artifact intentionally excludes the Harness-backed
+session and stream runtime slice for now:
+
+- `core/harness_runtime`
+- `core/runtime_asm_bridge`
+- `core/session_runtime`
+- `connectors/codex_cli`
+- `connectors/market_data`
+
+Those packages still depend on unpublished external runtime packages such as
+`jido_harness`, so they remain source-repo packages until that publication
+boundary is resolved independently.
+
+The release lifecycle is:
+
+1. `mix release.prepare`
+2. `mix release.publish.dry_run`
+3. `mix release.publish`
+4. `mix release.archive`
+
+`mix release.prepare` runs the welded-artifact verification lane, builds the
+exact package tarball, and writes the release bundle under `dist/`.
+
+`mix release.publish` then runs `mix hex.publish` from the prepared bundle
+snapshot, not from the source repo root. That keeps the published artifact tied
+to an inspectable, durable snapshot.
+
+`mix release.archive` copies the prepared bundle into the archive tree so the
+published release remains reviewable after the immediate publish step.
+
+## What Gets Tested
+
+There are two verification lanes:
+
+- the source monorepo still runs `mix ci` and the package-local quality lanes
+- the welded package runs its own `mix deps.get`, `mix compile --warnings-as-errors`,
+  `mix test`, `mix docs --warnings-as-errors`, `mix hex.build`,
+  `mix hex.publish --dry-run --yes`, and the smoke app
+
+The welded package test surface lives under
+`packaging/weld/jido_integration/test/`. Those tests are package-owned checks
+for the unified public artifact, not a blind copy of every child package's
+tests.
+
+## Operational Commands
+
+- `mix weld.inspect`
+- `mix weld.graph`
+- `mix weld.project`
+- `mix weld.verify`
+- `mix weld.release.prepare`
+- `mix weld.release.archive`
+- `mix release.prepare`
+- `mix release.publish.dry_run`
+- `mix release.publish`
+- `mix release.archive`
+
+Use the `weld.*` commands when you want the raw projector tooling. Use the
+`release.*` commands when you are operating the actual Hex release flow for the
+published package.

@@ -30,6 +30,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     aliases = MixProject.project()[:aliases]
 
     assert Keyword.fetch!(aliases, :ci) == [
+             "monorepo.deps.get",
              "monorepo.format --check-formatted",
              "monorepo.compile",
              "monorepo.test",
@@ -52,11 +53,53 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
           :"mr.test",
           :"mr.credo",
           :"mr.dialyzer",
-          :"mr.docs"
+          :"mr.docs",
+          :"weld.inspect",
+          :"weld.graph",
+          :"weld.project",
+          :"weld.verify",
+          :"weld.release.prepare",
+          :"weld.release.archive",
+          :"release.prepare",
+          :"release.publish.dry_run",
+          :"release.publish",
+          :"release.archive",
+          :"release.candidate"
         ] do
       assert Keyword.has_key?(aliases, alias_name),
              "expected workspace alias #{inspect(alias_name)} to exist"
     end
+  end
+
+  test "workspace root includes weld and the repo-local publication contract" do
+    deps = MixProject.project()[:deps]
+
+    assert Enum.any?(deps, fn
+             {:weld, opts} when is_list(opts) ->
+               Keyword.has_key?(opts, :path) or Keyword.has_key?(opts, :github)
+
+             {:weld, _requirement, opts} when is_list(opts) ->
+               Keyword.has_key?(opts, :path) or Keyword.has_key?(opts, :github)
+
+             _ ->
+               false
+           end),
+           "workspace root must depend on weld through the shared dependency resolver"
+
+    assert File.exists?(Path.join(repo_root(), "build_support/weld.exs"))
+
+    assert File.exists?(
+             Path.join(repo_root(), "packaging/weld/jido_integration/test/test_helper.exs")
+           )
+
+    assert File.exists?(
+             Path.join(
+               repo_root(),
+               "packaging/weld/jido_integration/test/public_surface_test.exs"
+             )
+           )
+
+    assert File.exists?(Path.join(repo_root(), "packaging/weld/jido_integration/smoke.ex"))
   end
 
   test "workspace isolation clears SSL key logging for monorepo verification tasks" do
@@ -153,15 +196,19 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            "core/control_plane/mix.exs must not expose ASM's boundary compiler directly"
   end
 
-  test "control_plane takes jido_session from the in-repo session runtime package" do
+  test "control_plane reaches non-direct runtimes through the harness runtime package" do
     control_plane_mix =
       repo_root()
       |> Path.join("core/control_plane/mix.exs")
       |> File.read!()
       |> normalize_whitespace()
 
-    assert control_plane_mix =~ "DependencyResolver.jido_session()",
-           "core/control_plane/mix.exs must depend on the shared session runtime package through the dependency resolver"
+    assert control_plane_mix =~
+             "DependencyResolver.jido_integration_v2_harness_runtime(only: :test)",
+           "core/control_plane/mix.exs must keep the harness adapter behind a test-only package dependency"
+
+    refute control_plane_mix =~ "DependencyResolver.jido_session()",
+           "core/control_plane/mix.exs must not depend on the session runtime package directly"
 
     refute control_plane_mix =~ "../../../jido_session",
            "core/control_plane/mix.exs must not depend on a sibling jido_session repo checkout"
