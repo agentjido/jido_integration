@@ -19,33 +19,42 @@ while `jido_integration` itself stays at the Harness seam.
   connector packages can keep their shared dependency surface at
   `/home/home/p/g/n/jido_harness`
 
-## Phase C Carriage
+## Carriage
 
-The bridge now authors only generic execution-surface data:
+The bridge authors `execution_surface` and `execution_environment`
+independently.
+
+`execution_surface` carries only attach and transport placement data:
 
 - `surface_kind`
 - `transport_options`
-- `workspace_root`
-- `allowed_tools`
-- `approval_posture`
-- `permission_mode`
 - `lease_ref`
 - `surface_ref`
 - `target_id`
 - `boundary_class`
 - `observability`
 
+`execution_environment` carries runtime workspace and policy context:
+
+- `workspace_root`
+- `allowed_tools`
+- `approval_posture`
+- `permission_mode`
+
 It does not emit public `transport_module` selection. For ephemeral surfaces,
 session reuse identity now widens with `surface_kind`, `lease_ref`, and
 `surface_ref` so leased or short-lived placements do not reuse stale sessions.
+
+Request `cwd` remains a generic launch option. The bridge does not project it
+into `execution_environment.workspace_root`.
 
 ## Phase D SSH Proof
 
 The first alternate execution surface is now proven through this unchanged
 bridge seam:
 
-- `HarnessDriver` carries `:leased_ssh` surface input without exposing adapter
-  modules
+- `HarnessDriver` carries final `:ssh_exec` surface input without exposing
+  adapter modules
 - streamed runs, interruption, terminal failures, and session shutdown all
   work end to end over the SSH-backed core lane
 - execution-event error payloads keep the raw bridge-visible fields and also

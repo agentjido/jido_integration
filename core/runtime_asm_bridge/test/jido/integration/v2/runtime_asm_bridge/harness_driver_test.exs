@@ -135,7 +135,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     assert result.error["message"] == "Run interrupted"
   end
 
-  test "start_session/1 authors generic execution-surface input from context" do
+  test "start_session/1 authors execution_surface and execution_environment from context" do
     context = %{
       run_id: "run-1",
       attempt_id: "run-1:1",
@@ -162,11 +162,11 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
                capability: %{id: "test.session.exec", runtime_class: :session},
                input: %{prompt: "hello"},
                context: context,
-               surface_kind: :leased_ssh,
+               surface_kind: :ssh_exec,
                surface_ref: "surface-1",
                boundary_class: :isolated,
                observability: %{suite: :phase_c},
-               transport_options: %{startup_mode: :lazy}
+               transport_options: %{destination: "bridge.runtime.example"}
              )
 
     on_exit(fn ->
@@ -176,16 +176,52 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     assert {:ok, session_ref} = SessionStore.fetch(session.session_id)
     assert {:ok, info} = ASM.session_info(session_ref)
 
-    assert info.options[:surface_kind] == :leased_ssh
-    assert info.options[:transport_options] == [startup_mode: :lazy]
-    assert info.options[:workspace_root] == "/tmp/runtime"
-    assert info.options[:allowed_tools] == ["test.session.exec"]
-    assert info.options[:approval_posture] == :none
-    assert info.options[:lease_ref] == "lease-1"
-    assert info.options[:surface_ref] == "surface-1"
-    assert info.options[:target_id] == "target-1"
-    assert info.options[:boundary_class] == :isolated
-    assert info.options[:observability] == %{suite: :phase_c}
+    assert info.options[:execution_surface].surface_kind == :ssh_exec
+
+    assert info.options[:execution_surface].transport_options == [
+             destination: "bridge.runtime.example"
+           ]
+
+    assert info.options[:execution_surface].lease_ref == "lease-1"
+    assert info.options[:execution_surface].surface_ref == "surface-1"
+    assert info.options[:execution_surface].target_id == "target-1"
+    assert info.options[:execution_surface].boundary_class == :isolated
+    assert info.options[:execution_surface].observability == %{suite: :phase_c}
+    assert info.options[:execution_environment].workspace_root == "/tmp/runtime"
+    assert info.options[:execution_environment].allowed_tools == ["test.session.exec"]
+    assert info.options[:execution_environment].approval_posture == :none
+    assert info.options[:execution_environment].permission_mode == :bypass
+  end
+
+  test "stream_run/3 keeps request cwd separate from authored workspace_root" do
+    assert {:ok, session} =
+             HarnessDriver.start_session(
+               provider: :claude,
+               workspace_root: "/tmp/runtime-root"
+             )
+
+    on_exit(fn ->
+      _ = HarnessDriver.stop_session(session)
+    end)
+
+    request =
+      RunRequest.new!(%{
+        prompt: "hello",
+        metadata: %{},
+        cwd: "/tmp/request-cwd"
+      })
+
+    assert {:ok, _run, stream} =
+             HarnessDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               run_id: "bridge-run-cwd"
+             )
+
+    assert Enum.to_list(stream) != []
+
+    assert {:ok, session_ref} = SessionStore.fetch(session.session_id)
+    assert {:ok, info} = ASM.session_info(session_ref)
+    assert info.options[:execution_environment].workspace_root == "/tmp/runtime-root"
   end
 
   test "reuse_key/4 keeps control-plane credential leases out of stable session identity" do
@@ -205,14 +241,16 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     runtime_config = %{
       provider: :claude,
       options: %{
-        surface_kind: :leased_ssh,
-        surface_ref: "surface-1"
+        execution_surface: [
+          surface_kind: :ssh_exec,
+          surface_ref: "surface-1"
+        ]
       }
     }
 
     reuse_key = HarnessDriver.reuse_key(capability, input, context, runtime_config)
 
-    assert reuse_key.surface_kind == :leased_ssh
+    assert reuse_key.surface_kind == :ssh_exec
     assert reuse_key.lease_ref == nil
     assert reuse_key.surface_ref == "surface-1"
   end
@@ -234,11 +272,15 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     runtime_config = %{
       provider: :claude,
       options: %{
-        surface_kind: :leased_ssh,
-        workspace_root: "/tmp/runtime-override",
-        lease_ref: "lease-from-runtime",
-        surface_ref: "surface-from-runtime",
-        target_id: "target-from-runtime"
+        execution_surface: [
+          surface_kind: :ssh_exec,
+          lease_ref: "lease-from-runtime",
+          surface_ref: "surface-from-runtime",
+          target_id: "target-from-runtime"
+        ],
+        execution_environment: [
+          workspace_root: "/tmp/runtime-override"
+        ]
       }
     }
 

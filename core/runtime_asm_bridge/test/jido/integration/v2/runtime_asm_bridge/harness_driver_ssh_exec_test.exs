@@ -9,7 +9,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
     :ok
   end
 
-  test "stream_run/3 proves leased SSHExec through the unchanged harness driver seam" do
+  test "stream_run/3 proves ssh_exec through the unchanged harness driver seam" do
     manifest_path = temp_path!("stream_manifest.txt")
     ssh_path = create_fake_ssh!(manifest_path)
     cli_path = write_script!(codex_success_script("HARNESS_SSH_OK"))
@@ -17,7 +17,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
     assert {:ok, session} =
              HarnessDriver.start_session(
                provider: :codex,
-               surface_kind: :leased_ssh,
+               surface_kind: :ssh_exec,
                lease_ref: "lease-1",
                surface_ref: "surface-1",
                target_id: "target-1",
@@ -52,7 +52,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
     assert :error = SessionStore.fetch(session.session_id)
   end
 
-  test "cancel_run/2 interrupts the active leased SSHExec run end to end" do
+  test "cancel_run/2 interrupts the active ssh_exec run end to end" do
     manifest_path = temp_path!("interrupt_manifest.txt")
     ssh_path = create_fake_ssh!(manifest_path)
     cli_path = write_script!(interrupt_script())
@@ -60,7 +60,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
     assert {:ok, session} =
              HarnessDriver.start_session(
                provider: :codex,
-               surface_kind: :leased_ssh,
+               surface_kind: :ssh_exec,
                lease_ref: "lease-cancel",
                surface_ref: "surface-cancel",
                transport_options: [
@@ -97,7 +97,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
     assert File.read!(manifest_path) =~ "destination=bridge.cancel.example"
   end
 
-  test "run/3 maps failed leased SSHExec runs into failed execution results" do
+  test "run/3 maps failed ssh_exec runs into failed execution results" do
     manifest_path = temp_path!("failed_manifest.txt")
     ssh_path = create_fake_ssh!(manifest_path)
     cli_path = write_script!(failing_script())
@@ -105,7 +105,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
     assert {:ok, session} =
              HarnessDriver.start_session(
                provider: :codex,
-               surface_kind: :leased_ssh,
+               surface_kind: :ssh_exec,
                lease_ref: "lease-failed",
                surface_ref: "surface-failed",
                transport_options: [
