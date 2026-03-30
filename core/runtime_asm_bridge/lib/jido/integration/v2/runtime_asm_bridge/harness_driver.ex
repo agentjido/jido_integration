@@ -556,9 +556,26 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
   defp default_map(%{} = value), do: value
   defp default_map(_other), do: %{}
 
-  defp map_value(%{} = map, key), do: Map.get(map, key) || Map.get(map, Atom.to_string(key))
+  defp map_value(%{} = map, key) when is_atom(key) do
+    Map.get(map, key) || Map.get(map, Atom.to_string(key))
+  end
+
+  defp map_value(%{} = map, key) when is_binary(key) do
+    Map.get(map, key) ||
+      case safe_existing_atom(key) do
+        nil -> nil
+        atom_key -> Map.get(map, atom_key)
+      end
+  end
+
   defp map_value(keyword, key) when is_list(keyword), do: Keyword.get(keyword, key)
   defp map_value(_other, _key), do: nil
+
+  defp safe_existing_atom(key) when is_binary(key) do
+    String.to_existing_atom(key)
+  rescue
+    ArgumentError -> nil
+  end
 
   defp maybe_prepare_boundary(opts) do
     context = Keyword.get(opts, :context, %{})

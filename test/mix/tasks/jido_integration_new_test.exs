@@ -4,6 +4,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   import ExUnit.CaptureIO
 
   alias Jido.Integration.TestTmpDir
+  alias Jido.Integration.Toolchain
   alias Mix.Tasks.Jido.Integration.New, as: NewTask
 
   test "generates a direct connector package under connectors/<name> by default" do
@@ -109,7 +110,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     assert mix_content =~ "{:jido, \"~> 2.1\"}"
     assert mix_content =~ "{:jido_action, \"~> 2.1\"}"
-    assert mix_content =~ ~s(elixir: "~> 1.18")
+    assert mix_content =~ ~s(elixir: "~> 1.19")
     assert mix_content =~ "dialyzer: dialyzer()"
     assert mix_content =~ "defp dialyzer do"
     assert mix_content =~ "docs: docs()"
@@ -379,16 +380,25 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
         Path.join(workspace_root, "mix.lock")
       end
 
-    mix_command = Path.join(Blitz.MixWorkspace.root_dir(), "bin/mix")
+    mix_command = Toolchain.mix_executable()
+    repo_root = Blitz.MixWorkspace.root_dir()
 
     env = [
-      {"MIX_DEPS_PATH", Path.join(Blitz.MixWorkspace.root_dir(), "deps")},
+      {"MIX_DEPS_PATH", Path.join(repo_root, "deps")},
       {"MIX_BUILD_PATH", Path.join(workspace_root, "_build")},
       {"MIX_LOCKFILE", lockfile_path},
       {"HEX_HOME", Path.join(workspace_root, ".hex")},
       {"HEX_API_KEY", nil},
       {"MIX_OS_CONCURRENCY_LOCK", "0"},
-      {"SSLKEYLOGFILE", nil}
+      {"SSLKEYLOGFILE", nil},
+      {"JIDO_INTEGRATION_PATH", repo_root},
+      {"JIDO_HARNESS_PATH", Path.expand("../jido_harness", repo_root)},
+      {"JIDO_OS_PATH", Path.expand("../jido_os", repo_root)},
+      {"JIDO_SHELL_PATH", Path.expand("../jido_shell", repo_root)},
+      {"JIDO_VFS_PATH", Path.expand("../jido_vfs", repo_root)},
+      {"AGENT_SESSION_MANAGER_PATH", Path.expand("../agent_session_manager", repo_root)},
+      {"CLI_SUBPROCESS_CORE_PATH", Path.expand("../cli_subprocess_core", repo_root)},
+      {"WELD_PATH", Path.expand("../weld", repo_root)}
     ]
 
     case System.cmd(mix_command, args,

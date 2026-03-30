@@ -21,6 +21,7 @@ defmodule Mix.Tasks.Jido.Conformance do
       mix jido.conformance Jido.Integration.V2.Connectors.GitHub --output report.json
   """
 
+  alias Jido.Integration.Toolchain
   alias Jido.Integration.V2.Conformance
   alias Jido.Integration.V2.Conformance.Renderer
   alias Jido.Integration.V2.Conformance.Report
@@ -207,13 +208,11 @@ defmodule Mix.Tasks.Jido.Conformance do
     :ok
   end
 
-  defp deps_get_project!(project_root, build_path, hex_home) do
-    if File.dir?(Path.join(project_root, "deps")) do
-      :ok
-    else
+  defp deps_get_project!(project_root, build_path, hex_home, opts \\ []) do
+    if Keyword.get(opts, :force, false) or not File.dir?(Path.join(project_root, "deps")) do
       env = project_command_env(project_root, build_path, hex_home)
 
-      case System.cmd("mix", ["deps.get"],
+      case System.cmd(mix_executable(), ["deps.get"],
              cd: project_root,
              env: env,
              stderr_to_stdout: true
@@ -230,13 +229,15 @@ defmodule Mix.Tasks.Jido.Conformance do
           #{output}
           """)
       end
+    else
+      :ok
     end
   end
 
   defp compile_project!(project_root, build_path, hex_home) do
     env = project_command_env(project_root, build_path, hex_home)
 
-    case System.cmd("mix", ["compile", "--quiet"],
+    case System.cmd(mix_executable(), ["compile", "--quiet"],
            cd: project_root,
            env: env,
            stderr_to_stdout: true
@@ -245,14 +246,44 @@ defmodule Mix.Tasks.Jido.Conformance do
         :ok
 
       {output, exit_code} ->
-        Mix.raise("""
-        Could not compile #{project_root} for conformance.
-
-        mix compile --quiet exited with #{exit_code}
-
-        #{output}
-        """)
+        maybe_retry_compile_project!(project_root, build_path, hex_home, output, exit_code)
     end
+  end
+
+  defp maybe_retry_compile_project!(project_root, build_path, hex_home, output, exit_code) do
+    if stale_dependency_output?(output) do
+      deps_get_project!(project_root, build_path, hex_home, force: true)
+
+      case System.cmd(mix_executable(), ["compile", "--quiet"],
+             cd: project_root,
+             env: project_command_env(project_root, build_path, hex_home),
+             stderr_to_stdout: true
+           ) do
+        {_, 0} ->
+          :ok
+
+        {retry_output, retry_exit_code} ->
+          raise_compile_project_error!(project_root, retry_output, retry_exit_code)
+      end
+    else
+      raise_compile_project_error!(project_root, output, exit_code)
+    end
+  end
+
+  defp stale_dependency_output?(output) when is_binary(output) do
+    String.contains?(output, "Unchecked dependencies") and
+      String.contains?(output, "dependency does not match the requirement")
+  end
+
+  @spec raise_compile_project_error!(String.t(), String.t(), integer()) :: no_return()
+  defp raise_compile_project_error!(project_root, output, exit_code) do
+    Mix.raise("""
+    Could not compile #{project_root} for conformance.
+
+    mix compile --quiet exited with #{exit_code}
+
+    #{output}
+    """)
   end
 
   defp hydrate_dependency_priv!(project_root, build_path) do
@@ -351,6 +382,10 @@ defmodule Mix.Tasks.Jido.Conformance do
       {"HEX_HOME", hex_home},
       {"HEX_API_KEY", nil}
     ]
+  end
+
+  defp mix_executable do
+    Toolchain.mix_executable()
   end
 
   defp restore_env(key, nil), do: System.delete_env(key)

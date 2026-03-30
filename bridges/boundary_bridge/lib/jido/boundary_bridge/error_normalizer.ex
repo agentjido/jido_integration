@@ -121,8 +121,6 @@ defmodule Jido.BoundaryBridge.ErrorNormalizer do
     Map.get(details, key) || Map.get(details, Atom.to_string(key))
   end
 
-  defp fetch_causal_metadata(_details, _key), do: nil
-
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 

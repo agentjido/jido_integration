@@ -9,7 +9,8 @@ defmodule Jido.Session.MixProject do
     [
       app: :jido_session,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.19",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: false,
       deps: deps(),
@@ -26,6 +27,9 @@ defmodule Jido.Session.MixProject do
       mod: {Jido.Session.Application, []}
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_env), do: ["lib"]
 
   defp deps do
     [

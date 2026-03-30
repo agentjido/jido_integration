@@ -23,7 +23,7 @@ defmodule Jido.BoundaryBridge.ReadinessWaiter do
     task =
       Task.async(fn ->
         {:ok, waiter} =
-          WaitLoop.start_link(
+          __MODULE__.WaitLoop.start_link(
             boundary_session_id: descriptor.boundary_session_id,
             adapter: adapter,
             adapter_opts: adapter_opts,
@@ -31,7 +31,7 @@ defmodule Jido.BoundaryBridge.ReadinessWaiter do
           )
 
         try do
-          WaitLoop.await(waiter, timeout_ms + poll_interval_ms)
+          __MODULE__.WaitLoop.await(waiter, timeout_ms + poll_interval_ms)
         after
           GenServer.stop(waiter, :normal)
         end

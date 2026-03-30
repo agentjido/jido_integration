@@ -6,6 +6,7 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   alias Jido.Integration.TestTmpDir
   alias Mix.Tasks.Jido.Conformance, as: ConformanceTask
 
+  @tag timeout: 180_000
   test "prints a human-readable conformance report by default" do
     output = run_task(["Jido.Integration.V2.Connectors.GitHub"])
 
@@ -15,6 +16,7 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
     assert output =~ "[SKIP] ingress_definition_discipline"
   end
 
+  @tag timeout: 180_000
   test "prints JSON and writes the JSON report to a file" do
     output_dir = temp_dir!("json-output")
     output_path = Path.join(output_dir, "github_conformance.json")

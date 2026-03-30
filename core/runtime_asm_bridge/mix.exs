@@ -9,7 +9,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.MixProject do
     [
       app: :jido_integration_v2_runtime_asm_bridge,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: false,

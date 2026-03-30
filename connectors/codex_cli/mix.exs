@@ -9,7 +9,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.MixProject do
     [
       app: :jido_integration_v2_codex_cli,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       consolidate_protocols: false,

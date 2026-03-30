@@ -11,7 +11,7 @@ defmodule Jido.BoundaryBridge.MixProject do
     [
       app: :jido_integration_v2_boundary_bridge,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: false,
@@ -38,7 +38,6 @@ defmodule Jido.BoundaryBridge.MixProject do
     [
       DependencyResolver.jido_os(),
       DependencyResolver.cli_subprocess_core(override: true),
-      DependencyResolver.erlexec(override: true),
       {:zoi, "~> 0.17"},
       {:splode, "~> 0.3.0"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

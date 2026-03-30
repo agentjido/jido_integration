@@ -2,6 +2,7 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
   use ExUnit.Case, async: false
 
   alias Jido.BoundaryBridge.{Adapters.JidoOs, AllocateBoundaryRequest, ReopenBoundaryRequest}
+  alias Jido.Os.AgentService.RegistryService, as: AgentServiceRegistry
   alias Jido.Os.Policy.Runtime, as: PolicyRuntime
   alias Jido.Os.Runtime.AgentServicesSupervisor
   alias Jido.Os.Runtime.CallerBoundary
@@ -201,6 +202,144 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
     assert map_size(service_state.sessions) == 1
   end
 
+  test "reopen creates a live boundary session when the deterministic boundary_session_id is absent",
+       %{
+         base_context: base_context,
+         nonce: nonce
+       } do
+    instance_id = "bridge-reopen-create-instance-#{nonce}"
+    boundary_session_id = "bridge-reopen-create-session-#{nonce}"
+    target_id = "bridge-reopen-create-target-#{nonce}"
+
+    start_instance(instance_id, base_context)
+    context = request_context(base_context, "reopen_create")
+
+    allow_boundary_actions(instance_id, context)
+    register_boundary_target(instance_id, context, target_id)
+
+    reopen_request =
+      ReopenBoundaryRequest.new!(%{
+        boundary_session_id: boundary_session_id,
+        backend_kind: :sprites,
+        boundary_class: :leased_cell,
+        attach: %{mode: :attachable, working_directory: "/workspace/#{target_id}"},
+        policy_intent: %{
+          sandbox_level: :strict,
+          egress: :restricted,
+          approvals: :manual,
+          allowed_tools: ["git"],
+          file_scope: "/workspace/#{target_id}"
+        },
+        refs: %{
+          target_id: target_id,
+          correlation_id: context.correlation_id,
+          request_id: context.request_id
+        }
+      })
+
+    assert {:ok, descriptor} =
+             Jido.BoundaryBridge.reopen(
+               reopen_request,
+               adapter: JidoOs,
+               adapter_opts: [
+                 instance_id: instance_id,
+                 attrs: context
+               ]
+             )
+
+    assert descriptor.boundary_session_id == boundary_session_id
+    assert descriptor.status == :ready
+    assert descriptor.attach_ready? == true
+
+    service_state = :sys.get_state(sandbox_service_pid(instance_id, context))
+    assert map_size(service_state.sessions) == 1
+  end
+
+  test "reopen rejects a deterministic boundary_session_id when the live boundary conflicts with the request",
+       %{
+         base_context: base_context,
+         nonce: nonce
+       } do
+    instance_id = "bridge-reopen-mismatch-instance-#{nonce}"
+    boundary_session_id = "bridge-reopen-mismatch-session-#{nonce}"
+    initial_target_id = "bridge-reopen-mismatch-target-#{nonce}"
+    conflicting_target_id = "bridge-reopen-conflict-target-#{nonce}"
+
+    start_instance(instance_id, base_context)
+    context = request_context(base_context, "reopen_mismatch")
+
+    allow_boundary_actions(instance_id, context)
+    register_boundary_target(instance_id, context, initial_target_id)
+    register_boundary_target(instance_id, context, conflicting_target_id)
+
+    allocate_request =
+      AllocateBoundaryRequest.new!(%{
+        boundary_session_id: boundary_session_id,
+        backend_kind: :sprites,
+        boundary_class: :leased_cell,
+        attach: %{mode: :attachable, working_directory: "/workspace/#{initial_target_id}"},
+        policy_intent: %{
+          sandbox_level: :strict,
+          egress: :restricted,
+          approvals: :manual,
+          allowed_tools: ["git"],
+          file_scope: "/workspace/#{initial_target_id}"
+        },
+        refs: %{
+          target_id: initial_target_id,
+          lease_ref: "lease-#{boundary_session_id}",
+          surface_ref: "surface-#{boundary_session_id}",
+          runtime_ref: "runtime-#{boundary_session_id}",
+          correlation_id: context.correlation_id,
+          request_id: context.request_id
+        },
+        allocation_ttl_ms: 250
+      })
+
+    conflicting_reopen_request =
+      ReopenBoundaryRequest.new!(%{
+        boundary_session_id: boundary_session_id,
+        backend_kind: :sprites,
+        boundary_class: :leased_cell,
+        attach: %{mode: :attachable, working_directory: "/workspace/#{conflicting_target_id}"},
+        policy_intent: %{
+          sandbox_level: :strict,
+          egress: :restricted,
+          approvals: :manual,
+          allowed_tools: ["git"],
+          file_scope: "/workspace/#{conflicting_target_id}"
+        },
+        refs: %{
+          target_id: conflicting_target_id,
+          correlation_id: context.correlation_id,
+          request_id: context.request_id
+        }
+      })
+
+    assert {:ok, _descriptor} =
+             Jido.BoundaryBridge.allocate(
+               allocate_request,
+               adapter: JidoOs,
+               adapter_opts: [
+                 instance_id: instance_id,
+                 attrs: context
+               ]
+             )
+
+    assert {:error, %Jido.BoundaryBridge.Error.InvalidRequestError{} = error} =
+             Jido.BoundaryBridge.reopen(
+               conflicting_reopen_request,
+               adapter: JidoOs,
+               adapter_opts: [
+                 instance_id: instance_id,
+                 attrs: context
+               ]
+             )
+
+    assert error.reason == "boundary_reopen_request_mismatch"
+    assert Enum.any?(error.details.mismatches, &(&1.field == :target_id))
+  end
+
   defp allow_boundary_actions(instance_id, context) do
     Enum.each(
       [
@@ -268,6 +407,18 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
     assert {:ok, _pid} = SystemInstanceSupervisor.start_instance(instance_id, context)
     assert wait_until(fn -> Instance.ready?(instance_id) end)
     assert wait_until(fn -> AgentServicesSupervisor.core_services_ready?(instance_id) end)
+    assert wait_until(fn -> sandbox_running?(instance_id, context) end)
+  end
+
+  defp sandbox_running?(instance_id, base_context) do
+    match?(
+      {:ok, %{outcome: "ok", payload: %{runtime_status: "running"}}},
+      AgentServiceRegistry.get_agent_service(
+        instance_id,
+        %{service_key: SandboxService.runtime_service_key()},
+        request_context(base_context, "wait-sandbox")
+      )
+    )
   end
 
   defp request_context(base_context, suffix) do

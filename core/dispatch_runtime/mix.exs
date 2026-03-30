@@ -9,7 +9,7 @@ defmodule Jido.Integration.V2.DispatchRuntime.MixProject do
     [
       app: :jido_integration_v2_dispatch_runtime,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: false,
       deps: deps(),

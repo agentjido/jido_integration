@@ -9,7 +9,7 @@ defmodule <%= @project_module %> do
     [
       app: :<%= @app_name %>,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       consolidate_protocols: false,

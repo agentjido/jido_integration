@@ -1,8 +1,8 @@
 defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
   use ExUnit.Case, async: false
 
-  alias Jido.BoundaryBridge.TestAdapter
   alias Jido.Integration.V2.RuntimeAsmBridge.{HarnessDriver, SessionStore}
+  alias Jido.Integration.V2.RuntimeAsmBridge.TestSupport.BoundaryTestAdapter
   alias Jido.Integration.V2.RuntimeAsmBridge.TestSupport.StreamScriptedDriver
 
   alias Jido.Harness.{
@@ -195,7 +195,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
   end
 
   test "start_session/1 projects a boundary-backed attach descriptor into ASM's execution_surface lane" do
-    {:ok, store} = start_supervised(TestAdapter)
+    {:ok, store} = start_supervised(BoundaryTestAdapter)
 
     boundary_request = %{
       boundary_session_id: "bnd-runtime-asm-boundary",
@@ -224,7 +224,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
              HarnessDriver.start_session(
                provider: :claude,
                boundary_request: boundary_request,
-               boundary_adapter: TestAdapter,
+               boundary_adapter: BoundaryTestAdapter,
                boundary_adapter_opts: [store: store]
              )
 
@@ -246,9 +246,9 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
   end
 
   test "start_session/1 fails closed on an unsupported boundary descriptor_version" do
-    {:ok, store} = start_supervised(TestAdapter)
+    {:ok, store} = start_supervised(BoundaryTestAdapter)
 
-    TestAdapter.put_descriptor(store, "bnd-runtime-asm-unsupported", %{
+    BoundaryTestAdapter.put_descriptor(store, "bnd-runtime-asm-unsupported", %{
       descriptor_version: 2,
       boundary_session_id: "bnd-runtime-asm-unsupported",
       backend_kind: :microvm,
@@ -301,7 +301,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
                  },
                  allocation_ttl_ms: 250
                },
-               boundary_adapter: TestAdapter,
+               boundary_adapter: BoundaryTestAdapter,
                boundary_adapter_opts: [store: store]
              )
 

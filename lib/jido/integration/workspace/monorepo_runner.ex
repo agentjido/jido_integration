@@ -4,6 +4,7 @@ defmodule Jido.Integration.Workspace.MonorepoRunner do
   import Bitwise
 
   alias Blitz.{Command, MixWorkspace}
+  alias Jido.Integration.Toolchain
 
   @spec run!(atom(), [String.t()]) :: :ok
   def run!(task, args) when is_atom(task) and is_list(args) do
@@ -43,9 +44,15 @@ defmodule Jido.Integration.Workspace.MonorepoRunner do
 
   defp resolve_system_mix!(mix_wrapper) do
     mix_wrapper = Path.expand(mix_wrapper)
-    candidate = find_system_mix_in_path(mix_wrapper)
+    candidate = resolve_current_mix(mix_wrapper) || find_system_mix_in_path(mix_wrapper)
 
     candidate || Mix.raise("Could not locate a system mix executable outside #{mix_wrapper}")
+  end
+
+  defp resolve_current_mix(mix_wrapper) do
+    candidate = Toolchain.mix_executable()
+
+    if Path.expand(candidate) != mix_wrapper, do: candidate
   end
 
   defp find_system_mix_in_path(mix_wrapper) do

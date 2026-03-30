@@ -13,7 +13,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   ]
 
   @required_package_mix_snippets [
-    ~s(elixir: "~> 1.18"),
+    ~s(elixir: "~> 1.19"),
     "consolidate_protocols: false",
     "dialyzer: dialyzer()",
     "defp dialyzer do",
