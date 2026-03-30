@@ -41,10 +41,12 @@ defmodule Jido.Session.HarnessProjection do
       runtime_id: :jido_session,
       provider: session.provider,
       status: session.status,
-      metadata: %{
-        "cwd" => session.cwd,
-        "session_type" => Atom.to_string(session.session_type)
-      }
+      metadata:
+        %{
+          "cwd" => session.cwd,
+          "session_type" => Atom.to_string(session.session_type)
+        }
+        |> maybe_put_map("boundary", boundary_metadata(session))
     })
   end
 
@@ -71,10 +73,12 @@ defmodule Jido.Session.HarnessProjection do
       scope: :session,
       state: session.status,
       timestamp: session.updated_at,
-      details: %{
-        "cwd" => session.cwd,
-        "run_count" => length(session.run_ids)
-      }
+      details:
+        %{
+          "cwd" => session.cwd,
+          "run_count" => length(session.run_ids)
+        }
+        |> maybe_put_map("boundary", boundary_metadata(session))
     })
   end
 
@@ -148,6 +152,16 @@ defmodule Jido.Session.HarnessProjection do
           "cwd" => session.cwd,
           "session_type" => Atom.to_string(session.session_type)
         })
+        |> maybe_put_map("boundary", boundary_metadata(session))
     })
   end
+
+  defp boundary_metadata(%Session{metadata: metadata}) when is_map(metadata) do
+    Map.get(metadata, "boundary") || Map.get(metadata, :boundary)
+  end
+
+  defp boundary_metadata(_session), do: nil
+
+  defp maybe_put_map(map, _key, nil), do: map
+  defp maybe_put_map(map, key, value), do: Map.put(map, key, value)
 end

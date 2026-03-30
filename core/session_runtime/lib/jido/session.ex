@@ -13,7 +13,17 @@ defmodule Jido.Session do
   boundary-backed `jido_session` consumes a lower-boundary result.
   """
 
-  alias Jido.Harness.{ExecutionResult, ExecutionStatus, RunHandle, RunRequest, SessionHandle}
+  alias Jido.BoundaryBridge
+
+  alias Jido.Harness.{
+    Error,
+    ExecutionResult,
+    ExecutionStatus,
+    RunHandle,
+    RunRequest,
+    SessionHandle
+  }
+
   alias Jido.Session.{HarnessProjection, Store}
   alias Jido.Session.Runtime.{LocalEcho, Run, Session}
 
@@ -33,9 +43,9 @@ defmodule Jido.Session do
   @doc "Starts a new internal session and returns its Session Control handle."
   @spec start_session(keyword()) :: {:ok, SessionHandle.t()} | {:error, term()}
   def start_session(opts \\ []) when is_list(opts) do
-    session = Session.new(opts)
-
-    with :ok <- Store.put_session(session) do
+    with {:ok, boundary} <- maybe_prepare_boundary(opts),
+         session <- build_session(opts, boundary),
+         :ok <- Store.put_session(session) do
       {:ok, HarnessProjection.session_handle(session)}
     end
   end
@@ -120,4 +130,138 @@ defmodule Jido.Session do
       Store.put_session(updated_session)
     end
   end
+
+  defp build_session(opts, boundary) when is_list(opts) do
+    opts
+    |> apply_boundary_session_opts(boundary)
+    |> Session.new()
+  end
+
+  defp maybe_prepare_boundary(opts) when is_list(opts) do
+    adapter = Keyword.get(opts, :boundary_adapter)
+    adapter_opts = Keyword.get(opts, :boundary_adapter_opts, [])
+    runtime_owner = Keyword.get(opts, :boundary_runtime_owner, "jido_session")
+    runtime_ref = boundary_runtime_ref(opts)
+
+    cond do
+      boundary_request = Keyword.get(opts, :boundary_request) ->
+        with {:ok, descriptor} <-
+               BoundaryBridge.allocate(
+                 boundary_request,
+                 boundary_bridge_opts(adapter, adapter_opts)
+               ),
+             :ok <- ensure_supported_boundary_descriptor(descriptor),
+             {:ok, descriptor} <-
+               BoundaryBridge.claim(
+                 descriptor,
+                 boundary_bridge_opts(adapter, adapter_opts,
+                   runtime_owner: runtime_owner,
+                   runtime_ref: runtime_ref
+                 )
+               ),
+             :ok <- ensure_supported_boundary_descriptor(descriptor) do
+          {:ok, %{descriptor: descriptor}}
+        end
+
+      boundary_reopen_request = Keyword.get(opts, :boundary_reopen_request) ->
+        with {:ok, descriptor} <-
+               BoundaryBridge.reopen(
+                 boundary_reopen_request,
+                 boundary_bridge_opts(adapter, adapter_opts)
+               ),
+             :ok <- ensure_supported_boundary_descriptor(descriptor),
+             {:ok, descriptor} <-
+               BoundaryBridge.claim(
+                 descriptor,
+                 boundary_bridge_opts(adapter, adapter_opts,
+                   runtime_owner: runtime_owner,
+                   runtime_ref: runtime_ref
+                 )
+               ),
+             :ok <- ensure_supported_boundary_descriptor(descriptor) do
+          {:ok, %{descriptor: descriptor}}
+        end
+
+      true ->
+        {:ok, nil}
+    end
+  end
+
+  defp ensure_supported_boundary_descriptor(%{descriptor_version: 1}), do: :ok
+
+  defp ensure_supported_boundary_descriptor(%{descriptor_version: version}) do
+    {:error,
+     Error.validation_error("unsupported boundary descriptor_version", %{
+       descriptor_version: version,
+       supported_versions: [1]
+     })}
+  end
+
+  defp apply_boundary_session_opts(opts, nil), do: opts
+
+  defp apply_boundary_session_opts(opts, %{descriptor: descriptor} = boundary) do
+    metadata =
+      opts
+      |> Keyword.get(:metadata, %{})
+      |> normalize_map()
+      |> Map.put("boundary", boundary_metadata(boundary))
+
+    opts
+    |> Keyword.put(:metadata, metadata)
+    |> Keyword.put_new(
+      :cwd,
+      descriptor.attach.working_directory || descriptor.workspace.workspace_root
+    )
+  end
+
+  defp boundary_metadata(%{descriptor: descriptor}) do
+    %{
+      "descriptor" => normalize_value(Map.from_struct(descriptor))
+    }
+  end
+
+  defp boundary_runtime_ref(opts) do
+    Keyword.get(opts, :boundary_runtime_ref) || Keyword.get(opts, :session_id)
+  end
+
+  defp boundary_bridge_opts(adapter, adapter_opts, extra_opts \\ []) do
+    []
+    |> maybe_put(:adapter, adapter)
+    |> Keyword.put(:adapter_opts, adapter_opts)
+    |> Keyword.merge(extra_opts)
+  end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp normalize_map(value) when is_map(value), do: value
+  defp normalize_map(value) when is_list(value), do: Map.new(value)
+  defp normalize_map(_value), do: %{}
+
+  defp normalize_value(nil), do: nil
+  defp normalize_value(value) when is_boolean(value), do: value
+  defp normalize_value(value) when is_integer(value), do: value
+  defp normalize_value(value) when is_float(value), do: value
+  defp normalize_value(value) when is_binary(value), do: value
+  defp normalize_value(value) when is_atom(value), do: Atom.to_string(value)
+
+  defp normalize_value(%_{} = value) do
+    value
+    |> Map.from_struct()
+    |> normalize_value()
+  end
+
+  defp normalize_value(value) when is_map(value) do
+    Map.new(value, fn {key, nested_value} -> {to_string(key), normalize_value(nested_value)} end)
+  end
+
+  defp normalize_value(value) when is_list(value) do
+    if Keyword.keyword?(value) do
+      Map.new(value, fn {key, nested_value} -> {to_string(key), normalize_value(nested_value)} end)
+    else
+      Enum.map(value, &normalize_value/1)
+    end
+  end
+
+  defp normalize_value(value), do: value
 end

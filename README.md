@@ -207,6 +207,12 @@ Only actual `:session` and `:stream` capabilities use
 and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
 through `core/session_runtime` via `Jido.Session.HarnessDriver`.
 
+Stage 4 brings the in-repo `jido_session` lane to the same lower-boundary seam
+as `asm`: boundary-backed internal sessions now allocate or reopen through
+`Jido.BoundaryBridge`, fail closed on unsupported `descriptor_version`, and
+carry normalized boundary descriptor metadata through the public session
+projection without treating `policy_intent_echo` as governance truth.
+
 Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
 bridge packages. They are not part of the repo or the target runtime
 architecture.
