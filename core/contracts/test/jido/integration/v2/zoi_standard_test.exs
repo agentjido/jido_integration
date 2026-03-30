@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
+  alias Jido.Integration.V2.DerivedStateAttachment
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.EvidenceRef
   alias Jido.Integration.V2.Gateway
@@ -26,6 +27,7 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
     Credential,
     CredentialLease,
     CredentialRef,
+    DerivedStateAttachment,
     Event,
     EvidenceRef,
     Gateway,
@@ -143,6 +145,15 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
       subject: "operator",
       scopes: ["issues:read"],
       metadata: %{tenant: "tenant-1"}
+    }
+  end
+
+  defp valid_attrs(DerivedStateAttachment) do
+    %{
+      subject: SubjectRef.new!(valid_attrs(SubjectRef)),
+      evidence_refs: [EvidenceRef.new!(valid_attrs(EvidenceRef))],
+      governance_refs: [GovernanceRef.new!(valid_attrs(GovernanceRef))],
+      metadata: %{repo: "jido_memory"}
     }
   end
 

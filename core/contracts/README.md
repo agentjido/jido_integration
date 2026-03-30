@@ -16,6 +16,7 @@ surfaces.
 - `Manifest`
 - `InvocationRequest`
 - `CredentialRef`
+- `DerivedStateAttachment`
 - `Run`
 - `Attempt`
 - `Event`
@@ -139,6 +140,15 @@ surfaces.
 - keep policy approval/denial lineage explicit through `GovernanceRef`
 - stay independent of `core/platform`, `core/control_plane`, and
   `core/store_postgres` implementation details
+
+`DerivedStateAttachment`
+
+- packages the canonical higher-order attachment shape over dumped subject,
+  evidence, and governance refs
+- gives sidecar repos one narrow place to anchor derived state without copying
+  run, trigger, auth, or target truth
+- is meant to be persisted as dumped refs plus repo-local enrichment, not as a
+  second control-plane ledger
 
 `ReviewProjection`
 
