@@ -29,6 +29,12 @@ This package is intentionally narrow.
 The richer internal state stays in `Jido.Session.Runtime.*`, while the shared
 projection surface lives in `Jido.Session.HarnessProjection`.
 
+Boundary readiness keeps this package on the same Harness seam as `asm`.
+Target descriptors publish `extensions["boundary"]` as the authored baseline
+boundary capability advertisement, and runtime code may combine worker-local
+facts with that baseline to build a runtime-merged live capability view for
+boundary-backed `jido_session` just as it does for boundary-backed `asm`.
+
 ## Usage
 
 Direct runtime use:

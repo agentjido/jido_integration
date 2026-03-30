@@ -10,8 +10,15 @@ defmodule Jido.Integration.V2.TargetDescriptor do
   requirements from the authored capability contract and treat target
   descriptors as compatibility plus location advertisements only. Targets do
   not override authored runtime driver, provider, or options.
+
+  `extensions["boundary"]` is reserved for the authored baseline boundary
+  capability advertisement. Callers may combine that durable baseline with
+  worker-local runtime facts through `live_boundary_capability/2` to build a
+  runtime-merged live capability view when the lower-boundary result becomes
+  more specific at execution time.
   """
 
+  alias Jido.Integration.V2.BoundaryCapability
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Schema
@@ -161,6 +168,30 @@ defmodule Jido.Integration.V2.TargetDescriptor do
     end
   end
 
+  @doc """
+  Returns the authored baseline boundary capability advertisement, if present.
+  """
+  @spec authored_boundary_capability(t()) :: BoundaryCapability.t() | nil
+  def authored_boundary_capability(%__MODULE__{extensions: extensions}) do
+    case Contracts.get(extensions, :boundary) do
+      nil -> nil
+      boundary_capability -> BoundaryCapability.new!(boundary_capability)
+    end
+  end
+
+  @doc """
+  Returns a runtime-merged live boundary capability view for this target.
+
+  Worker-local facts may sharpen the authored baseline but do not widen it
+  silently. When no authored baseline is present, live facts normalize
+  directly.
+  """
+  @spec live_boundary_capability(t(), map() | keyword() | BoundaryCapability.t() | nil) ::
+          BoundaryCapability.t() | nil
+  def live_boundary_capability(%__MODULE__{} = descriptor, live_facts \\ nil) do
+    BoundaryCapability.merge(authored_boundary_capability(descriptor), live_facts)
+  end
+
   defp prepare_attrs(attrs) do
     Map.put(attrs, :extensions, normalize_extensions(attrs))
   end
@@ -261,7 +292,16 @@ defmodule Jido.Integration.V2.TargetDescriptor do
     |> Map.merge(extensions)
   end
 
-  defp validate_extensions!(extensions) when is_map(extensions), do: extensions
+  defp validate_extensions!(extensions) when is_map(extensions) do
+    case Contracts.get(extensions, :boundary) do
+      nil ->
+        extensions
+
+      boundary_capability ->
+        _ = BoundaryCapability.new!(boundary_capability)
+        extensions
+    end
+  end
 
   defp validate_extensions!(extensions) do
     raise ArgumentError, "extensions must be a map, got: #{inspect(extensions)}"

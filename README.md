@@ -211,6 +211,12 @@ Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
 bridge packages. They are not part of the repo or the target runtime
 architecture.
 
+For lower-boundary readiness, `TargetDescriptor.extensions["boundary"]` is the
+authored baseline boundary capability advertisement. Runtime code may merge
+worker-local facts into a runtime-merged live capability view when a
+boundary-backed `asm` or boundary-backed `jido_session` lane learns a more
+precise attach or checkpoint posture at execution time.
+
 ## Developer Docs
 
 User-facing guides live under `guides/`. Developer-focused repo notes remain in

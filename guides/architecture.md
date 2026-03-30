@@ -59,6 +59,13 @@ Direct connectors stay on the provider SDK path. Only actual `:session` and
 metadata into Harness execution. `asm` stays behind `core/runtime_asm_bridge`.
 `jido_session` stays behind `core/session_runtime`.
 
+Boundary readiness does not introduce a new northbound runtime lane. Target
+descriptors publish `extensions["boundary"]` as the authored baseline
+boundary capability advertisement, and runtime code may derive a
+runtime-merged live capability view when worker-local facts sharpen the
+lower-boundary result for boundary-backed `asm` or boundary-backed
+`jido_session`.
+
 ## Consumer Surface Boundary
 
 The authored connector catalog and the published generated consumer surface are

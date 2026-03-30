@@ -9,6 +9,12 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   Target descriptors remain compatibility and location advertisements. They do
   not override authored `runtime.driver`, `runtime.provider`, or
   `runtime.options`.
+
+  For lower-boundary readiness, `TargetDescriptor.extensions["boundary"]`
+  carries the authored baseline boundary capability advertisement. Runtime code
+  may derive a runtime-merged live capability view from worker-local facts
+  before boundary-backed `asm` or boundary-backed `jido_session` consumes a
+  lower-boundary result.
   """
 
   alias Jido.Harness.{ExecutionResult, RunRequest, SessionHandle}

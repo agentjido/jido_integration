@@ -35,6 +35,12 @@ Use it when:
 - the capability publishes session or stream behavior honestly rather than
   pretending to be direct
 
+For lower-boundary readiness, target descriptors publish
+`extensions["boundary"]` as the authored baseline boundary capability
+advertisement. Runtime code may merge worker-local facts into a
+runtime-merged live capability view when the lower-boundary result becomes
+more specific for boundary-backed `asm` or boundary-backed `jido_session`.
+
 ## Hosted Async And Webhooks
 
 Hosted webhook registration and async replay are separate package surfaces.

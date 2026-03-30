@@ -5,6 +5,12 @@ defmodule Jido.Session do
   `Jido.Session` owns the internal session kernel for app-controlled execution and
   projects its state through the Harness Session Control IR via
   `Jido.Session.HarnessDriver`.
+
+  When lower-boundary execution is introduced, `jido_session` stays on the
+  same authored Harness seam as `asm`. Target descriptors advertise the
+  authored baseline boundary capability, and runtime code may merge
+  worker-local facts into a runtime-merged live capability view before a
+  boundary-backed `jido_session` consumes a lower-boundary result.
   """
 
   alias Jido.Harness.{ExecutionResult, ExecutionStatus, RunHandle, RunRequest, SessionHandle}

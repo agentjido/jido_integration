@@ -9,6 +9,7 @@ surfaces.
 ## Public Types
 
 - `ArtifactRef`
+- `BoundaryCapability`
 - `Capability`
 - `Credential`
 - `CredentialLease`
@@ -100,6 +101,10 @@ surfaces.
   bounded lease lifetime
 - `TargetDescriptor` matches against authored capability ids while remaining a
   compatibility and location advertisement rather than a second override plane
+- `TargetDescriptor.extensions["boundary"]` is the authored baseline boundary
+  capability advertisement, and `TargetDescriptor.live_boundary_capability/2`
+  produces a runtime-merged live capability view when worker-local facts
+  sharpen the lower-boundary result
 - `TargetDescriptor.authored_requirements/2` turns authored capability truth
   into compatibility requirements so non-direct runtime drivers stay primary
   and target lookups do not drift into ad hoc override logic
@@ -138,6 +143,12 @@ surfaces.
   `constraints`, `health`, and `location`
 - keeps unknown fields in `extensions` so mixed-version descriptors remain
   survivable
+- reserves `extensions["boundary"]` for the authored baseline boundary
+  capability advertisement with `supported`, `boundary_classes`,
+  `attach_modes`, and `checkpointing`
+- exposes `TargetDescriptor.authored_boundary_capability/1` for the authored
+  baseline and `TargetDescriptor.live_boundary_capability/2` for a
+  runtime-merged live capability view
 - exposes explicit compatibility checks plus runspec and event-schema version
   negotiation
 - exposes `authored_requirements/2` so target selection starts from authored
