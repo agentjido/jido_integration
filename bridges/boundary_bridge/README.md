@@ -12,8 +12,14 @@ This package lives under `bridges/` intentionally:
 ## Owns
 
 - the `Jido.BoundaryBridge` public package root
-- the package boundary where lower sandbox bridge IO types and normalization
-  logic will land
+- typed lower-boundary IO:
+  `Jido.BoundaryBridge.AllocateBoundaryRequest`,
+  `Jido.BoundaryBridge.ReopenBoundaryRequest`, and
+  `Jido.BoundaryBridge.BoundarySessionDescriptor`
+- the narrow public bridge API for allocate, reopen, readiness waiting, and
+  attach-metadata projection
+- request translation, descriptor normalization, typed extension accessors, and
+  bridge-facing error normalization
 - package-local docs, tests, and quality gates for that bridge seam
 
 ## Boundary
@@ -26,6 +32,15 @@ This package does not own:
 - app-local workflow composition
 
 Those stay in the existing `core/` and `apps/` packages.
+
+## Contract Notes
+
+- `AllocateBoundaryRequest` carries `allocation_ttl_ms` so startup-orphan
+  reaping stays below the public bridge seam
+- `BoundarySessionDescriptor` emits `descriptor_version: 1` in this packet's
+  rollout
+- `attach.mode == :not_applicable` is valid and keeps the bridge kernel-neutral
+- `policy_intent_echo` is a lossy bridge-local projection, not governance truth
 
 ## Publication Boundary
 

@@ -8,7 +8,8 @@ belongs, start here before touching the root workspace or widening an existing
 package.
 
 Non-core bridge packages live under `bridges/`. The current dedicated bridge
-package is `bridges/boundary_bridge`.
+package is `bridges/boundary_bridge`, which exposes the typed
+`Jido.BoundaryBridge` lower-boundary seam.
 
 ## Package Map
 

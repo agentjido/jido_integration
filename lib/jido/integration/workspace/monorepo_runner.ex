@@ -43,24 +43,23 @@ defmodule Jido.Integration.Workspace.MonorepoRunner do
 
   defp resolve_system_mix!(mix_wrapper) do
     mix_wrapper = Path.expand(mix_wrapper)
-    override_mix = Path.expand("/tmp/mix_override/bin/mix")
-
-    candidate =
-      System.get_env("PATH", "")
-      |> String.split(":", trim: true)
-      |> Enum.find_value(fn dir ->
-        path = Path.join(dir, "mix")
-        expanded = Path.expand(path)
-
-        cond do
-          not executable_file?(path) -> nil
-          expanded == mix_wrapper -> nil
-          expanded == override_mix -> nil
-          true -> path
-        end
-      end)
+    candidate = find_system_mix_in_path(mix_wrapper)
 
     candidate || Mix.raise("Could not locate a system mix executable outside #{mix_wrapper}")
+  end
+
+  defp find_system_mix_in_path(mix_wrapper) do
+    System.get_env("PATH", "")
+    |> String.split(":", trim: true)
+    |> Enum.find_value(&path_mix_candidate(&1, mix_wrapper))
+  end
+
+  defp path_mix_candidate(dir, mix_wrapper) do
+    path = Path.join(dir, "mix")
+
+    if executable_file?(path) and Path.expand(path) != mix_wrapper do
+      path
+    end
   end
 
   defp executable_file?(path) do

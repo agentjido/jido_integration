@@ -43,8 +43,9 @@ Core runtime graph:
 Bridge packages:
 
 - `bridges/boundary_bridge`
-  - lower-boundary sandbox bridge package below authored runtime intent and
-    above external sandbox kernels such as `jido_os`
+  - lower-boundary sandbox bridge package that exposes the typed
+    `Jido.BoundaryBridge` contract below authored runtime intent and above
+    external sandbox kernels such as `jido_os`
 
 Durability tiers:
 
@@ -92,7 +93,8 @@ runtime lane:
   driver; it adapts the Harness seam to
   `/home/home/p/g/n/agent_session_manager`
 - `bridges/boundary_bridge` is the lower-boundary package reserved for sandbox
-  bridge code that does not belong in `core/` and is not an app-level proof
+  bridge code, typed bridge IO, and descriptor normalization that do not belong
+  in `core/` and are not an app-level proof
 - `core/session_runtime` is the integration-owned home for `jido_session` via
   `Jido.Session.HarnessDriver`; `jido_integration` still consumes it through
   authored `runtime.driver` metadata rather than a local compatibility shim

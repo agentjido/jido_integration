@@ -99,6 +99,24 @@ defmodule Jido.Integration.Build.DependencyResolver do
     )
   end
 
+  def cli_subprocess_core(opts \\ []) do
+    resolve_external(
+      :cli_subprocess_core,
+      local_root_path("CLI_SUBPROCESS_CORE_PATH", "../cli_subprocess_core"),
+      [github: "nshkrdotcom/cli_subprocess_core", branch: "main"],
+      opts
+    )
+  end
+
+  def erlexec(opts \\ []) do
+    resolve_external(
+      :erlexec,
+      local_root_path("ERLEXEC_PATH", "../cli_subprocess_core/deps/erlexec"),
+      [hex: :erlexec, requirement: "~> 2.2"],
+      opts
+    )
+  end
+
   def weld(opts \\ []) do
     resolve_external(
       :weld,

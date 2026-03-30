@@ -31,8 +31,9 @@ runtime behavior lives.
 - `core/runtime_asm_bridge` projects the authored `asm` driver into Harness.
 - `core/session_runtime` owns the integration-managed `jido_session` driver
   implementation consumed by the harness adapter.
-- `bridges/boundary_bridge` owns lower-boundary sandbox bridge code that does
-  not belong in `core/` and is not an `apps/` proof surface.
+- `bridges/boundary_bridge` owns the typed `Jido.BoundaryBridge`
+  lower-boundary sandbox contract and adapter seam that does not belong in
+  `core/` and is not an `apps/` proof surface.
 - `core/dispatch_runtime` handles async transport, retry, replay, and recovery.
 - `core/ingress` normalizes triggers and admits them into the control plane.
 - `core/webhook_router` owns hosted route registration and route resolution.
