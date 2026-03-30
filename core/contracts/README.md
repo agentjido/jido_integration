@@ -115,6 +115,11 @@ surfaces.
 - `TriggerCheckpoint` keeps polling cursors explicit and durable
 - `SubjectRef`, `EvidenceRef`, and `GovernanceRef` are the only intended
   cross-repo reference seam for higher-order repos
+- `core/contracts` is the only intended shared dependency seam for higher-order
+  repos such as `jido_memory`, `jido_skill`, and `jido_eval`
+- provider-factory work in Phase 9 scales on top of that seam instead of
+  widening those repos into platform, control-plane, or store-postgres
+  dependencies
 - `ReviewProjection` is the contracts-only `review_packet/2` metadata shape
   meant for northbound consumers such as `jido_composer`
 

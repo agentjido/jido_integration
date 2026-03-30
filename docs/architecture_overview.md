@@ -219,6 +219,14 @@ truth that already lives in `core/auth` and `core/control_plane`:
   - higher-order repos such as `jido_composer` should consume that metadata
     through `core/contracts` and keep their own state orchestration-local
 
+Phase 8 also freezes the higher-order seam: higher-order sidecars such as
+`jido_memory`, `jido_skill`, and `jido_eval` stay on the `core/contracts` seam
+and may persist only derived state.
+
+Phase 9 provider-factory work builds on that already-correct ownership split
+instead of reopening control-plane, catalog, or review authority in those
+repos.
+
 ## Async And Webhook Boundary
 
 The final V2 architecture does not push async transport or hosted webhook logic

@@ -84,6 +84,14 @@ Phase 7 also lands the explicit cross-repo reference seam in
   northbound consumers that need review packet lineage without depending on
   `core/platform`
 
+Phase 8 also freezes the higher-order seam: higher-order sidecars such as
+`jido_memory`, `jido_skill`, and `jido_eval` stay on the `core/contracts` seam
+and may persist only derived state.
+
+Phase 9 provider-factory work builds on that already-correct ownership split
+instead of reopening control-plane, catalog, or review authority in those
+repos.
+
 Hosted webhook routing and async replay are intentionally separate public
 package APIs:
 
