@@ -36,8 +36,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
 
   defp deps do
     [
-      {:jido, "~> 2.1"},
-      {:jido_action, "~> 2.1"},
+      {:jido, "~> 2.2"},
+      {:jido_action, "~> 2.2"},
       WorkspaceDependencyResolver.jido_integration_v2_contracts(),
       WorkspaceDependencyResolver.jido_integration_v2_consumer_surfaces(),
       WorkspaceDependencyResolver.jido_integration_v2_direct_runtime(),

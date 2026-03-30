@@ -31,8 +31,8 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.MixProject do
 
   defp deps do
     [
-      {:jido, "~> 2.1"},
-      {:jido_action, "~> 2.1"},
+      {:jido, "~> 2.2"},
+      {:jido_action, "~> 2.2"},
       DependencyResolver.jido_integration_v2_contracts(override: true),
       DependencyResolver.jido_integration_v2_consumer_surfaces(override: true),
       DependencyResolver.jido_harness(override: true),

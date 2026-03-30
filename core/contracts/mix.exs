@@ -24,9 +24,9 @@ defmodule Jido.Integration.V2.Contracts.MixProject do
 
   defp deps do
     [
-      {:jido, "~> 2.1"},
-      {:jido_action, "~> 2.1"},
-      {:jido_signal, "~> 2.0"},
+      {:jido, "~> 2.2"},
+      {:jido_action, "~> 2.2"},
+      {:jido_signal, "~> 2.1"},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

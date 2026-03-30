@@ -28,7 +28,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.MixProject do
 
   defp deps do
     [
-      {:jido, "~> 2.1"},
+      {:jido, "~> 2.2"},
       DependencyResolver.jido_integration_v2(),
       DependencyResolver.jido_integration_v2_auth(),
       DependencyResolver.jido_integration_v2_contracts(),

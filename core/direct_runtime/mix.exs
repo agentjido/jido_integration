@@ -29,7 +29,7 @@ defmodule Jido.Integration.V2.DirectRuntime.MixProject do
   defp deps do
     [
       DependencyResolver.jido_integration_v2_contracts(),
-      {:jido_action, "~> 2.1"},
+      {:jido_action, "~> 2.2"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
