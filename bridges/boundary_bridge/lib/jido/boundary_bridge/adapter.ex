@@ -12,5 +12,7 @@ defmodule Jido.BoundaryBridge.Adapter do
   @callback allocate(payload(), adapter_opts()) :: {:ok, map()} | {:error, term()}
   @callback reopen(payload(), adapter_opts()) :: {:ok, map()} | {:error, term()}
   @callback fetch_status(String.t(), adapter_opts()) :: {:ok, map()} | {:error, term()}
+  @callback claim(String.t(), payload(), adapter_opts()) :: {:ok, map()} | {:error, term()}
+  @callback heartbeat(String.t(), payload(), adapter_opts()) :: {:ok, map()} | {:error, term()}
   @callback stop(String.t(), adapter_opts()) :: :ok | {:error, term()}
 end

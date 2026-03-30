@@ -31,6 +31,12 @@ defmodule Jido.BoundaryBridge.TestAdapter do
     end)
   end
 
+  def put_descriptor(store, boundary_session_id, descriptor) do
+    Agent.update(store, fn state ->
+      put_in(state, [:descriptors, boundary_session_id], to_raw_descriptor(descriptor))
+    end)
+  end
+
   @impl true
   def allocate(payload, opts) do
     store = Keyword.fetch!(opts, :store)
@@ -86,6 +92,31 @@ defmodule Jido.BoundaryBridge.TestAdapter do
       end
     end)
   end
+
+  @impl true
+  def claim(boundary_session_id, payload, opts) do
+    store = Keyword.fetch!(opts, :store)
+
+    Agent.get_and_update(store, fn state ->
+      descriptor = get_in(state, [:descriptors, boundary_session_id]) || %{}
+
+      next_descriptor =
+        descriptor
+        |> Map.put(:status, :ready)
+        |> Map.put(:attach_ready?, true)
+        |> Map.update(:metadata, %{}, fn metadata ->
+          metadata
+          |> Map.put(:runtime_owner, Map.get(payload, :runtime_owner))
+          |> Map.put(:runtime_ref, Map.get(payload, :runtime_ref))
+        end)
+
+      {{:ok, next_descriptor},
+       put_in(state, [:descriptors, boundary_session_id], next_descriptor)}
+    end)
+  end
+
+  @impl true
+  def heartbeat(boundary_session_id, payload, opts), do: claim(boundary_session_id, payload, opts)
 
   @impl true
   def stop(boundary_session_id, opts) do
@@ -148,7 +179,7 @@ defmodule Jido.BoundaryBridge.TestAdapter do
         supported?: Map.has_key?(payload, :checkpoint_id),
         last_checkpoint_id: Map.get(payload, :checkpoint_id)
       },
-      policy_intent_echo: Map.get(payload, :policy_intent_echo, %{}),
+      policy_intent_echo: payload[:policy_intent_echo] || %{},
       refs: Map.get(payload, :refs, %{}),
       extensions: Map.get(payload, :extensions, %{}),
       metadata: Map.get(payload, :metadata, %{})
@@ -159,7 +190,12 @@ defmodule Jido.BoundaryBridge.TestAdapter do
     {:ok, surface} =
       CliSubprocessCore.ExecutionSurface.new(
         surface_kind: :guest_bridge,
-        transport_options: [endpoint: %{kind: :unix_socket, path: "/tmp/#{target_id}.sock"}],
+        transport_options: [
+          endpoint: %{kind: :unix_socket, path: "/tmp/#{target_id}.sock"},
+          bridge_ref: "bridge-#{target_id}",
+          bridge_profile: "core_cli_transport",
+          supported_protocol_versions: [1]
+        ],
         target_id: target_id,
         lease_ref: lease_ref,
         surface_ref: surface_ref,

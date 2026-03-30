@@ -86,6 +86,52 @@ defmodule Jido.BoundaryBridge do
   end
 
   @doc """
+  Claims one boundary session for runtime ownership after readiness.
+  """
+  @spec claim(BoundarySessionDescriptor.t() | map(), keyword()) ::
+          {:ok, BoundarySessionDescriptor.t()} | {:error, Exception.t()}
+  def claim(descriptor, opts \\ []) do
+    adapter = adapter_module(opts)
+    adapter_opts = Keyword.get(opts, :adapter_opts, [])
+
+    with {:ok, descriptor} <- DescriptorNormalizer.normalize(descriptor),
+         {:ok, raw_descriptor} <-
+           adapter.claim(
+             descriptor.boundary_session_id,
+             runtime_control_payload(opts),
+             adapter_opts
+           ),
+         {:ok, descriptor} <- DescriptorNormalizer.normalize(raw_descriptor) do
+      {:ok, descriptor}
+    else
+      {:error, error} -> {:error, ErrorNormalizer.normalize(error)}
+    end
+  end
+
+  @doc """
+  Records one runtime heartbeat for a claimed or claiming boundary session.
+  """
+  @spec heartbeat(BoundarySessionDescriptor.t() | map(), keyword()) ::
+          {:ok, BoundarySessionDescriptor.t()} | {:error, Exception.t()}
+  def heartbeat(descriptor, opts \\ []) do
+    adapter = adapter_module(opts)
+    adapter_opts = Keyword.get(opts, :adapter_opts, [])
+
+    with {:ok, descriptor} <- DescriptorNormalizer.normalize(descriptor),
+         {:ok, raw_descriptor} <-
+           adapter.heartbeat(
+             descriptor.boundary_session_id,
+             runtime_control_payload(opts),
+             adapter_opts
+           ),
+         {:ok, descriptor} <- DescriptorNormalizer.normalize(raw_descriptor) do
+      {:ok, descriptor}
+    else
+      {:error, error} -> {:error, ErrorNormalizer.normalize(error)}
+    end
+  end
+
+  @doc """
   Projects attach metadata for consumers such as ASM when attach semantics apply.
   """
   @spec project_attach_metadata(BoundarySessionDescriptor.t() | map()) ::
@@ -158,5 +204,12 @@ defmodule Jido.BoundaryBridge do
         UnconfiguredAdapter
       )
     )
+  end
+
+  defp runtime_control_payload(opts) do
+    %{
+      runtime_owner: Keyword.get(opts, :runtime_owner) || "runtime",
+      runtime_ref: Keyword.get(opts, :runtime_ref)
+    }
   end
 end

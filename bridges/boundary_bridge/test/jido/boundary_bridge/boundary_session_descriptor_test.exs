@@ -108,7 +108,7 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptorTest do
                workspace: %{workspace_root: nil, snapshot_ref: nil, artifact_namespace: nil},
                attach: %{mode: :attachable, execution_surface: nil, working_directory: nil},
                checkpointing: %{supported?: false, last_checkpoint_id: nil},
-               policy_intent_echo: %{sandbox_level: :none},
+               policy_intent_echo: policy_projection(:none),
                refs: %{correlation_id: "corr-version", request_id: "req-version"},
                extensions: %{},
                metadata: %{}
@@ -128,7 +128,7 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptorTest do
                workspace: %{workspace_root: nil, snapshot_ref: nil, artifact_namespace: nil},
                attach: %{mode: :not_applicable, execution_surface: nil, working_directory: nil},
                checkpointing: %{supported?: false, last_checkpoint_id: nil},
-               policy_intent_echo: %{sandbox_level: :none},
+               policy_intent_echo: policy_projection(:none),
                refs: %{correlation_id: "corr-invalid", request_id: "req-invalid"},
                extensions: %{"jido.boundary_bridge.tracing" => %{traceparent: 123}},
                metadata: %{}
@@ -150,5 +150,9 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptorTest do
       )
 
     surface
+  end
+
+  defp policy_projection(level) do
+    %{sandbox_level: level}
   end
 end

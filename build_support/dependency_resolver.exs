@@ -108,6 +108,15 @@ defmodule Jido.Integration.Build.DependencyResolver do
     )
   end
 
+  def jido_os(opts \\ []) do
+    resolve_external(
+      :jido_os,
+      local_root_path("JIDO_OS_PATH", "../jido_os"),
+      [github: "agentjido/jido_os", branch: "main"],
+      opts
+    )
+  end
+
   def erlexec(opts \\ []) do
     resolve_external(
       :erlexec,

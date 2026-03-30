@@ -14,6 +14,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
   @behaviour Jido.Harness.RuntimeDriver
 
   alias ASM.{Event, Provider, Stream}
+  alias Jido.BoundaryBridge
   alias Jido.Integration.V2.RuntimeAsmBridge.{Normalizer, SessionStore}
 
   alias Jido.Harness.{
@@ -127,8 +128,15 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
   @impl true
   def start_session(opts) when is_list(opts) do
     with {:ok, requested_provider, provider} <- fetch_provider(opts),
+         {:ok, boundary} <- maybe_prepare_boundary(opts),
          {:ok, session_ref} <-
-           ASM.start_session(start_session_opts(opts, provider, requested_provider)),
+           ASM.start_session(
+             start_session_opts(
+               apply_boundary_session_opts(opts, boundary),
+               provider,
+               requested_provider
+             )
+           ),
          session_id when is_binary(session_id) <- ASM.session_id(session_ref) do
       :ok = SessionStore.put(session_id, session_ref)
 
@@ -142,6 +150,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
            %{}
            |> Map.put("asm_provider", Atom.to_string(provider.name))
            |> Map.put("display_name", provider.display_name)
+           |> maybe_put_map("boundary", boundary_metadata(boundary))
        })}
     else
       {:error, _} = error ->
@@ -262,6 +271,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
        details:
          %{}
          |> maybe_put_map("provider", session.provider && Atom.to_string(session.provider))
+         |> maybe_put_map("boundary", boundary_metadata_from_session(session))
      })}
   end
 
@@ -401,8 +411,13 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
   defp author_execution_inputs(opts) when is_list(opts) do
     context = Keyword.get(opts, :context, %{})
     approval_posture = approval_posture_value(opts, context)
-    execution_surface = authored_execution_surface(opts, context)
-    execution_environment = authored_execution_environment(opts, context, approval_posture)
+
+    execution_surface =
+      Keyword.get(opts, :execution_surface) || authored_execution_surface(opts, context)
+
+    execution_environment =
+      Keyword.get(opts, :execution_environment) ||
+        authored_execution_environment(opts, context, approval_posture)
 
     opts
     |> Keyword.delete(:provider_permission_mode)
@@ -544,4 +559,106 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
   defp map_value(%{} = map, key), do: Map.get(map, key) || Map.get(map, Atom.to_string(key))
   defp map_value(keyword, key) when is_list(keyword), do: Keyword.get(keyword, key)
   defp map_value(_other, _key), do: nil
+
+  defp maybe_prepare_boundary(opts) do
+    context = Keyword.get(opts, :context, %{})
+    adapter = Keyword.get(opts, :boundary_adapter)
+    adapter_opts = Keyword.get(opts, :boundary_adapter_opts, [])
+    runtime_owner = Keyword.get(opts, :boundary_runtime_owner, "asm")
+    runtime_ref = boundary_runtime_ref(opts, context)
+
+    cond do
+      boundary_request = Keyword.get(opts, :boundary_request) ->
+        with {:ok, descriptor} <-
+               BoundaryBridge.allocate(
+                 boundary_request,
+                 boundary_bridge_opts(adapter, adapter_opts)
+               ),
+             :ok <- ensure_supported_boundary_descriptor(descriptor),
+             {:ok, descriptor} <-
+               BoundaryBridge.claim(
+                 descriptor,
+                 boundary_bridge_opts(adapter, adapter_opts,
+                   runtime_owner: runtime_owner,
+                   runtime_ref: runtime_ref
+                 )
+               ),
+             :ok <- ensure_supported_boundary_descriptor(descriptor),
+             {:ok, attach_metadata} <- BoundaryBridge.project_attach_metadata(descriptor) do
+          {:ok, %{descriptor: descriptor, attach_metadata: attach_metadata}}
+        end
+
+      boundary_reopen_request = Keyword.get(opts, :boundary_reopen_request) ->
+        with {:ok, descriptor} <-
+               BoundaryBridge.reopen(
+                 boundary_reopen_request,
+                 boundary_bridge_opts(adapter, adapter_opts)
+               ),
+             :ok <- ensure_supported_boundary_descriptor(descriptor),
+             {:ok, descriptor} <-
+               BoundaryBridge.claim(
+                 descriptor,
+                 boundary_bridge_opts(adapter, adapter_opts,
+                   runtime_owner: runtime_owner,
+                   runtime_ref: runtime_ref
+                 )
+               ),
+             :ok <- ensure_supported_boundary_descriptor(descriptor),
+             {:ok, attach_metadata} <- BoundaryBridge.project_attach_metadata(descriptor) do
+          {:ok, %{descriptor: descriptor, attach_metadata: attach_metadata}}
+        end
+
+      true ->
+        {:ok, nil}
+    end
+  end
+
+  defp ensure_supported_boundary_descriptor(%{descriptor_version: 1}), do: :ok
+
+  defp ensure_supported_boundary_descriptor(%{descriptor_version: version}) do
+    {:error,
+     Error.validation_error("unsupported boundary descriptor_version", %{
+       descriptor_version: version,
+       supported_versions: [1]
+     })}
+  end
+
+  defp apply_boundary_session_opts(opts, nil), do: opts
+
+  defp apply_boundary_session_opts(opts, %{
+         attach_metadata: attach_metadata,
+         descriptor: descriptor
+       }) do
+    opts
+    |> Keyword.put(:execution_surface, attach_metadata.execution_surface)
+    |> Keyword.put(
+      :workspace_root,
+      attach_metadata.working_directory || descriptor.workspace.workspace_root
+    )
+  end
+
+  defp boundary_metadata(nil), do: nil
+
+  defp boundary_metadata(%{descriptor: descriptor, attach_metadata: attach_metadata}) do
+    %{
+      "descriptor" => Normalizer.normalize(Map.from_struct(descriptor)),
+      "attach" => Normalizer.normalize(attach_metadata)
+    }
+  end
+
+  defp boundary_metadata_from_session(session) do
+    map_value(session.metadata, "boundary") || map_value(session.metadata, :boundary)
+  end
+
+  defp boundary_runtime_ref(opts, context) do
+    Keyword.get(opts, :boundary_runtime_ref) || map_value(context, :attempt_id) ||
+      map_value(context, :run_id) || Keyword.get(opts, :surface_ref)
+  end
+
+  defp boundary_bridge_opts(adapter, adapter_opts, extra_opts \\ []) do
+    []
+    |> maybe_put(:adapter, adapter)
+    |> Keyword.put(:adapter_opts, adapter_opts)
+    |> Keyword.merge(extra_opts)
+  end
 end

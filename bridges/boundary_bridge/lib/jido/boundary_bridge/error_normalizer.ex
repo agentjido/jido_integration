@@ -54,16 +54,20 @@ defmodule Jido.BoundaryBridge.ErrorNormalizer do
     retryable = Map.get(error, :retryable, false)
     correlation_id = Map.get(error, :correlation_id)
     request_id = Map.get(error, :request_id)
+    typed_error_details = normalize_map(Map.get(error, :details, %{}))
 
-    details = %{
-      cause: %{
-        module: "Jido.Os.TypedError",
-        reason: reason,
-        category: category,
-        scope: Map.get(error, :scope),
-        details: Map.get(error, :details, %{})
+    details =
+      %{
+        cause: %{
+          module: "Jido.Os.TypedError",
+          reason: reason,
+          category: category,
+          scope: Map.get(error, :scope),
+          details: typed_error_details
+        }
       }
-    }
+      |> maybe_put(:causes, fetch_causal_metadata(typed_error_details, :causes))
+      |> maybe_put(:underlying, fetch_causal_metadata(typed_error_details, :underlying))
 
     case category do
       category when category in ["validation", "conflict"] ->
@@ -112,4 +116,17 @@ defmodule Jido.BoundaryBridge.ErrorNormalizer do
         )
     end
   end
+
+  defp fetch_causal_metadata(details, key) when is_map(details) do
+    Map.get(details, key) || Map.get(details, Atom.to_string(key))
+  end
+
+  defp fetch_causal_metadata(_details, _key), do: nil
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp normalize_map(value) when is_map(value), do: value
+  defp normalize_map(value) when is_list(value), do: Map.new(value)
+  defp normalize_map(_value), do: %{}
 end

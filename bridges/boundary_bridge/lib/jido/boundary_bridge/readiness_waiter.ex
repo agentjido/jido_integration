@@ -22,7 +22,19 @@ defmodule Jido.BoundaryBridge.ReadinessWaiter do
 
     task =
       Task.async(fn ->
-        poll_until_ready(descriptor.boundary_session_id, adapter, adapter_opts, poll_interval_ms)
+        {:ok, waiter} =
+          WaitLoop.start_link(
+            boundary_session_id: descriptor.boundary_session_id,
+            adapter: adapter,
+            adapter_opts: adapter_opts,
+            poll_interval_ms: poll_interval_ms
+          )
+
+        try do
+          WaitLoop.await(waiter, timeout_ms + poll_interval_ms)
+        after
+          GenServer.stop(waiter, :normal)
+        end
       end)
 
     case Task.yield(task, timeout_ms) || Task.shutdown(task, :brutal_kill) do
@@ -52,24 +64,87 @@ defmodule Jido.BoundaryBridge.ReadinessWaiter do
     end
   end
 
-  defp poll_until_ready(boundary_session_id, adapter, adapter_opts, poll_interval_ms) do
-    Process.sleep(poll_interval_ms)
+  defmodule WaitLoop do
+    @moduledoc false
+    use GenServer
 
-    with {:ok, raw_descriptor} <- adapter.fetch_status(boundary_session_id, adapter_opts),
-         {:ok, descriptor} <- DescriptorNormalizer.normalize(raw_descriptor) do
-      cond do
-        descriptor.attach.mode == :not_applicable ->
-          {:ok, descriptor}
+    alias Jido.BoundaryBridge.DescriptorNormalizer
 
-        descriptor.status == :failed ->
-          {:ok, descriptor}
+    def start_link(opts), do: GenServer.start_link(__MODULE__, opts)
 
-        descriptor.attach_ready? ->
-          {:ok, descriptor}
+    def await(pid, timeout_ms), do: GenServer.call(pid, :await, timeout_ms)
 
-        true ->
-          poll_until_ready(boundary_session_id, adapter, adapter_opts, poll_interval_ms)
+    @impl true
+    def init(opts) do
+      state = %{
+        boundary_session_id: Keyword.fetch!(opts, :boundary_session_id),
+        adapter: Keyword.fetch!(opts, :adapter),
+        adapter_opts: Keyword.get(opts, :adapter_opts, []),
+        poll_interval_ms: Keyword.fetch!(opts, :poll_interval_ms),
+        caller: nil,
+        result: nil
+      }
+
+      {:ok, state, {:continue, :poll}}
+    end
+
+    @impl true
+    def handle_call(:await, from, %{result: nil} = state) do
+      {:noreply, %{state | caller: from}}
+    end
+
+    def handle_call(:await, _from, %{result: result} = state) do
+      {:reply, result, state}
+    end
+
+    @impl true
+    def handle_continue(:poll, state) do
+      {:noreply, poll(state)}
+    end
+
+    @impl true
+    def handle_info(:poll, state) do
+      {:noreply, poll(state)}
+    end
+
+    defp poll(state) do
+      result =
+        with {:ok, raw_descriptor} <-
+               state.adapter.fetch_status(state.boundary_session_id, state.adapter_opts),
+             {:ok, descriptor} <- DescriptorNormalizer.normalize(raw_descriptor) do
+          cond do
+            descriptor.attach.mode == :not_applicable ->
+              {:ok, descriptor}
+
+            descriptor.status == :failed ->
+              {:ok, descriptor}
+
+            descriptor.attach_ready? ->
+              {:ok, descriptor}
+
+            true ->
+              nil
+          end
+        end
+
+      case result do
+        nil ->
+          Process.send_after(self(), :poll, state.poll_interval_ms)
+          state
+
+        {:ok, _descriptor} = ready ->
+          reply(state, ready)
+
+        {:error, _error} = error ->
+          reply(state, error)
       end
+    end
+
+    defp reply(%{caller: nil} = state, result), do: %{state | result: result}
+
+    defp reply(%{caller: caller} = state, result) do
+      GenServer.reply(caller, result)
+      %{state | caller: nil, result: result}
     end
   end
 end

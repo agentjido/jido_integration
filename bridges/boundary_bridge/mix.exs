@@ -36,6 +36,7 @@ defmodule Jido.BoundaryBridge.MixProject do
 
   defp deps do
     [
+      DependencyResolver.jido_os(),
       DependencyResolver.cli_subprocess_core(override: true),
       DependencyResolver.erlexec(override: true),
       {:zoi, "~> 0.17"},

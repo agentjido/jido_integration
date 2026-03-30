@@ -52,24 +52,25 @@ This means future core-owned surfaces continue to flow through the same bridge
 shape. `runtime_asm_bridge` authors placement and environment separately but
 does not branch on transport-family internals.
 
-## Phase D SSH Proof
+## Boundary-Backed Attach Proof
 
-The first alternate execution surface is now proven through this unchanged
-bridge seam:
+The bridge now proves two execution-surface families through the same ASM seam:
 
 - `HarnessDriver` carries final `:ssh_exec` surface input without exposing
   adapter modules
-- streamed runs, interruption, terminal failures, and session shutdown all
-  work end to end over the SSH-backed core lane
-- execution-event error payloads keep the raw bridge-visible fields and also
-  expose `kind` when the upstream payload carries an error `code`
-- guest bridge remains explicitly deferred
+- boundary-backed external sessions first allocate or reopen through
+  `Jido.BoundaryBridge`, fail closed on unsupported `descriptor_version`, claim
+  the ready boundary, then hand only `attach.execution_surface` into ASM
+- streamed runs, interruption, terminal failures, and session shutdown stay on
+  the existing ASM session surface
+- execution-event and result metadata retain normalized boundary descriptor and
+  attach metadata without making ASM backend-aware above the descriptor seam
 
 ## Boundary
 
-This package does not own control-plane truth, provider SDK logic, or durable
-artifact policy. It only projects ASM into the shared Harness contract above
-`/home/home/p/g/n/cli_subprocess_core`.
+This package does not own control-plane truth, provider SDK logic, durable
+artifact policy, or lower-boundary lifecycle truth. It only projects ASM into
+the shared Harness contract above `/home/home/p/g/n/cli_subprocess_core`.
 
 ## Related Guides
 

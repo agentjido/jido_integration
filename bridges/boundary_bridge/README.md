@@ -39,8 +39,17 @@ Those stay in the existing `core/` and `apps/` packages.
   reaping stays below the public bridge seam
 - `BoundarySessionDescriptor` emits `descriptor_version: 1` in this packet's
   rollout
+- consumers fail closed on unsupported `descriptor_version` values rather than
+  assuming future shapes
 - `attach.mode == :not_applicable` is valid and keeps the bridge kernel-neutral
 - `policy_intent_echo` is a lossy bridge-local projection, not governance truth
+- readiness waiting currently polls by `boundary_session_id` through the lower
+  boundary's public status seam
+- the attachable readiness wait is non-blocking for kernel-facing callers and
+  uses `Task.yield/2` plus explicit shutdown-and-cleanup rather than
+  `Task.await/2`
+- runtime claim and heartbeat stay explicit bridge operations so startup TTL
+  handoff remains below the kernel seam
 
 ## Publication Boundary
 

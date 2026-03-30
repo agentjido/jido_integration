@@ -64,4 +64,27 @@ defmodule Jido.BoundaryBridge.ErrorNormalizerTest do
     assert error.retryable == true
     assert error.correlation_id == "corr-dependency"
   end
+
+  test "preserves causal-chain metadata from typed errors when available" do
+    error =
+      ErrorNormalizer.normalize(%{
+        __struct__: @typed_error,
+        error_code: "sandbox_backend_dependency_failed",
+        category: "dependency",
+        retryable: true,
+        scope: "instance",
+        details: %{
+          cause: %{reason: "lower_boundary_failed"},
+          causes: [%{reason: "transport_attach_failed"}],
+          underlying: %{module: "Lower.Boundary.Error", message: "socket closed"}
+        },
+        correlation_id: "corr-causes",
+        request_id: "req-causes"
+      })
+
+    assert %Error.DependencyFailureError{} = error
+    assert error.details.causes == [%{reason: "transport_attach_failed"}]
+    assert error.details.underlying == %{module: "Lower.Boundary.Error", message: "socket closed"}
+    assert error.details.cause.details.cause == %{reason: "lower_boundary_failed"}
+  end
 end

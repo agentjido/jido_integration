@@ -147,6 +147,42 @@ defmodule Jido.BoundaryBridgeTest do
     assert error.cleanup_outcome == :unknown
   end
 
+  test "claim moves an attach-ready descriptor into runtime-owned state", %{store: store} do
+    descriptor = scripted_descriptor("bnd-claim-ready", true)
+    TestAdapter.put_descriptor(store, descriptor.boundary_session_id, descriptor)
+
+    assert {:ok, %BoundarySessionDescriptor{} = claimed} =
+             Jido.BoundaryBridge.claim(
+               descriptor,
+               adapter: TestAdapter,
+               adapter_opts: [store: store],
+               runtime_owner: "asm",
+               runtime_ref: "asm-runtime-bnd-claim-ready"
+             )
+
+    assert claimed.status == :ready
+    assert claimed.attach_ready? == true
+    assert claimed.metadata.runtime_owner == "asm"
+    assert claimed.metadata.runtime_ref == "asm-runtime-bnd-claim-ready"
+  end
+
+  test "heartbeat is idempotent for an already-claimed descriptor", %{store: store} do
+    descriptor = scripted_descriptor("bnd-heartbeat-ready", true)
+    TestAdapter.put_descriptor(store, descriptor.boundary_session_id, descriptor)
+
+    assert {:ok, %BoundarySessionDescriptor{} = heartbeat} =
+             Jido.BoundaryBridge.heartbeat(
+               descriptor,
+               adapter: TestAdapter,
+               adapter_opts: [store: store],
+               runtime_owner: "asm",
+               runtime_ref: "asm-runtime-bnd-heartbeat-ready"
+             )
+
+    assert heartbeat.status == :ready
+    assert heartbeat.attach_ready? == true
+  end
+
   test "project_attach_metadata returns nil for kernel-neutral descriptors" do
     descriptor =
       BoundarySessionDescriptor.new!(%{
@@ -163,7 +199,7 @@ defmodule Jido.BoundaryBridgeTest do
         },
         attach: %{mode: :not_applicable, execution_surface: nil, working_directory: "/workspace"},
         checkpointing: %{supported?: false, last_checkpoint_id: nil},
-        policy_intent_echo: %{sandbox_level: :standard},
+        policy_intent_echo: policy_projection(:standard),
         refs: %{correlation_id: "corr-sidecar", request_id: "req-sidecar"},
         extensions: %{},
         metadata: %{}
@@ -235,13 +271,7 @@ defmodule Jido.BoundaryBridgeTest do
         working_directory: "/workspace"
       },
       checkpointing: %{supported?: true, last_checkpoint_id: nil},
-      policy_intent_echo: %{
-        sandbox_level: :strict,
-        egress: :restricted,
-        approvals: :manual,
-        allowed_tools: ["git"],
-        file_scope: "/workspace"
-      },
+      policy_intent_echo: policy_projection(:strict, :restricted, :manual, ["git"], "/workspace"),
       refs: %{
         target_id: "target-#{boundary_session_id}",
         lease_ref: "lease-#{boundary_session_id}",
@@ -259,7 +289,12 @@ defmodule Jido.BoundaryBridgeTest do
     {:ok, surface} =
       CliSubprocessCore.ExecutionSurface.new(
         surface_kind: :guest_bridge,
-        transport_options: [endpoint: %{kind: :unix_socket, path: "/tmp/#{target_id}.sock"}],
+        transport_options: [
+          endpoint: %{kind: :unix_socket, path: "/tmp/#{target_id}.sock"},
+          bridge_ref: "bridge-#{target_id}",
+          bridge_profile: "core_cli_transport",
+          supported_protocol_versions: [1]
+        ],
         target_id: target_id,
         lease_ref: "lease-#{target_id}",
         surface_ref: "surface-#{target_id}",
@@ -269,4 +304,23 @@ defmodule Jido.BoundaryBridgeTest do
 
     surface
   end
+
+  defp policy_projection(
+         level,
+         egress \\ nil,
+         approvals \\ nil,
+         allowed_tools \\ [],
+         file_scope \\ nil
+       ) do
+    %{}
+    |> maybe_put(:sandbox_level, level)
+    |> maybe_put(:egress, egress)
+    |> maybe_put(:approvals, approvals)
+    |> maybe_put(:allowed_tools, allowed_tools)
+    |> maybe_put(:file_scope, file_scope)
+  end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, _key, []), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 end

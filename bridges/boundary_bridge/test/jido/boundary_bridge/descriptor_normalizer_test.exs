@@ -86,7 +86,7 @@ defmodule Jido.BoundaryBridge.DescriptorNormalizerTest do
           working_directory: "/workspace"
         },
         checkpointing: %{supported?: true, last_checkpoint_id: "chk-2"},
-        policy_intent_echo: %{sandbox_level: :strict, approvals: :manual},
+        policy_intent_echo: policy_projection(:strict, :manual),
         refs: %{correlation_id: "corr-struct-shaped-1", request_id: "req-struct-shaped-1"},
         extensions: %{},
         metadata: %{source: "struct-shaped"}
@@ -114,5 +114,9 @@ defmodule Jido.BoundaryBridge.DescriptorNormalizerTest do
       )
 
     surface
+  end
+
+  defp policy_projection(level, approvals) do
+    %{sandbox_level: level, approvals: approvals}
   end
 end

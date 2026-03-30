@@ -35,6 +35,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.MixProject do
     [
       DependencyResolver.jido_harness(override: true),
       DependencyResolver.agent_session_manager(env: :dev),
+      DependencyResolver.jido_integration_v2_boundary_bridge(),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

@@ -32,6 +32,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.Normalizer do
         %{}
         |> maybe_put("correlation_id", event.correlation_id)
         |> maybe_put("causation_id", event.causation_id)
+        |> maybe_put("boundary", boundary_metadata(session))
     })
   end
 
@@ -42,6 +43,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.Normalizer do
       |> normalize()
       |> default_map()
       |> maybe_put("provider_session_id", result.session_id_from_cli)
+      |> maybe_put("boundary", boundary_metadata(session))
 
     ExecutionResult.new!(%{
       run_id: result.run_id,
@@ -144,4 +146,10 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.Normalizer do
 
   defp default_map(%{} = value), do: value
   defp default_map(_other), do: %{}
+
+  defp boundary_metadata(%SessionHandle{metadata: metadata}) when is_map(metadata) do
+    Map.get(metadata, "boundary") || Map.get(metadata, :boundary)
+  end
+
+  defp boundary_metadata(_session), do: nil
 end
