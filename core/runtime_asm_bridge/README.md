@@ -48,6 +48,10 @@ session reuse identity now widens with `surface_kind`, `lease_ref`, and
 Request `cwd` remains a generic launch option. The bridge does not project it
 into `execution_environment.workspace_root`.
 
+This means future core-owned surfaces continue to flow through the same bridge
+shape. `runtime_asm_bridge` authors placement and environment separately but
+does not branch on transport-family internals.
+
 ## Phase D SSH Proof
 
 The first alternate execution surface is now proven through this unchanged
