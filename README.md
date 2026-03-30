@@ -69,7 +69,17 @@ Key public capabilities today include:
 - invocation through `InvocationRequest.new!/1`, `invoke/1`, and `invoke/3`
 - review and targeting through `fetch_run/1`, `fetch_attempt/1`, `events/1`,
   `run_artifacts/1`, `fetch_artifact/1`, `announce_target/1`, `fetch_target/1`,
-  and `compatible_targets/1`
+  `compatible_targets/1`, and `review_packet/2`
+
+Phase 7 also lands the explicit cross-repo reference seam in
+`core/contracts`:
+
+- `SubjectRef` names the primary source subject for a higher-order record
+- `EvidenceRef` names exact source records plus the review-packet lineage they
+  were read through
+- `GovernanceRef` names approval, denial, override, rollback, or
+  policy-decision lineage without creating duplicate control-plane ownership or
+  a separate persisted review record family
 
 Hosted webhook routing and async replay are intentionally separate public
 package APIs:

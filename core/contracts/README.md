@@ -106,6 +106,8 @@ surfaces.
 - `TriggerRecord` preserves trigger-to-run causation plus rejection truth at
   the control-plane boundary
 - `TriggerCheckpoint` keeps polling cursors explicit and durable
+- `SubjectRef`, `EvidenceRef`, and `GovernanceRef` are the only intended
+  cross-repo reference seam for higher-order repos
 
 ## Public Object Notes
 
@@ -118,6 +120,17 @@ surfaces.
   rejects local file paths
 - keeps forward-compatible metadata without turning artifacts into inline blobs
   by default
+
+`SubjectRef`, `EvidenceRef`, and `GovernanceRef`
+
+- expose stable `jido://v2/...` reference URIs plus explicit constructors and
+  `dump/1` codecs
+- keep higher-order repos keyed to source truth instead of copied control-plane
+  state
+- keep review-packet lineage explicit through `EvidenceRef.packet_ref`
+- keep policy approval/denial lineage explicit through `GovernanceRef`
+- stay independent of `core/platform`, `core/control_plane`, and
+  `core/store_postgres` implementation details
 
 `TargetDescriptor`
 

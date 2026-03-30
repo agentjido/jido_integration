@@ -7,11 +7,14 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
+  alias Jido.Integration.V2.EvidenceRef
   alias Jido.Integration.V2.Gateway
+  alias Jido.Integration.V2.GovernanceRef
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.PolicyDecision
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.RuntimeResult
+  alias Jido.Integration.V2.SubjectRef
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
@@ -23,12 +26,15 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
     CredentialLease,
     CredentialRef,
     Event,
+    EvidenceRef,
     Gateway,
     Gateway.Policy,
+    GovernanceRef,
     InvocationRequest,
     PolicyDecision,
     Run,
     RuntimeResult,
+    SubjectRef,
     TargetDescriptor,
     TriggerCheckpoint,
     TriggerRecord
@@ -154,6 +160,16 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
     }
   end
 
+  defp valid_attrs(EvidenceRef) do
+    %{
+      kind: :event,
+      id: "event-1",
+      packet_ref: "jido://v2/review_packet/run/run-1?attempt_id=run-1%3A1",
+      subject: SubjectRef.new!(valid_attrs(SubjectRef)),
+      metadata: %{type: "attempt.started"}
+    }
+  end
+
   defp valid_attrs(Gateway) do
     %{
       actor_id: "actor-1",
@@ -165,6 +181,16 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
       allowed_operations: ["github.issue.fetch"],
       sandbox: %{level: :standard, egress: :restricted, approvals: :auto, allowed_tools: []},
       metadata: %{request_id: "req-1"}
+    }
+  end
+
+  defp valid_attrs(GovernanceRef) do
+    %{
+      kind: :policy_decision,
+      id: "event-1",
+      subject: SubjectRef.new!(valid_attrs(SubjectRef)),
+      evidence: [EvidenceRef.new!(valid_attrs(EvidenceRef))],
+      metadata: %{status: :denied}
     }
   end
 
@@ -239,6 +265,14 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
         }
       ],
       artifacts: [ArtifactRef.new!(valid_attrs(ArtifactRef))]
+    }
+  end
+
+  defp valid_attrs(SubjectRef) do
+    %{
+      kind: :run,
+      id: "run-1",
+      metadata: %{tenant_id: "tenant-1"}
     }
   end
 

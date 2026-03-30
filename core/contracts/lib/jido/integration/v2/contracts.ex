@@ -53,6 +53,30 @@ defmodule Jido.Integration.V2.Contracts do
     "#{prefix}-#{System.unique_integer([:positive, :monotonic])}"
   end
 
+  @spec reference_uri(String.t(), atom(), String.t()) :: String.t()
+  def reference_uri(namespace, kind, id)
+      when is_binary(namespace) and is_atom(kind) and is_binary(id) do
+    namespace = validate_non_empty_string!(namespace, "reference namespace")
+    id = validate_non_empty_string!(id, "reference id")
+
+    "jido://v2/#{namespace}/#{kind}/#{URI.encode_www_form(id)}"
+  end
+
+  @spec review_packet_ref(String.t(), String.t() | nil) :: String.t()
+  def review_packet_ref(run_id, attempt_id \\ nil) when is_binary(run_id) do
+    run_id = validate_non_empty_string!(run_id, "review_packet.run_id")
+    base = "jido://v2/review_packet/run/#{URI.encode_www_form(run_id)}"
+
+    case attempt_id do
+      nil ->
+        base
+
+      attempt_id ->
+        attempt_id = validate_non_empty_string!(attempt_id, "review_packet.attempt_id")
+        base <> "?attempt_id=" <> URI.encode_www_form(attempt_id)
+    end
+  end
+
   @spec attempt_id(String.t(), pos_integer()) :: String.t()
   def attempt_id(run_id, attempt)
       when is_binary(run_id) and is_integer(attempt) and attempt > 0 do

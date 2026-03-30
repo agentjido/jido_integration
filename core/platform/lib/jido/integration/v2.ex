@@ -277,6 +277,10 @@ defmodule Jido.Integration.V2 do
 
   @doc """
   Assemble a shared review packet from durable auth and control-plane truth.
+
+  The packet keeps its read-side metadata explicit through `SubjectRef`,
+  `EvidenceRef`, and `GovernanceRef`-shaped metadata entries while leaving the
+  underlying source facts where they already live.
   """
   @spec review_packet(String.t(), map()) ::
           {:ok, map()}

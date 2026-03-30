@@ -198,6 +198,14 @@ truth that already lives in `core/auth` and `core/control_plane`:
 - `review_packet/2` bundles one run's durable attempts, events, artifacts,
   trigger context, target context, connection/install context, and connector
   catalog context into one reusable operator packet
+- `review_packet/2` now keeps packet metadata explicit:
+  - `SubjectRef` names the primary run subject
+  - `EvidenceRef` entries point at durable run, attempt, event, artifact,
+    trigger, target, connection, and install truth
+  - `GovernanceRef` entries point at durable policy-lineage events when they
+    exist
+  - packet metadata stays a projection over source facts rather than becoming
+    a separate persisted review record family
 
 ## Async And Webhook Boundary
 
