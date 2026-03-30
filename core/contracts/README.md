@@ -31,6 +31,7 @@ surfaces.
 - `GeneratedAction`
 - `GeneratedSensor`
 - `GeneratedPlugin`
+- `ReviewProjection`
 
 ## Core Guarantees
 
@@ -113,6 +114,8 @@ surfaces.
 - `TriggerCheckpoint` keeps polling cursors explicit and durable
 - `SubjectRef`, `EvidenceRef`, and `GovernanceRef` are the only intended
   cross-repo reference seam for higher-order repos
+- `ReviewProjection` is the contracts-only `review_packet/2` metadata shape
+  meant for northbound consumers such as `jido_composer`
 
 ## Public Object Notes
 
@@ -136,6 +139,14 @@ surfaces.
 - keep policy approval/denial lineage explicit through `GovernanceRef`
 - stay independent of `core/platform`, `core/control_plane`, and
   `core/store_postgres` implementation details
+
+`ReviewProjection`
+
+- packages the dumped `review_packet/2` metadata into a contracts-only object
+- lets northbound consumers parse `packet.metadata` without taking a
+  dependency on `core/platform`
+- keeps the review packet a projection over durable source truth instead of a
+  second persisted ledger
 
 `TargetDescriptor`
 

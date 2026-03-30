@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2ReviewPacketRefsTest do
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures, as: GitHubFixtures
+  alias Jido.Integration.V2.ReviewProjection
 
   @github %{
     connector: GitHub,
@@ -114,6 +115,7 @@ defmodule Jido.Integration.V2ReviewPacketRefsTest do
            end)
 
     assert packet.metadata.governance_refs == []
+    assert ReviewProjection.dump(ReviewProjection.new!(packet.metadata)) == packet.metadata
     assert Jason.encode!(packet.metadata)
   end
 

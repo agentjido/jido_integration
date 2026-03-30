@@ -80,6 +80,9 @@ Phase 7 also lands the explicit cross-repo reference seam in
 - `GovernanceRef` names approval, denial, override, rollback, or
   policy-decision lineage without creating duplicate control-plane ownership or
   a separate persisted review record family
+- `ReviewProjection` is the contracts-only `packet.metadata` shape for
+  northbound consumers that need review packet lineage without depending on
+  `core/platform`
 
 Hosted webhook routing and async replay are intentionally separate public
 package APIs:

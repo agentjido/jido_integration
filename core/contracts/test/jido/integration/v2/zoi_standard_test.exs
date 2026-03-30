@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
   alias Jido.Integration.V2.GovernanceRef
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.PolicyDecision
+  alias Jido.Integration.V2.ReviewProjection
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.RuntimeResult
   alias Jido.Integration.V2.SubjectRef
@@ -32,6 +33,7 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
     GovernanceRef,
     InvocationRequest,
     PolicyDecision,
+    ReviewProjection,
     Run,
     RuntimeResult,
     SubjectRef,
@@ -226,6 +228,23 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
       aggregator_id: "control_plane",
       aggregator_epoch: 1,
       extensions: [request_label: "ticket-fetch"]
+    }
+  end
+
+  defp valid_attrs(ReviewProjection) do
+    %{
+      schema_version: "jido.integration.v2",
+      projection: "operator.review_packet",
+      packet_ref: "jido://v2/review_packet/run/run-1?attempt_id=run-1%3A1",
+      subject: SubjectRef.new!(valid_attrs(SubjectRef)),
+      selected_attempt:
+        SubjectRef.new!(%{
+          kind: :attempt,
+          id: "run-1:1",
+          metadata: %{attempt: 1, run_id: "run-1"}
+        }),
+      evidence_refs: [EvidenceRef.new!(valid_attrs(EvidenceRef))],
+      governance_refs: [GovernanceRef.new!(valid_attrs(GovernanceRef))]
     }
   end
 

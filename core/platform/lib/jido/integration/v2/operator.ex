@@ -15,6 +15,7 @@ defmodule Jido.Integration.V2.Operator do
   alias Jido.Integration.V2.GovernanceRef
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.ProjectedCatalog
+  alias Jido.Integration.V2.ReviewProjection
   alias Jido.Integration.V2.SubjectRef
   alias Jido.Integration.V2.TargetDescriptor
 
@@ -74,15 +75,7 @@ defmodule Jido.Integration.V2.Operator do
         }
 
   @type review_packet :: %{
-          metadata: %{
-            schema_version: String.t(),
-            projection: String.t(),
-            packet_ref: String.t(),
-            subject: map(),
-            selected_attempt: map() | nil,
-            evidence_refs: [map()],
-            governance_refs: [map()]
-          },
+          metadata: ReviewProjection.dump_t(),
           run: Jido.Integration.V2.Run.t(),
           attempt: Jido.Integration.V2.Attempt.t() | nil,
           attempts: [Jido.Integration.V2.Attempt.t()],
@@ -329,15 +322,16 @@ defmodule Jido.Integration.V2.Operator do
       ]
       |> List.flatten()
 
-    %{
+    ReviewProjection.new!(%{
       schema_version: Contracts.schema_version(),
       projection: "operator.review_packet",
       packet_ref: packet_ref,
-      subject: SubjectRef.dump(subject_ref),
-      selected_attempt: maybe_dump_selected_attempt(attempt),
-      evidence_refs: Enum.map(evidence_refs, &EvidenceRef.dump/1),
+      subject: subject_ref,
+      selected_attempt: selected_attempt_subject_ref(attempt),
+      evidence_refs: evidence_refs,
       governance_refs: build_governance_refs(run, events, subject_ref, evidence_refs)
-    }
+    })
+    |> ReviewProjection.dump()
   end
 
   defp build_attempt_evidence_refs(attempts, packet_ref, subject_ref) do
@@ -408,13 +402,7 @@ defmodule Jido.Integration.V2.Operator do
     })
   end
 
-  defp maybe_dump_selected_attempt(nil), do: nil
-
-  defp maybe_dump_selected_attempt(attempt) do
-    attempt
-    |> selected_attempt_subject_ref()
-    |> SubjectRef.dump()
-  end
+  defp selected_attempt_subject_ref(nil), do: nil
 
   defp selected_attempt_subject_ref(attempt) do
     SubjectRef.new!(%{
@@ -439,7 +427,6 @@ defmodule Jido.Integration.V2.Operator do
         evidence: Enum.reject([run_evidence, audit_evidence], &is_nil/1),
         metadata: %{status: governance_status(run.status), event_type: event.type}
       })
-      |> GovernanceRef.dump()
     end)
   end
 
