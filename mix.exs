@@ -191,7 +191,7 @@ defmodule Jido.Integration.Workspace.MixProject do
   defp blitz_workspace do
     [
       root: __DIR__,
-      projects: [".", "core/*", "connectors/*", "apps/*"],
+      projects: [".", "core/*", "bridges/*", "connectors/*", "apps/*"],
       isolation: [
         deps_path: true,
         build_path: true,

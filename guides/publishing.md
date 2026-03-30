@@ -14,6 +14,7 @@ session and stream runtime slice for now:
 - `core/harness_runtime`
 - `core/runtime_asm_bridge`
 - `core/session_runtime`
+- `bridges/boundary_bridge`
 - `connectors/codex_cli`
 - `connectors/market_data`
 

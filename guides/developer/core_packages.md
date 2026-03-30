@@ -7,6 +7,9 @@ This is the internal map for contributors. If you are deciding where code
 belongs, start here before touching the root workspace or widening an existing
 package.
 
+Non-core bridge packages live under `bridges/`. The current dedicated bridge
+package is `bridges/boundary_bridge`.
+
 ## Package Map
 
 | Package | Owns | Key Use |

@@ -4,10 +4,11 @@ Jido Integration is an Elixir integration platform for publishing connector
 capabilities, managing auth lifecycle, invoking work across direct and
 Harness-backed runtimes, and reviewing durable execution state.
 
-This repository includes the public platform facade, connector packages,
-durability tiers, and app-level proofs for hosted webhook and async flows. If
-you are evaluating or using the platform, start here. If you are changing the
-internals of the monorepo itself, use the developer guides linked below.
+This repository includes the public platform facade, bridge packages,
+connector packages, durability tiers, and app-level proofs for hosted webhook
+and async flows. If you are evaluating or using the platform, start here. If
+you are changing the internals of the monorepo itself, use the developer
+guides linked below.
 
 Connector packages that depend on external SDK or runtime repos should prefer
 sibling-relative paths during active local development and fall back to pinned
@@ -133,8 +134,9 @@ bundle in the archive tree so the exact released artifact remains inspectable.
 
 The first published welded artifact intentionally ships the direct-runtime,
 webhook, async, durability, auth, and public-facade surface. The Harness-backed
-session and stream packages stay source-repo packages until their external
-runtime dependencies become independently publishable.
+session and stream packages, plus lower-boundary bridge packages, stay
+source-repo packages until their external runtime dependencies become
+independently publishable.
 
 ## Repository Layout
 
@@ -166,6 +168,8 @@ jido_integration/
     conformance/             # reusable connector conformance engine
     store_local/             # restart-safe local durability tier
     store_postgres/          # database-backed durable tier
+  bridges/
+    boundary_bridge/         # lower-boundary sandbox bridge package
   connectors/
     github/                  # direct GitHub connector + live acceptance runbook
     notion/                  # direct Notion connector + package-local live proofs
@@ -211,6 +215,7 @@ Primary package and app runbooks:
 - `core/store_local/README.md`
 - `core/dispatch_runtime/README.md`
 - `core/webhook_router/README.md`
+- `bridges/boundary_bridge/README.md`
 - `connectors/github/README.md`
 - `connectors/github/docs/live_acceptance.md`
 - `connectors/notion/README.md`

@@ -40,6 +40,12 @@ Core runtime graph:
 - `core/ingress`
   - request normalization and durable trigger admission
 
+Bridge packages:
+
+- `bridges/boundary_bridge`
+  - lower-boundary sandbox bridge package below authored runtime intent and
+    above external sandbox kernels such as `jido_os`
+
 Durability tiers:
 
 - in-memory defaults in `core/auth` and `core/control_plane`
@@ -79,6 +85,8 @@ runtime lane:
 - `core/runtime_asm_bridge` is the integration-owned projection for the `asm`
   driver; it adapts the Harness seam to
   `/home/home/p/g/n/agent_session_manager`
+- `bridges/boundary_bridge` is the lower-boundary package reserved for sandbox
+  bridge code that does not belong in `core/` and is not an app-level proof
 - `core/session_runtime` is the integration-owned home for `jido_session` via
   `Jido.Session.HarnessDriver`; `jido_integration` still consumes it through
   authored `runtime.driver` metadata rather than a local compatibility shim

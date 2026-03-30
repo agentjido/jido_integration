@@ -152,7 +152,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     end
   end
 
-  test "Phase 6A bridge packages are absent from the workspace package graph" do
+  test "legacy Phase 6A bridge packages are absent from the workspace package graph" do
     for relative_path <- ["core/session_kernel", "core/stream_runtime"] do
       refute File.exists?(Path.join(repo_root(), relative_path)),
              "#{relative_path} must be deleted from the workspace"
@@ -216,7 +216,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
   defp child_package_roots do
     repo_root()
-    |> Path.join("{core,connectors,apps}/*/mix.exs")
+    |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.map(&Path.dirname/1)
     |> Enum.sort()
@@ -224,7 +224,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
   defp child_package_mix_paths do
     repo_root()
-    |> Path.join("{core,connectors,apps}/*/mix.exs")
+    |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.sort()
   end

@@ -49,6 +49,9 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_webhook_router(opts \\ []),
     do: resolve_internal(:jido_integration_v2_webhook_router, "core/webhook_router", opts)
 
+  def jido_integration_v2_boundary_bridge(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_boundary_bridge, "bridges/boundary_bridge", opts)
+
   def jido_session(opts \\ []),
     do: resolve_internal(:jido_session, "core/session_runtime", opts)
 

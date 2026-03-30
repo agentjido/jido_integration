@@ -1,8 +1,8 @@
 # Architecture
 
 Jido Integration is organized as a set of explicit packages with one public
-facade, several runtime and durability layers, isolated connector packages,
-and top-level proof apps.
+facade, several runtime and durability layers, dedicated bridge packages,
+isolated connector packages, and top-level proof apps.
 
 If you are consuming the platform, the main idea is simple:
 
@@ -31,6 +31,8 @@ runtime behavior lives.
 - `core/runtime_asm_bridge` projects the authored `asm` driver into Harness.
 - `core/session_runtime` owns the integration-managed `jido_session` driver
   implementation consumed by the harness adapter.
+- `bridges/boundary_bridge` owns lower-boundary sandbox bridge code that does
+  not belong in `core/` and is not an `apps/` proof surface.
 - `core/dispatch_runtime` handles async transport, retry, replay, and recovery.
 - `core/ingress` normalizes triggers and admits them into the control plane.
 - `core/webhook_router` owns hosted route registration and route resolution.
