@@ -396,6 +396,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       {"JIDO_OS_PATH", Path.expand("../jido_os", repo_root)},
       {"JIDO_SHELL_PATH", Path.expand("../jido_shell", repo_root)},
       {"JIDO_VFS_PATH", Path.expand("../jido_vfs", repo_root)},
+      {"REQ_LLM_PATH", "disabled"},
       {"AGENT_SESSION_MANAGER_PATH", Path.expand("../agent_session_manager", repo_root)},
       {"CLI_SUBPROCESS_CORE_PATH", Path.expand("../cli_subprocess_core", repo_root)},
       {"WELD_PATH", Path.expand("../weld", repo_root)}

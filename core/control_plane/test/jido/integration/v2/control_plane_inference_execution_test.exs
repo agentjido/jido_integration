@@ -106,6 +106,119 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     end
   end
 
+  defmodule OllamaReqHTTP do
+  end
+
+  defmodule FakeOllamaAttachFixture do
+    defstruct [:pid, :root_url, :model_identity]
+
+    @type t :: %__MODULE__{
+            pid: pid(),
+            root_url: String.t(),
+            model_identity: String.t()
+          }
+
+    @spec start!(keyword()) :: t()
+    def start!(opts \\ []) do
+      model_identity = Keyword.get(opts, :model_identity, "llama3.2")
+
+      {:ok, pid} =
+        Agent.start_link(fn ->
+          %{
+            installed_models: Keyword.get(opts, :installed_models, [model_identity]),
+            running_models: Keyword.get(opts, :running_models, [model_identity]),
+            version: Keyword.get(opts, :version, "0.6.5"),
+            response_text:
+              Keyword.get(
+                opts,
+                :response_text,
+                "Ollama attach proof is alive through req_llm."
+              )
+          }
+        end)
+
+      %__MODULE__{
+        pid: pid,
+        root_url:
+          "http://ollama.control-plane.test/#{System.unique_integer([:positive, :monotonic])}",
+        model_identity: model_identity
+      }
+    end
+
+    @spec stop(t()) :: :ok
+    def stop(%__MODULE__{} = fixture) do
+      if Process.alive?(fixture.pid) do
+        Agent.stop(fixture.pid, :normal)
+      end
+
+      :ok
+    catch
+      :exit, _reason -> :ok
+    end
+
+    @spec ollama_http(t()) ::
+            (atom(), String.t(), map() | nil, keyword() ->
+               {:ok, pos_integer(), map()} | {:error, term()})
+    def ollama_http(%__MODULE__{} = fixture) do
+      fn method, path, payload, _opts ->
+        handle_ollama_http(fixture, method, path, payload)
+      end
+    end
+
+    @spec req_http_options(t()) :: keyword()
+    def req_http_options(%__MODULE__{} = fixture) do
+      Req.Test.stub(OllamaReqHTTP, fn conn ->
+        Req.Test.json(conn, chat_completion_payload(fixture))
+      end)
+
+      [plug: {Req.Test, OllamaReqHTTP}]
+    end
+
+    defp handle_ollama_http(%__MODULE__{pid: pid}, :get, "/api/version", _payload) do
+      {:ok, 200, %{"version" => Agent.get(pid, & &1.version)}}
+    end
+
+    defp handle_ollama_http(%__MODULE__{pid: pid}, :get, "/api/ps", _payload) do
+      running_models = Agent.get(pid, & &1.running_models)
+      {:ok, 200, %{"models" => Enum.map(running_models, &%{"name" => &1})}}
+    end
+
+    defp handle_ollama_http(%__MODULE__{pid: pid}, :post, "/api/show", %{"model" => model}) do
+      installed_models = Agent.get(pid, & &1.installed_models)
+
+      if model in installed_models do
+        {:ok, 200, %{"model" => model, "details" => %{"family" => "llama"}}}
+      else
+        {:ok, 404, %{"error" => "model not found"}}
+      end
+    end
+
+    defp handle_ollama_http(_fixture, method, path, _payload) do
+      {:error, {:unexpected_request, method, path}}
+    end
+
+    defp chat_completion_payload(%__MODULE__{pid: pid, model_identity: model_identity}) do
+      %{
+        "id" => "cmpl_inference_ollama_attach_123",
+        "model" => model_identity,
+        "choices" => [
+          %{
+            "finish_reason" => "stop",
+            "message" => %{
+              "role" => "assistant",
+              "content" => Agent.get(pid, & &1.response_text)
+            }
+          }
+        ],
+        "usage" => %{
+          "prompt_tokens" => 11,
+          "completion_tokens" => 9,
+          "total_tokens" => 20
+        }
+      }
+    end
+  end
+
   defmodule FakeCloudServerFixture do
     defstruct [:listener, :port, :response_body, :server_task]
 
@@ -306,11 +419,13 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     Application.ensure_all_started(:ssl)
     ControlPlane.reset!()
     _ = LlamaCppEx.unregister_backend()
+    _ = SelfHostedInferenceCore.Ollama.unregister_backend()
     original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
 
     on_exit(fn ->
       _ = SelfHostedInferenceCore.stop_all_instances()
       _ = LlamaCppEx.unregister_backend()
+      _ = SelfHostedInferenceCore.Ollama.unregister_backend()
 
       if is_nil(original_asm_endpoint) do
         Application.delete_env(:agent_session_manager, ASM.InferenceEndpoint)
@@ -580,6 +695,79 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     assert attempt.output["endpoint_descriptor"]["provider_identity"] == "llama_cpp"
     assert attempt.output["compatibility_result"]["metadata"]["route"] == "self_hosted"
     assert attempt.output["lease_ref"]["lease_ref"] == result.lease_ref.lease_ref
+  end
+
+  test "invoke_inference/2 records durable attached-local truth through an ollama endpoint" do
+    fixture =
+      FakeOllamaAttachFixture.start!(
+        model_identity: "llama3.2",
+        response_text: "Ollama attach proof is alive through req_llm."
+      )
+
+    on_exit(fn ->
+      FakeOllamaAttachFixture.stop(fixture)
+    end)
+
+    assert :ok = SelfHostedInferenceCore.Ollama.register_backend()
+
+    request =
+      InferenceRequest.new!(%{
+        request_id: "req-live-ollama-attach-1",
+        operation: :generate_text,
+        messages: [%{role: "user", content: "Summarize the attached local proof"}],
+        prompt: nil,
+        model_preference: %{provider: "openai", id: fixture.model_identity},
+        target_preference: %{
+          target_class: "self_hosted_endpoint",
+          backend: "ollama",
+          backend_options: %{
+            root_url: fixture.root_url,
+            ollama_http: FakeOllamaAttachFixture.ollama_http(fixture)
+          }
+        },
+        stream?: false,
+        tool_policy: %{},
+        output_constraints: %{temperature: 0.1},
+        metadata: %{tenant_id: "tenant-live-ollama-attach-1"}
+      })
+
+    assert {:ok, result} =
+             ControlPlane.invoke_inference(
+               request,
+               run_id: "run-live-ollama-attach-1",
+               decision_ref: "decision-live-ollama-attach-1",
+               trace_id: "trace-live-ollama-attach-1",
+               ttl_ms: 5_000,
+               req_http_options: FakeOllamaAttachFixture.req_http_options(fixture)
+             )
+
+    assert result.response_text == "Ollama attach proof is alive through req_llm."
+    assert result.inference_result.status == :ok
+    assert result.inference_result.streaming? == false
+    assert result.compatibility_result.metadata.route == :self_hosted
+    assert result.compatibility_result.resolved_management_mode == :externally_managed
+    assert result.endpoint_descriptor.target_class == :self_hosted_endpoint
+    assert result.endpoint_descriptor.management_mode == :externally_managed
+    assert result.endpoint_descriptor.provider_identity == :ollama
+    assert result.endpoint_descriptor.base_url == fixture.root_url <> "/v1"
+    assert result.backend_manifest.backend == :ollama
+    assert result.lease_ref.lease_ref == result.endpoint_descriptor.lease_ref
+
+    assert Enum.map(ControlPlane.events(result.run.run_id), & &1.type) == [
+             "inference.request_admitted",
+             "inference.attempt_started",
+             "inference.compatibility_evaluated",
+             "inference.target_resolved",
+             "inference.attempt_completed"
+           ]
+
+    assert {:ok, attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
+    assert attempt.output["endpoint_descriptor"]["provider_identity"] == "ollama"
+    assert attempt.output["endpoint_descriptor"]["management_mode"] == "externally_managed"
+    assert attempt.output["backend_manifest"]["backend"] == "ollama"
+
+    assert attempt.output["compatibility_result"]["resolved_management_mode"] ==
+             "externally_managed"
   end
 
   defp configure_asm_endpoint(text) do

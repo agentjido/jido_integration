@@ -124,7 +124,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
     resolve_external(
       :req_llm,
       local_root_path("REQ_LLM_PATH", "../req_llm"),
-      [github: "agentjido/req_llm", branch: "main"],
+      [hex: :req_llm, requirement: "~> 1.9"],
       opts
     )
   end
@@ -197,10 +197,20 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   defp local_root_path(env_var, default_relative_path) do
-    env_var
-    |> System.get_env(default_relative_path)
-    |> Path.expand(@repo_root)
-    |> existing_path()
+    case System.get_env(env_var) do
+      nil ->
+        default_relative_path
+        |> Path.expand(@repo_root)
+        |> existing_path()
+
+      value when value in ["", "0", "false", "disabled"] ->
+        nil
+
+      value ->
+        value
+        |> Path.expand(@repo_root)
+        |> existing_path()
+    end
   end
 
   defp env_root_path(env_var) do

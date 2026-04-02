@@ -6,10 +6,21 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
 
   alias Jido.Integration.V2
   alias Jido.Integration.V2.InferenceRequest
+  alias SelfHostedInferenceCore.Ollama.AttachSpec
 
   @spec register_self_hosted_backend() :: :ok | {:error, term()}
   def register_self_hosted_backend do
     case LlamaCppEx.register_backend() do
+      :ok -> :ok
+      {:error, :already_registered} -> :ok
+      {:error, {:already_registered, _module}} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @spec register_ollama_backend() :: :ok | {:error, term()}
+  def register_ollama_backend do
+    case SelfHostedInferenceCore.Ollama.register_backend() do
       :ok -> :ok
       {:error, :already_registered} -> :ok
       {:error, {:already_registered, _module}} -> :ok
@@ -33,6 +44,14 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
   def run_self_hosted_proof(opts \\ []) do
     with :ok <- register_self_hosted_backend() do
       request = Keyword.get_lazy(opts, :request, fn -> self_hosted_request(opts) end)
+      V2.invoke_inference(request, runtime_opts(opts))
+    end
+  end
+
+  @spec run_ollama_attach_proof(keyword()) :: {:ok, map()} | {:error, term()}
+  def run_ollama_attach_proof(opts \\ []) do
+    with :ok <- register_ollama_backend() do
+      request = Keyword.get_lazy(opts, :request, fn -> ollama_attach_request(opts) end)
       V2.invoke_inference(request, runtime_opts(opts))
     end
   end
@@ -94,6 +113,44 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
     })
   end
 
+  defp ollama_attach_request(opts) do
+    backend_options =
+      %{
+        root_url:
+          Keyword.get(
+            opts,
+            :root_url,
+            AttachSpec.default_root_url()
+          )
+      }
+      |> maybe_put(:ollama_http, Keyword.get(opts, :ollama_http))
+
+    InferenceRequest.new!(%{
+      request_id: Keyword.get(opts, :request_id, "req-inference-ops-ollama-attach"),
+      operation: Keyword.get(opts, :operation, :generate_text),
+      messages: [
+        %{
+          role: "user",
+          content: Keyword.get(opts, :message, "Summarize the attached local proof flow")
+        }
+      ],
+      prompt: nil,
+      model_preference: %{
+        provider: Keyword.get(opts, :provider, "openai"),
+        id: Keyword.get(opts, :model_id, "llama3.2")
+      },
+      target_preference: %{
+        target_class: "self_hosted_endpoint",
+        backend: "ollama",
+        backend_options: backend_options
+      },
+      stream?: Keyword.get(opts, :stream?, false),
+      tool_policy: %{},
+      output_constraints: %{},
+      metadata: %{tenant_id: Keyword.get(opts, :tenant_id, "tenant-inference-ops-ollama-attach")}
+    })
+  end
+
   defp cli_request(opts) do
     InferenceRequest.new!(%{
       request_id: Keyword.get(opts, :request_id, "req-inference-ops-cli"),
@@ -125,13 +182,18 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
         :boot_spec,
         :message,
         :model_id,
+        :ollama_http,
         :operation,
         :provider,
         :request,
         :request_id,
+        :root_url,
         :stream?,
         :tenant_id
       ]
     )
   end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 end

@@ -96,6 +96,11 @@ It:
 - executes those self-hosted OpenAI-compatible endpoints through `req_llm`
 - persists the resulting durable inference attempt truth
 
+The self-hosted route now proves both runtime ownership shapes:
+
+- spawned `llama_cpp_ex`
+- attached-local `ollama`
+
 The durable record includes:
 
 - the admitted request identity

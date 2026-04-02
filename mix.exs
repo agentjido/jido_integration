@@ -32,6 +32,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       {:blitz, "~> 0.1.0", runtime: false},
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.req_llm(override: true, runtime: false),
       DependencyResolver.weld(runtime: false),
       {:jason, "~> 1.4", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

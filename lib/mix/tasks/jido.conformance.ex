@@ -272,7 +272,14 @@ defmodule Mix.Tasks.Jido.Conformance do
 
   defp stale_dependency_output?(output) when is_binary(output) do
     String.contains?(output, "Unchecked dependencies") and
-      String.contains?(output, "dependency does not match the requirement")
+      Enum.any?(
+        [
+          "dependency does not match the requirement",
+          "the dependency is not locked",
+          "different specs were given for the"
+        ],
+        &String.contains?(output, &1)
+      )
   end
 
   @spec raise_compile_project_error!(String.t(), String.t(), integer()) :: no_return()

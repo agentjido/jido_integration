@@ -15,6 +15,9 @@ proof offline and deterministic.
   - publishes the endpoint through `ASM.InferenceEndpoint`
   - records the durable `:cli` route, backend manifest, and reviewable event
     sequence without depending on a real provider login
+  - the attached-local Ollama proof currently lives in
+    `apps/inference_ops/examples/ollama_attach_proof.exs` because it expects a
+    real external daemon
 
 ## Notes
 

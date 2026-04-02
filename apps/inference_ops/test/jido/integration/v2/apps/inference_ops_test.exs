@@ -1,11 +1,11 @@
 defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
   use ExUnit.Case, async: false
 
-  alias Jido.Integration.V2.Apps.InferenceOps
-  alias Jido.Integration.V2.ControlPlane
   alias ASM.ProviderBackend.{Event, Info}
   alias CliSubprocessCore.Event, as: CoreEvent
   alias CliSubprocessCore.Payload
+  alias Jido.Integration.V2.Apps.InferenceOps
+  alias Jido.Integration.V2.{ControlPlane, InferenceRequest}
   alias LlamaCppEx
 
   @socket_capable? (case :gen_tcp.listen(0, [
@@ -102,19 +102,17 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
     defp content_length(headers) do
       headers
       |> String.split("\r\n", trim: true)
-      |> Enum.find_value(0, fn line ->
-        case String.split(line, ":", parts: 2) do
-          [name, value] ->
-            if String.downcase(name) == "content-length" do
-              value |> String.trim() |> String.to_integer()
-            else
-              false
-            end
+      |> Enum.find_value(0, &parse_content_length/1)
+    end
 
-          _other ->
-            false
-        end
-      end)
+    defp parse_content_length(line) do
+      case String.split(line, ":", parts: 2) do
+        [name, value] when name |> String.downcase() == "content-length" ->
+          value |> String.trim() |> String.to_integer()
+
+        _other ->
+          false
+      end
     end
 
     defp http_response(response_body) do
@@ -299,16 +297,131 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
     end
   end
 
+  defmodule OllamaReqHTTP do
+  end
+
+  defmodule FakeOllamaAttachFixture do
+    defstruct [:pid, :root_url, :model_identity]
+
+    @type t :: %__MODULE__{
+            pid: pid(),
+            root_url: String.t(),
+            model_identity: String.t()
+          }
+
+    @spec start!(keyword()) :: t()
+    def start!(opts \\ []) do
+      model_identity = Keyword.get(opts, :model_identity, "llama3.2")
+
+      {:ok, pid} =
+        Agent.start_link(fn ->
+          %{
+            installed_models: Keyword.get(opts, :installed_models, [model_identity]),
+            running_models: Keyword.get(opts, :running_models, [model_identity]),
+            version: Keyword.get(opts, :version, "0.6.5"),
+            response_text:
+              Keyword.get(
+                opts,
+                :response_text,
+                "Inference ops Ollama attach proof is alive."
+              )
+          }
+        end)
+
+      %__MODULE__{
+        pid: pid,
+        root_url:
+          "http://ollama.inference-ops.test/#{System.unique_integer([:positive, :monotonic])}",
+        model_identity: model_identity
+      }
+    end
+
+    @spec stop(t()) :: :ok
+    def stop(%__MODULE__{} = fixture) do
+      if Process.alive?(fixture.pid) do
+        Agent.stop(fixture.pid, :normal)
+      end
+
+      :ok
+    catch
+      :exit, _reason -> :ok
+    end
+
+    @spec ollama_http(t()) ::
+            (atom(), String.t(), map() | nil, keyword() ->
+               {:ok, pos_integer(), map()} | {:error, term()})
+    def ollama_http(%__MODULE__{} = fixture) do
+      fn method, path, payload, _opts ->
+        handle_ollama_http(fixture, method, path, payload)
+      end
+    end
+
+    @spec req_http_options(t()) :: keyword()
+    def req_http_options(%__MODULE__{} = fixture) do
+      Req.Test.stub(OllamaReqHTTP, fn conn ->
+        Req.Test.json(conn, chat_completion_payload(fixture))
+      end)
+
+      [plug: {Req.Test, OllamaReqHTTP}]
+    end
+
+    defp handle_ollama_http(%__MODULE__{pid: pid}, :get, "/api/version", _payload) do
+      {:ok, 200, %{"version" => Agent.get(pid, & &1.version)}}
+    end
+
+    defp handle_ollama_http(%__MODULE__{pid: pid}, :get, "/api/ps", _payload) do
+      running_models = Agent.get(pid, & &1.running_models)
+      {:ok, 200, %{"models" => Enum.map(running_models, &%{"name" => &1})}}
+    end
+
+    defp handle_ollama_http(%__MODULE__{pid: pid}, :post, "/api/show", %{"model" => model}) do
+      installed_models = Agent.get(pid, & &1.installed_models)
+
+      if model in installed_models do
+        {:ok, 200, %{"model" => model, "details" => %{"family" => "llama"}}}
+      else
+        {:ok, 404, %{"error" => "model not found"}}
+      end
+    end
+
+    defp handle_ollama_http(_fixture, method, path, _payload) do
+      {:error, {:unexpected_request, method, path}}
+    end
+
+    defp chat_completion_payload(%__MODULE__{pid: pid, model_identity: model_identity}) do
+      %{
+        "id" => "cmpl_inference_ops_ollama_attach_123",
+        "model" => model_identity,
+        "choices" => [
+          %{
+            "finish_reason" => "stop",
+            "message" => %{
+              "role" => "assistant",
+              "content" => Agent.get(pid, & &1.response_text)
+            }
+          }
+        ],
+        "usage" => %{
+          "prompt_tokens" => 10,
+          "completion_tokens" => 7,
+          "total_tokens" => 17
+        }
+      }
+    end
+  end
+
   setup do
     Application.ensure_all_started(:inets)
     Application.ensure_all_started(:ssl)
     ControlPlane.reset!()
     _ = LlamaCppEx.unregister_backend()
+    _ = SelfHostedInferenceCore.Ollama.unregister_backend()
     original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
 
     on_exit(fn ->
       _ = SelfHostedInferenceCore.stop_all_instances()
       _ = LlamaCppEx.unregister_backend()
+      _ = SelfHostedInferenceCore.Ollama.unregister_backend()
 
       if is_nil(original_asm_endpoint) do
         Application.delete_env(:agent_session_manager, ASM.InferenceEndpoint)
@@ -347,7 +460,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
     on_exit(fn -> FakeCloudServerFixture.cleanup(cloud_fixture) end)
 
     request =
-      Jido.Integration.V2.InferenceRequest.new!(%{
+      InferenceRequest.new!(%{
         request_id: "req-inference-ops-cloud",
         operation: :generate_text,
         messages: [%{role: "user", content: "Summarize the cloud proof flow"}],
@@ -482,6 +595,63 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
 
     assert packet.attempt.output["endpoint_descriptor"]["provider_identity"] == "llama_cpp"
     assert packet.attempt.output["lease_ref"]["lease_ref"] == result.lease_ref.lease_ref
+  end
+
+  test "runs the attached local ollama proof through the public inference facade and keeps it reviewable" do
+    fixture =
+      FakeOllamaAttachFixture.start!(
+        model_identity: "llama3.2",
+        response_text: "Inference ops Ollama attach proof is alive."
+      )
+
+    on_exit(fn ->
+      FakeOllamaAttachFixture.stop(fixture)
+    end)
+
+    assert {:ok, result} =
+             InferenceOps.run_ollama_attach_proof(
+               root_url: fixture.root_url,
+               model_id: fixture.model_identity,
+               ollama_http: FakeOllamaAttachFixture.ollama_http(fixture),
+               req_http_options: FakeOllamaAttachFixture.req_http_options(fixture),
+               run_id: "run-inference-ops-ollama-attach-1",
+               decision_ref: "decision-inference-ops-ollama-attach-1",
+               trace_id: "trace-inference-ops-ollama-attach-1",
+               ttl_ms: 5_000
+             )
+
+    assert result.inference_result.status == :ok
+    assert result.inference_result.streaming? == false
+    assert result.response_text == "Inference ops Ollama attach proof is alive."
+    assert result.compatibility_result.metadata.route == :self_hosted
+    assert result.compatibility_result.resolved_management_mode == :externally_managed
+    assert result.endpoint_descriptor.provider_identity == :ollama
+    assert result.endpoint_descriptor.management_mode == :externally_managed
+    assert result.backend_manifest.backend == :ollama
+
+    assert {:ok, packet} =
+             InferenceOps.review_packet(
+               result.run.run_id,
+               %{attempt_id: result.attempt.attempt_id}
+             )
+
+    assert Enum.map(packet.events, & &1.type) == [
+             "inference.request_admitted",
+             "inference.attempt_started",
+             "inference.compatibility_evaluated",
+             "inference.target_resolved",
+             "inference.attempt_completed"
+           ]
+
+    assert packet.attempt.output["endpoint_descriptor"]["provider_identity"] == "ollama"
+
+    assert packet.attempt.output["endpoint_descriptor"]["management_mode"] ==
+             "externally_managed"
+
+    assert packet.attempt.output["backend_manifest"]["backend"] == "ollama"
+
+    assert packet.attempt.output["compatibility_result"]["resolved_management_mode"] ==
+             "externally_managed"
   end
 
   defp configure_asm_endpoint(text) do

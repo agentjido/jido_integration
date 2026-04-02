@@ -133,6 +133,7 @@ Runtime families proved in-tree:
   - cloud provider execution through `req_llm`
   - CLI endpoint execution through `ASM.InferenceEndpoint` plus `req_llm`
   - self-hosted `llama_cpp_ex` endpoint execution through `req_llm`
+  - attached local `ollama` endpoint execution through `req_llm`
 
 Inference phase-1 proofs:
 
@@ -157,10 +158,12 @@ Reference apps:
   and restart recovery
   - keeps webhook behavior app-local instead of widening `connectors/github`
 - `apps/inference_ops`
-  - proves cloud and self-hosted inference execution through the public facade
+  - proves cloud, CLI endpoint, spawned self-hosted, and attached-local
+    inference execution through the public facade
   - keeps durable review truth in `core/control_plane`
   - keeps client execution in `req_llm` and self-hosted service ownership in
-    `self_hosted_inference_core` plus `llama_cpp_ex`
+    `self_hosted_inference_core`, the built-in `ollama` adapter, and
+    `llama_cpp_ex`
 
 The current surface also proves:
 

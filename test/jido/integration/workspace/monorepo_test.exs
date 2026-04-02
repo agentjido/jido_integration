@@ -26,6 +26,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "connectors/market_data",
              "connectors/notion",
              "apps/devops_incident_response",
+             "apps/inference_ops",
              "apps/trading_ops"
            ]
   end

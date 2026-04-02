@@ -3,11 +3,19 @@ defmodule Jido.Integration.Toolchain do
 
   @spec mix_executable() :: String.t()
   def mix_executable do
-    mix_beam_path()
-    |> mix_installation_executable()
-    |> case do
-      nil -> System.find_executable("mix") || "mix"
-      path -> path
+    configured_mix_executable() ||
+      mix_beam_path()
+      |> mix_installation_executable()
+      |> case do
+        nil -> System.find_executable("mix") || "mix"
+        path -> path
+      end
+  end
+
+  defp configured_mix_executable do
+    case System.get_env("JIDO_INTEGRATION_MIX_EXECUTABLE") do
+      value when is_binary(value) and value != "" -> Path.expand(value)
+      _other -> nil
     end
   end
 
