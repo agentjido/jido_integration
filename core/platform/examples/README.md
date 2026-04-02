@@ -1,18 +1,18 @@
 # Platform Examples
 
-These examples exercise the public inference review seam above the durable
-control plane.
+These examples exercise the public inference facade and review seam above the
+durable control plane.
 
 ## Files
 
 - `inference_review_packet.exs`
-  - records one inference attempt through the control plane
+  - invokes one cloud inference request through `Jido.Integration.V2.invoke_inference/2`
   - reads it back through `Jido.Integration.V2.review_packet/2`
   - shows the synthetic inference connector and capability summary
 
 ## Notes
 
-- the example depends only on the phase-0 durable baseline
+- the example keeps the cloud proof offline with `Req.Test`
 - the stored inference envelopes stay string-keyed and JSON-safe while the
   projected packet keeps typed runtime summary fields
-- no live runtime integrations are required
+- no live self-hosted runtime or `jido_os` integration is required

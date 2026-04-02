@@ -99,6 +99,6 @@ The `apps/devops_incident_response` proof is the honest reference for local
 restart-safe auth, control-plane truth, hosted routes, and async replay without
 Postgres.
 
-The phase-0 inference baseline stays package-local on purpose. It proves the
-durable run, attempt, event, and review shape before live runtime integrations
-are required.
+The inference surface now spans both package-local proofs and
+`apps/inference_ops`. Local durability still proves the durable run, attempt,
+event, and review shape without requiring Postgres.

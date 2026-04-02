@@ -10,7 +10,8 @@ Capability registry, run ledger, and execution admission for the platform.
 - trigger admission, dedupe, and checkpoint durability behaviours
 - artifact-ref durability behaviours
 - target-descriptor durability behaviours
-- phase-0 inference attempt durability through `record_inference_attempt/1`
+- live inference routing and execution through `invoke_inference/2`
+- durable inference attempt recording through `record_inference_attempt/1`
 - credential-ref resolution through `core/auth`
 - credential lease issuance through `core/auth`
 - admission policy evaluation through `core/policy`
@@ -76,12 +77,24 @@ Capability registry, run ledger, and execution admission for the platform.
 - `fetch_target/1`
 - `compatible_targets/1`
 - `execute_run/3`
+- `invoke_inference/2`
 - `record_inference_attempt/1`
 - `inference_capability_id/0`
 
-## Inference Baseline
+## Inference Runtime
 
-Phase 0 adds a durable inference recorder that persists:
+The control plane now owns the first end-to-end inference adapter.
+
+It:
+
+- builds `InferenceExecutionContext` and `ConsumerManifest`
+- derives a local `ReqLLMCallSpec`
+- executes cloud provider calls through `req_llm`
+- resolves self-hosted endpoints through `self_hosted_inference_core`
+- executes those self-hosted OpenAI-compatible endpoints through `req_llm`
+- persists the resulting durable inference attempt truth
+
+The durable record includes:
 
 - the admitted request identity
 - runtime classification and route truth
@@ -104,9 +117,9 @@ For streaming attempts, `stream_opened.checkpoint_policy` is copied from the
 admitted `InferenceExecutionContext.streaming_policy` and rejected if the
 runtime summary drifts from that admitted control-plane truth.
 
-This phase does not require live `jido_os`, live CLI runtime publication, or
-live self-hosted runtime publication. The control plane records the normalized
-durable summaries those future paths will emit.
+Live CLI runtime publication and live `jido_os` integration remain out of
+scope. The control plane records the normalized durable summaries those future
+paths should emit when they land.
 
 ## Related Guides
 

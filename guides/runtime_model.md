@@ -1,9 +1,7 @@
 # Runtime Model
 
-Jido Integration supports three execution runtime families today. Phase 0 also
-adds an inference durability baseline that reuses the existing run and attempt
-runtime classes while exposing inference-specific route metadata through review
-projection.
+Jido Integration now proves four execution runtime families: direct, session,
+stream, and inference.
 
 ## Direct Runtime
 
@@ -49,14 +47,17 @@ Hosted webhook registration and async replay are separate package surfaces.
 They live in `core/webhook_router` and `core/dispatch_runtime`, not in the
 facade package and not in the direct runtime path.
 
-## Inference Baseline
+## Inference Runtime
 
-The phase-0 inference work is a control-plane and review layer first.
+Inference is now a first-class runtime family on the public facade.
 
-- `core/contracts` defines inference request, context, endpoint, compatibility,
-  result, and lease shapes
+- cloud routes execute as `runtime_kind: :client` against provider-managed
+  endpoints
+- self-hosted routes execute as `runtime_kind: :service` after endpoint
+  resolution through `self_hosted_inference_core`
+- both routes execute the data-plane call through `req_llm`
 - `core/control_plane` records the durable inference event minimum
-- `core/platform` projects those records through `review_packet/2`
+- `core/platform` exposes both `invoke_inference/2` and `review_packet/2`
 
 For compatibility with the existing repo, `Run.runtime_class` and
 `Attempt.runtime_class` stay on `:direct | :session | :stream`.
@@ -73,3 +74,5 @@ If a capability can finish cleanly without preserving runtime state, keep it
 direct.
 If it needs session continuity, replay, or host-visible recovery, route it
 through Harness or the async packages explicitly.
+If it is an inference request, keep request execution in `req_llm` and keep
+runtime publication below the control plane.

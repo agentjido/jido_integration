@@ -1,155 +1,63 @@
-alias Jido.Integration.V2.BackendManifest
-alias Jido.Integration.V2.CompatibilityResult
-alias Jido.Integration.V2.ConsumerManifest
+Application.ensure_all_started(:inets)
+Application.ensure_all_started(:ssl)
+
 alias Jido.Integration.V2.ControlPlane
-alias Jido.Integration.V2.EndpointDescriptor
-alias Jido.Integration.V2.InferenceExecutionContext
-alias Jido.Integration.V2.InferenceRequest
-alias Jido.Integration.V2.InferenceResult
-alias Jido.Integration.V2.LeaseRef
+
+defmodule CloudHTTP do
+end
 
 {:ok, _} = Jido.Integration.V2.Auth.Application.start(:normal, [])
 {:ok, _} = Jido.Integration.V2.ControlPlane.Application.start(:normal, [])
 
 ControlPlane.reset!()
 
-spec = %{
-  request:
-    InferenceRequest.new!(%{
-      request_id: "req-example-self-hosted-1",
-      operation: :stream_text,
-      messages: [%{role: "user", content: "Stream the proof baseline"}],
-      prompt: nil,
-      model_preference: %{provider: "openai", id: "llama-3.2-3b-instruct"},
-      target_preference: %{target_class: "self_hosted_endpoint"},
-      stream?: true,
-      tool_policy: %{},
-      output_constraints: %{format: "text"},
-      metadata: %{tenant_id: "tenant-example-1"}
-    }),
-  context:
-    InferenceExecutionContext.new!(%{
-      run_id: "run-example-self-hosted-1",
-      attempt_id: "run-example-self-hosted-1:1",
-      authority_source: "jido_integration",
-      decision_ref: "decision-example-self-hosted-1",
-      authority_ref: nil,
-      boundary_ref: "boundary-example-1",
-      credential_scope: %{scopes: ["model:invoke"]},
-      network_policy: %{egress: "restricted"},
-      observability: %{trace_id: "trace-example-self-hosted-1"},
-      streaming_policy: %{checkpoint_policy: :summary},
-      replay: %{replayable?: true, recovery_class: "checkpoint_resume"},
-      metadata: %{phase: "phase_0"}
-    }),
-  consumer_manifest:
-    ConsumerManifest.new!(%{
-      consumer: "jido_integration_req_llm",
-      accepted_runtime_kinds: [:client, :task, :service],
-      accepted_management_modes: [
-        :provider_managed,
-        :jido_managed,
-        :externally_managed
-      ],
-      accepted_protocols: [:openai_chat_completions],
-      required_capabilities: %{streaming?: true},
-      optional_capabilities: %{tool_calling?: false},
-      constraints: %{checkpoint_policy: :summary},
-      metadata: %{phase: "phase_0"}
-    }),
-  backend_manifest:
-    BackendManifest.new!(%{
-      backend: "llama_cpp",
-      runtime_kind: :service,
-      management_modes: [:jido_managed, :externally_managed],
-      startup_kind: :spawned,
-      protocols: [:openai_chat_completions],
-      capabilities: %{streaming?: true, tool_calling?: false, embeddings?: "unknown"},
-      supported_surfaces: [:local_subprocess],
-      resource_profile: %{profile: "gpu_single_tenant"},
-      metadata: %{family: "llama_cpp"}
-    }),
-  endpoint_descriptor:
-    EndpointDescriptor.new!(%{
-      endpoint_id: "endpoint-example-1",
-      runtime_kind: :service,
-      management_mode: :jido_managed,
-      target_class: :self_hosted_endpoint,
-      protocol: :openai_chat_completions,
-      base_url: "http://127.0.0.1:8080/v1",
-      headers: %{"authorization" => "Bearer local"},
-      provider_identity: "llama_cpp",
-      model_identity: "llama-3.2-3b-instruct",
-      source_runtime: "llama_cpp_ex",
-      source_runtime_ref: "llama-runtime-example-1",
-      lease_ref: "lease-example-1",
-      health_ref: "health-example-1",
-      boundary_ref: "boundary-example-1",
-      capabilities: %{streaming?: true, tool_calling?: false},
-      metadata: %{publisher: "phase_0"}
-    }),
-  lease_ref:
-    LeaseRef.new!(%{
-      lease_ref: "lease-example-1",
-      owner_ref: "llama-runtime-example-1",
-      ttl_ms: 60_000,
-      renewable?: true,
-      metadata: %{surface_kind: "local_subprocess"}
-    }),
-  compatibility_result:
-    CompatibilityResult.new!(%{
-      compatible?: true,
-      reason: :protocol_match,
-      resolved_runtime_kind: :service,
-      resolved_management_mode: :jido_managed,
-      resolved_protocol: :openai_chat_completions,
-      warnings: [],
-      missing_requirements: [],
-      metadata: %{route: "self_hosted"}
-    }),
-  stream: %{
-    opened: %{
-      stream_id: "stream-example-1",
-      protocol: :openai_chat_completions,
-      checkpoint_policy: :summary
-    },
-    checkpoints: [
+Req.Test.stub(CloudHTTP, fn conn ->
+  Req.Test.json(conn, %{
+    "id" => "cmpl_control_plane_example_123",
+    "model" => "gpt-4o-mini",
+    "choices" => [
       %{
-        stream_id: "stream-example-1",
-        chunk_count: 2,
-        byte_count: 89,
-        content_artifact_id: "artifact-example-1"
+        "finish_reason" => "stop",
+        "message" => %{
+          "role" => "assistant",
+          "content" => "The control-plane proof is live."
+        }
       }
     ],
-    closed: %{
-      stream_id: "stream-example-1",
-      finish_reason: :stop,
-      chunk_count: 2,
-      byte_count: 89
+    "usage" => %{
+      "prompt_tokens" => 11,
+      "completion_tokens" => 7,
+      "total_tokens" => 18
     }
-  },
-  result:
-    InferenceResult.new!(%{
-      run_id: "run-example-self-hosted-1",
-      attempt_id: "run-example-self-hosted-1:1",
-      status: :ok,
-      streaming?: true,
-      endpoint_id: "endpoint-example-1",
-      stream_id: "stream-example-1",
-      finish_reason: :stop,
-      usage: %{input_tokens: 15, output_tokens: 44},
-      error: nil,
-      metadata: %{provider: "llama_cpp"}
-    })
-}
+  })
+end)
 
-{:ok, recorded} = ControlPlane.record_inference_attempt(spec)
+{:ok, result} =
+  ControlPlane.invoke_inference(
+    %{
+      request_id: "req-control-plane-example-1",
+      operation: :generate_text,
+      messages: [%{role: "user", content: "Summarize the control-plane proof"}],
+      model_preference: %{provider: "openai", id: "gpt-4o-mini"},
+      target_preference: %{target_class: "cloud_provider"},
+      stream?: false,
+      tool_policy: %{},
+      output_constraints: %{format: "text"},
+      metadata: %{tenant_id: "tenant-control-plane-example-1"}
+    },
+    api_key: "fixture-token",
+    req_http_options: [plug: {Req.Test, CloudHTTP}],
+    run_id: "run-control-plane-example-1",
+    decision_ref: "decision-control-plane-example-1",
+    trace_id: "trace-control-plane-example-1"
+  )
 
 IO.inspect(
   %{
-    run_id: recorded.run.run_id,
-    attempt_id: recorded.attempt.attempt_id,
-    event_types: Enum.map(ControlPlane.events(recorded.run.run_id), & &1.type)
+    run_id: result.run.run_id,
+    attempt_id: result.attempt.attempt_id,
+    response_text: result.response_text,
+    event_types: Enum.map(ControlPlane.events(result.run.run_id), & &1.type)
   },
   label: "inference_event_baseline"
 )

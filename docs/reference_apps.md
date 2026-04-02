@@ -76,6 +76,33 @@ Primary proof:
 
 - `apps/devops_incident_response/test/jido/integration/v2/apps/devops_incident_response_test.exs`
 
+## `apps/inference_ops`
+
+Purpose:
+
+- prove the first live `:inference` runtime family above the public facade
+- show that cloud and self-hosted paths both execute through `req_llm` while
+  durable truth stays in `core/control_plane`
+
+Primary public functions:
+
+- `run_cloud_proof/1`
+- `run_self_hosted_proof/1`
+- `register_self_hosted_backend/0`
+- `review_packet/2`
+
+What it proves:
+
+- cloud execution through `req_llm` with `runtime_kind: :client`
+- self-hosted endpoint publication through `self_hosted_inference_core` and
+  `llama_cpp_ex`
+- self-hosted execution through `req_llm` with `runtime_kind: :service`
+- durable inference event recording and packet review through the control plane
+
+Primary proof:
+
+- `apps/inference_ops/test/jido/integration/v2/apps/inference_ops_test.exs`
+
 ## Validation
 
 Package-local:
@@ -83,6 +110,7 @@ Package-local:
 ```bash
 cd apps/trading_ops && mix test
 cd apps/devops_incident_response && mix test
+cd apps/inference_ops && mix test
 ```
 
 Repo-root closeout:
@@ -95,8 +123,3 @@ mix ci
 These apps are the permanent proof homes for host-level flows. New reference
 workflows should follow the same pattern instead of reintroducing root-level
 example directories.
-
-The phase-0 inference baseline is the deliberate exception for now: it lands as
-package-local contracts, control-plane, and platform proofs because the live
-CLI, self-hosted, and cloud runtime integrations are still outside this
-baseline slice.

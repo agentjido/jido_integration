@@ -28,7 +28,7 @@ contributor workflows, use the developer section.
 
 1. read `architecture.md` to understand what the platform packages own
 2. read `runtime_model.md` to choose the right execution lane
-3. read `inference_baseline.md` for the phase-0 inference contracts,
+3. read `inference_baseline.md` for the live inference contracts,
    durability model, and proof surface
 4. read `durability.md` before selecting a state tier
 5. read `connector_lifecycle.md` to understand connector publication and review

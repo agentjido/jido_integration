@@ -17,13 +17,17 @@ replay, and restart recovery while keeping the webhook behavior app-local. Its
 hosted GitHub issue trigger now converges on the same generated sensor and
 plugin contract layer used by the common trigger path.
 
+## `apps/inference_ops`
+
+This app proves the first live `:inference` runtime family.
+
+- cloud provider calls stay `runtime_kind: :client`
+- self-hosted `llama_cpp_ex` calls stay `runtime_kind: :service`
+- both routes execute through `req_llm`
+- both routes remain reviewable through durable control-plane records
+
 ## Reading Rule
 
 Use the reference apps to understand the integration story end to end. Do not
 use them as a substitute for the package boundaries that own the underlying
 behavior.
-
-Phase-0 inference baseline proof is intentionally package-local for now. It
-lands in `core/contracts`, `core/control_plane`, and `core/platform` examples
-and tests rather than introducing a live runtime app before the durable seam is
-stable.

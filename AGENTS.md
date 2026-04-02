@@ -56,6 +56,7 @@ Current app packages:
 
 - `apps/trading_ops`
 - `apps/devops_incident_response`
+- `apps/inference_ops`
 
 ## Documentation Homes
 
@@ -165,16 +166,19 @@ default root acceptance gate.
 
 ## Expected Next Steps
 
-The current skeleton proves three runtime families:
+The current skeleton proves four runtime families:
 
 - direct
 - session
 - stream
+- inference
 
 Natural future slices include:
 
 - additional durable stores
 - richer auth lifecycle
 - composed policy/gateway rules
+- live CLI-published inference endpoints
+- additional self-hosted inference backends
 - more connectors
 - more operator/reference apps above the public platform

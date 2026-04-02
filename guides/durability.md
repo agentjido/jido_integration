@@ -31,7 +31,7 @@ Use it when:
 
 ## Inference Baseline
 
-Phase 0 inference durability reuses the same control-plane stores.
+The live inference runtime reuses the same control-plane stores.
 
 The minimum persisted truth is:
 

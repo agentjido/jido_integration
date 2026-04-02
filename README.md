@@ -20,9 +20,9 @@ trees for runtime dependency sourcing.
 - read [Architecture](guides/architecture.md) for the platform shape and
   package responsibilities
 - read [Runtime Model](guides/runtime_model.md) to choose between direct,
-  session, and stream execution
-- read [Inference Baseline](guides/inference_baseline.md) for the phase-0
-  inference contract and durability surface
+  session, stream, and inference execution
+- read [Inference Baseline](guides/inference_baseline.md) for the first live
+  inference runtime family, durable event set, and proof flow
 - read [Durability](guides/durability.md) before selecting in-memory,
   local-file, or Postgres-backed state
 - read [Publishing](guides/publishing.md) for the welded package release flow
@@ -70,17 +70,22 @@ Key public capabilities today include:
   `fetch_install/1`, `connection_status/1`, `request_lease/2`,
   `rotate_connection/2`, and `revoke_connection/2`
 - invocation through `InvocationRequest.new!/1`, `invoke/1`, and `invoke/3`
+- inference execution through `invoke_inference/2`
 - review and targeting through `fetch_run/1`, `fetch_attempt/1`, `events/1`,
   `run_artifacts/1`, `fetch_artifact/1`, `announce_target/1`, `fetch_target/1`,
   `compatible_targets/1`, and `review_packet/2`
 
-Phase 0 also lands the inference baseline on that same surface:
+Phase 1 also lands the first live inference runtime family on that same
+surface:
 
 - shared inference contracts now live in `core/contracts`
-- durable inference attempt summaries and event minimum now live in
-  `core/control_plane`
-- `review_packet/2` now reconstructs inference runs without requiring a live
-  connector manifest for the phase-0 baseline
+- `core/control_plane` now builds the local `ReqLLMCallSpec`, executes both
+  cloud and self-hosted requests through `req_llm`, and records the durable
+  event minimum
+- `review_packet/2` reconstructs inference runs without requiring a registered
+  connector manifest
+- `apps/inference_ops` is the dedicated proof app for the cloud and
+  self-hosted paths
 
 Phase 7 also lands the explicit cross-repo reference seam in
 `core/contracts`:
@@ -120,14 +125,20 @@ Runtime families proved in-tree:
   - `codex.exec.session`
 - `:stream`
   - `market.ticks.pull`
+- `:inference`
+  - cloud provider execution through `req_llm`
+  - self-hosted `llama_cpp_ex` endpoint execution through `req_llm`
 
-Inference phase-0 proofs:
+Inference phase-1 proofs:
 
 - `core/contracts/test/jido/integration/v2/inference_contracts_test.exs`
 - `core/control_plane/test/jido/integration/v2/control_plane_inference_test.exs`
+- `core/control_plane/test/jido/integration/v2/control_plane_inference_execution_test.exs`
 - `core/platform/test/jido/integration/v2_inference_review_packet_test.exs`
+- `core/platform/test/jido/integration/v2_inference_invoke_test.exs`
 - package-local examples under `core/contracts/examples/`,
   `core/control_plane/examples/`, and `core/platform/examples/`
+- `apps/inference_ops`
 
 Reference apps:
 
@@ -138,8 +149,13 @@ Reference apps:
   - keeps durable review truth in `core/control_plane`
 - `apps/devops_incident_response`
   - proves hosted webhook registration, async dispatch, dead-letter, replay,
-    and restart recovery
+  and restart recovery
   - keeps webhook behavior app-local instead of widening `connectors/github`
+- `apps/inference_ops`
+  - proves cloud and self-hosted inference execution through the public facade
+  - keeps durable review truth in `core/control_plane`
+  - keeps client execution in `req_llm` and self-hosted service ownership in
+    `self_hosted_inference_core` plus `llama_cpp_ex`
 
 The current surface also proves:
 
@@ -218,6 +234,7 @@ jido_integration/
   apps/
     trading_ops/             # cross-runtime operator proof
     devops_incident_response # hosted webhook + async recovery proof
+    inference_ops/           # cloud + self-hosted inference proof
 ```
 
 ## Direct Versus Runtime Boundary

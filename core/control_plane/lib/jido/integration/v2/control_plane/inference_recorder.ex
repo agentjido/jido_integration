@@ -301,7 +301,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
       "consumer_manifest" => ConsumerManifest.dump(spec.consumer_manifest),
       "backend_manifest" => maybe_dump(spec.backend_manifest),
       "lease_ref" => maybe_dump(spec.lease_ref),
-      "phase" => "phase_0_inference_baseline"
+      "phase" => "phase_1_inference_runtime"
     }
     |> Contracts.dump_json_safe!()
   end
@@ -347,7 +347,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
         transport_profile: :api,
         name: "inference_execute",
         display_name: "Inference Execute",
-        description: "Phase-0 inference durability baseline",
+        description: "Live inference execution through the control plane",
         required_scopes: [],
         runtime: %{
           family: :inference,
@@ -357,16 +357,16 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
         },
         consumer_surface: %{
           mode: :connector_local,
-          reason: "Phase-0 inference baseline"
+          reason: "Live inference runtime"
         }
       }
 
     %{
       connector_id: @inference_connector_id,
       display_name: "Inference",
-      description: "Phase-0 inference contract and durability baseline",
+      description: "Live inference runtime with durable control-plane truth",
       category: "inference",
-      tags: ["inference", "phase_0"],
+      tags: ["inference", "phase_1"],
       maturity: :experimental,
       publication: :internal,
       auth_type: :none,
@@ -385,7 +385,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
       transport_profile: :api,
       name: "inference_execute",
       display_name: "Inference Execute",
-      description: "Phase-0 inference durability baseline",
+      description: "Live inference execution with durable review truth",
       required_scopes: [],
       runtime: %{
         family: :inference,
@@ -396,7 +396,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
       },
       consumer_surface: %{
         mode: :connector_local,
-        reason: "Phase-0 inference baseline"
+        reason: "Live inference runtime"
       }
     }
   end

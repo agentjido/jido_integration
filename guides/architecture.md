@@ -17,13 +17,15 @@ runtime behavior lives.
 ## Package Boundaries
 
 - `core/contracts` defines the public IR, behaviours, projection rules, and
-  the phase-0 shared inference contract seam.
+  the shared inference contract seam.
 - `core/platform` exposes the stable public facade `Jido.Integration.V2`,
   including raw authored catalog summaries and the projected common consumer
-  catalog export plus inference review projection over durable baseline truth.
+  catalog export plus live inference invocation and review projection over
+  durable truth.
 - `core/auth` owns installs, credentials, connection truth, and leases.
 - `core/control_plane` owns runs, attempts, events, triggers, artifacts,
-  target truth, and the phase-0 durable inference event minimum.
+  target truth, the local `ReqLLMCallSpec`, live inference execution, and the
+  durable inference event minimum.
 - `core/consumer_surfaces` owns generated common action, sensor, and plugin
   runtime support.
 - `core/direct_runtime` handles direct provider-SDK execution.
@@ -44,6 +46,9 @@ runtime behavior lives.
 
 Connector packages stay isolated and package-owned. Proof apps compose those
 packages without reclaiming platform ownership.
+
+`apps/inference_ops` is the permanent app-level proof home for the first live
+inference runtime family.
 
 ## Runtime Boundary
 
@@ -67,6 +72,14 @@ boundary capability advertisement, and runtime code may derive a
 runtime-merged live capability view when worker-local facts sharpen the
 lower-boundary result for boundary-backed `asm` or boundary-backed
 `jido_session`.
+
+Inference stays on a separate seam:
+
+`Jido.Integration.V2 -> ControlPlane.Inference -> req_llm -> {cloud provider | self-hosted OpenAI-compatible endpoint}`
+
+For self-hosted execution, endpoint publication remains below the control plane:
+
+`Jido.Integration.V2 -> ControlPlane.Inference -> self_hosted_inference_core -> llama_cpp_ex`
 
 ## Consumer Surface Boundary
 
@@ -95,12 +108,15 @@ Durability is explicit and opt-in.
 The root never owns the store implementation itself; it only wires the package
 that the host wants.
 
-## Inference Baseline
+## Inference Runtime
 
-Phase 0 inference work stays inside the existing package boundaries:
+The live inference runtime stays inside the existing package boundaries:
 
 - `core/contracts` owns the shared contract seam
-- `core/control_plane` owns durable inference attempt truth
-- `core/platform` owns the operator-facing review projection
+- `core/control_plane` owns route resolution, `req_llm` execution, and durable
+  inference attempt truth
+- `core/platform` owns the public `invoke_inference/2` and operator-facing
+  review projection
+- `apps/inference_ops` owns the hosted proof harness
 
 No new root runtime lane or separate contracts repo is introduced.

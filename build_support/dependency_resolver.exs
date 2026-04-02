@@ -78,6 +78,9 @@ defmodule Jido.Integration.Build.DependencyResolver do
         opts
       )
 
+  def jido_integration_v2_inference_ops(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_inference_ops, "apps/inference_ops", opts)
+
   def jido_integration_v2_trading_ops(opts \\ []),
     do: resolve_internal(:jido_integration_v2_trading_ops, "apps/trading_ops", opts)
 
@@ -113,6 +116,33 @@ defmodule Jido.Integration.Build.DependencyResolver do
       :jido_os,
       local_root_path("JIDO_OS_PATH", "../jido_os"),
       [github: "agentjido/jido_os", branch: "main"],
+      opts
+    )
+  end
+
+  def req_llm(opts \\ []) do
+    resolve_external(
+      :req_llm,
+      local_root_path("REQ_LLM_PATH", "../req_llm"),
+      [github: "agentjido/req_llm", branch: "main"],
+      opts
+    )
+  end
+
+  def self_hosted_inference_core(opts \\ []) do
+    resolve_external(
+      :self_hosted_inference_core,
+      local_root_path("SELF_HOSTED_INFERENCE_CORE_PATH", "../self_hosted_inference_core"),
+      [github: "nshkrdotcom/self_hosted_inference_core", branch: "main"],
+      opts
+    )
+  end
+
+  def llama_cpp_ex(opts \\ []) do
+    resolve_external(
+      :llama_cpp_ex,
+      local_root_path("LLAMA_CPP_EX_PATH", "../llama_cpp_ex"),
+      [github: "nshkrdotcom/llama_cpp_ex", branch: "main"],
       opts
     )
   end

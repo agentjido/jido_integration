@@ -45,6 +45,7 @@ defmodule Jido.Integration.V2 do
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
+  alias Jido.Integration.V2.InferenceRequest
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Operator
   alias Jido.Integration.V2.Run
@@ -200,6 +201,13 @@ defmodule Jido.Integration.V2 do
   """
   @spec fetch_run(String.t()) :: {:ok, Run.t()} | :error
   defdelegate fetch_run(run_id), to: ControlPlane
+
+  @doc """
+  Invoke one inference request through the public control-plane facade.
+  """
+  @spec invoke_inference(InferenceRequest.t() | map() | keyword(), keyword()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate invoke_inference(request, opts \\ []), to: ControlPlane
 
   @doc """
   Fetch a previously recorded attempt.

@@ -14,7 +14,8 @@ packages directly.
 - public connector and capability discovery
 - public auth lifecycle delegation
 - durable review and target lookup delegation
-- inference review projection over durable phase-0 control-plane truth
+- public inference invocation plus review projection over durable control-plane
+  truth
 
 ## Public API Groups
 
@@ -43,6 +44,7 @@ Invocation:
 - `InvocationRequest.new!/1`
 - `invoke/1`
 - `invoke/3`
+- `invoke_inference/2`
 
 Public invocation uses `connection_id` as the consumer-facing auth binding
 when the capability requires a durable connection. Credential refs stay behind
@@ -68,9 +70,9 @@ Durable review and target truth:
 surface, including generated action and sensor names, generated plugin
 identity, and JSON Schema derived from the canonical Zoi contracts.
 
-For phase-0 inference runs, `review_packet/2` synthesizes the connector and
+For live inference runs, `review_packet/2` synthesizes the connector and
 capability summary directly from durable run and attempt truth. No registered
-connector manifest is required for that review path yet.
+connector manifest is required for that review path.
 The stored inference envelopes under `run.input`, `run.result`, and
 `attempt.output` remain string-keyed JSON-safe maps, while the projected review
 summary normalizes runtime classification back into the typed platform shape.
@@ -121,8 +123,10 @@ Current public-facade proofs:
 
 - `core/platform/test/jido/integration/v2_test.exs`
 - `core/platform/test/jido/integration/v2_inference_review_packet_test.exs`
+- `core/platform/test/jido/integration/v2_inference_invoke_test.exs`
 - `core/platform/examples/inference_review_packet.exs`
 - `apps/trading_ops`
+- `apps/inference_ops`
 - `connectors/github` live acceptance, which drives the current auth and
   invocation surface through `Jido.Integration.V2`
 - `connectors/notion`, which now proves generated common action, plugin, and
