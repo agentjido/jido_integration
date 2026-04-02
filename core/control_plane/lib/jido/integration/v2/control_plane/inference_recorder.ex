@@ -50,10 +50,12 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
     output = attempt.output || run.result || %{}
 
     if inference_payload?(run.input) or inference_payload?(output) do
+      capability = capability_summary(run, attempt, output)
+
       {:ok,
        %{
-         connector: connector_summary(),
-         capability: capability_summary(run, attempt, output)
+         connector: connector_summary(capability),
+         capability: capability
        }}
     else
       :error
@@ -337,30 +339,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
     |> Contracts.dump_json_safe!()
   end
 
-  defp connector_summary do
-    capability =
-      %{
-        capability_id: @inference_capability_id,
-        connector_id: @inference_connector_id,
-        runtime_class: :stream,
-        kind: :operation,
-        transport_profile: :api,
-        name: "inference_execute",
-        display_name: "Inference Execute",
-        description: "Live inference execution through the control plane",
-        required_scopes: [],
-        runtime: %{
-          family: :inference,
-          runtime_kind: :service,
-          management_mode: :jido_managed,
-          target_class: :self_hosted_endpoint
-        },
-        consumer_surface: %{
-          mode: :connector_local,
-          reason: "Live inference runtime"
-        }
-      }
-
+  defp connector_summary(capability) do
     %{
       connector_id: @inference_connector_id,
       display_name: "Inference",

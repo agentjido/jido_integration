@@ -179,6 +179,87 @@ defmodule Jido.Integration.V2InferenceReviewPacketTest do
            ]
   end
 
+  test "review_packet keeps the synthetic connector capability runtime aligned for cloud inference" do
+    assert {:ok, recorded} =
+             ControlPlane.record_inference_attempt(%{
+               request:
+                 InferenceRequest.new!(%{
+                   request_id: "req-review-cloud-1",
+                   operation: :generate_text,
+                   messages: [%{role: "user", content: "Review the cloud baseline"}],
+                   prompt: nil,
+                   model_preference: %{provider: "openai", id: "gpt-4o-mini"},
+                   target_preference: %{target_class: "cloud_provider"},
+                   stream?: false,
+                   tool_policy: %{},
+                   output_constraints: %{},
+                   metadata: %{tenant_id: "tenant-cloud-1"}
+                 }),
+               context:
+                 InferenceExecutionContext.new!(%{
+                   run_id: "run-review-cloud-1",
+                   attempt_id: "run-review-cloud-1:1",
+                   authority_source: :jido_integration,
+                   decision_ref: "decision-review-cloud-1",
+                   authority_ref: nil,
+                   boundary_ref: nil,
+                   credential_scope: %{},
+                   network_policy: %{egress: :restricted},
+                   observability: %{trace_id: "trace-review-cloud-1"},
+                   streaming_policy: %{checkpoint_policy: :disabled},
+                   replay: %{replayable?: false, recovery_class: nil},
+                   metadata: %{phase: "phase_0"}
+                 }),
+               consumer_manifest:
+                 ConsumerManifest.new!(%{
+                   consumer: :jido_integration_req_llm,
+                   accepted_runtime_kinds: [:client, :service],
+                   accepted_management_modes: [
+                     :provider_managed,
+                     :jido_managed,
+                     :externally_managed
+                   ],
+                   accepted_protocols: [:openai_chat_completions],
+                   required_capabilities: %{},
+                   optional_capabilities: %{},
+                   constraints: %{},
+                   metadata: %{phase: :phase_0}
+                 }),
+               compatibility_result:
+                 CompatibilityResult.new!(%{
+                   compatible?: true,
+                   reason: :protocol_match,
+                   resolved_runtime_kind: :client,
+                   resolved_management_mode: :provider_managed,
+                   resolved_protocol: nil,
+                   warnings: [],
+                   missing_requirements: [],
+                   metadata: %{route: :cloud, provider: :openai}
+                 }),
+               stream: nil,
+               result:
+                 InferenceResult.new!(%{
+                   run_id: "run-review-cloud-1",
+                   attempt_id: "run-review-cloud-1:1",
+                   status: :ok,
+                   streaming?: false,
+                   endpoint_id: nil,
+                   stream_id: nil,
+                   finish_reason: :stop,
+                   usage: %{input_tokens: 10, output_tokens: 6},
+                   error: nil,
+                   metadata: %{provider: :openai}
+                 })
+             })
+
+    assert {:ok, packet} =
+             V2.review_packet(recorded.run.run_id, %{attempt_id: recorded.attempt.attempt_id})
+
+    assert [connector_capability] = packet.connector.capabilities
+    assert connector_capability.capability_id == packet.capability.capability_id
+    assert connector_capability.runtime == packet.capability.runtime
+  end
+
   defp assert_json_safe(value) when is_binary(value) or is_boolean(value) or is_nil(value),
     do: :ok
 
