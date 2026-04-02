@@ -13,6 +13,9 @@ endpoint-shaped inference target:
 - `runtime_kind: :task`
 - `management_mode: :jido_managed`
 
+Its default inference consumer manifest admits `:client`, `:task`, and
+`:service`, so the CLI route does not need a special runtime-kind override.
+
 `ReqLLMCallSpec.from_endpoint/3` then turns that descriptor into the single
 client call shape used by the live inference path.
 

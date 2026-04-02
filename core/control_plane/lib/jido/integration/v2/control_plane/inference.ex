@@ -30,6 +30,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     :tools,
     :top_p
   ]
+  @default_accepted_runtime_kinds [:client, :task, :service]
 
   @type route_result :: %{
           target_class: Contracts.inference_target_class(),
@@ -146,7 +147,8 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
     ConsumerManifest.new(
       consumer: :jido_integration_req_llm,
-      accepted_runtime_kinds: Keyword.get(opts, :accepted_runtime_kinds, [:client, :service]),
+      accepted_runtime_kinds:
+        Keyword.get(opts, :accepted_runtime_kinds, @default_accepted_runtime_kinds),
       accepted_management_modes:
         Keyword.get(
           opts,
