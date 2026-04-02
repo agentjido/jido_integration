@@ -43,6 +43,7 @@ stored in durable output maps and projected later through review metadata.
 
 For live execution, those durable envelopes now also carry:
 
+- the resolved CLI endpoint descriptor when the ASM endpoint route is used
 - the resolved endpoint descriptor when one exists
 - the backend manifest when a self-hosted backend is involved
 - the synthesized lease ref used by the control plane review path
@@ -74,9 +75,10 @@ The recorder copies and enforces it from the admitted
 The live phase keeps boundaries explicit:
 
 - `req_llm` is the only client layer
+- `ASM.InferenceEndpoint` owns CLI endpoint publication
 - `self_hosted_inference_core` owns endpoint publication
 - `llama_cpp_ex` owns the first self-hosted backend package
-- CLI runtime publication and live `jido_os` integration remain future work
+- `jido_os` agent-loop ownership still stays outside ordinary completion routes
 
 ## Proof Surface
 
@@ -85,3 +87,4 @@ Primary coverage lives in:
 - `test/jido/integration/v2/control_plane_inference_test.exs`
 - `test/jido/integration/v2/control_plane_inference_execution_test.exs`
 - `examples/inference_event_baseline.exs`
+- `examples/inference_cli_endpoint_baseline.exs`

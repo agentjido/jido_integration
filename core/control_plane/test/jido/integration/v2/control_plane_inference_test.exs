@@ -404,7 +404,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           management_modes: [:jido_managed],
           startup_kind: :spawned,
           protocols: [:openai_chat_completions],
-          capabilities: %{streaming?: true, tool_calling?: "unknown", embeddings?: "unknown"},
+          capabilities: %{streaming?: true, tool_calling?: false, embeddings?: "unknown"},
           supported_surfaces: [:local_subprocess, :ssh_exec, :guest_bridge],
           resource_profile: %{profile: "cli_session"},
           metadata: %{family: "asm"}
@@ -420,7 +420,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           headers: %{"authorization" => "Bearer asm"},
           provider_identity: "gemini",
           model_identity: "gemini-2.5-pro",
-          source_runtime: "asm_inference_endpoint",
+          source_runtime: "agent_session_manager",
           source_runtime_ref: "asm-session-1",
           lease_ref: "lease-cli-1",
           health_ref: nil,

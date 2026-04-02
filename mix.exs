@@ -109,6 +109,7 @@ defmodule Jido.Integration.Workspace.MixProject do
         "guides/publishing.md",
         "guides/reference_apps.md",
         "guides/observability.md",
+        "examples/README.md",
         "guides/developer/index.md",
         "guides/developer/core_packages.md",
         "guides/developer/request_lifecycle.md",
@@ -153,6 +154,7 @@ defmodule Jido.Integration.Workspace.MixProject do
           "guides/observability.md",
           "docs/observability_and_pressure_semantics.md"
         ],
+        Examples: ["examples/README.md"],
         Developer: [
           "guides/developer/index.md",
           "guides/developer/core_packages.md",

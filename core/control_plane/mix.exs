@@ -33,6 +33,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       DependencyResolver.jido_integration_v2_auth(),
       DependencyResolver.jido_integration_v2_policy(),
       DependencyResolver.jido_integration_v2_direct_runtime(),
+      DependencyResolver.agent_session_manager(),
       DependencyResolver.req_llm(),
       DependencyResolver.self_hosted_inference_core(),
       DependencyResolver.llama_cpp_ex(only: :test),
@@ -54,6 +55,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       extras: [
         "README.md",
         "guides/inference_durability.md",
+        "guides/cli_inference_endpoints.md",
         "examples/README.md",
         "../../guides/inference_baseline.md",
         "../../guides/architecture.md",
@@ -65,6 +67,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
         Overview: ["README.md"],
         Inference: [
           "guides/inference_durability.md",
+          "guides/cli_inference_endpoints.md",
           "../../guides/inference_baseline.md"
         ],
         Examples: ["examples/README.md"],

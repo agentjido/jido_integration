@@ -34,7 +34,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
         route
       )
       when is_map(context) and is_map(route) do
-    context = normalize_context(context)
+    observability = normalize_observability(context)
 
     provider =
       route
@@ -64,7 +64,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
       messages: request.messages,
       prompt: request.prompt,
       options: options,
-      observability: Map.new(context.observability)
+      observability: observability
     }
   end
 
@@ -80,7 +80,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
         %EndpointDescriptor{} = endpoint
       )
       when is_map(context) do
-    context = normalize_context(context)
+    observability = normalize_observability(context)
 
     :openai_chat_completions = Contracts.validate_inference_protocol!(endpoint.protocol)
     {api_key, headers} = extract_api_key(endpoint.headers)
@@ -103,7 +103,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
       messages: request.messages,
       prompt: request.prompt,
       options: options,
-      observability: Map.new(context.observability)
+      observability: observability
     }
   end
 
@@ -180,7 +180,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
     |> Map.new()
   end
 
-  defp get_value(map, key, default \\ nil) when is_map(map) do
+  defp get_value(map, key, default \\ nil)
+
+  defp get_value(map, key, default) when is_map(map) do
     Map.get(map, key, Map.get(map, Atom.to_string(key), default))
   end
 
@@ -200,6 +202,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
     Contracts.validate_non_empty_string!(value, field_name)
   end
 
-  defp normalize_context(%InferenceExecutionContext{} = context), do: context
-  defp normalize_context(context), do: InferenceExecutionContext.new!(context)
+  defp normalize_observability(%InferenceExecutionContext{} = context),
+    do: Map.new(context.observability)
+
+  defp normalize_observability(context) when is_map(context),
+    do: context |> get_value(:observability, %{}) |> Map.new()
 end

@@ -23,6 +23,12 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
     V2.invoke_inference(request, runtime_opts(opts))
   end
 
+  @spec run_cli_proof(keyword()) :: {:ok, map()} | {:error, term()}
+  def run_cli_proof(opts \\ []) do
+    request = Keyword.get_lazy(opts, :request, fn -> cli_request(opts) end)
+    V2.invoke_inference(request, runtime_opts(opts))
+  end
+
   @spec run_self_hosted_proof(keyword()) :: {:ok, map()} | {:error, term()}
   def run_self_hosted_proof(opts \\ []) do
     with :ok <- register_self_hosted_backend() do
@@ -85,6 +91,29 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
       tool_policy: %{},
       output_constraints: %{},
       metadata: %{tenant_id: Keyword.get(opts, :tenant_id, "tenant-inference-ops-self-hosted")}
+    })
+  end
+
+  defp cli_request(opts) do
+    InferenceRequest.new!(%{
+      request_id: Keyword.get(opts, :request_id, "req-inference-ops-cli"),
+      operation: Keyword.get(opts, :operation, :stream_text),
+      messages: [
+        %{
+          role: "user",
+          content: Keyword.get(opts, :message, "Stream the CLI proof flow")
+        }
+      ],
+      prompt: nil,
+      model_preference: %{
+        provider: Keyword.get(opts, :provider, "gemini"),
+        id: Keyword.get(opts, :model_id, "gemini-2.5-pro")
+      },
+      target_preference: %{target_class: "cli_endpoint"},
+      stream?: Keyword.get(opts, :stream?, true),
+      tool_policy: %{},
+      output_constraints: %{},
+      metadata: %{tenant_id: Keyword.get(opts, :tenant_id, "tenant-inference-ops-cli")}
     })
   end
 

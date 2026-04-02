@@ -34,6 +34,8 @@ It:
   `InferenceExecutionContext`, and either cloud route data or an
   `EndpointDescriptor`
 - executes cloud provider calls through `req_llm`
+- resolves CLI endpoint descriptors through `ASM.InferenceEndpoint`
+- executes those CLI endpoint routes through `req_llm`
 - resolves self-hosted endpoints through `self_hosted_inference_core`
 - executes those self-hosted OpenAI-compatible endpoints through `req_llm`
 
@@ -90,21 +92,24 @@ app-level proof harness:
 - `core/control_plane/test/jido/integration/v2/control_plane_inference_test.exs`
 - `core/control_plane/test/jido/integration/v2/control_plane_inference_execution_test.exs`
 - `core/control_plane/examples/inference_event_baseline.exs`
+- `core/control_plane/examples/inference_cli_endpoint_baseline.exs`
 - `core/platform/test/jido/integration/v2_inference_review_packet_test.exs`
 - `core/platform/test/jido/integration/v2_inference_invoke_test.exs`
 - `core/platform/examples/inference_review_packet.exs`
 - `apps/inference_ops`
 
-The cloud lane stays offline with `Req.Test` fixtures. The self-hosted lane
-uses `llama_cpp_ex` and the shared fake `llama-server` fixture so the northbound
-endpoint contract remains honest without requiring a real model download.
+The cloud lane stays offline with `Req.Test` fixtures. The CLI lane stays
+offline with a fake ASM backend under the real endpoint-publication seam, with
+Gemini as the preferred first common-surface proof provider. The self-hosted
+lane uses `llama_cpp_ex` and the shared fake `llama-server` fixture so the
+northbound endpoint contract remains honest without requiring a real model
+download.
 
 ## Deliberate Non-Goals
 
 This phase still does not require:
 
 - a live `jido_os` dependency
-- live CLI endpoint publication
 - a separate shared `ReqLLMCallSpec` contract repo
 - turning `req_llm` into a runtime manager or policy engine
 

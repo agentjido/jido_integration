@@ -46,6 +46,7 @@ trees for runtime dependency sourcing.
 - [Publishing](guides/publishing.md)
 - [Reference Apps](guides/reference_apps.md)
 - [Observability](guides/observability.md)
+- [Examples](examples/README.md)
 
 ### Developer
 
@@ -80,12 +81,15 @@ surface:
 
 - shared inference contracts now live in `core/contracts`
 - `core/control_plane` now builds the local `ReqLLMCallSpec`, executes both
-  cloud and self-hosted requests through `req_llm`, and records the durable
-  event minimum
+  cloud, CLI-endpoint, and self-hosted requests through `req_llm`, and records
+  the durable event minimum
+- `agent_session_manager` now publishes CLI-backed endpoint descriptors through
+  `ASM.InferenceEndpoint`, with Gemini as the first preferred common-surface
+  proof provider
 - `review_packet/2` reconstructs inference runs without requiring a registered
   connector manifest
-- `apps/inference_ops` is the dedicated proof app for the cloud and
-  self-hosted paths
+- `apps/inference_ops` is the dedicated proof app for the cloud,
+  CLI-endpoint, and self-hosted paths
 
 Phase 7 also lands the explicit cross-repo reference seam in
 `core/contracts`:
@@ -127,6 +131,7 @@ Runtime families proved in-tree:
   - `market.ticks.pull`
 - `:inference`
   - cloud provider execution through `req_llm`
+  - CLI endpoint execution through `ASM.InferenceEndpoint` plus `req_llm`
   - self-hosted `llama_cpp_ex` endpoint execution through `req_llm`
 
 Inference phase-1 proofs:

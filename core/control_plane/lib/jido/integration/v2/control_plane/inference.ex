@@ -183,7 +183,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
         resolve_self_hosted_route(request, context, consumer_manifest, opts)
 
       :cli_endpoint ->
-        {:error, {:unsupported_target_class, :cli_endpoint}}
+        resolve_cli_route(request, context, consumer_manifest)
     end
   end
 
@@ -261,6 +261,35 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       {:ok,
        %{
          target_class: :self_hosted_endpoint,
+         call_spec: ReqLLMCallSpec.from_endpoint(request, context, endpoint_descriptor),
+         compatibility_result: compatibility_result,
+         endpoint_descriptor: endpoint_descriptor,
+         backend_manifest: backend_manifest,
+         lease_ref: lease_ref
+       }}
+    end
+  end
+
+  defp resolve_cli_route(
+         %InferenceRequest{} = request,
+         %InferenceExecutionContext{} = context,
+         %ConsumerManifest{} = consumer_manifest
+       ) do
+    with {:ok, raw_endpoint, raw_compatibility} <-
+           ASM.InferenceEndpoint.ensure_endpoint(request, consumer_manifest, context),
+         endpoint_descriptor <- EndpointDescriptor.new!(Map.from_struct(raw_endpoint)),
+         compatibility_result <-
+           CompatibilityResult.new!(
+             raw_compatibility
+             |> Map.from_struct()
+             |> Map.update!(:metadata, &Map.put(Map.new(&1), :route, :cli))
+           ),
+         {:ok, backend_manifest_data} <- cli_backend_manifest_data(endpoint_descriptor),
+         backend_manifest <- BackendManifest.new!(backend_manifest_data),
+         lease_ref <- build_lease_ref(endpoint_descriptor, context, []) do
+      {:ok,
+       %{
+         target_class: :cli_endpoint,
          call_spec: ReqLLMCallSpec.from_endpoint(request, context, endpoint_descriptor),
          compatibility_result: compatibility_result,
          endpoint_descriptor: endpoint_descriptor,
@@ -390,6 +419,12 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   defp build_lease_ref(%EndpointDescriptor{lease_ref: nil}, _context, _opts), do: nil
 
   defp build_lease_ref(%EndpointDescriptor{} = endpoint_descriptor, context, opts) do
+    route =
+      case endpoint_descriptor.target_class do
+        :cli_endpoint -> :cli
+        _other -> :self_hosted
+      end
+
     LeaseRef.new!(%{
       lease_ref: endpoint_descriptor.lease_ref,
       owner_ref: Keyword.get(opts, :owner_ref, context.attempt_id),
@@ -397,11 +432,26 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       renewable?: Keyword.get(opts, :renewable?, true),
       metadata:
         %{
-          route: :self_hosted,
+          route: route,
           source_runtime_ref: endpoint_descriptor.source_runtime_ref
         }
         |> maybe_put(:boundary_ref, endpoint_descriptor.boundary_ref)
     })
+  end
+
+  defp cli_backend_manifest_data(%EndpointDescriptor{} = endpoint_descriptor) do
+    metadata = Map.new(endpoint_descriptor.metadata || %{})
+
+    case Contracts.get(metadata, :backend_manifest) do
+      %{} = manifest ->
+        {:ok, manifest}
+
+      nil ->
+        {:error, {:missing_backend_manifest, endpoint_descriptor.endpoint_id}}
+
+      other ->
+        {:error, {:invalid_backend_manifest, other}}
+    end
   end
 
   defp req_llm_opts(%ReqLLMCallSpec{} = call_spec, opts) do

@@ -5,6 +5,9 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   alias Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceRequest
+  alias ASM.ProviderBackend.{Event, Info}
+  alias CliSubprocessCore.Event, as: CoreEvent
+  alias CliSubprocessCore.Payload
   alias LlamaCppEx
 
   @socket_capable? (case :gen_tcp.listen(0, [
@@ -103,7 +106,199 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     end
   end
 
-  defmodule CloudHTTP do
+  defmodule FakeCloudServerFixture do
+    defstruct [:listener, :port, :response_body, :server_task]
+
+    @type t :: %__MODULE__{
+            listener: port(),
+            port: pos_integer(),
+            response_body: String.t(),
+            server_task: pid()
+          }
+
+    @spec new!(map()) :: t()
+    def new!(response_payload) when is_map(response_payload) do
+      {:ok, listener} =
+        :gen_tcp.listen(0, [:binary, packet: :raw, active: false, reuseaddr: true])
+
+      {:ok, port} = :inet.port(listener)
+      response_body = Jason.encode!(response_payload)
+
+      {:ok, server_task} =
+        Task.start_link(fn ->
+          accept_loop(listener, response_body)
+        end)
+
+      %__MODULE__{
+        listener: listener,
+        port: port,
+        response_body: response_body,
+        server_task: server_task
+      }
+    end
+
+    @spec base_url(t()) :: String.t()
+    def base_url(%__MODULE__{port: port}), do: "http://127.0.0.1:#{port}/v1"
+
+    @spec cleanup(t()) :: :ok
+    def cleanup(%__MODULE__{} = fixture) do
+      :ok = :gen_tcp.close(fixture.listener)
+      Process.exit(fixture.server_task, :shutdown)
+      :ok
+    end
+
+    defp accept_loop(listener, response_body) do
+      case :gen_tcp.accept(listener) do
+        {:ok, socket} ->
+          :ok = recv_request(socket, "")
+          :ok = :gen_tcp.send(socket, http_response(response_body))
+          :ok = :gen_tcp.close(socket)
+          accept_loop(listener, response_body)
+
+        {:error, :closed} ->
+          :ok
+      end
+    end
+
+    defp recv_request(socket, buffer) do
+      case :binary.match(buffer, "\r\n\r\n") do
+        {headers_end, 4} ->
+          headers = binary_part(buffer, 0, headers_end + 4)
+          body = binary_part(buffer, headers_end + 4, byte_size(buffer) - headers_end - 4)
+          content_length = content_length(headers)
+
+          if byte_size(body) >= content_length do
+            :ok
+          else
+            {:ok, chunk} = :gen_tcp.recv(socket, 0, 5_000)
+            recv_request(socket, buffer <> chunk)
+          end
+
+        :nomatch ->
+          {:ok, chunk} = :gen_tcp.recv(socket, 0, 5_000)
+          recv_request(socket, buffer <> chunk)
+      end
+    end
+
+    defp content_length(headers) do
+      headers
+      |> String.split("\r\n", trim: true)
+      |> Enum.find_value(0, fn line ->
+        case String.split(line, ":", parts: 2) do
+          [name, value] ->
+            if String.downcase(name) == "content-length" do
+              value |> String.trim() |> String.to_integer()
+            else
+              false
+            end
+
+          _other ->
+            false
+        end
+      end)
+    end
+
+    defp http_response(response_body) do
+      [
+        "HTTP/1.1 200 OK\r\n",
+        "content-type: application/json\r\n",
+        "content-length: ",
+        Integer.to_string(byte_size(response_body)),
+        "\r\n",
+        "connection: close\r\n",
+        "\r\n",
+        response_body
+      ]
+    end
+  end
+
+  defmodule FakeASMBackend do
+    use GenServer
+
+    @behaviour ASM.ProviderBackend
+
+    defstruct [:config, :subscriber, :subscription_ref]
+
+    @impl true
+    def start_run(config) when is_map(config) do
+      with {:ok, pid} <- GenServer.start_link(__MODULE__, config) do
+        {:ok, pid,
+         Info.new(
+           provider: config.provider.name,
+           lane: Map.get(config, :lane, :core),
+           backend: __MODULE__,
+           runtime: __MODULE__,
+           capabilities: [],
+           session_pid: pid,
+           raw_info: %{backend: :fake_asm, provider: config.provider.name}
+         )}
+      end
+    end
+
+    @impl true
+    def send_input(_server, _input, _opts), do: :ok
+
+    @impl true
+    def end_input(_server), do: :ok
+
+    @impl true
+    def interrupt(_server), do: :ok
+
+    @impl true
+    def close(server) do
+      GenServer.stop(server, :normal)
+    catch
+      :exit, _ -> :ok
+    end
+
+    @impl true
+    def subscribe(server, pid, ref) do
+      GenServer.call(server, {:subscribe, pid, ref})
+    end
+
+    @impl true
+    def info(server) do
+      GenServer.call(server, :info)
+    end
+
+    @impl true
+    def init(config) do
+      {:ok, %__MODULE__{config: config, subscriber: nil, subscription_ref: nil}}
+    end
+
+    @impl true
+    def handle_call({:subscribe, pid, ref}, _from, state) do
+      state = %{state | subscriber: pid, subscription_ref: ref}
+      emit_script(state)
+      {:reply, :ok, state}
+    end
+
+    def handle_call(:info, _from, state) do
+      {:reply,
+       Info.new(
+         provider: state.config.provider.name,
+         lane: Map.get(state.config, :lane, :core),
+         backend: __MODULE__,
+         runtime: __MODULE__,
+         capabilities: [],
+         session_pid: self(),
+         raw_info: %{backend: :fake_asm, provider: state.config.provider.name}
+       ), state}
+    end
+
+    defp emit_script(%__MODULE__{} = state) do
+      state.config.backend_opts
+      |> Keyword.get(:script, [])
+      |> Enum.each(fn {kind, payload} ->
+        send(
+          state.subscriber,
+          Event.new(
+            state.subscription_ref,
+            CoreEvent.new(kind, provider: state.config.provider.name, payload: payload)
+          )
+        )
+      end)
+    end
   end
 
   setup do
@@ -111,31 +306,17 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     Application.ensure_all_started(:ssl)
     ControlPlane.reset!()
     _ = LlamaCppEx.unregister_backend()
-
-    Req.Test.stub(CloudHTTP, fn conn ->
-      Req.Test.json(conn, %{
-        "id" => "cmpl_inference_cloud_123",
-        "model" => "gpt-4o-mini",
-        "choices" => [
-          %{
-            "finish_reason" => "stop",
-            "message" => %{
-              "role" => "assistant",
-              "content" => "Phase 4 cloud path is alive."
-            }
-          }
-        ],
-        "usage" => %{
-          "prompt_tokens" => 12,
-          "completion_tokens" => 7,
-          "total_tokens" => 19
-        }
-      })
-    end)
+    original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
 
     on_exit(fn ->
       _ = SelfHostedInferenceCore.stop_all_instances()
       _ = LlamaCppEx.unregister_backend()
+
+      if is_nil(original_asm_endpoint) do
+        Application.delete_env(:agent_session_manager, ASM.InferenceEndpoint)
+      else
+        Application.put_env(:agent_session_manager, ASM.InferenceEndpoint, original_asm_endpoint)
+      end
     end)
 
     :ok
@@ -199,14 +380,43 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     assert call_spec.observability == %{trace_id: "trace-call-spec-endpoint-1"}
   end
 
+  @tag skip:
+         not @socket_capable? and
+           "requires a socket-capable environment for the cloud proof"
   test "invoke_inference/2 records durable cloud execution truth through req_llm" do
+    cloud_fixture =
+      FakeCloudServerFixture.new!(%{
+        "id" => "cmpl_inference_cloud_123",
+        "model" => "gpt-4o-mini",
+        "choices" => [
+          %{
+            "finish_reason" => "stop",
+            "message" => %{
+              "role" => "assistant",
+              "content" => "Phase 4 cloud path is alive."
+            }
+          }
+        ],
+        "usage" => %{
+          "prompt_tokens" => 12,
+          "completion_tokens" => 7,
+          "total_tokens" => 19
+        }
+      })
+
+    on_exit(fn -> FakeCloudServerFixture.cleanup(cloud_fixture) end)
+
     request =
       InferenceRequest.new!(%{
         request_id: "req-live-cloud-1",
         operation: :generate_text,
         messages: [%{role: "user", content: "Summarize phase 4"}],
         prompt: nil,
-        model_preference: %{provider: "openai", id: "gpt-4o-mini"},
+        model_preference: %{
+          provider: "openai",
+          id: "gpt-4o-mini",
+          base_url: FakeCloudServerFixture.base_url(cloud_fixture)
+        },
         target_preference: %{target_class: "cloud_provider"},
         stream?: false,
         tool_policy: %{},
@@ -218,7 +428,6 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
              ControlPlane.invoke_inference(
                request,
                api_key: "cloud-fixture-token",
-               req_http_options: [plug: {Req.Test, CloudHTTP}],
                run_id: "run-live-cloud-1",
                decision_ref: "decision-live-cloud-1",
                trace_id: "trace-live-cloud-1"
@@ -241,6 +450,62 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     assert {:ok, attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
     assert attempt.output["inference_result"]["status"] == "ok"
     assert attempt.output["compatibility_result"]["metadata"]["route"] == "cloud"
+  end
+
+  @tag skip:
+         not @socket_capable? and
+           "requires a socket-capable environment for the ASM endpoint proof"
+  test "invoke_inference/2 records durable CLI streaming truth through an ASM endpoint" do
+    configure_asm_endpoint("ASM CLI proof is alive.")
+
+    request =
+      InferenceRequest.new!(%{
+        request_id: "req-live-cli-1",
+        operation: :stream_text,
+        messages: [%{role: "user", content: "Stream through ASM.InferenceEndpoint"}],
+        prompt: nil,
+        model_preference: %{provider: "gemini", id: "gemini-2.5-pro"},
+        target_preference: %{target_class: "cli_endpoint"},
+        stream?: true,
+        tool_policy: %{},
+        output_constraints: %{},
+        metadata: %{tenant_id: "tenant-live-cli-1"}
+      })
+
+    assert {:ok, result} =
+             ControlPlane.invoke_inference(
+               request,
+               run_id: "run-live-cli-1",
+               decision_ref: "decision-live-cli-1",
+               trace_id: "trace-live-cli-1",
+               ttl_ms: 5_000
+             )
+
+    assert result.response_text == "ASM CLI proof is alive."
+    assert result.inference_result.status == :ok
+    assert result.inference_result.streaming?
+    assert result.compatibility_result.metadata.route == :cli
+    assert result.endpoint_descriptor.target_class == :cli_endpoint
+    assert result.endpoint_descriptor.source_runtime == :agent_session_manager
+    assert result.backend_manifest.backend == :asm_inference_endpoint
+    assert result.backend_manifest.capabilities.tool_calling? == false
+    assert result.lease_ref.lease_ref == result.endpoint_descriptor.lease_ref
+
+    assert Enum.map(ControlPlane.events(result.run.run_id), & &1.type) == [
+             "inference.request_admitted",
+             "inference.attempt_started",
+             "inference.compatibility_evaluated",
+             "inference.target_resolved",
+             "inference.stream_opened",
+             "inference.stream_checkpoint",
+             "inference.stream_closed",
+             "inference.attempt_completed"
+           ]
+
+    assert {:ok, attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
+    assert attempt.output["endpoint_descriptor"]["source_runtime"] == "agent_session_manager"
+    assert attempt.output["compatibility_result"]["metadata"]["route"] == "cli"
+    assert attempt.output["backend_manifest"]["backend"] == "asm_inference_endpoint"
   end
 
   @tag skip:
@@ -315,5 +580,20 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     assert attempt.output["endpoint_descriptor"]["provider_identity"] == "llama_cpp"
     assert attempt.output["compatibility_result"]["metadata"]["route"] == "self_hosted"
     assert attempt.output["lease_ref"]["lease_ref"] == result.lease_ref.lease_ref
+  end
+
+  defp configure_asm_endpoint(text) do
+    Application.put_env(
+      :agent_session_manager,
+      ASM.InferenceEndpoint,
+      backend_module: FakeASMBackend,
+      backend_opts: [
+        script: [
+          {:run_started, Payload.RunStarted.new(command: "fake", args: ["prompt"], cwd: "/tmp")},
+          {:assistant_delta, Payload.AssistantDelta.new(content: text)},
+          {:result, Payload.Result.new(status: :completed, stop_reason: :end_turn)}
+        ]
+      ]
+    )
   end
 end

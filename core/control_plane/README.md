@@ -90,6 +90,8 @@ It:
 - builds `InferenceExecutionContext` and `ConsumerManifest`
 - derives a local `ReqLLMCallSpec`
 - executes cloud provider calls through `req_llm`
+- resolves CLI-backed endpoint descriptors through `ASM.InferenceEndpoint`
+- executes those CLI endpoint routes through `req_llm`
 - resolves self-hosted endpoints through `self_hosted_inference_core`
 - executes those self-hosted OpenAI-compatible endpoints through `req_llm`
 - persists the resulting durable inference attempt truth
@@ -117,13 +119,20 @@ For streaming attempts, `stream_opened.checkpoint_policy` is copied from the
 admitted `InferenceExecutionContext.streaming_policy` and rejected if the
 runtime summary drifts from that admitted control-plane truth.
 
-Live CLI runtime publication and live `jido_os` integration remain out of
-scope. The control plane records the normalized durable summaries those future
-paths should emit when they land.
+CLI endpoint publication now stays explicit:
+
+- `ASM.InferenceEndpoint` publishes the endpoint and returns the
+  `EndpointDescriptor`
+- the control plane records the route as `target_class: :cli_endpoint`
+- the durable backend manifest stays `:asm_inference_endpoint`
+- ordinary completion requests stay isolated from agent-loop semantics
+
+The CLI proof path prefers Gemini as the first common-surface proof provider.
 
 ## Related Guides
 
 - [Inference Durability](guides/inference_durability.md)
+- [CLI Inference Endpoints](guides/cli_inference_endpoints.md)
 - [Inference Baseline](../../guides/inference_baseline.md)
 - [Architecture](../../guides/architecture.md)
 - [Durability](../../guides/durability.md)
