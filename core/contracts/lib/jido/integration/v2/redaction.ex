@@ -4,6 +4,16 @@ defmodule Jido.Integration.V2.Redaction do
   """
 
   @redacted "[REDACTED]"
+  @non_sensitive_keys [
+    "cachecreationinputtokens",
+    "cachereadinputtokens",
+    "completiontokens",
+    "inputtokens",
+    "outputtokens",
+    "prompttokens",
+    "reasoningtokens",
+    "totaltokens"
+  ]
   @sensitive_fragments [
     "accesskey",
     "accesstoken",
@@ -64,10 +74,17 @@ defmodule Jido.Integration.V2.Redaction do
     normalized =
       key
       |> String.downcase()
-      |> String.replace(~r/[^a-z0-9]/u, "")
+      |> String.to_charlist()
+      |> Enum.filter(&lowercase_alphanumeric?/1)
+      |> List.to_string()
 
-    Enum.any?(@sensitive_fragments, &String.contains?(normalized, &1))
+    normalized not in @non_sensitive_keys and
+      Enum.any?(@sensitive_fragments, &String.contains?(normalized, &1))
   end
 
   defp sensitive_key?(_key), do: false
+
+  defp lowercase_alphanumeric?(character) when character in ?a..?z, do: true
+  defp lowercase_alphanumeric?(character) when character in ?0..?9, do: true
+  defp lowercase_alphanumeric?(_character), do: false
 end

@@ -22,3 +22,8 @@ plugin contract layer used by the common trigger path.
 Use the reference apps to understand the integration story end to end. Do not
 use them as a substitute for the package boundaries that own the underlying
 behavior.
+
+Phase-0 inference baseline proof is intentionally package-local for now. It
+lands in `core/contracts`, `core/control_plane`, and `core/platform` examples
+and tests rather than introducing a live runtime app before the durable seam is
+stable.

@@ -21,6 +21,14 @@ surfaces.
 - `Attempt`
 - `Event`
 - `RuntimeResult`
+- `InferenceRequest`
+- `InferenceExecutionContext`
+- `EndpointDescriptor`
+- `BackendManifest`
+- `ConsumerManifest`
+- `CompatibilityResult`
+- `InferenceResult`
+- `LeaseRef`
 - `Gateway`
 - `Gateway.Policy`
 - `PolicyDecision`
@@ -53,6 +61,10 @@ surfaces.
   attempt-aware sequencing, trace fields, and optional `payload_ref` maps
 - `RuntimeResult` is the shared connector/runtime emission contract for
   output, reviewable events, and durable artifact refs
+- the phase-0 inference contract seam extends that same contracts package with
+  request, context, endpoint, compatibility, result, and lease shapes while
+  keeping the durable cross-repo form JSON-safe under `contract_version:
+  "inference.v1"`
 - `Gateway` is the shared admission plus execution-policy request shape used
   before dispatch
 - `Gateway.Policy` is the normalized capability-side security contract for
@@ -228,6 +240,35 @@ surfaces.
 - leaves provider-specific long-tail inventory at the connector or SDK boundary
   instead of auto-projecting it into `Jido.Action` or `Jido.Plugin`
 
+## Inference Contracts
+
+Phase 0 adds the shared inference contract seam here instead of creating a
+parallel contracts repo.
+
+The new public objects are:
+
+- `InferenceRequest`
+- `InferenceExecutionContext`
+- `EndpointDescriptor`
+- `BackendManifest`
+- `ConsumerManifest`
+- `CompatibilityResult`
+- `InferenceResult`
+- `LeaseRef`
+
+The contract rules are the same as the rest of this package:
+
+- the durable cross-repo form is a JSON-safe map
+- `contract_version` is `"inference.v1"`
+- `new!/1` validates the authored input
+- `dump/1` emits the durable map form
+
+`TargetDescriptor` remains the reusable durable target advertisement contract.
+`EndpointDescriptor` is the per-attempt execution-ready endpoint summary.
+
+`ReqLLMCallSpec` is intentionally not part of this package. It remains a local
+`jido_integration` adapter shape rather than shared durable truth.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be
@@ -244,6 +285,9 @@ end
 
 ## Related Guides
 
+- [Inference Contracts](guides/inference_contracts.md)
+- [Inference Baseline](../../guides/inference_baseline.md)
 - [Architecture](../../guides/architecture.md)
 - [Runtime Model](../../guides/runtime_model.md)
 - [Connector Lifecycle](../../guides/connector_lifecycle.md)
+- [Examples](examples/README.md)

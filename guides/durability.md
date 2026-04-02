@@ -29,6 +29,20 @@ Use it when:
 - you need the operational model that the reference apps and root validation
   expect
 
+## Inference Baseline
+
+Phase 0 inference durability reuses the same control-plane stores.
+
+The minimum persisted truth is:
+
+- one run
+- one attempt
+- the ordered inference event sequence
+- optional artifact refs when transcript or summary persistence is enabled
+- enough durable data for `review_packet/2` to reconstruct the operator packet
+
+See `inference_baseline.md` for the exact contract and event minimum.
+
 ## Selection Rule
 
 Do not promote durability into the facade by default.

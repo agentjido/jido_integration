@@ -43,12 +43,20 @@ defmodule Jido.Integration.V2.Contracts.MixProject do
       main: "readme",
       extras: [
         "README.md",
+        "guides/inference_contracts.md",
+        "examples/README.md",
+        "../../guides/inference_baseline.md",
         "../../guides/architecture.md",
         "../../guides/runtime_model.md",
         "../../guides/connector_lifecycle.md"
       ],
       groups_for_extras: [
         Overview: ["README.md"],
+        Inference: [
+          "guides/inference_contracts.md",
+          "../../guides/inference_baseline.md"
+        ],
+        Examples: ["examples/README.md"],
         Guides: [
           "../../guides/architecture.md",
           "../../guides/runtime_model.md",

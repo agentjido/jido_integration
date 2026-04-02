@@ -1,7 +1,9 @@
 # Runtime Model
 
-Jido Integration supports three runtime families. Pick the lightest one that
-matches the behavior you need.
+Jido Integration supports three execution runtime families today. Phase 0 also
+adds an inference durability baseline that reuses the existing run and attempt
+runtime classes while exposing inference-specific route metadata through review
+projection.
 
 ## Direct Runtime
 
@@ -46,6 +48,24 @@ more specific for boundary-backed `asm` or boundary-backed `jido_session`.
 Hosted webhook registration and async replay are separate package surfaces.
 They live in `core/webhook_router` and `core/dispatch_runtime`, not in the
 facade package and not in the direct runtime path.
+
+## Inference Baseline
+
+The phase-0 inference work is a control-plane and review layer first.
+
+- `core/contracts` defines inference request, context, endpoint, compatibility,
+  result, and lease shapes
+- `core/control_plane` records the durable inference event minimum
+- `core/platform` projects those records through `review_packet/2`
+
+For compatibility with the existing repo, `Run.runtime_class` and
+`Attempt.runtime_class` stay on `:direct | :session | :stream`.
+Inference-specific route truth is exposed separately through:
+
+- `runtime.family`
+- `runtime_kind`
+- `management_mode`
+- `target_class`
 
 ## Design Rule
 

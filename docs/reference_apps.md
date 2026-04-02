@@ -95,3 +95,8 @@ mix ci
 These apps are the permanent proof homes for host-level flows. New reference
 workflows should follow the same pattern instead of reintroducing root-level
 example directories.
+
+The phase-0 inference baseline is the deliberate exception for now: it lands as
+package-local contracts, control-plane, and platform proofs because the live
+CLI, self-hosted, and cloud runtime integrations are still outside this
+baseline slice.

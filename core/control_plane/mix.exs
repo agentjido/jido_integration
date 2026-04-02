@@ -50,6 +50,9 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       main: "readme",
       extras: [
         "README.md",
+        "guides/inference_durability.md",
+        "examples/README.md",
+        "../../guides/inference_baseline.md",
         "../../guides/architecture.md",
         "../../guides/durability.md",
         "../../guides/async_and_webhooks.md",
@@ -57,6 +60,11 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       ],
       groups_for_extras: [
         Overview: ["README.md"],
+        Inference: [
+          "guides/inference_durability.md",
+          "../../guides/inference_baseline.md"
+        ],
+        Examples: ["examples/README.md"],
         Guides: [
           "../../guides/architecture.md",
           "../../guides/durability.md",

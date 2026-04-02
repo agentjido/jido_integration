@@ -10,6 +10,7 @@ defmodule Jido.Integration.V2.Operator do
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
+  alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.EvidenceRef
   alias Jido.Integration.V2.GovernanceRef
@@ -123,10 +124,9 @@ defmodule Jido.Integration.V2.Operator do
           | {:error, :unknown_run | :unknown_attempt | :unknown_capability | :unknown_connector}
   def review_packet(run_id, opts \\ %{}) when is_binary(run_id) and is_map(opts) do
     with {:ok, run} <- ControlPlane.fetch_run(run_id),
-         {:ok, capability} <- ControlPlane.fetch_capability(run.capability_id),
-         {:ok, connector} <- ControlPlane.fetch_connector(capability.connector),
          attempts = ControlPlane.attempts(run_id),
          {:ok, attempt} <- resolve_attempt(attempts, opts),
+         {:ok, catalog} <- resolve_review_catalog(run, attempt),
          events = ControlPlane.events(run_id),
          artifacts = ControlPlane.run_artifacts(run_id),
          triggers = ControlPlane.run_triggers(run_id),
@@ -159,8 +159,8 @@ defmodule Jido.Integration.V2.Operator do
          target: target,
          connection: connection,
          install: install,
-         capability: capability_summary(capability),
-         connector: connector_summary(connector)
+         capability: capability_summary(catalog.capability),
+         connector: connector_summary(catalog.connector)
        }}
     else
       :error -> {:error, :unknown_run}
@@ -184,6 +184,8 @@ defmodule Jido.Integration.V2.Operator do
     }
   end
 
+  defp connector_summary(%{} = summary), do: summary
+
   defp capability_summary(%Capability{} = capability) do
     %{
       capability_id: capability.id,
@@ -198,6 +200,21 @@ defmodule Jido.Integration.V2.Operator do
       runtime: Map.get(capability.metadata, :runtime, %{}),
       consumer_surface: Map.get(capability.metadata, :consumer_surface, %{})
     }
+  end
+
+  defp capability_summary(%{} = summary), do: summary
+
+  defp resolve_review_catalog(run, attempt) do
+    case InferenceRecorder.inference_review_summary(run, attempt) do
+      {:ok, catalog} ->
+        {:ok, catalog}
+
+      :error ->
+        with {:ok, capability} <- ControlPlane.fetch_capability(run.capability_id),
+             {:ok, connector} <- ControlPlane.fetch_connector(capability.connector) do
+          {:ok, %{capability: capability, connector: connector}}
+        end
+    end
   end
 
   defp resolve_attempt([], %{}), do: {:ok, nil}

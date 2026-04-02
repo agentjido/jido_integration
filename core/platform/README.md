@@ -14,6 +14,7 @@ packages directly.
 - public connector and capability discovery
 - public auth lifecycle delegation
 - durable review and target lookup delegation
+- inference review projection over durable phase-0 control-plane truth
 
 ## Public API Groups
 
@@ -67,6 +68,10 @@ Durable review and target truth:
 surface, including generated action and sensor names, generated plugin
 identity, and JSON Schema derived from the canonical Zoi contracts.
 
+For phase-0 inference runs, `review_packet/2` synthesizes the connector and
+capability summary directly from durable run and attempt truth. No registered
+connector manifest is required for that review path yet.
+
 ## Design Boundary
 
 This package is the public facade, not the place where every runtime concern
@@ -112,6 +117,8 @@ end
 Current public-facade proofs:
 
 - `core/platform/test/jido/integration/v2_test.exs`
+- `core/platform/test/jido/integration/v2_inference_review_packet_test.exs`
+- `core/platform/examples/inference_review_packet.exs`
 - `apps/trading_ops`
 - `connectors/github` live acceptance, which drives the current auth and
   invocation surface through `Jido.Integration.V2`
@@ -120,6 +127,9 @@ Current public-facade proofs:
 
 ## Related Guides
 
+- [Inference Review Packets](guides/inference_review_packets.md)
+- [Inference Baseline](../../guides/inference_baseline.md)
 - [Architecture](../../guides/architecture.md)
 - [Runtime Model](../../guides/runtime_model.md)
 - [Connector Lifecycle](../../guides/connector_lifecycle.md)
+- [Examples](examples/README.md)

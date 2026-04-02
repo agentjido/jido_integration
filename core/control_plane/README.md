@@ -10,6 +10,7 @@ Capability registry, run ledger, and execution admission for the platform.
 - trigger admission, dedupe, and checkpoint durability behaviours
 - artifact-ref durability behaviours
 - target-descriptor durability behaviours
+- phase-0 inference attempt durability through `record_inference_attempt/1`
 - credential-ref resolution through `core/auth`
 - credential lease issuance through `core/auth`
 - admission policy evaluation through `core/policy`
@@ -75,10 +76,38 @@ Capability registry, run ledger, and execution admission for the platform.
 - `fetch_target/1`
 - `compatible_targets/1`
 - `execute_run/3`
+- `record_inference_attempt/1`
+- `inference_capability_id/0`
+
+## Inference Baseline
+
+Phase 0 adds a durable inference recorder that persists:
+
+- the admitted request identity
+- compatibility outcome
+- endpoint summary
+- optional stream lifecycle summaries
+- terminal inference result
+
+The minimum durable event sequence is:
+
+- `inference.request_admitted`
+- `inference.attempt_started`
+- `inference.compatibility_evaluated`
+- `inference.target_resolved`
+- optional stream lifecycle events
+- one terminal attempt event
+
+This phase does not require live `jido_os`, live CLI runtime publication, or
+live self-hosted runtime publication. The control plane records the normalized
+durable summaries those future paths will emit.
 
 ## Related Guides
 
+- [Inference Durability](guides/inference_durability.md)
+- [Inference Baseline](../../guides/inference_baseline.md)
 - [Architecture](../../guides/architecture.md)
 - [Durability](../../guides/durability.md)
 - [Async And Webhooks](../../guides/async_and_webhooks.md)
 - [Observability](../../guides/observability.md)
+- [Examples](examples/README.md)

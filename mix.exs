@@ -101,6 +101,7 @@ defmodule Jido.Integration.Workspace.MixProject do
         "guides/index.md",
         "guides/architecture.md",
         "guides/runtime_model.md",
+        "guides/inference_baseline.md",
         "guides/durability.md",
         "guides/connector_lifecycle.md",
         "guides/conformance.md",
@@ -129,6 +130,7 @@ defmodule Jido.Integration.Workspace.MixProject do
           "docs/architecture_overview.md",
           "guides/runtime_model.md"
         ],
+        Inference: ["guides/inference_baseline.md"],
         Durability: ["guides/durability.md", "docs/local_durability.md"],
         "Connector Lifecycle": [
           "guides/connector_lifecycle.md",

@@ -4,8 +4,17 @@ defmodule Jido.Integration.V2.Contracts do
   """
 
   @schema_version "1.0"
+  @inference_contract_version "inference.v1"
 
   @type runtime_class :: :direct | :session | :stream
+  @type runtime_kind :: :client | :task | :service
+  @type management_mode :: :provider_managed | :jido_managed | :externally_managed
+  @type inference_operation :: :generate_text | :stream_text
+  @type inference_target_class :: :cloud_provider | :cli_endpoint | :self_hosted_endpoint
+  @type inference_protocol :: :openai_chat_completions
+  @type authority_source :: :jido_integration | :jido_os | :external
+  @type inference_checkpoint_policy :: :summary | :artifact | :disabled
+  @type inference_status :: :ok | :error | :cancelled
   @type sandbox_level :: :strict | :standard | :none
   @type approvals :: :none | :manual | :auto
   @type egress_policy :: :blocked | :restricted | :open
@@ -42,6 +51,9 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec schema_version() :: String.t()
   def schema_version, do: @schema_version
+
+  @spec inference_contract_version() :: String.t()
+  def inference_contract_version, do: @inference_contract_version
 
   @spec now() :: DateTime.t()
   def now do
@@ -253,6 +265,145 @@ defmodule Jido.Integration.V2.Contracts do
 
   def validate_runtime_class!(runtime_class) do
     raise ArgumentError, "invalid runtime_class: #{inspect(runtime_class)}"
+  end
+
+  @spec validate_runtime_kind!(runtime_kind()) :: runtime_kind()
+  def validate_runtime_kind!(runtime_kind) when runtime_kind in [:client, :task, :service],
+    do: runtime_kind
+
+  def validate_runtime_kind!(runtime_kind) when is_binary(runtime_kind) do
+    validate_enum_string!(runtime_kind, [:client, :task, :service], "runtime_kind")
+  end
+
+  def validate_runtime_kind!(runtime_kind) do
+    raise ArgumentError, "invalid runtime_kind: #{inspect(runtime_kind)}"
+  end
+
+  @spec validate_management_mode!(management_mode()) :: management_mode()
+  def validate_management_mode!(management_mode)
+      when management_mode in [:provider_managed, :jido_managed, :externally_managed],
+      do: management_mode
+
+  def validate_management_mode!(management_mode) when is_binary(management_mode) do
+    validate_enum_string!(
+      management_mode,
+      [:provider_managed, :jido_managed, :externally_managed],
+      "management_mode"
+    )
+  end
+
+  def validate_management_mode!(management_mode) do
+    raise ArgumentError, "invalid management_mode: #{inspect(management_mode)}"
+  end
+
+  @spec validate_inference_operation!(inference_operation()) :: inference_operation()
+  def validate_inference_operation!(operation) when operation in [:generate_text, :stream_text],
+    do: operation
+
+  def validate_inference_operation!(operation) when is_binary(operation) do
+    validate_enum_string!(operation, [:generate_text, :stream_text], "inference operation")
+  end
+
+  def validate_inference_operation!(operation) do
+    raise ArgumentError, "invalid inference operation: #{inspect(operation)}"
+  end
+
+  @spec validate_inference_target_class!(inference_target_class()) :: inference_target_class()
+  def validate_inference_target_class!(target_class)
+      when target_class in [:cloud_provider, :cli_endpoint, :self_hosted_endpoint],
+      do: target_class
+
+  def validate_inference_target_class!(target_class) when is_binary(target_class) do
+    validate_enum_string!(
+      target_class,
+      [:cloud_provider, :cli_endpoint, :self_hosted_endpoint],
+      "inference target_class"
+    )
+  end
+
+  def validate_inference_target_class!(target_class) do
+    raise ArgumentError, "invalid inference target_class: #{inspect(target_class)}"
+  end
+
+  @spec validate_inference_protocol!(inference_protocol()) :: inference_protocol()
+  def validate_inference_protocol!(protocol) when protocol in [:openai_chat_completions],
+    do: protocol
+
+  def validate_inference_protocol!(protocol) when is_binary(protocol) do
+    validate_enum_string!(protocol, [:openai_chat_completions], "inference protocol")
+  end
+
+  def validate_inference_protocol!(protocol) do
+    raise ArgumentError, "invalid inference protocol: #{inspect(protocol)}"
+  end
+
+  @spec validate_authority_source!(authority_source()) :: authority_source()
+  def validate_authority_source!(authority_source)
+      when authority_source in [:jido_integration, :jido_os, :external],
+      do: authority_source
+
+  def validate_authority_source!(authority_source) when is_binary(authority_source) do
+    validate_enum_string!(
+      authority_source,
+      [:jido_integration, :jido_os, :external],
+      "authority_source"
+    )
+  end
+
+  def validate_authority_source!(authority_source) do
+    raise ArgumentError, "invalid authority_source: #{inspect(authority_source)}"
+  end
+
+  @spec validate_inference_checkpoint_policy!(inference_checkpoint_policy()) ::
+          inference_checkpoint_policy()
+  def validate_inference_checkpoint_policy!(policy)
+      when policy in [:summary, :artifact, :disabled],
+      do: policy
+
+  def validate_inference_checkpoint_policy!(policy) when is_binary(policy) do
+    validate_enum_string!(
+      policy,
+      [:summary, :artifact, :disabled],
+      "inference checkpoint policy"
+    )
+  end
+
+  def validate_inference_checkpoint_policy!(policy) do
+    raise ArgumentError, "invalid inference checkpoint policy: #{inspect(policy)}"
+  end
+
+  @spec validate_inference_status!(inference_status()) :: inference_status()
+  def validate_inference_status!(status) when status in [:ok, :error, :cancelled], do: status
+
+  def validate_inference_status!(status) when is_binary(status) do
+    validate_enum_string!(status, [:ok, :error, :cancelled], "inference status")
+  end
+
+  def validate_inference_status!(status) do
+    raise ArgumentError, "invalid inference status: #{inspect(status)}"
+  end
+
+  @spec validate_inference_contract_version!(String.t()) :: String.t()
+  def validate_inference_contract_version!(version) when version == @inference_contract_version,
+    do: version
+
+  def validate_inference_contract_version!(version) when is_binary(version) do
+    raise ArgumentError,
+          "invalid inference contract_version: #{inspect(version)}; expected #{@inference_contract_version}"
+  end
+
+  def validate_inference_contract_version!(version) do
+    raise ArgumentError,
+          "inference contract_version must be a string, got: #{inspect(version)}"
+  end
+
+  @spec normalize_atomish_list!(list(), String.t()) :: [atom()]
+  def normalize_atomish_list!(values, field_name) when is_list(values) do
+    Enum.map(values, &normalize_atomish!(&1, field_name))
+  end
+
+  def normalize_atomish_list!(values, field_name) do
+    raise ArgumentError, "#{field_name} must be a list, got: #{inspect(values)}"
   end
 
   @spec validate_sandbox_level!(sandbox_level()) :: sandbox_level()

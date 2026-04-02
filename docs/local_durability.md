@@ -90,7 +90,15 @@ Current proofs:
 
 - `core/store_local` package tests
 - `apps/devops_incident_response`
+- `core/control_plane/test/jido/integration/v2/control_plane_inference_test.exs`
+- `core/platform/test/jido/integration/v2_inference_review_packet_test.exs`
+- package-local inference examples in `core/control_plane/examples/` and
+  `core/platform/examples/`
 
 The `apps/devops_incident_response` proof is the honest reference for local
 restart-safe auth, control-plane truth, hosted routes, and async replay without
 Postgres.
+
+The phase-0 inference baseline stays package-local on purpose. It proves the
+durable run, attempt, event, and review shape before live runtime integrations
+are required.

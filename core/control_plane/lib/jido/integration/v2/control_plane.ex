@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane.Registry
+  alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
@@ -239,6 +240,13 @@ defmodule Jido.Integration.V2.ControlPlane do
     RuntimeRouter.reset!()
     :ok
   end
+
+  @spec inference_capability_id() :: String.t()
+  def inference_capability_id, do: InferenceRecorder.inference_capability_id()
+
+  @spec record_inference_attempt(map()) ::
+          {:ok, %{run: Run.t(), attempt: Attempt.t()}} | {:error, Exception.t() | term()}
+  def record_inference_attempt(spec), do: InferenceRecorder.record(spec)
 
   defp filter_records(records, filters) when is_map(filters) do
     Enum.filter(records, fn record ->
