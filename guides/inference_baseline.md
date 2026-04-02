@@ -21,6 +21,9 @@ Shared contracts now live in `core/contracts`:
 Inference reuses it directly instead of introducing a parallel durable target
 shape.
 
+Each inference contract `dump/1` now emits a string-keyed JSON-safe map so the
+cross-repo durable form is explicit instead of inferred from Elixir structs.
+
 ## Durable Control-Plane Truth
 
 `core/control_plane` now records the minimum inference attempt truth:
@@ -43,6 +46,10 @@ The minimum durable event set is:
 - `inference.stream_closed`
 - one of `inference.attempt_completed`, `inference.attempt_failed`, or
   `inference.attempt_cancelled`
+
+For streaming attempts, `checkpoint_policy` is admitted through
+`InferenceExecutionContext.streaming_policy` and enforced when the durable
+stream lifecycle summary is recorded.
 
 ## Review Behavior
 

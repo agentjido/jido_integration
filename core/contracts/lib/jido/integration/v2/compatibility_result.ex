@@ -84,16 +84,17 @@ defmodule Jido.Integration.V2.CompatibilityResult do
   @spec dump(t()) :: map()
   def dump(%__MODULE__{} = result) do
     %{
-      contract_version: result.contract_version,
-      compatible?: result.compatible?,
-      reason: result.reason,
-      resolved_runtime_kind: result.resolved_runtime_kind,
-      resolved_management_mode: result.resolved_management_mode,
-      resolved_protocol: result.resolved_protocol,
-      warnings: result.warnings,
-      missing_requirements: result.missing_requirements,
-      metadata: result.metadata
+      "contract_version" => result.contract_version,
+      "compatible?" => result.compatible?,
+      "reason" => result.reason,
+      "resolved_runtime_kind" => result.resolved_runtime_kind,
+      "resolved_management_mode" => result.resolved_management_mode,
+      "resolved_protocol" => result.resolved_protocol,
+      "warnings" => result.warnings,
+      "missing_requirements" => result.missing_requirements,
+      "metadata" => result.metadata
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp normalize(%__MODULE__{} = result) do

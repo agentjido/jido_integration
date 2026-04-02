@@ -78,16 +78,17 @@ defmodule Jido.Integration.V2.ConsumerManifest do
   @spec dump(t()) :: map()
   def dump(%__MODULE__{} = manifest) do
     %{
-      contract_version: manifest.contract_version,
-      consumer: manifest.consumer,
-      accepted_runtime_kinds: manifest.accepted_runtime_kinds,
-      accepted_management_modes: manifest.accepted_management_modes,
-      accepted_protocols: manifest.accepted_protocols,
-      required_capabilities: manifest.required_capabilities,
-      optional_capabilities: manifest.optional_capabilities,
-      constraints: manifest.constraints,
-      metadata: manifest.metadata
+      "contract_version" => manifest.contract_version,
+      "consumer" => manifest.consumer,
+      "accepted_runtime_kinds" => manifest.accepted_runtime_kinds,
+      "accepted_management_modes" => manifest.accepted_management_modes,
+      "accepted_protocols" => manifest.accepted_protocols,
+      "required_capabilities" => manifest.required_capabilities,
+      "optional_capabilities" => manifest.optional_capabilities,
+      "constraints" => manifest.constraints,
+      "metadata" => manifest.metadata
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp normalize(%__MODULE__{} = manifest) do

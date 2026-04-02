@@ -83,20 +83,21 @@ defmodule Jido.Integration.V2.InferenceExecutionContext do
   @spec dump(t()) :: map()
   def dump(%__MODULE__{} = context) do
     %{
-      contract_version: context.contract_version,
-      run_id: context.run_id,
-      attempt_id: context.attempt_id,
-      authority_source: context.authority_source,
-      decision_ref: context.decision_ref,
-      authority_ref: context.authority_ref,
-      boundary_ref: context.boundary_ref,
-      credential_scope: context.credential_scope,
-      network_policy: context.network_policy,
-      observability: context.observability,
-      streaming_policy: context.streaming_policy,
-      replay: context.replay,
-      metadata: context.metadata
+      "contract_version" => context.contract_version,
+      "run_id" => context.run_id,
+      "attempt_id" => context.attempt_id,
+      "authority_source" => context.authority_source,
+      "decision_ref" => context.decision_ref,
+      "authority_ref" => context.authority_ref,
+      "boundary_ref" => context.boundary_ref,
+      "credential_scope" => context.credential_scope,
+      "network_policy" => context.network_policy,
+      "observability" => context.observability,
+      "streaming_policy" => context.streaming_policy,
+      "replay" => context.replay,
+      "metadata" => context.metadata
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp normalize(%__MODULE__{} = context) do

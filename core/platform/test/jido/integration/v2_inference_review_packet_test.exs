@@ -162,8 +162,10 @@ defmodule Jido.Integration.V2InferenceReviewPacketTest do
     assert packet.connection == nil
     assert packet.install == nil
     assert packet.target == nil
-    assert packet.attempt.output.inference_result.endpoint_id == "endpoint-review-1"
-    assert packet.attempt.output.inference_result.status == :ok
+    assert packet.attempt.output["inference_result"]["endpoint_id"] == "endpoint-review-1"
+    assert packet.attempt.output["inference_result"]["status"] == "ok"
+    assert_json_safe(packet.run.input)
+    assert_json_safe(packet.attempt.output)
 
     assert Enum.map(packet.events, & &1.type) == [
              "inference.request_admitted",
@@ -175,5 +177,19 @@ defmodule Jido.Integration.V2InferenceReviewPacketTest do
              "inference.stream_closed",
              "inference.attempt_completed"
            ]
+  end
+
+  defp assert_json_safe(value) when is_binary(value) or is_boolean(value) or is_nil(value),
+    do: :ok
+
+  defp assert_json_safe(value) when is_integer(value) or is_float(value), do: :ok
+
+  defp assert_json_safe(value) when is_list(value) do
+    Enum.each(value, &assert_json_safe/1)
+  end
+
+  defp assert_json_safe(value) when is_map(value) do
+    assert Enum.all?(Map.keys(value), &is_binary/1)
+    Enum.each(value, fn {_key, nested} -> assert_json_safe(nested) end)
   end
 end

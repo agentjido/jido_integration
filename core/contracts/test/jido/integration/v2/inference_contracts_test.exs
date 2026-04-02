@@ -25,10 +25,14 @@ defmodule Jido.Integration.V2.InferenceContractsTest do
         metadata: %{"tenant_id" => "tenant-1"}
       })
 
+    dump = InferenceRequest.dump(request)
+
     assert request.contract_version == "inference.v1"
     assert request.operation == :stream_text
     assert request.stream? == true
-    assert InferenceRequest.new!(InferenceRequest.dump(request)) == request
+    assert dump["operation"] == "stream_text"
+    assert_json_safe(dump)
+    assert InferenceRequest.new!(dump) == request
   end
 
   test "inference execution context round-trips through its durable dump map" do
@@ -48,10 +52,15 @@ defmodule Jido.Integration.V2.InferenceContractsTest do
         metadata: %{"phase" => "phase_0"}
       })
 
+    dump = InferenceExecutionContext.dump(context)
+
     assert context.contract_version == "inference.v1"
     assert context.authority_source == :jido_integration
     assert context.streaming_policy == %{checkpoint_policy: :summary}
-    assert InferenceExecutionContext.new!(InferenceExecutionContext.dump(context)) == context
+    assert dump["authority_source"] == "jido_integration"
+    assert dump["streaming_policy"]["checkpoint_policy"] == "summary"
+    assert_json_safe(dump)
+    assert InferenceExecutionContext.new!(dump) == context
   end
 
   test "endpoint, backend, and consumer manifests round-trip through their dump maps" do
@@ -85,7 +94,7 @@ defmodule Jido.Integration.V2.InferenceContractsTest do
         capabilities: %{
           "streaming?" => true,
           "tool_calling?" => false,
-          "embeddings?" => :unknown
+          "embeddings?" => "unknown"
         },
         supported_surfaces: ["local_subprocess"],
         resource_profile: %{"profile" => "gpu_single_tenant"},
@@ -108,12 +117,22 @@ defmodule Jido.Integration.V2.InferenceContractsTest do
         metadata: %{"phase" => "phase_0"}
       })
 
+    endpoint_dump = EndpointDescriptor.dump(endpoint)
+    backend_dump = BackendManifest.dump(backend)
+    consumer_dump = ConsumerManifest.dump(consumer)
+
     assert endpoint.protocol == :openai_chat_completions
     assert backend.supported_surfaces == [:local_subprocess]
     assert consumer.accepted_runtime_kinds == [:client, :task, :service]
-    assert EndpointDescriptor.new!(EndpointDescriptor.dump(endpoint)) == endpoint
-    assert BackendManifest.new!(BackendManifest.dump(backend)) == backend
-    assert ConsumerManifest.new!(ConsumerManifest.dump(consumer)) == consumer
+    assert endpoint_dump["protocol"] == "openai_chat_completions"
+    assert backend_dump["backend"] == "llama_cpp"
+    assert consumer_dump["consumer"] == "jido_integration_req_llm"
+    assert_json_safe(endpoint_dump)
+    assert_json_safe(backend_dump)
+    assert_json_safe(consumer_dump)
+    assert EndpointDescriptor.new!(endpoint_dump) == endpoint
+    assert BackendManifest.new!(backend_dump) == backend
+    assert ConsumerManifest.new!(consumer_dump) == consumer
   end
 
   test "compatibility result, inference result, and lease ref round-trip through durable dump maps" do
@@ -152,11 +171,35 @@ defmodule Jido.Integration.V2.InferenceContractsTest do
         metadata: %{"surface_kind" => "local_subprocess"}
       })
 
+    compatibility_dump = CompatibilityResult.dump(compatibility)
+    result_dump = InferenceResult.dump(result)
+    lease_dump = LeaseRef.dump(lease_ref)
+
     assert compatibility.reason == :protocol_match
     assert result.status == :ok
     assert lease_ref.renewable? == true
-    assert CompatibilityResult.new!(CompatibilityResult.dump(compatibility)) == compatibility
-    assert InferenceResult.new!(InferenceResult.dump(result)) == result
-    assert LeaseRef.new!(LeaseRef.dump(lease_ref)) == lease_ref
+    assert compatibility_dump["reason"] == "protocol_match"
+    assert result_dump["status"] == "ok"
+    assert lease_dump["renewable?"] == true
+    assert_json_safe(compatibility_dump)
+    assert_json_safe(result_dump)
+    assert_json_safe(lease_dump)
+    assert CompatibilityResult.new!(compatibility_dump) == compatibility
+    assert InferenceResult.new!(result_dump) == result
+    assert LeaseRef.new!(lease_dump) == lease_ref
+  end
+
+  defp assert_json_safe(value) when is_binary(value) or is_boolean(value) or is_nil(value),
+    do: :ok
+
+  defp assert_json_safe(value) when is_integer(value) or is_float(value), do: :ok
+
+  defp assert_json_safe(value) when is_list(value) do
+    Enum.each(value, &assert_json_safe/1)
+  end
+
+  defp assert_json_safe(value) when is_map(value) do
+    assert Enum.all?(Map.keys(value), &is_binary/1)
+    Enum.each(value, fn {_key, nested} -> assert_json_safe(nested) end)
   end
 end

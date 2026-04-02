@@ -87,17 +87,18 @@ defmodule Jido.Integration.V2.BackendManifest do
   @spec dump(t()) :: map()
   def dump(%__MODULE__{} = manifest) do
     %{
-      contract_version: manifest.contract_version,
-      backend: manifest.backend,
-      runtime_kind: manifest.runtime_kind,
-      management_modes: manifest.management_modes,
-      startup_kind: manifest.startup_kind,
-      protocols: manifest.protocols,
-      capabilities: manifest.capabilities,
-      supported_surfaces: manifest.supported_surfaces,
-      resource_profile: manifest.resource_profile,
-      metadata: manifest.metadata
+      "contract_version" => manifest.contract_version,
+      "backend" => manifest.backend,
+      "runtime_kind" => manifest.runtime_kind,
+      "management_modes" => manifest.management_modes,
+      "startup_kind" => manifest.startup_kind,
+      "protocols" => manifest.protocols,
+      "capabilities" => manifest.capabilities,
+      "supported_surfaces" => manifest.supported_surfaces,
+      "resource_profile" => manifest.resource_profile,
+      "metadata" => manifest.metadata
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp normalize(%__MODULE__{} = manifest) do

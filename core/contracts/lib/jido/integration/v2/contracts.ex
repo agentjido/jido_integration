@@ -60,6 +60,41 @@ defmodule Jido.Integration.V2.Contracts do
     DateTime.utc_now() |> DateTime.truncate(:second)
   end
 
+  @spec dump_json_safe!(term()) :: term()
+  def dump_json_safe!(value)
+
+  def dump_json_safe!(%DateTime{} = value), do: DateTime.to_iso8601(value)
+  def dump_json_safe!(%NaiveDateTime{} = value), do: NaiveDateTime.to_iso8601(value)
+  def dump_json_safe!(%Date{} = value), do: Date.to_iso8601(value)
+  def dump_json_safe!(%Time{} = value), do: Time.to_iso8601(value)
+
+  def dump_json_safe!(%_{} = value) do
+    value
+    |> Map.from_struct()
+    |> dump_json_safe!()
+  end
+
+  def dump_json_safe!(value) when is_map(value) do
+    Enum.into(value, %{}, fn {key, nested_value} ->
+      {dump_json_key!(key), dump_json_safe!(nested_value)}
+    end)
+  end
+
+  def dump_json_safe!(value) when is_list(value), do: Enum.map(value, &dump_json_safe!/1)
+
+  def dump_json_safe!(value) when is_atom(value) do
+    if value in [nil, true, false], do: value, else: Atom.to_string(value)
+  end
+
+  def dump_json_safe!(value)
+      when is_binary(value) or is_integer(value) or is_float(value) or is_boolean(value) or
+             is_nil(value),
+      do: value
+
+  def dump_json_safe!(value) do
+    raise ArgumentError, "value is not JSON-safe: #{inspect(value)}"
+  end
+
   @spec next_id(String.t()) :: String.t()
   def next_id(prefix) do
     "#{prefix}-#{System.unique_integer([:positive, :monotonic])}"
@@ -152,6 +187,16 @@ defmodule Jido.Integration.V2.Contracts do
 
   def validate_non_empty_string!(value, field_name) do
     raise ArgumentError, "#{field_name} must be a non-empty string, got: #{inspect(value)}"
+  end
+
+  defp dump_json_key!(key) when is_binary(key), do: key
+  defp dump_json_key!(key) when is_atom(key), do: Atom.to_string(key)
+  defp dump_json_key!(key) when is_integer(key), do: Integer.to_string(key)
+  defp dump_json_key!(key) when is_float(key), do: Float.to_string(key)
+  defp dump_json_key!(key) when is_boolean(key), do: to_string(key)
+
+  defp dump_json_key!(_key) do
+    raise ArgumentError, "JSON object keys must be strings, numbers, booleans, or atoms"
   end
 
   @spec validate_checksum!(checksum()) :: checksum()

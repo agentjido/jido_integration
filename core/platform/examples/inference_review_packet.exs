@@ -33,20 +33,20 @@ ControlPlane.reset!()
       InferenceExecutionContext.new!(%{
         run_id: "run-review-example-1",
         attempt_id: "run-review-example-1:1",
-        authority_source: :jido_integration,
+        authority_source: "jido_integration",
         decision_ref: "decision-review-example-1",
         authority_ref: nil,
         boundary_ref: "boundary-review-example-1",
         credential_scope: %{scopes: ["model:invoke"]},
-        network_policy: %{egress: :restricted},
+        network_policy: %{egress: "restricted"},
         observability: %{trace_id: "trace-review-example-1"},
         streaming_policy: %{checkpoint_policy: :summary},
-        replay: %{replayable?: true, recovery_class: :checkpoint_resume},
+        replay: %{replayable?: true, recovery_class: "checkpoint_resume"},
         metadata: %{phase: "phase_0"}
       }),
     consumer_manifest:
       ConsumerManifest.new!(%{
-        consumer: :jido_integration_req_llm,
+        consumer: "jido_integration_req_llm",
         accepted_runtime_kinds: [:client, :task, :service],
         accepted_management_modes: [
           :provider_managed,
@@ -57,19 +57,19 @@ ControlPlane.reset!()
         required_capabilities: %{streaming?: true},
         optional_capabilities: %{tool_calling?: false},
         constraints: %{checkpoint_policy: :summary},
-        metadata: %{phase: :phase_0}
+        metadata: %{phase: "phase_0"}
       }),
     backend_manifest:
       BackendManifest.new!(%{
-        backend: :llama_cpp,
+        backend: "llama_cpp",
         runtime_kind: :service,
         management_modes: [:jido_managed, :externally_managed],
         startup_kind: :spawned,
         protocols: [:openai_chat_completions],
-        capabilities: %{streaming?: true, tool_calling?: false, embeddings?: :unknown},
+        capabilities: %{streaming?: true, tool_calling?: false, embeddings?: "unknown"},
         supported_surfaces: [:local_subprocess],
         resource_profile: %{profile: "gpu_single_tenant"},
-        metadata: %{family: :llama_cpp}
+        metadata: %{family: "llama_cpp"}
       }),
     endpoint_descriptor:
       EndpointDescriptor.new!(%{
@@ -80,15 +80,15 @@ ControlPlane.reset!()
         protocol: :openai_chat_completions,
         base_url: "http://127.0.0.1:8080/v1",
         headers: %{"authorization" => "Bearer local"},
-        provider_identity: :llama_cpp,
+        provider_identity: "llama_cpp",
         model_identity: "llama-3.2-3b-instruct",
-        source_runtime: :llama_cpp_ex,
+        source_runtime: "llama_cpp_ex",
         source_runtime_ref: "llama-runtime-review-example-1",
         lease_ref: "lease-review-example-1",
         health_ref: "health-review-example-1",
         boundary_ref: "boundary-review-example-1",
         capabilities: %{streaming?: true},
-        metadata: %{publisher: :phase_0}
+        metadata: %{publisher: "phase_0"}
       }),
     lease_ref:
       LeaseRef.new!(%{
@@ -96,7 +96,7 @@ ControlPlane.reset!()
         owner_ref: "llama-runtime-review-example-1",
         ttl_ms: 60_000,
         renewable?: true,
-        metadata: %{surface_kind: :local_subprocess}
+        metadata: %{surface_kind: "local_subprocess"}
       }),
     compatibility_result:
       CompatibilityResult.new!(%{
@@ -107,7 +107,7 @@ ControlPlane.reset!()
         resolved_protocol: :openai_chat_completions,
         warnings: [],
         missing_requirements: [],
-        metadata: %{route: :self_hosted}
+        metadata: %{route: "self_hosted"}
       }),
     stream: %{
       opened: %{
@@ -141,7 +141,7 @@ ControlPlane.reset!()
         finish_reason: :stop,
         usage: %{input_tokens: 15, output_tokens: 44},
         error: nil,
-        metadata: %{provider: :llama_cpp}
+        metadata: %{provider: "llama_cpp"}
       })
   })
 

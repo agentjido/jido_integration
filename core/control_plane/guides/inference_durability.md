@@ -29,6 +29,8 @@ The recorder writes:
 - a `Run`
 - an `Attempt`
 - the ordered minimum inference event sequence
+- string-keyed durable inference envelopes inside `run.input`, `run.result`,
+  and `attempt.output`
 
 Phase 0 keeps `Run.runtime_class` and `Attempt.runtime_class` on the existing
 contract spine for compatibility. The richer inference route classification is
@@ -50,6 +52,10 @@ Streaming attempts additionally record:
 - `inference.stream_opened`
 - zero or more `inference.stream_checkpoint`
 - `inference.stream_closed`
+
+`stream_opened.checkpoint_policy` is not caller-invented runtime trivia.
+The recorder copies and enforces it from the admitted
+`InferenceExecutionContext.streaming_policy`.
 
 ## Boundary Rule
 

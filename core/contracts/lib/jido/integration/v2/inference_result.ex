@@ -77,18 +77,19 @@ defmodule Jido.Integration.V2.InferenceResult do
   @spec dump(t()) :: map()
   def dump(%__MODULE__{} = result) do
     %{
-      contract_version: result.contract_version,
-      run_id: result.run_id,
-      attempt_id: result.attempt_id,
-      status: result.status,
-      streaming?: result.streaming?,
-      endpoint_id: result.endpoint_id,
-      stream_id: result.stream_id,
-      finish_reason: result.finish_reason,
-      usage: result.usage,
-      error: result.error,
-      metadata: result.metadata
+      "contract_version" => result.contract_version,
+      "run_id" => result.run_id,
+      "attempt_id" => result.attempt_id,
+      "status" => result.status,
+      "streaming?" => result.streaming?,
+      "endpoint_id" => result.endpoint_id,
+      "stream_id" => result.stream_id,
+      "finish_reason" => result.finish_reason,
+      "usage" => result.usage,
+      "error" => result.error,
+      "metadata" => result.metadata
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp normalize(%__MODULE__{} = result) do

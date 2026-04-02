@@ -7,7 +7,7 @@ live runtime integrations.
 
 - `inference_contract_round_trip.exs`
   - builds the phase-0 inference structs
-  - dumps them into their durable map form
+  - dumps them into their string-keyed durable map form
   - shows the JSON-safe shape that other repos should treat as authoritative
 
 ## Notes

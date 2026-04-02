@@ -71,6 +71,9 @@ identity, and JSON Schema derived from the canonical Zoi contracts.
 For phase-0 inference runs, `review_packet/2` synthesizes the connector and
 capability summary directly from durable run and attempt truth. No registered
 connector manifest is required for that review path yet.
+The stored inference envelopes under `run.input`, `run.result`, and
+`attempt.output` remain string-keyed JSON-safe maps, while the projected review
+summary normalizes runtime classification back into the typed platform shape.
 
 ## Design Boundary
 

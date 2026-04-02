@@ -261,7 +261,7 @@ The contract rules are the same as the rest of this package:
 - the durable cross-repo form is a JSON-safe map
 - `contract_version` is `"inference.v1"`
 - `new!/1` validates the authored input
-- `dump/1` emits the durable map form
+- `dump/1` emits the string-keyed durable map form
 
 `TargetDescriptor` remains the reusable durable target advertisement contract.
 `EndpointDescriptor` is the per-attempt execution-ready endpoint summary.

@@ -13,6 +13,9 @@ payloads, the platform synthesizes:
 - review metadata derived only from stored run, attempt, and event truth
 
 No registered connector manifest is required for this phase-0 projection.
+The underlying durable inference envelopes remain string-keyed JSON-safe maps;
+the review projection normalizes the runtime summary back into the typed
+operator-facing packet.
 
 ## Classification Rule
 

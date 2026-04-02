@@ -103,24 +103,25 @@ defmodule Jido.Integration.V2.EndpointDescriptor do
   @spec dump(t()) :: map()
   def dump(%__MODULE__{} = endpoint) do
     %{
-      contract_version: endpoint.contract_version,
-      endpoint_id: endpoint.endpoint_id,
-      runtime_kind: endpoint.runtime_kind,
-      management_mode: endpoint.management_mode,
-      target_class: endpoint.target_class,
-      protocol: endpoint.protocol,
-      base_url: endpoint.base_url,
-      headers: endpoint.headers,
-      provider_identity: endpoint.provider_identity,
-      model_identity: endpoint.model_identity,
-      source_runtime: endpoint.source_runtime,
-      source_runtime_ref: endpoint.source_runtime_ref,
-      lease_ref: endpoint.lease_ref,
-      health_ref: endpoint.health_ref,
-      boundary_ref: endpoint.boundary_ref,
-      capabilities: endpoint.capabilities,
-      metadata: endpoint.metadata
+      "contract_version" => endpoint.contract_version,
+      "endpoint_id" => endpoint.endpoint_id,
+      "runtime_kind" => endpoint.runtime_kind,
+      "management_mode" => endpoint.management_mode,
+      "target_class" => endpoint.target_class,
+      "protocol" => endpoint.protocol,
+      "base_url" => endpoint.base_url,
+      "headers" => endpoint.headers,
+      "provider_identity" => endpoint.provider_identity,
+      "model_identity" => endpoint.model_identity,
+      "source_runtime" => endpoint.source_runtime,
+      "source_runtime_ref" => endpoint.source_runtime_ref,
+      "lease_ref" => endpoint.lease_ref,
+      "health_ref" => endpoint.health_ref,
+      "boundary_ref" => endpoint.boundary_ref,
+      "capabilities" => endpoint.capabilities,
+      "metadata" => endpoint.metadata
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp normalize(%__MODULE__{} = endpoint) do

@@ -21,7 +21,7 @@ All of them follow the existing contracts-package rules:
 - the durable cross-repo form is a JSON-safe map
 - Elixir structs are wrappers around that durable map form
 - `new!/1` validates authored input
-- `dump/1` emits the durable map form
+- `dump/1` emits the string-keyed durable map form
 
 ## Descriptor Rule
 

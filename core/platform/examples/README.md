@@ -13,4 +13,6 @@ control plane.
 ## Notes
 
 - the example depends only on the phase-0 durable baseline
+- the stored inference envelopes stay string-keyed and JSON-safe while the
+  projected packet keeps typed runtime summary fields
 - no live runtime integrations are required

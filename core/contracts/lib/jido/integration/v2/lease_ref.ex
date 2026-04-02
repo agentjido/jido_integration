@@ -65,13 +65,14 @@ defmodule Jido.Integration.V2.LeaseRef do
   @spec dump(t()) :: map()
   def dump(%__MODULE__{} = lease_ref) do
     %{
-      contract_version: lease_ref.contract_version,
-      lease_ref: lease_ref.lease_ref,
-      owner_ref: lease_ref.owner_ref,
-      ttl_ms: lease_ref.ttl_ms,
-      renewable?: lease_ref.renewable?,
-      metadata: lease_ref.metadata
+      "contract_version" => lease_ref.contract_version,
+      "lease_ref" => lease_ref.lease_ref,
+      "owner_ref" => lease_ref.owner_ref,
+      "ttl_ms" => lease_ref.ttl_ms,
+      "renewable?" => lease_ref.renewable?,
+      "metadata" => lease_ref.metadata
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp normalize(%__MODULE__{} = lease_ref) do

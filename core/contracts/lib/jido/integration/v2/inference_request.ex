@@ -77,18 +77,19 @@ defmodule Jido.Integration.V2.InferenceRequest do
   @spec dump(t()) :: map()
   def dump(%__MODULE__{} = request) do
     %{
-      contract_version: request.contract_version,
-      request_id: request.request_id,
-      operation: request.operation,
-      messages: request.messages,
-      prompt: request.prompt,
-      model_preference: request.model_preference,
-      target_preference: request.target_preference,
-      stream?: request.stream?,
-      tool_policy: request.tool_policy,
-      output_constraints: request.output_constraints,
-      metadata: request.metadata
+      "contract_version" => request.contract_version,
+      "request_id" => request.request_id,
+      "operation" => request.operation,
+      "messages" => request.messages,
+      "prompt" => request.prompt,
+      "model_preference" => request.model_preference,
+      "target_preference" => request.target_preference,
+      "stream?" => request.stream?,
+      "tool_policy" => request.tool_policy,
+      "output_constraints" => request.output_constraints,
+      "metadata" => request.metadata
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp normalize(%__MODULE__{} = request) do

@@ -84,10 +84,12 @@ Capability registry, run ledger, and execution admission for the platform.
 Phase 0 adds a durable inference recorder that persists:
 
 - the admitted request identity
+- runtime classification and route truth
 - compatibility outcome
 - endpoint summary
 - optional stream lifecycle summaries
 - terminal inference result
+- usage and finish metadata when available
 
 The minimum durable event sequence is:
 
@@ -97,6 +99,10 @@ The minimum durable event sequence is:
 - `inference.target_resolved`
 - optional stream lifecycle events
 - one terminal attempt event
+
+For streaming attempts, `stream_opened.checkpoint_policy` is copied from the
+admitted `InferenceExecutionContext.streaming_policy` and rejected if the
+runtime summary drifts from that admitted control-plane truth.
 
 This phase does not require live `jido_os`, live CLI runtime publication, or
 live self-hosted runtime publication. The control plane records the normalized

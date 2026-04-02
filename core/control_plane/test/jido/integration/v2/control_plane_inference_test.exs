@@ -25,7 +25,10 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
     assert {:ok, stored_attempt} = ControlPlane.fetch_attempt(recorded.attempt.attempt_id)
 
     assert stored_run.capability_id == "inference.execute"
-    assert stored_attempt.output.inference_result.status == :ok
+    assert stored_attempt.output["inference_result"]["status"] == "ok"
+    assert_json_safe(stored_run.input)
+    assert_json_safe(stored_run.result)
+    assert_json_safe(stored_attempt.output)
 
     assert [
              %Event{type: "inference.request_admitted", seq: 0, payload: admitted_payload},
@@ -69,6 +72,17 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
 
     assert terminal_payload.status == :ok
     assert terminal_payload.finish_reason == :stop
+  end
+
+  test "rejects stream checkpoint policy drift from the admitted execution context" do
+    spec =
+      self_hosted_streaming_spec()
+      |> put_in([:stream, :opened, :checkpoint_policy], :artifact)
+
+    assert {:error, %ArgumentError{} = error} = ControlPlane.record_inference_attempt(spec)
+
+    assert error.message ==
+             "stream.opened.checkpoint_policy must match InferenceExecutionContext.streaming_policy.checkpoint_policy"
   end
 
   test "records streaming self-hosted inference truth with lease and checkpoint events" do
@@ -181,7 +195,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           authority_ref: nil,
           boundary_ref: nil,
           credential_scope: %{scopes: ["model:invoke"]},
-          network_policy: %{egress: :restricted},
+          network_policy: %{egress: "restricted"},
           observability: %{trace_id: "trace-cloud-1"},
           streaming_policy: %{checkpoint_policy: :disabled},
           replay: %{replayable?: false, recovery_class: nil},
@@ -197,7 +211,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           resolved_protocol: nil,
           warnings: [],
           missing_requirements: [],
-          metadata: %{route: :cloud}
+          metadata: %{route: "cloud"}
         }),
       result:
         InferenceResult.new!(%{
@@ -210,7 +224,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           finish_reason: :stop,
           usage: %{input_tokens: 9, output_tokens: 21},
           error: nil,
-          metadata: %{provider: :openai}
+          metadata: %{provider: "openai"}
         })
     }
   end
@@ -229,7 +243,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
         finish_reason: :error,
         usage: nil,
         error: %{message: "provider timeout", reason: :timeout},
-        metadata: %{provider: :openai}
+        metadata: %{provider: "openai"}
       })
     )
   end
@@ -258,24 +272,24 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           authority_ref: nil,
           boundary_ref: "boundary-self-hosted-1",
           credential_scope: %{scopes: ["model:invoke"]},
-          network_policy: %{egress: :restricted},
+          network_policy: %{egress: "restricted"},
           observability: %{trace_id: "trace-self-hosted-1"},
           streaming_policy: %{checkpoint_policy: :summary},
-          replay: %{replayable?: true, recovery_class: :checkpoint_resume},
+          replay: %{replayable?: true, recovery_class: "checkpoint_resume"},
           metadata: %{phase: "phase_0"}
         }),
       consumer_manifest: consumer_manifest(required_capabilities: %{streaming?: true}),
       backend_manifest:
         BackendManifest.new!(%{
-          backend: :llama_cpp,
+          backend: "llama_cpp",
           runtime_kind: :service,
           management_modes: [:jido_managed, :externally_managed],
           startup_kind: :spawned,
           protocols: [:openai_chat_completions],
-          capabilities: %{streaming?: true, tool_calling?: false, embeddings?: :unknown},
+          capabilities: %{streaming?: true, tool_calling?: false, embeddings?: "unknown"},
           supported_surfaces: [:local_subprocess],
           resource_profile: %{profile: "gpu_single_tenant"},
-          metadata: %{family: :llama_cpp}
+          metadata: %{family: "llama_cpp"}
         }),
       endpoint_descriptor:
         EndpointDescriptor.new!(%{
@@ -286,15 +300,15 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           protocol: :openai_chat_completions,
           base_url: "http://127.0.0.1:8080/v1",
           headers: %{"authorization" => "Bearer local"},
-          provider_identity: :llama_cpp,
+          provider_identity: "llama_cpp",
           model_identity: "llama-3.2-3b-instruct",
-          source_runtime: :llama_cpp_ex,
+          source_runtime: "llama_cpp_ex",
           source_runtime_ref: "llama-runtime-1",
           lease_ref: "lease-inference-1",
           health_ref: "health-1",
           boundary_ref: "boundary-self-hosted-1",
           capabilities: %{streaming?: true, tool_calling?: false},
-          metadata: %{publisher: :phase_0}
+          metadata: %{publisher: "phase_0"}
         }),
       lease_ref:
         LeaseRef.new!(%{
@@ -302,7 +316,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           owner_ref: "llama-runtime-1",
           ttl_ms: 60_000,
           renewable?: true,
-          metadata: %{surface_kind: :local_subprocess}
+          metadata: %{surface_kind: "local_subprocess"}
         }),
       compatibility_result:
         CompatibilityResult.new!(%{
@@ -313,7 +327,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           resolved_protocol: :openai_chat_completions,
           warnings: [],
           missing_requirements: [],
-          metadata: %{route: :self_hosted}
+          metadata: %{route: "self_hosted"}
         }),
       stream: %{
         opened: %{
@@ -347,7 +361,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           finish_reason: :stop,
           usage: %{input_tokens: 12, output_tokens: 34},
           error: nil,
-          metadata: %{provider: :llama_cpp}
+          metadata: %{provider: "llama_cpp"}
         })
     }
   end
@@ -376,24 +390,24 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           authority_ref: nil,
           boundary_ref: "boundary-cli-1",
           credential_scope: %{scopes: ["model:invoke"]},
-          network_policy: %{egress: :restricted},
+          network_policy: %{egress: "restricted"},
           observability: %{trace_id: "trace-cli-1"},
           streaming_policy: %{checkpoint_policy: :disabled},
-          replay: %{replayable?: true, recovery_class: :session_resume},
+          replay: %{replayable?: true, recovery_class: "session_resume"},
           metadata: %{phase: "phase_0"}
         }),
       consumer_manifest: consumer_manifest(required_capabilities: %{streaming?: true}),
       backend_manifest:
         BackendManifest.new!(%{
-          backend: :asm_inference_endpoint,
+          backend: "asm_inference_endpoint",
           runtime_kind: :task,
           management_modes: [:jido_managed],
           startup_kind: :spawned,
           protocols: [:openai_chat_completions],
-          capabilities: %{streaming?: true, tool_calling?: :unknown, embeddings?: :unknown},
+          capabilities: %{streaming?: true, tool_calling?: "unknown", embeddings?: "unknown"},
           supported_surfaces: [:local_subprocess, :ssh_exec, :guest_bridge],
           resource_profile: %{profile: "cli_session"},
-          metadata: %{family: :asm}
+          metadata: %{family: "asm"}
         }),
       endpoint_descriptor:
         EndpointDescriptor.new!(%{
@@ -404,15 +418,15 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           protocol: :openai_chat_completions,
           base_url: "http://127.0.0.1:4319/v1",
           headers: %{"authorization" => "Bearer asm"},
-          provider_identity: :gemini,
+          provider_identity: "gemini",
           model_identity: "gemini-2.5-pro",
-          source_runtime: :asm_inference_endpoint,
+          source_runtime: "asm_inference_endpoint",
           source_runtime_ref: "asm-session-1",
           lease_ref: "lease-cli-1",
           health_ref: nil,
           boundary_ref: "boundary-cli-1",
           capabilities: %{streaming?: true},
-          metadata: %{publisher: :phase_0}
+          metadata: %{publisher: "phase_0"}
         }),
       compatibility_result:
         CompatibilityResult.new!(%{
@@ -423,7 +437,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           resolved_protocol: :openai_chat_completions,
           warnings: [],
           missing_requirements: [],
-          metadata: %{route: :cli}
+          metadata: %{route: "cli"}
         }),
       stream: %{
         opened: %{
@@ -450,7 +464,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           finish_reason: :cancelled,
           usage: nil,
           error: %{message: "stream cancelled", reason: :user_cancelled},
-          metadata: %{provider: :gemini}
+          metadata: %{provider: "gemini"}
         })
     }
   end
@@ -458,18 +472,32 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
   defp consumer_manifest(overrides \\ []) do
     attrs =
       [
-        consumer: :jido_integration_req_llm,
+        consumer: "jido_integration_req_llm",
         accepted_runtime_kinds: [:client, :task, :service],
         accepted_management_modes: [:provider_managed, :jido_managed, :externally_managed],
         accepted_protocols: [:openai_chat_completions],
         required_capabilities: %{},
         optional_capabilities: %{tool_calling?: false},
         constraints: %{checkpoint_policy: :summary},
-        metadata: %{phase: :phase_0}
+        metadata: %{phase: "phase_0"}
       ]
 
     attrs
     |> Keyword.merge(overrides)
     |> ConsumerManifest.new!()
+  end
+
+  defp assert_json_safe(value) when is_binary(value) or is_boolean(value) or is_nil(value),
+    do: :ok
+
+  defp assert_json_safe(value) when is_integer(value) or is_float(value), do: :ok
+
+  defp assert_json_safe(value) when is_list(value) do
+    Enum.each(value, &assert_json_safe/1)
+  end
+
+  defp assert_json_safe(value) when is_map(value) do
+    assert Enum.all?(Map.keys(value), &is_binary/1)
+    Enum.each(value, fn {_key, nested} -> assert_json_safe(nested) end)
   end
 end

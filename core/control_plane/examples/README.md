@@ -13,5 +13,7 @@ introducing live runtime dependencies.
 ## Notes
 
 - the example starts the auth and control-plane OTP trees directly
+- durable inference envelopes are stored with string keys so they stay
+  JSON-safe for cross-repo review
 - no live `req_llm`, CLI runtime, self-hosted runtime, or `jido_os`
   integration is required

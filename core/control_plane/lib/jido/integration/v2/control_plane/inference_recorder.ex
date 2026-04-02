@@ -295,43 +295,46 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
 
   defp run_input(spec) do
     %{
-      contract_version: Contracts.inference_contract_version(),
-      request: InferenceRequest.dump(spec.request),
-      context: InferenceExecutionContext.dump(spec.context),
-      consumer_manifest: ConsumerManifest.dump(spec.consumer_manifest),
-      backend_manifest: maybe_dump(spec.backend_manifest),
-      lease_ref: maybe_dump(spec.lease_ref),
-      phase: "phase_0_inference_baseline"
+      "contract_version" => Contracts.inference_contract_version(),
+      "request" => InferenceRequest.dump(spec.request),
+      "context" => InferenceExecutionContext.dump(spec.context),
+      "consumer_manifest" => ConsumerManifest.dump(spec.consumer_manifest),
+      "backend_manifest" => maybe_dump(spec.backend_manifest),
+      "lease_ref" => maybe_dump(spec.lease_ref),
+      "phase" => "phase_0_inference_baseline"
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp run_result(spec) do
     %{
-      contract_version: Contracts.inference_contract_version(),
-      runtime_kind: resolved_runtime_kind(spec),
-      management_mode: resolved_management_mode(spec),
-      target_class: resolved_target_class(spec),
-      inference_result: InferenceResult.dump(spec.result),
-      compatibility_result: CompatibilityResult.dump(spec.compatibility_result),
-      endpoint_descriptor: maybe_dump(spec.endpoint_descriptor),
-      stream: spec.stream
+      "contract_version" => Contracts.inference_contract_version(),
+      "runtime_kind" => resolved_runtime_kind(spec),
+      "management_mode" => resolved_management_mode(spec),
+      "target_class" => resolved_target_class(spec),
+      "inference_result" => InferenceResult.dump(spec.result),
+      "compatibility_result" => CompatibilityResult.dump(spec.compatibility_result),
+      "endpoint_descriptor" => maybe_dump(spec.endpoint_descriptor),
+      "stream" => spec.stream
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp attempt_output(spec) do
     %{
-      contract_version: Contracts.inference_contract_version(),
-      runtime_kind: resolved_runtime_kind(spec),
-      management_mode: resolved_management_mode(spec),
-      target_class: resolved_target_class(spec),
-      consumer_manifest: ConsumerManifest.dump(spec.consumer_manifest),
-      backend_manifest: maybe_dump(spec.backend_manifest),
-      endpoint_descriptor: maybe_dump(spec.endpoint_descriptor),
-      lease_ref: maybe_dump(spec.lease_ref),
-      compatibility_result: CompatibilityResult.dump(spec.compatibility_result),
-      inference_result: InferenceResult.dump(spec.result),
-      stream: spec.stream
+      "contract_version" => Contracts.inference_contract_version(),
+      "runtime_kind" => resolved_runtime_kind(spec),
+      "management_mode" => resolved_management_mode(spec),
+      "target_class" => resolved_target_class(spec),
+      "consumer_manifest" => ConsumerManifest.dump(spec.consumer_manifest),
+      "backend_manifest" => maybe_dump(spec.backend_manifest),
+      "endpoint_descriptor" => maybe_dump(spec.endpoint_descriptor),
+      "lease_ref" => maybe_dump(spec.lease_ref),
+      "compatibility_result" => CompatibilityResult.dump(spec.compatibility_result),
+      "inference_result" => InferenceResult.dump(spec.result),
+      "stream" => spec.stream
     }
+    |> Contracts.dump_json_safe!()
   end
 
   defp connector_summary do
@@ -386,9 +389,10 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
       required_scopes: [],
       runtime: %{
         family: :inference,
-        runtime_kind: Map.get(output, :runtime_kind),
-        management_mode: Map.get(output, :management_mode),
-        target_class: Map.get(output, :target_class)
+        runtime_kind: normalize_output_runtime_kind(Contracts.get(output, :runtime_kind)),
+        management_mode:
+          normalize_output_management_mode(Contracts.get(output, :management_mode)),
+        target_class: normalize_output_target_class(Contracts.get(output, :target_class))
       },
       consumer_surface: %{
         mode: :connector_local,
@@ -463,7 +467,22 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
     raise ArgumentError, "stream must be a map, got: #{inspect(stream)}"
   end
 
-  defp normalize_stream_opened!(opened, _context) when is_map(opened) do
+  defp normalize_stream_opened!(opened, context) when is_map(opened) do
+    checkpoint_policy =
+      Contracts.validate_inference_checkpoint_policy!(
+        Contracts.fetch!(opened, :checkpoint_policy)
+      )
+
+    expected_checkpoint_policy =
+      context.streaming_policy
+      |> Contracts.get(:checkpoint_policy, :disabled)
+      |> Contracts.validate_inference_checkpoint_policy!()
+
+    if checkpoint_policy != expected_checkpoint_policy do
+      raise ArgumentError,
+            "stream.opened.checkpoint_policy must match InferenceExecutionContext.streaming_policy.checkpoint_policy"
+    end
+
     %{
       stream_id:
         Contracts.validate_non_empty_string!(
@@ -471,10 +490,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
           "stream.opened.stream_id"
         ),
       protocol: Contracts.validate_inference_protocol!(Contracts.fetch!(opened, :protocol)),
-      checkpoint_policy:
-        Contracts.validate_inference_checkpoint_policy!(
-          Contracts.fetch!(opened, :checkpoint_policy)
-        )
+      checkpoint_policy: checkpoint_policy
     }
   end
 
@@ -617,6 +633,15 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
   defp maybe_dump(%BackendManifest{} = manifest), do: BackendManifest.dump(manifest)
   defp maybe_dump(%EndpointDescriptor{} = descriptor), do: EndpointDescriptor.dump(descriptor)
   defp maybe_dump(%LeaseRef{} = lease_ref), do: LeaseRef.dump(lease_ref)
+
+  defp normalize_output_runtime_kind(nil), do: nil
+  defp normalize_output_runtime_kind(value), do: Contracts.validate_runtime_kind!(value)
+
+  defp normalize_output_management_mode(nil), do: nil
+  defp normalize_output_management_mode(value), do: Contracts.validate_management_mode!(value)
+
+  defp normalize_output_target_class(nil), do: nil
+  defp normalize_output_target_class(value), do: Contracts.validate_inference_target_class!(value)
 
   defp inference_credential_ref do
     CredentialRef.new!(%{
