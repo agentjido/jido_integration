@@ -36,6 +36,7 @@ attached-local route through `self_hosted_inference_core`, the built-in
 
 - `test/jido/integration/v2/apps/inference_ops_test.exs`
 - `examples/inference_proof.exs`
+- `examples/ollama_attach_proof.exs`
 
 The package tests keep the cloud lane offline with `Req.Test` while the
 self-hosted spawned lane uses the shared fake `llama-server` fixture script
@@ -43,4 +44,5 @@ published by `llama_cpp_ex`. The attached-local lane stays offline in tests by
 stubbing the Ollama readiness/health seam and the `req_llm` client call
 separately. The CLI lane uses a fake ASM backend under the real
 endpoint-publication seam and prefers Gemini as the first common-surface proof
-provider.
+provider. Use `examples/ollama_attach_proof.exs` when you want the honest
+externally managed attach path against an already running Ollama daemon.
