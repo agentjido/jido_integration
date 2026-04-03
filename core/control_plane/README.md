@@ -53,11 +53,17 @@ Capability registry, run ledger, and execution admission for the platform.
 - no attempt is created until auth and policy admit execution
 - admitted work creates deterministic attempt `1` as `#{run_id}:1`
 - attempts carry explicit `aggregator_id` and `aggregator_epoch` authority
+- `execute_run/3` re-resolves current auth truth from `connection_id` lineage
+  before issuing a new execution lease, so stored run snapshots do not become
+  long-lived auth authority
 - runtimes receive `CredentialLease`, not durable credential truth
 - runtimes receive execution policy inputs separately from pre-dispatch
   admission facts
 - run, attempt, and event truth are redactable by construction even when
   runtime code echoes lease-shaped auth material
+- review, planning, and sandbox execution surfaces stay secret-decoupled; the
+  control plane may evaluate policy against sanitized auth handles, but it does
+  not persist raw secret material in durable run truth
 
 ## API Surface
 

@@ -3,6 +3,7 @@ defmodule Jido.Integration.V2.Auth do
   Durable connection/install truth plus short-lived credential leases.
   """
 
+  alias Jido.Integration.V2.ArtifactBuilder
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Auth.LeaseRecord
@@ -52,7 +53,11 @@ defmodule Jido.Integration.V2.Auth do
           {:ok, %{install: Install.t(), connection: Connection.t(), session_state: map()}}
           | {:error, term()}
   def start_install(connector_id, tenant_id, opts \\ %{}) when is_binary(connector_id) do
-    opts = Map.new(opts)
+    opts =
+      opts
+      |> Map.new()
+      |> enrich_install_opts()
+
     now = now(opts)
     actor_id = Map.fetch!(opts, :actor_id)
     auth_type = Map.fetch!(opts, :auth_type)
@@ -60,7 +65,6 @@ defmodule Jido.Integration.V2.Auth do
     flow_kind = Map.get(opts, :flow_kind, default_flow_kind(auth_type))
     subject = Map.fetch!(opts, :subject)
     requested_scopes = Map.get(opts, :requested_scopes, [])
-    metadata = Map.get(opts, :metadata, %{})
 
     with {:ok, connection} <-
            install_connection_for_start(
@@ -73,6 +77,8 @@ defmodule Jido.Integration.V2.Auth do
              opts,
              now
            ) do
+      metadata = install_metadata(connection, Map.get(opts, :metadata, %{}), opts)
+
       install =
         Install.new!(%{
           install_id: Contracts.next_id("install"),
@@ -111,6 +117,45 @@ defmodule Jido.Integration.V2.Auth do
          connection: connection,
          session_state: %{install_id: install.install_id, callback_token: install.callback_token}
        }}
+    end
+  end
+
+  @spec resolve_install_callback(map()) ::
+          {:ok, %{install: Install.t(), connection: Connection.t()}}
+          | {:error,
+             :callback_locator_required
+             | :unknown_install
+             | :ambiguous_install
+             | :install_expired
+             | :callback_already_consumed
+             | :invalid_callback_state
+             | :invalid_callback_token
+             | :pkce_verifier_required
+             | :invalid_pkce_verifier
+             | {:callback_error, term()}
+             | term()}
+  def resolve_install_callback(attrs) when is_map(attrs) do
+    attrs = Map.new(attrs)
+    now = now(attrs)
+
+    with {:ok, %Install{} = install} <- fetch_callback_install(attrs),
+         :ok <- ensure_callback_pending(install, now),
+         :ok <- validate_callback_token(install, attrs),
+         :ok <- validate_callback_state(install, attrs),
+         {:ok, connection} <- Stores.connection_store().fetch_connection(install.connection_id),
+         :ok <- maybe_fail_callback(install, attrs, now),
+         :ok <- validate_pkce_verifier(install, attrs) do
+      callback_install =
+        %Install{
+          install
+          | state: :awaiting_callback,
+            callback_received_at: Contracts.get(attrs, :callback_received_at, now),
+            callback_uri: Contracts.get(attrs, :callback_uri, install.callback_uri),
+            updated_at: now
+        }
+
+      :ok = Stores.install_store().store_install(callback_install)
+      {:ok, %{install: callback_install, connection: connection}}
     end
   end
 
@@ -173,6 +218,7 @@ defmodule Jido.Integration.V2.Auth do
                last_refresh_status: nil,
                degraded_reason: nil,
                reauth_required_reason: nil,
+               disabled_reason: nil,
                revoked_at: nil,
                revocation_reason: nil,
                actor_id: Map.get(attrs, :actor_id, install.actor_id),
@@ -198,6 +244,24 @@ defmodule Jido.Integration.V2.Auth do
     Stores.install_store().list_installs(filters)
   end
 
+  @spec cancel_install(String.t(), map()) ::
+          {:ok, %{install: Install.t(), connection: Connection.t()}} | {:error, term()}
+  def cancel_install(install_id, attrs \\ %{}) when is_binary(install_id) and is_map(attrs) do
+    terminalize_install(install_id, :cancelled, attrs)
+  end
+
+  @spec expire_install(String.t(), map()) ::
+          {:ok, %{install: Install.t(), connection: Connection.t()}} | {:error, term()}
+  def expire_install(install_id, attrs \\ %{}) when is_binary(install_id) and is_map(attrs) do
+    terminalize_install(install_id, :expired, attrs)
+  end
+
+  @spec fail_install(String.t(), map()) ::
+          {:ok, %{install: Install.t(), connection: Connection.t()}} | {:error, term()}
+  def fail_install(install_id, attrs \\ %{}) when is_binary(install_id) and is_map(attrs) do
+    terminalize_install(install_id, :failed, attrs)
+  end
+
   @spec connection_status(String.t()) :: {:ok, Connection.t()} | {:error, :unknown_connection}
   def connection_status(connection_id),
     do: Stores.connection_store().fetch_connection(connection_id)
@@ -205,6 +269,31 @@ defmodule Jido.Integration.V2.Auth do
   @spec connections(map()) :: [Connection.t()]
   def connections(filters \\ %{}) when is_map(filters) do
     Stores.connection_store().list_connections(filters)
+  end
+
+  @spec reauthorize_connection(String.t(), map()) ::
+          {:ok, %{install: Install.t(), connection: Connection.t(), session_state: map()}}
+          | {:error, term()}
+  def reauthorize_connection(connection_id, opts \\ %{})
+      when is_binary(connection_id) and is_map(opts) do
+    opts = Map.new(opts)
+
+    with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id) do
+      start_install(
+        connection.connector_id,
+        connection.tenant_id,
+        opts
+        |> Map.put(:connection_id, connection.connection_id)
+        |> Map.put(:auth_type, connection.auth_type)
+        |> Map.put(:profile_id, Map.get(opts, :profile_id, connection.profile_id))
+        |> Map.put(:subject, connection.subject)
+        |> Map.put(:flow_kind, Map.get(opts, :flow_kind, default_flow_kind(connection.auth_type)))
+        |> Map.put(
+          :requested_scopes,
+          Map.get(opts, :requested_scopes, connection.requested_scopes)
+        )
+      )
+    end
   end
 
   @spec request_lease(String.t(), map()) ::
@@ -663,6 +752,20 @@ defmodule Jido.Integration.V2.Auth do
     }
   end
 
+  defp terminalize_install(install_id, terminal_state, attrs) do
+    attrs = Map.new(attrs)
+    now = now(attrs)
+
+    with {:ok, install} <- fetch_install(install_id),
+         :ok <- ensure_install_terminalizable(install, terminal_state),
+         terminal_install <- terminal_install_record(install, terminal_state, attrs, now),
+         {:ok, connection} <-
+           finalize_install_connection(terminal_install, terminal_state, attrs, now),
+         :ok <- Stores.install_store().store_install(terminal_install) do
+      {:ok, %{install: terminal_install, connection: connection}}
+    end
+  end
+
   defp maybe_refresh(%Connection{} = connection, %Credential{} = credential, now) do
     if Credential.expired?(credential, now) do
       with {:ok, %Connection{} = hydrated_connection, %Credential{} = hydrated_credential} <-
@@ -1064,6 +1167,26 @@ defmodule Jido.Integration.V2.Auth do
     end
   end
 
+  defp ensure_callback_pending(%Install{state: :installing} = install, now) do
+    if Install.expired?(install, now),
+      do: {:error, :install_expired},
+      else: :ok
+  end
+
+  defp ensure_callback_pending(%Install{state: :awaiting_callback}, _now),
+    do: {:error, :callback_already_consumed}
+
+  defp ensure_callback_pending(%Install{}, _now), do: {:error, :install_already_consumed}
+
+  defp ensure_install_terminalizable(%Install{state: state}, state), do: :ok
+
+  defp ensure_install_terminalizable(%Install{state: state}, _terminal_state)
+       when state in [:installing, :awaiting_callback],
+       do: :ok
+
+  defp ensure_install_terminalizable(%Install{}, _terminal_state),
+    do: {:error, :install_already_consumed}
+
   defp ensure_connection_available(%Connection{state: :installing}),
     do: {:error, :connection_installing}
 
@@ -1121,6 +1244,332 @@ defmodule Jido.Integration.V2.Auth do
     |> Enum.any?(&(normalize_key(&1) == "refresh_token"))
   end
 
+  defp fetch_callback_install(attrs) when is_map(attrs) do
+    cond do
+      is_binary(Contracts.get(attrs, :install_id)) ->
+        fetch_install(Contracts.fetch!(attrs, :install_id))
+
+      is_binary(Contracts.get(attrs, :callback_token)) ->
+        attrs
+        |> Contracts.fetch!(:callback_token)
+        |> fetch_install_by_filter(:callback_token)
+
+      is_binary(Contracts.get(attrs, :state_token)) ->
+        attrs
+        |> Contracts.fetch!(:state_token)
+        |> fetch_install_by_filter(:state_token)
+
+      true ->
+        {:error, :callback_locator_required}
+    end
+  end
+
+  defp fetch_install_by_filter(value, key) when is_binary(value) do
+    case Stores.install_store().list_installs(%{key => value}) do
+      [install] -> {:ok, install}
+      [] -> {:error, :unknown_install}
+      _installs -> {:error, :ambiguous_install}
+    end
+  end
+
+  defp validate_callback_token(%Install{} = install, attrs) do
+    case Contracts.get(attrs, :callback_token) do
+      nil ->
+        :ok
+
+      callback_token when callback_token == install.callback_token ->
+        :ok
+
+      _other ->
+        {:error, :invalid_callback_token}
+    end
+  end
+
+  defp validate_callback_state(%Install{state_token: nil}, _attrs), do: :ok
+
+  defp validate_callback_state(%Install{state_token: state_token}, attrs) do
+    if state_token == Contracts.get(attrs, :state_token),
+      do: :ok,
+      else: {:error, :invalid_callback_state}
+  end
+
+  defp validate_pkce_verifier(%Install{pkce_verifier_digest: nil}, _attrs), do: :ok
+
+  defp validate_pkce_verifier(%Install{} = install, attrs) do
+    case Contracts.get(attrs, :pkce_verifier) do
+      verifier when is_binary(verifier) and verifier != "" ->
+        if ArtifactBuilder.digest(verifier) == install.pkce_verifier_digest,
+          do: :ok,
+          else: {:error, :invalid_pkce_verifier}
+
+      _other ->
+        {:error, :pkce_verifier_required}
+    end
+  end
+
+  defp maybe_fail_callback(%Install{} = install, attrs, now) do
+    case callback_failure(attrs) do
+      nil ->
+        :ok
+
+      reason ->
+        fail_install(install.install_id, %{
+          actor_id: Contracts.get(attrs, :actor_id),
+          callback_received_at: Contracts.get(attrs, :callback_received_at, now),
+          reason: {:callback, reason},
+          now: now
+        })
+
+        {:error, {:callback_error, reason}}
+    end
+  end
+
+  defp callback_failure(attrs) when is_map(attrs) do
+    case {Map.get(attrs, :error), Map.get(attrs, :error_description)} do
+      {nil, nil} ->
+        case {Map.get(attrs, "error"), Map.get(attrs, "error_description")} do
+          {nil, nil} -> nil
+          {error, description} -> %{error: error, description: description}
+        end
+
+      {error, description} ->
+        %{error: error, description: description}
+    end
+  end
+
+  defp terminal_install_record(%Install{} = install, terminal_state, attrs, now) do
+    reason = Contracts.get(attrs, :reason)
+
+    base_install =
+      %Install{
+        install
+        | state: terminal_state,
+          callback_received_at:
+            Contracts.get(attrs, :callback_received_at, install.callback_received_at),
+          updated_at: now
+      }
+
+    case terminal_state do
+      :cancelled ->
+        %Install{
+          base_install
+          | cancelled_at: now,
+            failure_reason: reason && normalize_reason(reason)
+        }
+
+      :failed ->
+        %Install{
+          base_install
+          | failure_reason: normalize_reason(reason || :install_failed)
+        }
+
+      :expired ->
+        %Install{
+          base_install
+          | failure_reason: normalize_reason(reason || :install_expired)
+        }
+    end
+  end
+
+  defp finalize_install_connection(%Install{} = install, terminal_state, attrs, now) do
+    with {:ok, connection} <- Stores.connection_store().fetch_connection(install.connection_id) do
+      resolved_connection =
+        case restore_connection_from_snapshot(connection, install, attrs, now) do
+          {:ok, restored_connection} ->
+            restored_connection
+
+          {:error, _reason} ->
+            disable_install_connection(connection, terminal_state, attrs, now)
+        end
+
+      :ok = Stores.connection_store().store_connection(resolved_connection)
+      {:ok, resolved_connection}
+    end
+  end
+
+  defp restore_connection_from_snapshot(
+         %Connection{} = connection,
+         %Install{} = install,
+         attrs,
+         now
+       ) do
+    case install_snapshot(install) do
+      nil ->
+        {:error, :snapshot_unavailable}
+
+      snapshot ->
+        target_state = snapshot_connection_state(snapshot)
+
+        with {:ok, %Connection{} = restored_connection} <-
+               transition_connection(connection, target_state) do
+          {:ok,
+           %Connection{
+             restored_connection
+             | state: target_state,
+               profile_id: metadata_value(snapshot, :profile_id, connection.profile_id),
+               credential_ref_id:
+                 metadata_value(snapshot, :credential_ref_id, connection.credential_ref_id),
+               current_credential_ref_id:
+                 metadata_value(
+                   snapshot,
+                   :current_credential_ref_id,
+                   connection.current_credential_ref_id
+                 ),
+               current_credential_id:
+                 metadata_value(
+                   snapshot,
+                   :current_credential_id,
+                   connection.current_credential_id
+                 ),
+               install_id: metadata_value(snapshot, :install_id, connection.install_id),
+               management_mode:
+                 metadata_value(snapshot, :management_mode, connection.management_mode),
+               secret_source: metadata_value(snapshot, :secret_source, connection.secret_source),
+               external_secret_ref:
+                 metadata_value(
+                   snapshot,
+                   :external_secret_ref,
+                   connection.external_secret_ref
+                 ),
+               requested_scopes:
+                 metadata_value(snapshot, :requested_scopes, connection.requested_scopes),
+               granted_scopes:
+                 metadata_value(snapshot, :granted_scopes, connection.granted_scopes),
+               lease_fields: metadata_value(snapshot, :lease_fields, connection.lease_fields),
+               token_expires_at:
+                 metadata_value(snapshot, :token_expires_at, connection.token_expires_at),
+               last_refresh_at:
+                 metadata_value(snapshot, :last_refresh_at, connection.last_refresh_at),
+               last_refresh_status:
+                 metadata_value(snapshot, :last_refresh_status, connection.last_refresh_status),
+               last_rotated_at:
+                 metadata_value(snapshot, :last_rotated_at, connection.last_rotated_at),
+               degraded_reason:
+                 metadata_value(snapshot, :degraded_reason, connection.degraded_reason),
+               reauth_required_reason:
+                 metadata_value(
+                   snapshot,
+                   :reauth_required_reason,
+                   connection.reauth_required_reason
+                 ),
+               disabled_reason:
+                 metadata_value(snapshot, :disabled_reason, connection.disabled_reason),
+               revoked_at: metadata_value(snapshot, :revoked_at, connection.revoked_at),
+               revocation_reason:
+                 metadata_value(snapshot, :revocation_reason, connection.revocation_reason),
+               actor_id: Map.get(attrs, :actor_id, connection.actor_id),
+               metadata: metadata_value(snapshot, :metadata, connection.metadata),
+               updated_at: now
+           }}
+        end
+    end
+  end
+
+  defp disable_install_connection(%Connection{} = connection, terminal_state, attrs, now) do
+    reason = Contracts.get(attrs, :reason) || terminal_state
+
+    actor_id = Contracts.get(attrs, :actor_id, connection.actor_id)
+
+    case transition_connection(connection, :disabled) do
+      {:ok, %Connection{} = disabled_connection} ->
+        %Connection{
+          disabled_connection
+          | state: :disabled,
+            degraded_reason: nil,
+            reauth_required_reason: nil,
+            disabled_reason: normalize_reason({:install, reason}),
+            actor_id: actor_id,
+            updated_at: now
+        }
+
+      {:error, _reason} ->
+        %Connection{
+          connection
+          | state: :disabled,
+            degraded_reason: nil,
+            reauth_required_reason: nil,
+            disabled_reason: normalize_reason({:install, reason}),
+            actor_id: actor_id,
+            updated_at: now
+        }
+    end
+  end
+
+  defp install_metadata(%Connection{} = connection, metadata, opts) when is_map(metadata) do
+    if is_binary(Map.get(opts, :connection_id)) do
+      reauth_snapshot =
+        case Map.get(opts, :reauth_snapshot) do
+          snapshot when is_map(snapshot) -> snapshot
+          _other -> connection_snapshot(connection)
+        end
+
+      metadata
+      |> Map.put_new(:install_origin, :reauth)
+      |> Map.put_new(:reauth_snapshot, reauth_snapshot)
+    else
+      metadata
+      |> Map.put_new(:install_origin, :new_connection)
+    end
+  end
+
+  defp install_metadata(%Connection{}, metadata, _opts), do: metadata
+
+  defp connection_snapshot(%Connection{} = connection) do
+    connection
+    |> Map.from_struct()
+    |> Map.take([
+      :state,
+      :credential_ref_id,
+      :current_credential_ref_id,
+      :current_credential_id,
+      :install_id,
+      :management_mode,
+      :secret_source,
+      :external_secret_ref,
+      :requested_scopes,
+      :granted_scopes,
+      :lease_fields,
+      :token_expires_at,
+      :last_refresh_at,
+      :last_refresh_status,
+      :last_rotated_at,
+      :degraded_reason,
+      :reauth_required_reason,
+      :disabled_reason,
+      :revoked_at,
+      :revocation_reason,
+      :profile_id,
+      :metadata
+    ])
+  end
+
+  defp install_snapshot(%Install{} = install) do
+    install.metadata
+    |> metadata_value(:reauth_snapshot, nil)
+    |> case do
+      snapshot when is_map(snapshot) -> snapshot
+      _other -> nil
+    end
+  end
+
+  defp snapshot_connection_state(snapshot) when is_map(snapshot) do
+    snapshot
+    |> metadata_value(:state, :disabled)
+    |> normalize_snapshot_connection_state()
+  end
+
+  defp normalize_snapshot_connection_state(:connected), do: :connected
+  defp normalize_snapshot_connection_state("connected"), do: :connected
+  defp normalize_snapshot_connection_state(:degraded), do: :degraded
+  defp normalize_snapshot_connection_state("degraded"), do: :degraded
+  defp normalize_snapshot_connection_state(:reauth_required), do: :reauth_required
+  defp normalize_snapshot_connection_state("reauth_required"), do: :reauth_required
+  defp normalize_snapshot_connection_state(:revoked), do: :revoked
+  defp normalize_snapshot_connection_state("revoked"), do: :revoked
+  defp normalize_snapshot_connection_state(:disabled), do: :disabled
+  defp normalize_snapshot_connection_state("disabled"), do: :disabled
+  defp normalize_snapshot_connection_state(_other), do: :disabled
+
   defp connection_id(%CredentialRef{} = credential_ref, %Credential{} = credential) do
     if is_binary(credential_ref.connection_id) do
       credential_ref.connection_id
@@ -1171,7 +1620,23 @@ defmodule Jido.Integration.V2.Auth do
   defp normalize_reason(reason) when is_binary(reason), do: reason
   defp normalize_reason(reason), do: inspect(reason)
 
-  defp now(map), do: Map.get(map, :now, Contracts.now())
+  defp now(map), do: Contracts.get(map, :now, Contracts.now())
+
+  defp enrich_install_opts(opts) when is_map(opts) do
+    case Map.get(opts, :connection_id) do
+      connection_id when is_binary(connection_id) ->
+        case Stores.connection_store().fetch_connection(connection_id) do
+          {:ok, connection} ->
+            Map.put_new(opts, :reauth_snapshot, connection_snapshot(connection))
+
+          {:error, _reason} ->
+            opts
+        end
+
+      _other ->
+        opts
+    end
+  end
 
   defp normalize_key(key) when is_atom(key), do: Atom.to_string(key)
   defp normalize_key(key) when is_binary(key), do: key

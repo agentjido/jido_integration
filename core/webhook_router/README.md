@@ -6,7 +6,7 @@ Hosted webhook route registration and route-resolution bridge above
 Owns:
 
 - route registration, listing, fetch, and removal
-- callback-topology metadata for hosted webhook paths
+- callback-topology metadata for hosted webhook trigger paths
 - hosted route records carrying explicit trigger capability identity plus
   normalized signal metadata
 - secret-ref resolution through `core/auth`
@@ -15,6 +15,9 @@ Owns:
 - handoff into `core/dispatch_runtime`
 
 `core/ingress` stays focused on normalization and durable trigger admission.
+Hosted OAuth/browser install callbacks are not routed through this package;
+they remain auth-control surfaces that apps or host routers hand into
+`core/auth`.
 
 ## Callback Topology
 

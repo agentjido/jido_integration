@@ -15,14 +15,19 @@ Trigger normalization and admission at the control-plane boundary.
 ## Does Not Own
 
 - hosted webhook route registration or removal
-- static versus dynamic callback-topology resolution
+- static versus dynamic callback-topology resolution for hosted webhook routes
 - secret-ref lookup through `core/auth`
+- OAuth/browser install callback correlation, PKCE/state validation, or install
+  cancellation/expiration/reauth transitions
 - dispatch-runtime enqueueing after admission
 
 Connector-local hosted webhook proofs may still publish explicit trigger
 capability identity plus signal metadata through `Ingress.Definition` evidence,
 but `core/ingress` remains the normalization and admission owner rather than
 the route owner.
+
+OAuth/browser callbacks do not become ingress trigger invokes. Those requests
+stay outside the trigger pipeline and terminate in the auth-control surface.
 
 Those concerns live in `core/webhook_router`, which assembles
 `Ingress.Definition` values and then delegates request normalization here.

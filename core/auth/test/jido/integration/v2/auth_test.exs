@@ -1,6 +1,7 @@
 defmodule Jido.Integration.V2.AuthTest do
   use ExUnit.Case
 
+  alias Jido.Integration.V2.ArtifactBuilder
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
@@ -103,6 +104,114 @@ defmodule Jido.Integration.V2.AuthTest do
 
     assert {:ok, %Connection{connection_id: ^connection_id, state: :connected}} =
              Auth.connection_status(connection.connection_id)
+  end
+
+  test "resolves hosted callbacks with correlation, PKCE validation, and anti-replay" do
+    started_at = ~U[2026-03-09 12:00:00Z]
+    callback_at = ~U[2026-03-09 12:00:30Z]
+    pkce_verifier = "github-pkce-verifier"
+
+    assert {:ok,
+            %{
+              install: %Install{} = install,
+              connection: %Connection{} = connection,
+              session_state: session_state
+            }} =
+             Auth.start_install("github", "tenant-callback", %{
+               actor_id: "user-callback",
+               auth_type: :oauth2,
+               flow_kind: :manual_callback,
+               state_token: "state-callback-1",
+               pkce_verifier_digest: ArtifactBuilder.digest(pkce_verifier),
+               subject: "octocat",
+               requested_scopes: ["repo"],
+               callback_uri: "/auth/github/callback",
+               now: started_at
+             })
+
+    assert install.callback_token == session_state.callback_token
+
+    assert {:error, :invalid_callback_state} =
+             Auth.resolve_install_callback(%{
+               "callback_token" => install.callback_token,
+               "state_token" => "wrong-state",
+               "pkce_verifier" => pkce_verifier,
+               "now" => callback_at
+             })
+
+    assert {:error, :invalid_pkce_verifier} =
+             Auth.resolve_install_callback(%{
+               "callback_token" => install.callback_token,
+               "state_token" => install.state_token,
+               "pkce_verifier" => pkce_verifier <> "-wrong",
+               "now" => callback_at
+             })
+
+    assert {:ok,
+            %{install: %Install{} = callback_install, connection: %Connection{} = callback_conn}} =
+             Auth.resolve_install_callback(%{
+               "callback_token" => install.callback_token,
+               "state_token" => install.state_token,
+               "pkce_verifier" => pkce_verifier,
+               "callback_uri" => "/auth/github/callback?code=oauth-code",
+               "callback_received_at" => callback_at,
+               "now" => callback_at
+             })
+
+    assert callback_conn.connection_id == connection.connection_id
+    assert callback_install.state == :awaiting_callback
+    assert callback_install.callback_received_at == callback_at
+    assert callback_install.callback_uri == "/auth/github/callback?code=oauth-code"
+
+    install_id = install.install_id
+
+    assert {:ok, %Install{install_id: ^install_id, state: :awaiting_callback}} =
+             Auth.fetch_install(install.install_id)
+
+    assert {:error, :callback_already_consumed} =
+             Auth.resolve_install_callback(%{
+               install_id: install.install_id,
+               now: DateTime.add(callback_at, 1, :second)
+             })
+  end
+
+  test "provider callback errors fail installs without requiring PKCE success-path material" do
+    started_at = ~U[2026-03-09 12:10:00Z]
+    callback_at = ~U[2026-03-09 12:10:20Z]
+
+    assert {:ok, %{install: %Install{} = install, connection: %Connection{} = connection}} =
+             Auth.start_install("github", "tenant-callback-error", %{
+               actor_id: "user-callback-error",
+               auth_type: :oauth2,
+               flow_kind: :manual_callback,
+               state_token: "state-callback-error",
+               pkce_verifier_digest: ArtifactBuilder.digest("github-error-pkce"),
+               subject: "octocat",
+               requested_scopes: ["repo"],
+               now: started_at
+             })
+
+    assert {:error,
+            {:callback_error,
+             %{error: "access_denied", description: "user_cancelled_browser_flow"}}} =
+             Auth.resolve_install_callback(%{
+               "callback_token" => install.callback_token,
+               "state_token" => install.state_token,
+               "error" => "access_denied",
+               "error_description" => "user_cancelled_browser_flow",
+               "now" => callback_at
+             })
+
+    assert {:ok, %Install{state: :failed} = failed_install} =
+             Auth.fetch_install(install.install_id)
+
+    assert failed_install.failure_reason =~ "access_denied"
+
+    assert {:ok, %Connection{state: :disabled} = disabled_connection} =
+             Auth.connection_status(connection.connection_id)
+
+    assert disabled_connection.disabled_reason =~ "callback"
+    assert {:error, :connection_disabled} = Auth.request_lease(connection.connection_id, %{})
   end
 
   test "issues minimal leases, rejects scope and subject mismatches, and expires them without cleanup" do
@@ -401,6 +510,126 @@ defmodule Jido.Integration.V2.AuthTest do
     assert binding.credential.id == next_ref.current_credential_id
     assert binding.credential.version == 2
     assert binding.credential.supersedes_credential_id == credential_ref.current_credential_id
+  end
+
+  test "canceling reauthorization restores the previous connection truth and lease path" do
+    started_at = ~U[2026-03-09 12:00:00Z]
+
+    {_, connection, credential_ref} =
+      install_connection(%{
+        connector_id: "notion",
+        tenant_id: "tenant-reauth-cancel",
+        actor_id: "user-reauth-cancel",
+        auth_type: :oauth2,
+        profile_id: "workspace_oauth",
+        flow_kind: :manual_callback,
+        subject: "workspace:acme",
+        requested_scopes: ["notion.content.read"],
+        granted_scopes: ["notion.content.read"],
+        secret: %{access_token: "notion-old", refresh_token: "notion-refresh"},
+        expires_at: ~U[2026-03-09 13:00:00Z],
+        now: started_at
+      })
+
+    reauth_at = ~U[2026-03-09 12:30:00Z]
+
+    assert {:ok,
+            %{
+              install: %Install{} = reauth_install,
+              connection: %Connection{} = installing_connection
+            }} =
+             Auth.reauthorize_connection(connection.connection_id, %{
+               actor_id: "user-reauth-cancel-2",
+               profile_id: "workspace_admin",
+               flow_kind: :manual_callback,
+               requested_scopes: ["notion.content.read", "notion.content.update"],
+               state_token: "state-reauth-cancel",
+               now: reauth_at
+             })
+
+    assert reauth_install.reauth_of_connection_id == connection.connection_id
+    assert reauth_install.metadata.install_origin == :reauth
+    assert reauth_install.metadata.reauth_snapshot.profile_id == "workspace_oauth"
+    assert installing_connection.state == :installing
+    assert installing_connection.profile_id == "workspace_admin"
+
+    assert installing_connection.requested_scopes == [
+             "notion.content.read",
+             "notion.content.update"
+           ]
+
+    assert installing_connection.current_credential_id == credential_ref.current_credential_id
+
+    assert {:error, :connection_installing} =
+             Auth.request_lease(connection.connection_id, %{
+               required_scopes: ["notion.content.read"],
+               now: reauth_at
+             })
+
+    cancel_at = ~U[2026-03-09 12:31:00Z]
+
+    assert {:ok,
+            %{
+              install: %Install{} = cancelled_install,
+              connection: %Connection{} = restored_connection
+            }} =
+             Auth.cancel_install(reauth_install.install_id, %{
+               actor_id: "user-reauth-cancel-2",
+               reason: "user_cancelled",
+               now: cancel_at
+             })
+
+    assert cancelled_install.state == :cancelled
+    assert cancelled_install.cancelled_at == cancel_at
+    assert cancelled_install.failure_reason == "user_cancelled"
+    assert restored_connection.state == :connected
+    assert restored_connection.profile_id == "workspace_oauth"
+    assert restored_connection.requested_scopes == ["notion.content.read"]
+    assert restored_connection.current_credential_ref_id == credential_ref.id
+    assert restored_connection.current_credential_id == credential_ref.current_credential_id
+
+    assert {:ok, %CredentialLease{} = restored_lease} =
+             Auth.request_lease(connection.connection_id, %{
+               required_scopes: ["notion.content.read"],
+               now: DateTime.add(cancel_at, 1, :second)
+             })
+
+    assert restored_lease.payload == %{access_token: "notion-old"}
+    assert restored_lease.credential_id == credential_ref.current_credential_id
+  end
+
+  test "expiring a new install disables the provisional connection" do
+    started_at = ~U[2026-03-09 13:00:00Z]
+    expired_at = ~U[2026-03-09 13:10:00Z]
+
+    assert {:ok, %{install: %Install{} = install, connection: %Connection{} = connection}} =
+             Auth.start_install("github", "tenant-expire", %{
+               actor_id: "user-expire",
+               auth_type: :oauth2,
+               flow_kind: :manual_callback,
+               subject: "octocat",
+               requested_scopes: ["repo"],
+               now: started_at
+             })
+
+    assert {:ok,
+            %{install: %Install{} = expired_install, connection: %Connection{} = disabled_conn}} =
+             Auth.expire_install(install.install_id, %{
+               actor_id: "system-expirer",
+               reason: "install_ttl_elapsed",
+               now: expired_at
+             })
+
+    assert expired_install.state == :expired
+    assert expired_install.failure_reason == "install_ttl_elapsed"
+    assert disabled_conn.state == :disabled
+    assert disabled_conn.disabled_reason =~ "install_ttl_elapsed"
+
+    assert {:error, :connection_disabled} =
+             Auth.request_lease(connection.connection_id, %{
+               required_scopes: ["repo"],
+               now: expired_at
+             })
   end
 
   test "external-secret lease issuance fails deterministically and degrades the connection when runtime material cannot be resolved" do

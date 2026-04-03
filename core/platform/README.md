@@ -32,9 +32,15 @@ Connector discovery:
 Auth lifecycle:
 
 - `start_install/3`
+- `resolve_install_callback/1`
 - `complete_install/2`
 - `fetch_install/1`
+- `installs/1`
+- `cancel_install/2`
+- `expire_install/2`
 - `connection_status/1`
+- `connections/1`
+- `reauthorize_connection/2`
 - `request_lease/2`
 - `rotate_connection/2`
 - `revoke_connection/2`
@@ -48,7 +54,9 @@ Invocation:
 
 Public invocation uses `connection_id` as the consumer-facing auth binding
 when the capability requires a durable connection. Credential refs stay behind
-the auth and control-plane seam.
+the auth and control-plane seam. Hosted callback, cancel, expire, and reauth
+flows remain auth-control surfaces rather than invoke capabilities, and review
+or inference surfaces remain secret-decoupled from durable credential truth.
 
 Durable review and target truth:
 

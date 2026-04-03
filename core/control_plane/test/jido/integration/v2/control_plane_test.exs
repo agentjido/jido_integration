@@ -345,12 +345,17 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
 
     @impl true
     def run(params, context) do
-      {:ok,
-       %{
-         value: params.value,
-         credential_lease: context.credential_lease,
-         echoed_secret: context.credential_lease.payload.access_token
-       }}
+      output = %{
+        value: params.value,
+        credential_lease: context.credential_lease,
+        echoed_secret: context.credential_lease.payload.access_token
+      }
+
+      if params.value == "fail" do
+        {:error, :forced_failure, output}
+      else
+        {:ok, output}
+      end
     end
   end
 
@@ -509,6 +514,44 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert {:ok, stored_run} = ControlPlane.fetch_run(result.run.run_id)
     assert stored_run == error.run
     assert ControlPlane.events(result.run.run_id) == original_events
+  end
+
+  test "execute_run/3 rebinds lease issuance through current connection truth before retrying" do
+    connection_id =
+      install_connection!("leaky-user", ["echo:write"], %{access_token: "gho_initial_retry"})
+
+    assert :ok = ControlPlane.register_connector(LeakyConnector)
+
+    assert {:error, failed} =
+             ControlPlane.invoke("leaky.echo", %{value: "fail"}, invoke_opts(connection_id))
+
+    assert failed.reason == :forced_failure
+    assert failed.run.status == :failed
+    assert failed.attempt.attempt == 1
+
+    assert {:ok, first_lease} = Auth.fetch_lease(failed.attempt.credential_lease_id)
+    assert first_lease.payload == %{access_token: "gho_initial_retry"}
+
+    rotated_at = DateTime.add(Contracts.now(), 60, :second)
+
+    assert {:ok, %{connection: %Connection{} = rotated_connection}} =
+             Auth.rotate_connection(connection_id, %{
+               actor_id: "control-plane-test",
+               granted_scopes: ["echo:write"],
+               secret: %{access_token: "gho_rotated_retry"},
+               now: rotated_at
+             })
+
+    assert {:error, retried} =
+             ControlPlane.execute_run(failed.run.run_id, 2, invoke_opts(connection_id))
+
+    assert retried.reason == :forced_failure
+    assert retried.attempt.attempt == 2
+
+    assert {:ok, second_lease} = Auth.fetch_lease(retried.attempt.credential_lease_id)
+    assert second_lease.payload == %{access_token: "gho_rotated_retry"}
+    assert second_lease.credential_id == rotated_connection.current_credential_id
+    refute second_lease.credential_id == first_lease.credential_id
   end
 
   test "uses capability sandbox defaults when invoke opts omit sandbox" do

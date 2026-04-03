@@ -11,9 +11,15 @@ material.
 
 - expose the host-facing auth boundary:
   - `start_install/3`
+  - `resolve_install_callback/1`
   - `complete_install/2`
+  - `cancel_install/2`
+  - `expire_install/2`
+  - `reauthorize_connection/2`
   - `fetch_install/1`
+  - `installs/1`
   - `connection_status/1`
+  - `connections/1`
   - `request_lease/2`
   - `rotate_connection/2`
   - `revoke_connection/2`
@@ -27,6 +33,9 @@ material.
   configured
 - resolve external-secret-backed lease or refresh material at execution time
   when an external secret resolver is configured
+- keep hosted callback correlation, state validation, PKCE validation,
+  expiration, cancellation, failure, and reauth inside auth-controlled durable
+  lifecycle transitions instead of modeling them as invoke capabilities
 - minimize lease payloads and invalidate lease use through connection state,
   not run-ledger cleanup
 - delegate restart-safe local auth durability to `core/store_local`
@@ -58,7 +67,9 @@ stage and configured failure policy.
 
 The public facade still binds authenticated invocation through `connection_id`
 only. `credential_ref_id`, `credential_id`, and secret-bearing lineage stay
-inside auth and store implementations.
+inside auth and store implementations. Every authenticated runtime path stays
+`connection_id -> durable connection truth -> current credential -> short-lived
+lease`.
 
 ## Boundary
 
@@ -66,7 +77,10 @@ inside auth and store implementations.
 
 - it does not own run, attempt, or event truth
 - it does not own runtime execution
-- it does not own hosted webhook routing
+- it does not own hosted webhook routing or trigger ingress
+- it does not own the HTTP endpoint that receives a browser/provider callback,
+  but it does own install correlation and callback-driven auth state
+  transitions once those params are handed in
 - it does not own transport retry or replay
 
 ## Related Guides

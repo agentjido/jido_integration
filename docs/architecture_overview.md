@@ -159,11 +159,15 @@ Discovery surface:
 Auth lifecycle surface:
 
 - `start_install/3`
+- `resolve_install_callback/1`
 - `complete_install/2`
 - `fetch_install/1`
 - `installs/1`
+- `cancel_install/2`
+- `expire_install/2`
 - `connection_status/1`
 - `connections/1`
+- `reauthorize_connection/2`
 - `request_lease/2`
 - `rotate_connection/2`
 - `revoke_connection/2`
@@ -176,6 +180,8 @@ Invocation surface:
 
 Public invoke requests use `connection_id` as the consumer-facing auth binding
 when the capability requires auth. Anonymous capabilities may omit it.
+Authenticated invoke and retry paths always re-resolve current durable auth
+truth before issuing a short-lived execution lease.
 
 That lifecycle is now profile-driven from authored connector manifests:
 
@@ -186,6 +192,12 @@ That lifecycle is now profile-driven from authored connector manifests:
   secret-source posture behind `core/auth` and the selected durability tier
 - runtime execution still receives only short-lived leases, never durable
   credential truth
+
+Hosted browser/provider callbacks, install cancellation, install expiration,
+and reauth are auth-control flows, not connector invoke capabilities. Apps may
+own the HTTP endpoint that receives those callback params, but the durable
+correlation, callback validation, and connection/install state transitions stay
+inside `core/auth` rather than `core/ingress` or `core/control_plane`.
 
 Durable review surface:
 
@@ -217,6 +229,9 @@ truth that already lives in `core/auth` and `core/control_plane`:
 - `review_packet/2` bundles one run's durable attempts, events, artifacts,
   trigger context, target context, connection/install context, and connector
   catalog context into one reusable operator packet
+- planning, review, and sandbox execution stay secret-decoupled; operator
+  packets and replay surfaces expose durable lineage and redacted execution
+  truth, not raw secret material
 - `review_packet/2` now keeps packet metadata explicit:
   - `ReviewProjection` is the contracts-only metadata object for northbound
     consumers

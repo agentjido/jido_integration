@@ -12,9 +12,10 @@ defmodule Jido.Integration.V2 do
     `capabilities/0`, `fetch_connector/1`, `fetch_capability/1`,
     `catalog_entries/0`, and `projected_catalog_entries/0`
   - durable auth lifecycle operations through `start_install/3`,
-    `complete_install/2`, `fetch_install/1`, `installs/1`,
-    `connection_status/1`, `connections/1`, `request_lease/2`,
-    `rotate_connection/2`, and `revoke_connection/2`
+    `resolve_install_callback/1`, `complete_install/2`, `fetch_install/1`,
+    `installs/1`, `cancel_install/2`, `expire_install/2`,
+    `reauthorize_connection/2`, `connection_status/1`, `connections/1`,
+    `request_lease/2`, `rotate_connection/2`, and `revoke_connection/2`
   - typed invocation through `InvocationRequest` and `invoke/1`
   - direct invocation through `invoke/3` and retry of accepted or failed runs
     through `execute_run/3`
@@ -92,6 +93,13 @@ defmodule Jido.Integration.V2 do
   defdelegate start_install(connector_id, tenant_id, opts \\ %{}), to: Auth
 
   @doc """
+  Resolve and validate a hosted callback against durable install truth.
+  """
+  @spec resolve_install_callback(map()) ::
+          {:ok, %{install: Install.t(), connection: Connection.t()}} | {:error, term()}
+  defdelegate resolve_install_callback(attrs), to: Auth
+
+  @doc """
   Complete an install and bind durable credential truth to the connection.
   """
   @spec complete_install(String.t(), map()) ::
@@ -113,6 +121,20 @@ defmodule Jido.Integration.V2 do
   defdelegate installs(filters \\ %{}), to: Auth
 
   @doc """
+  Cancel an in-flight install or reauth attempt.
+  """
+  @spec cancel_install(String.t(), map()) ::
+          {:ok, %{install: Install.t(), connection: Connection.t()}} | {:error, term()}
+  defdelegate cancel_install(install_id, attrs \\ %{}), to: Auth
+
+  @doc """
+  Mark an in-flight install as expired and reconcile connection state.
+  """
+  @spec expire_install(String.t(), map()) ::
+          {:ok, %{install: Install.t(), connection: Connection.t()}} | {:error, term()}
+  defdelegate expire_install(install_id, attrs \\ %{}), to: Auth
+
+  @doc """
   Fetch safe connection status through the host-facing auth boundary.
   """
   @spec connection_status(String.t()) :: {:ok, Connection.t()} | {:error, :unknown_connection}
@@ -123,6 +145,14 @@ defmodule Jido.Integration.V2 do
   """
   @spec connections(map()) :: [Connection.t()]
   defdelegate connections(filters \\ %{}), to: Auth
+
+  @doc """
+  Start a reauth flow against an existing durable connection.
+  """
+  @spec reauthorize_connection(String.t(), map()) ::
+          {:ok, %{install: Install.t(), connection: Connection.t(), session_state: map()}}
+          | {:error, term()}
+  defdelegate reauthorize_connection(connection_id, opts \\ %{}), to: Auth
 
   @doc """
   Issue a short-lived lease for runtime execution.

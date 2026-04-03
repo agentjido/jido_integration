@@ -270,7 +270,15 @@ defmodule Jido.Integration.V2.ControlPlane do
              opts
            ),
          {:ok, credential_lease} <- issue_invoke_lease(capability, auth_binding, opts) do
-      execute_admitted_run(capability, run, input, opts, policy_decision, credential_lease)
+      execute_admitted_run(
+        capability,
+        run,
+        input,
+        opts,
+        policy_decision,
+        credential_lease,
+        auth_binding.credential_ref
+      )
     else
       {:error, reason} ->
         fail_before_attempt(run, reason)
@@ -281,16 +289,20 @@ defmodule Jido.Integration.V2.ControlPlane do
   end
 
   defp continue_execute_run(capability, run, attempt_number, opts) do
-    credential_ref = run.credential_ref
     input = runtime_replay_input(run.input)
 
     with :ok <- validate_execution_status(run),
          :ok <- validate_target_selection(run, capability),
-         {:ok, resolved_credential} <- resolve_credential(credential_ref),
+         {:ok, auth_binding} <- resolve_run_auth(run),
          %PolicyDecision{status: :allowed} = policy_decision <-
-           evaluate_policy(capability, resolved_credential, credential_ref, input, opts),
-         {:ok, credential_lease} <-
-           issue_credential_lease(credential_ref, capability) do
+           evaluate_policy(
+             capability,
+             auth_binding.credential,
+             auth_binding.credential_ref,
+             input,
+             opts
+           ),
+         {:ok, credential_lease} <- issue_invoke_lease(capability, auth_binding, opts) do
       execute_admitted_run(
         capability,
         run,
@@ -298,6 +310,7 @@ defmodule Jido.Integration.V2.ControlPlane do
         opts,
         policy_decision,
         credential_lease,
+        auth_binding.credential_ref,
         attempt_number
       )
     else
@@ -410,10 +423,11 @@ defmodule Jido.Integration.V2.ControlPlane do
          opts,
          policy_decision,
          credential_lease,
+         credential_ref,
          attempt_number \\ 1
        ) do
     attempt = build_attempt(run, credential_lease, opts, attempt_number)
-    context = build_context(run, attempt, opts, policy_decision, credential_lease)
+    context = build_context(run, attempt, opts, policy_decision, credential_lease, credential_ref)
 
     with :ok <- Stores.attempt_store().put_attempt(attempt),
          :ok <- append_specs(run.run_id, attempt, [%{type: "run.started"}]) do
@@ -650,12 +664,12 @@ defmodule Jido.Integration.V2.ControlPlane do
     end
   end
 
-  defp build_context(run, attempt, opts, policy_decision, credential_lease) do
+  defp build_context(run, attempt, opts, policy_decision, credential_lease, credential_ref) do
     %{
       run_id: run.run_id,
       attempt: attempt.attempt,
       attempt_id: attempt.attempt_id,
-      credential_ref: run.credential_ref,
+      credential_ref: credential_ref,
       credential_lease: credential_lease,
       policy_decision: policy_decision,
       target_descriptor: target_descriptor(run),
@@ -696,6 +710,25 @@ defmodule Jido.Integration.V2.ControlPlane do
       credential: credential,
       connection_id: nil
     }
+  end
+
+  defp resolve_run_auth(
+         %Run{credential_ref: %CredentialRef{id: "cred-anon", subject: "anonymous"}} = run
+       ) do
+    anonymous_auth_binding(run)
+    |> then(&{:ok, &1})
+  end
+
+  defp resolve_run_auth(%Run{credential_ref: %CredentialRef{} = credential_ref}) do
+    case connection_id_from_credential_ref(credential_ref) do
+      nil ->
+        with {:ok, credential} <- resolve_credential(credential_ref) do
+          {:ok, %{credential_ref: credential_ref, credential: credential, connection_id: nil}}
+        end
+
+      connection_id ->
+        Auth.resolve_connection_binding(connection_id)
+    end
   end
 
   defp auth_connection_required?(%Capability{} = capability) do
@@ -762,6 +795,11 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   defp resolve_credential(%CredentialRef{} = credential_ref) do
     Auth.resolve(credential_ref, %{})
+  end
+
+  defp connection_id_from_credential_ref(%CredentialRef{} = credential_ref) do
+    credential_ref.connection_id ||
+      Contracts.get(credential_ref.metadata, :connection_id)
   end
 
   defp validate_execution_status(%Run{status: status}) when status in [:accepted, :failed],

@@ -8,7 +8,7 @@ defmodule Jido.Integration.V2.Auth.Connection do
   @states [:installing, :connected, :degraded, :reauth_required, :revoked, :disabled]
   @blocked_states [:reauth_required, :revoked, :disabled]
   @allowed_transitions %{
-    installing: [:connected, :reauth_required, :revoked, :disabled],
+    installing: [:connected, :degraded, :reauth_required, :revoked, :disabled],
     connected: [:installing, :degraded, :reauth_required, :revoked, :disabled],
     degraded: [:connected, :reauth_required, :revoked, :disabled],
     reauth_required: [:installing, :revoked, :disabled],
