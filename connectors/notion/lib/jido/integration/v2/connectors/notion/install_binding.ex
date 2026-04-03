@@ -1,9 +1,11 @@
 defmodule Jido.Integration.V2.Connectors.Notion.InstallBinding do
   @moduledoc false
 
+  alias Jido.Integration.V2.AuthSpec
+  alias Jido.Integration.V2.Connectors.Notion
   alias Pristine.OAuth2.Token
 
-  @metadata_keys ~w(workspace_id workspace_name bot_id)
+  @access_token_field "access_token"
 
   @type t :: %{
           secret: map(),
@@ -71,7 +73,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBinding do
   end
 
   defp merge_metadata(secret, other_params) when is_map(other_params) do
-    Enum.reduce(@metadata_keys, secret, fn key, acc ->
+    Enum.reduce(metadata_keys(), secret, fn key, acc ->
       case Map.get(other_params, key) do
         value when is_binary(value) and value != "" ->
           Map.put(acc, String.to_atom(key), value)
@@ -85,7 +87,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBinding do
   defp merge_metadata(secret, _other_params), do: secret
 
   defp metadata(secret) do
-    Enum.reduce(@metadata_keys, %{}, fn key, acc ->
+    Enum.reduce(metadata_keys(), %{}, fn key, acc ->
       atom_key = String.to_atom(key)
 
       case Map.get(secret, atom_key) do
@@ -96,10 +98,32 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBinding do
   end
 
   defp lease_fields(secret) do
-    ["access_token" | @metadata_keys]
+    authored_lease_fields()
     |> Enum.filter(fn key ->
       Map.has_key?(secret, String.to_atom(key)) or Map.has_key?(secret, key)
     end)
+  end
+
+  defp metadata_keys do
+    authored_lease_fields()
+    |> Enum.reject(&(&1 == @access_token_field))
+  end
+
+  defp authored_lease_fields do
+    auth_profile()
+    |> Map.fetch!(:lease_fields)
+  end
+
+  defp auth_profile do
+    Notion.manifest().auth
+    |> AuthSpec.default_profile()
+    |> case do
+      nil ->
+        raise "Notion default auth profile is required for install binding"
+
+      profile ->
+        profile
+    end
   end
 
   defp expires_at(nil), do: nil

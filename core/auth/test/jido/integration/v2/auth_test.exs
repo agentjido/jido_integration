@@ -11,6 +11,7 @@ defmodule Jido.Integration.V2.AuthTest do
   setup do
     Auth.reset!()
     Auth.set_refresh_handler(nil)
+    Auth.set_external_secret_resolver(nil)
     :ok
   end
 
@@ -400,6 +401,201 @@ defmodule Jido.Integration.V2.AuthTest do
     assert binding.credential.id == next_ref.current_credential_id
     assert binding.credential.version == 2
     assert binding.credential.supersedes_credential_id == credential_ref.current_credential_id
+  end
+
+  test "external-secret lease issuance fails deterministically and degrades the connection when runtime material cannot be resolved" do
+    started_at = ~U[2026-03-10 12:00:00Z]
+    expires_at = ~U[2026-03-10 13:00:00Z]
+
+    assert {:ok, %{install: install, connection: connection}} =
+             Auth.start_install("linear", "tenant-ext", %{
+               actor_id: "user-ext",
+               auth_type: :oauth2,
+               profile_id: "workspace_oauth",
+               subject: "workspace:acme",
+               requested_scopes: ["issues:read"],
+               external_secret_ref: %{provider: :vault, ref: "vault://linear/workspace-acme"},
+               secret_source: :external_ref,
+               metadata: %{external_secret_failure_state: :degraded},
+               now: started_at
+             })
+
+    assert {:ok, %{connection: %{connection_id: connection_id}}} =
+             Auth.complete_install(install.install_id, %{
+               subject: "workspace:acme",
+               granted_scopes: ["issues:read"],
+               secret: %{},
+               lease_fields: ["access_token"],
+               secret_source: :external_ref,
+               source: :external_secret,
+               expires_at: expires_at,
+               now: started_at
+             })
+
+    assert connection_id == connection.connection_id
+
+    assert {:error, :external_secret_unavailable} =
+             Auth.request_lease(connection.connection_id, %{
+               required_scopes: ["issues:read"],
+               now: ~U[2026-03-10 12:01:00Z]
+             })
+
+    assert {:ok, %Connection{state: :degraded} = degraded_connection} =
+             Auth.connection_status(connection.connection_id)
+
+    assert degraded_connection.degraded_reason =~ "external_secret"
+    assert degraded_connection.metadata.external_secret_resolution.status == :error
+    assert degraded_connection.metadata.external_secret_resolution.stage == :lease
+
+    assert degraded_connection.metadata.external_secret_resolution.requested_fields == [
+             "access_token"
+           ]
+  end
+
+  test "expired external-secret connections hydrate refresh material before invoking the refresh handler" do
+    started_at = ~U[2026-03-10 12:00:00Z]
+    expired_at = ~U[2026-03-10 12:00:00Z]
+    refreshed_until = ~U[2026-03-10 14:00:00Z]
+
+    assert {:ok, %{install: install, connection: connection}} =
+             Auth.start_install("linear", "tenant-refresh", %{
+               actor_id: "user-refresh",
+               auth_type: :oauth2,
+               profile_id: "workspace_oauth",
+               subject: "workspace:refresh-acme",
+               requested_scopes: ["issues:read"],
+               external_secret_ref: %{provider: :vault, ref: "vault://linear/refresh-acme"},
+               secret_source: :external_ref,
+               now: started_at
+             })
+
+    assert {:ok, %{connection: %{connection_id: connection_id}}} =
+             Auth.complete_install(install.install_id, %{
+               subject: "workspace:refresh-acme",
+               granted_scopes: ["issues:read"],
+               secret: %{},
+               lease_fields: ["access_token"],
+               secret_source: :external_ref,
+               source: :external_secret,
+               expires_at: expired_at,
+               now: started_at
+             })
+
+    assert connection_id == connection.connection_id
+
+    Auth.set_external_secret_resolver(fn %Connection{} = resolving_connection, credential, opts ->
+      send(
+        self(),
+        {:external_secret_resolved, resolving_connection.connection_id, opts, credential.id}
+      )
+
+      {:ok,
+       %{
+         refresh_token: "external-refresh-token"
+       }}
+    end)
+
+    Auth.set_refresh_handler(fn %Connection{} = refreshed_connection, credential ->
+      send(
+        self(),
+        {:refresh_handler_called, refreshed_connection.connection_id, credential.secret}
+      )
+
+      assert refreshed_connection.connection_id == connection.connection_id
+      assert credential.secret == %{refresh_token: "external-refresh-token"}
+
+      {:ok,
+       %{
+         secret: %{
+           access_token: "fresh-external-access",
+           refresh_token: "rotated-external-refresh"
+         },
+         expires_at: refreshed_until
+       }}
+    end)
+
+    assert {:ok, %CredentialLease{} = lease} =
+             Auth.request_lease(connection.connection_id, %{
+               required_scopes: ["issues:read"],
+               now: ~U[2026-03-10 12:01:00Z]
+             })
+
+    assert lease.payload == %{access_token: "fresh-external-access"}
+
+    assert_received {:external_secret_resolved, ^connection_id, resolve_opts, credential_id}
+    assert resolve_opts.stage == :refresh
+    assert resolve_opts.requested_fields == ["refresh_token"]
+    assert is_binary(credential_id)
+
+    assert_received {:refresh_handler_called, ^connection_id,
+                     %{refresh_token: "external-refresh-token"}}
+
+    assert {:ok, %Connection{} = refreshed_connection} =
+             Auth.connection_status(connection.connection_id)
+
+    assert refreshed_connection.state == :connected
+    assert refreshed_connection.last_refresh_status == :ok
+    assert refreshed_connection.token_expires_at == refreshed_until
+  end
+
+  test "fetching an external-secret lease rehydrates payload keys from the external resolver" do
+    started_at = ~U[2026-03-10 12:00:00Z]
+    expires_at = ~U[2026-03-10 13:00:00Z]
+    lease_now = ~U[2026-03-10 12:01:00Z]
+    fetch_now = ~U[2026-03-10 12:01:10Z]
+
+    assert {:ok, %{install: install, connection: connection}} =
+             Auth.start_install("linear", "tenant-fetch", %{
+               actor_id: "user-fetch",
+               auth_type: :oauth2,
+               profile_id: "workspace_oauth",
+               subject: "workspace:fetch-acme",
+               requested_scopes: ["issues:read"],
+               external_secret_ref: %{provider: :vault, ref: "vault://linear/fetch-acme"},
+               secret_source: :external_ref,
+               now: started_at
+             })
+
+    assert {:ok, %{connection: %{connection_id: connection_id}}} =
+             Auth.complete_install(install.install_id, %{
+               subject: "workspace:fetch-acme",
+               granted_scopes: ["issues:read"],
+               secret: %{},
+               lease_fields: ["access_token"],
+               secret_source: :external_ref,
+               source: :external_secret,
+               expires_at: expires_at,
+               now: started_at
+             })
+
+    assert connection_id == connection.connection_id
+
+    Auth.set_external_secret_resolver(fn %Connection{} = resolving_connection,
+                                         _credential,
+                                         opts ->
+      send(
+        self(),
+        {:external_secret_resolution_stage, resolving_connection.connection_id, opts.stage}
+      )
+
+      {:ok, %{access_token: "external-fetch-token"}}
+    end)
+
+    assert {:ok, %CredentialLease{} = lease} =
+             Auth.request_lease(connection.connection_id, %{
+               required_scopes: ["issues:read"],
+               now: lease_now
+             })
+
+    assert lease.payload == %{access_token: "external-fetch-token"}
+
+    assert {:ok, %CredentialLease{} = fetched_lease} =
+             Auth.fetch_lease(lease.lease_id, %{now: fetch_now})
+
+    assert fetched_lease.payload == %{access_token: "external-fetch-token"}
+
+    assert_received {:external_secret_resolution_stage, ^connection_id, :lease}
+    assert_received {:external_secret_resolution_stage, ^connection_id, :fetch_lease}
   end
 
   defp install_connection(attrs) do

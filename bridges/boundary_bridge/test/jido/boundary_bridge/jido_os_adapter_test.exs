@@ -292,7 +292,7 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
           correlation_id: context.correlation_id,
           request_id: context.request_id
         },
-        allocation_ttl_ms: 250
+        allocation_ttl_ms: 5_000
       })
 
     conflicting_reopen_request =

@@ -1,10 +1,16 @@
 defmodule Jido.Integration.V2.Connectors.Notion.InstallBindingTest do
   use ExUnit.Case, async: true
 
+  alias Jido.Integration.V2.AuthSpec
+  alias Jido.Integration.V2.Connectors.Notion
   alias Jido.Integration.V2.Connectors.Notion.InstallBinding
   alias Pristine.OAuth2.Token
 
   test "builds durable install attrs from an oauth token while keeping refresh off the lease" do
+    profile =
+      Notion.manifest().auth
+      |> AuthSpec.default_profile()
+
     binding =
       InstallBinding.from_token(%Token{
         access_token: "secret-access",
@@ -25,7 +31,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBindingTest do
              bot_id: "bot-acme"
            }
 
-    assert binding.lease_fields == ["access_token", "workspace_id", "workspace_name", "bot_id"]
+    assert binding.lease_fields == profile.lease_fields
 
     assert binding.metadata == %{
              workspace_id: "workspace-acme",
@@ -47,6 +53,10 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBindingTest do
   end
 
   test "builds install attrs from package-local live env overrides when exchange is skipped" do
+    profile =
+      Notion.manifest().auth
+      |> AuthSpec.default_profile()
+
     binding =
       InstallBinding.from_live_spec(%{
         access_token: "secret-access",
@@ -64,7 +74,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBindingTest do
              bot_id: "bot-acme"
            }
 
-    assert binding.lease_fields == ["access_token", "workspace_id", "workspace_name", "bot_id"]
+    assert binding.lease_fields == profile.lease_fields
 
     assert binding.metadata == %{
              workspace_id: "workspace-acme",

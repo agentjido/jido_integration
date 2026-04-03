@@ -21,7 +21,8 @@ defmodule Jido.Integration.V2.Auth.Store do
           leases: %{},
           connections: %{},
           installs: %{},
-          refresh_handler: nil
+          refresh_handler: nil,
+          external_secret_resolver: nil
         }
       end,
       name: __MODULE__
@@ -124,12 +125,27 @@ defmodule Jido.Integration.V2.Auth.Store do
     Agent.get(__MODULE__, &Map.get(&1, :refresh_handler))
   end
 
+  def set_external_secret_resolver(handler) when is_function(handler, 3) or is_nil(handler) do
+    Agent.update(__MODULE__, &Map.put(&1, :external_secret_resolver, handler))
+  end
+
+  def external_secret_resolver do
+    Agent.get(__MODULE__, &Map.get(&1, :external_secret_resolver))
+  end
+
   def put(%Credential{} = credential), do: store_credential(credential)
   def fetch(id), do: fetch_credential(id)
 
   def reset! do
     Agent.update(__MODULE__, fn _ ->
-      %{credentials: %{}, leases: %{}, connections: %{}, installs: %{}, refresh_handler: nil}
+      %{
+        credentials: %{},
+        leases: %{},
+        connections: %{},
+        installs: %{},
+        refresh_handler: nil,
+        external_secret_resolver: nil
+      }
     end)
   end
 

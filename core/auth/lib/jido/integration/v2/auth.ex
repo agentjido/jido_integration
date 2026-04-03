@@ -29,6 +29,19 @@ defmodule Jido.Integration.V2.Auth do
               }}
              | {:error, term()})
 
+  @type external_secret_stage :: :lease | :fetch_lease | :refresh
+
+  @type external_secret_opts :: %{
+          stage: external_secret_stage(),
+          requested_fields: [String.t()],
+          missing_fields: [String.t()],
+          now: DateTime.t()
+        }
+
+  @type external_secret_resolver ::
+          (Connection.t(), Credential.t(), external_secret_opts() ->
+             {:ok, map()} | {:error, term()})
+
   @type connection_binding :: %{
           connection: Connection.t(),
           credential_ref: CredentialRef.t(),
@@ -204,8 +217,10 @@ defmodule Jido.Integration.V2.Auth do
              | :connection_disabled
              | :connection_revoked
              | :reauth_required
+             | :external_secret_unavailable
              | :expired_lease
-             | {:missing_connection_scopes, [String.t()]}}
+             | {:missing_connection_scopes, [String.t()]}
+             | {:missing_lease_fields, [String.t()]}}
   def request_lease(connection_id, context \\ %{}) do
     context = Map.new(context)
     now = now(context)
@@ -226,26 +241,35 @@ defmodule Jido.Integration.V2.Auth do
       payload_keys = payload_keys(refreshed_connection, refreshed_credential, context)
       ttl_seconds = Map.get(context, :ttl_seconds, @default_lease_ttl_seconds)
 
-      lease_record =
-        LeaseRecord.new!(%{
-          lease_id: Contracts.next_id("lease"),
-          credential_ref_id: refreshed_credential.credential_ref_id,
-          credential_id: refreshed_credential.id,
-          connection_id: refreshed_connection.connection_id,
-          profile_id: refreshed_connection.profile_id || refreshed_credential.profile_id,
-          subject: refreshed_credential.subject,
-          scopes: requested_scopes,
-          payload_keys: payload_keys,
-          issued_at: now,
-          expires_at: DateTime.add(now, ttl_seconds, :second),
-          metadata: %{
-            actor_id: Map.get(context, :actor_id),
-            connection_id: refreshed_connection.connection_id
-          }
-        })
+      with {:ok, lease_connection, payload} <-
+             resolve_lease_payload(
+               refreshed_connection,
+               refreshed_credential,
+               payload_keys,
+               now,
+               :lease
+             ) do
+        lease_record =
+          LeaseRecord.new!(%{
+            lease_id: Contracts.next_id("lease"),
+            credential_ref_id: refreshed_credential.credential_ref_id,
+            credential_id: refreshed_credential.id,
+            connection_id: lease_connection.connection_id,
+            profile_id: lease_connection.profile_id || refreshed_credential.profile_id,
+            subject: refreshed_credential.subject,
+            scopes: requested_scopes,
+            payload_keys: payload_keys,
+            issued_at: now,
+            expires_at: DateTime.add(now, ttl_seconds, :second),
+            metadata: %{
+              actor_id: Map.get(context, :actor_id),
+              connection_id: lease_connection.connection_id
+            }
+          })
 
-      :ok = Stores.lease_store().store_lease(lease_record)
-      {:ok, materialize_lease(lease_record, refreshed_credential)}
+        :ok = Stores.lease_store().store_lease(lease_record)
+        {:ok, build_lease(lease_record, lease_connection, refreshed_credential, payload)}
+      end
     end
   end
 
@@ -302,7 +326,9 @@ defmodule Jido.Integration.V2.Auth do
              | :connection_disabled
              | :connection_revoked
              | :reauth_required
-             | {:missing_connection_scopes, [String.t()]}}
+             | :external_secret_unavailable
+             | {:missing_connection_scopes, [String.t()]}
+             | {:missing_lease_fields, [String.t()]}}
   def issue_lease(%CredentialRef{} = credential_ref, context \\ %{}) when is_map(context) do
     with {:ok, credential} <- fetch_durable_credential(current_credential_id(credential_ref)),
          :ok <- match_subject(credential_ref, credential),
@@ -321,7 +347,9 @@ defmodule Jido.Integration.V2.Auth do
              | :expired_lease
              | :unknown_credential
              | :connection_revoked
-             | :reauth_required}
+             | :reauth_required
+             | :external_secret_unavailable
+             | {:missing_lease_fields, [String.t()]}}
   def fetch_lease(lease_id, context \\ %{}) do
     context = Map.new(context)
     now = now(context)
@@ -337,8 +365,16 @@ defmodule Jido.Integration.V2.Auth do
              lease_record.subject,
              credential.subject,
              :credential_subject_mismatch
+           ),
+         {:ok, lease_connection, payload} <-
+           resolve_lease_payload(
+             connection,
+             credential,
+             lease_record.payload_keys,
+             now,
+             :fetch_lease
            ) do
-      {:ok, materialize_lease(lease_record, credential)}
+      {:ok, build_lease(lease_record, lease_connection, credential, payload)}
     end
   end
 
@@ -442,9 +478,17 @@ defmodule Jido.Integration.V2.Auth do
     :ok
   end
 
+  @spec set_external_secret_resolver(external_secret_resolver() | nil) :: :ok
+  def set_external_secret_resolver(handler)
+      when is_function(handler, 3) or is_nil(handler) do
+    Store.set_external_secret_resolver(handler)
+    :ok
+  end
+
   @spec reset!() :: :ok
   def reset! do
     Store.set_refresh_handler(nil)
+    Store.set_external_secret_resolver(nil)
     reset_store(Stores.install_store())
     reset_store(Stores.connection_store())
     reset_store(Stores.lease_store())
@@ -621,40 +665,43 @@ defmodule Jido.Integration.V2.Auth do
 
   defp maybe_refresh(%Connection{} = connection, %Credential{} = credential, now) do
     if Credential.expired?(credential, now) do
-      with true <- refreshable?(credential) or {:error, :credential_expired},
+      with {:ok, %Connection{} = hydrated_connection, %Credential{} = hydrated_credential} <-
+             hydrate_credential_secret(connection, credential, ["refresh_token"], now, :refresh),
+           true <- refreshable?(hydrated_credential) or {:error, :credential_expired},
            handler when is_function(handler, 2) <-
              Store.refresh_handler() || {:error, :credential_expired},
-           {:ok, refresh_result} <- handler.(connection, credential) do
-        next_version = next_credential_version(credential)
+           {:ok, refresh_result} <- handler.(hydrated_connection, hydrated_credential) do
+        next_version = next_credential_version(hydrated_credential)
 
         refreshed_credential =
           Credential.new!(%{
-            id: credential_id(credential.credential_ref_id, next_version),
-            credential_ref_id: credential.credential_ref_id,
-            connection_id: credential.connection_id,
-            profile_id: credential.profile_id || connection.profile_id,
-            subject: credential.subject,
-            auth_type: credential.auth_type,
+            id: credential_id(hydrated_credential.credential_ref_id, next_version),
+            credential_ref_id: hydrated_credential.credential_ref_id,
+            connection_id: hydrated_credential.connection_id,
+            profile_id: hydrated_credential.profile_id || hydrated_connection.profile_id,
+            subject: hydrated_credential.subject,
+            auth_type: hydrated_credential.auth_type,
             version: next_version,
-            scopes: Map.get(refresh_result, :scopes, credential.scopes),
-            secret: Map.get(refresh_result, :secret, credential.secret),
-            lease_fields: Map.get(refresh_result, :lease_fields, credential.lease_fields),
-            expires_at: Map.get(refresh_result, :expires_at, credential.expires_at),
+            scopes: Map.get(refresh_result, :scopes, hydrated_credential.scopes),
+            secret: Map.get(refresh_result, :secret, hydrated_credential.secret),
+            lease_fields:
+              Map.get(refresh_result, :lease_fields, hydrated_credential.lease_fields),
+            expires_at: Map.get(refresh_result, :expires_at, hydrated_credential.expires_at),
             refresh_token_expires_at:
               Map.get(
                 refresh_result,
                 :refresh_token_expires_at,
-                credential.refresh_token_expires_at
+                hydrated_credential.refresh_token_expires_at
               ),
             source: :refresh,
             source_ref: Map.get(refresh_result, :source_ref),
-            supersedes_credential_id: credential.id,
-            metadata: Map.get(refresh_result, :metadata, credential.metadata)
+            supersedes_credential_id: hydrated_credential.id,
+            metadata: Map.get(refresh_result, :metadata, hydrated_credential.metadata)
           })
 
         refreshed_connection =
           %Connection{
-            connection
+            hydrated_connection
             | state: :connected,
               current_credential_id: refreshed_credential.id,
               granted_scopes: refreshed_credential.scopes,
@@ -671,6 +718,9 @@ defmodule Jido.Integration.V2.Auth do
         :ok = Stores.connection_store().store_connection(refreshed_connection)
         {:ok, refreshed_connection, refreshed_credential}
       else
+        {:error, :reauth_required} ->
+          {:error, :reauth_required}
+
         {:error, reason} ->
           mark_reauth_required(connection, now, reason)
       end
@@ -696,20 +746,25 @@ defmodule Jido.Integration.V2.Auth do
     end
   end
 
-  defp materialize_lease(%LeaseRecord{} = lease_record, %Credential{} = credential) do
+  defp build_lease(
+         %LeaseRecord{} = lease_record,
+         %Connection{} = connection,
+         %Credential{} = credential,
+         payload
+       ) do
     CredentialLease.new!(%{
       lease_id: lease_record.lease_id,
       credential_ref_id: lease_record.credential_ref_id,
       credential_id: lease_record.credential_id,
-      connection_id: lease_record.connection_id,
-      profile_id: lease_record.profile_id || credential.profile_id,
+      connection_id: connection.connection_id,
+      profile_id: lease_record.profile_id || connection.profile_id || credential.profile_id,
       subject: lease_record.subject,
       scopes: lease_record.scopes,
-      payload: Credential.lease_payload(credential, lease_record.payload_keys),
+      payload: payload,
       lease_fields: lease_record.payload_keys,
       issued_at: lease_record.issued_at,
       expires_at: lease_record.expires_at,
-      metadata: Map.merge(lease_record.metadata, %{connection_id: lease_record.connection_id})
+      metadata: Map.merge(lease_record.metadata, %{connection_id: connection.connection_id})
     })
   end
 
@@ -729,6 +784,259 @@ defmodule Jido.Integration.V2.Auth do
       keys when is_list(keys) ->
         Enum.map(keys, &normalize_key/1)
     end
+  end
+
+  defp resolve_lease_payload(
+         %Connection{} = connection,
+         %Credential{} = credential,
+         payload_keys,
+         now,
+         stage
+       ) do
+    with {:ok, hydrated_connection, hydrated_credential} <-
+           hydrate_credential_secret(connection, credential, payload_keys, now, stage),
+         payload <- Credential.lease_payload(hydrated_credential, payload_keys),
+         [] <- missing_secret_fields(payload, payload_keys) do
+      {:ok, hydrated_connection, payload}
+    else
+      missing_fields when is_list(missing_fields) ->
+        {:error, {:missing_lease_fields, missing_fields}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp hydrate_credential_secret(
+         %Connection{} = connection,
+         %Credential{} = credential,
+         requested_fields,
+         now,
+         stage
+       ) do
+    missing_fields = missing_secret_fields(credential.secret, requested_fields)
+
+    cond do
+      missing_fields == [] ->
+        {:ok, connection, credential}
+
+      external_secret_connection?(connection) ->
+        resolve_external_secret(
+          connection,
+          credential,
+          requested_fields,
+          missing_fields,
+          now,
+          stage
+        )
+
+      true ->
+        {:ok, connection, credential}
+    end
+  end
+
+  defp resolve_external_secret(
+         %Connection{} = connection,
+         %Credential{} = credential,
+         requested_fields,
+         missing_fields,
+         now,
+         stage
+       ) do
+    opts = %{
+      stage: stage,
+      requested_fields: requested_fields,
+      missing_fields: missing_fields,
+      now: now
+    }
+
+    case Store.external_secret_resolver() do
+      handler when is_function(handler, 3) ->
+        handler.(connection, credential, opts)
+        |> handle_external_secret_result(connection, credential, requested_fields, opts)
+
+      _other ->
+        record_external_secret_failure(connection, opts, :resolver_not_configured)
+    end
+  end
+
+  defp handle_external_secret_result(
+         {:ok, resolved_secret},
+         %Connection{} = connection,
+         %Credential{} = credential,
+         requested_fields,
+         opts
+       )
+       when is_map(resolved_secret) do
+    merged_secret =
+      credential.secret
+      |> Map.merge(drop_nil_values(resolved_secret))
+
+    case missing_secret_fields(merged_secret, requested_fields) do
+      [] ->
+        with {:ok, resolved_connection} <- record_external_secret_success(connection, opts) do
+          {:ok, resolved_connection, %Credential{credential | secret: merged_secret}}
+        end
+
+      remaining_missing ->
+        record_external_secret_failure(connection, opts, {:missing_fields, remaining_missing})
+    end
+  end
+
+  defp handle_external_secret_result(
+         {:error, reason},
+         %Connection{} = connection,
+         %Credential{},
+         _requested_fields,
+         opts
+       ) do
+    record_external_secret_failure(connection, opts, reason)
+  end
+
+  defp handle_external_secret_result(
+         other,
+         %Connection{} = connection,
+         %Credential{},
+         _requested_fields,
+         opts
+       ) do
+    record_external_secret_failure(connection, opts, {:invalid_resolver_result, other})
+  end
+
+  defp record_external_secret_success(%Connection{} = connection, opts) do
+    metadata =
+      Map.put(
+        connection.metadata,
+        :external_secret_resolution,
+        %{
+          status: :ok,
+          stage: opts.stage,
+          requested_fields: opts.requested_fields,
+          missing_fields: opts.missing_fields,
+          resolved_at: opts.now
+        }
+      )
+
+    connection =
+      case transition_connection(connection, :connected) do
+        {:ok, transitioned_connection} -> transitioned_connection
+        {:error, _reason} -> connection
+      end
+
+    resolved_connection =
+      %Connection{
+        connection
+        | state: :connected,
+          degraded_reason: nil,
+          metadata: metadata,
+          updated_at: opts.now
+      }
+
+    :ok = Stores.connection_store().store_connection(resolved_connection)
+    {:ok, resolved_connection}
+  end
+
+  defp record_external_secret_failure(%Connection{} = connection, opts, reason) do
+    target_state = external_secret_failure_state(connection, opts.stage)
+    normalized_reason = normalize_reason({:external_secret, reason})
+
+    metadata =
+      Map.put(
+        connection.metadata,
+        :external_secret_resolution,
+        %{
+          status: :error,
+          stage: opts.stage,
+          requested_fields: opts.requested_fields,
+          missing_fields: opts.missing_fields,
+          failed_at: opts.now,
+          reason: normalized_reason
+        }
+      )
+
+    connection =
+      case transition_connection(connection, target_state) do
+        {:ok, transitioned_connection} -> transitioned_connection
+        {:error, _reason} -> connection
+      end
+
+    failed_connection =
+      case target_state do
+        :reauth_required ->
+          %Connection{
+            connection
+            | state: :reauth_required,
+              last_refresh_at: opts.now,
+              last_refresh_status: :error,
+              degraded_reason: nil,
+              reauth_required_reason: normalized_reason,
+              metadata: metadata,
+              updated_at: opts.now
+          }
+
+        _other ->
+          %Connection{
+            connection
+            | state: :degraded,
+              degraded_reason: normalized_reason,
+              metadata: metadata,
+              updated_at: opts.now
+          }
+      end
+
+    :ok = Stores.connection_store().store_connection(failed_connection)
+    {:error, external_secret_failure_result(opts.stage)}
+  end
+
+  defp external_secret_connection?(%Connection{
+         secret_source: :external_ref,
+         external_secret_ref: external_secret_ref
+       })
+       when not is_nil(external_secret_ref),
+       do: true
+
+  defp external_secret_connection?(%Connection{external_secret_ref: external_secret_ref})
+       when not is_nil(external_secret_ref),
+       do: true
+
+  defp external_secret_connection?(%Connection{secret_source: :external_ref}), do: true
+  defp external_secret_connection?(%Connection{}), do: false
+
+  defp external_secret_failure_state(%Connection{} = connection, :refresh) do
+    metadata_value(connection.metadata, :external_secret_failure_state, :reauth_required)
+    |> normalize_external_secret_failure_state()
+  end
+
+  defp external_secret_failure_state(%Connection{} = connection, _stage) do
+    metadata_value(connection.metadata, :external_secret_failure_state, :degraded)
+    |> normalize_external_secret_failure_state()
+  end
+
+  defp normalize_external_secret_failure_state(:reauth_required), do: :reauth_required
+  defp normalize_external_secret_failure_state("reauth_required"), do: :reauth_required
+  defp normalize_external_secret_failure_state(_other), do: :degraded
+
+  defp external_secret_failure_result(:refresh), do: :reauth_required
+  defp external_secret_failure_result(_stage), do: :external_secret_unavailable
+
+  defp missing_secret_fields(secret, requested_fields)
+       when is_map(secret) and is_list(requested_fields) do
+    requested_fields
+    |> Enum.map(&normalize_key/1)
+    |> Enum.uniq()
+    |> Enum.reject(fn field ->
+      Enum.any?(Map.keys(secret), &(normalize_key(&1) == field))
+    end)
+  end
+
+  defp missing_secret_fields(_secret, requested_fields) when is_list(requested_fields) do
+    requested_fields
+    |> Enum.map(&normalize_key/1)
+    |> Enum.uniq()
+  end
+
+  defp metadata_value(metadata, key, default) when is_map(metadata) do
+    Map.get(metadata, key, Map.get(metadata, Atom.to_string(key), default))
   end
 
   defp validate_required_scopes(%Connection{granted_scopes: granted_scopes}, %{
@@ -867,6 +1175,10 @@ defmodule Jido.Integration.V2.Auth do
 
   defp normalize_key(key) when is_atom(key), do: Atom.to_string(key)
   defp normalize_key(key) when is_binary(key), do: key
+
+  defp drop_nil_values(map) when is_map(map) do
+    Map.reject(map, fn {_key, value} -> is_nil(value) end)
+  end
 
   defp reset_store(module) do
     if function_exported?(module, :reset!, 0) do
