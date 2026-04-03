@@ -7,6 +7,10 @@ workspace root.
 
 - runtime families: `<%= @runtime_families_literal %>`
 - public auth binding is `connection_id`
+- scaffolded default auth profile: `<%= @auth_profile_id %>`
+- scaffolded management modes: `[:external_secret, :manual]`
+- scaffolded install posture is explicit and non-hosted: `install.required: false`,
+  `reauth.supported: false`
 - deterministic execution still uses short-lived credential leases published by
   the connector contract
 <%= if @include_runtime_metadata do %>- authored non-direct routing is published through `runtime.driver: "<%= @runtime_driver_id %>"` on the manifest instead of an implicit runtime default
@@ -18,6 +22,8 @@ workspace root.
 This package starts with:
 
 - one authored manifest contract built from `AuthSpec`, `CatalogSpec`, `OperationSpec`, and `TriggerSpec`
+- one explicit authored auth profile plus connector-level union fields for
+  scopes, management modes, durable secret fields, and lease fields
 - one authored poll trigger skeleton with explicit checkpoint, dedupe, and ingress metadata
 - one generated `Jido.Action` surface derived from the authored common operation
 - one generated poll-backed `Jido.Sensor` surface derived from the authored common trigger
@@ -36,6 +42,11 @@ legacy bridge default. The generated non-direct common surface already carries
 canonical `metadata.runtime_family` for the selected runtime family.
 <% end %>
 
+Generated actions, sensors, and plugins are derivative outputs only. Keep the
+real source of truth in the authored manifest and use `consumer_surface.mode`
+to decide whether a capability belongs on the curated common surface or stays
+connector-local.
+
 ## What You Must Author
 
 The scaffold is intentionally honest and minimal. It is the starting contract,
@@ -48,6 +59,8 @@ Target descriptors advertise compatibility and location only. They do not
 override authored runtime.driver, runtime.provider, or runtime.options.
 
 - auth, catalog, operation ids, trigger ids, schemas, scopes, and policy metadata in `[<%= @module_file %>]`
+- `supported_profiles`, `default_profile`, `install`, `reauth`, and any
+  connector-local `consumer_surface.mode` decisions in `[<%= @module_file %>]`
 - handler logic in `[<%= @handler_file %>]`
 - poll trigger logic in `[<%= @trigger_handler_file %>]`
 - deterministic fixture expectations in `[<%= @conformance_file %>]`

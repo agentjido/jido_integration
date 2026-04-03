@@ -106,6 +106,8 @@ Generated files include:
 - package-local `mix.exs`, `mix.lock`, `.formatter.exs`, and `.gitignore`
 - a connector module that authors profile-driven `AuthSpec`, `CatalogSpec`, and
   `OperationSpec`
+- explicit install/reauth posture plus fixture-ready profile and lease metadata
+  for the scaffolded auth profile
 - a derived executable capability projection through `Manifest`
 - a runtime-class-appropriate handler skeleton
 - a `<ConnectorModule>.Conformance` companion module with deterministic fixtures
@@ -147,6 +149,8 @@ Connector authors still need to author by hand:
   hidden rules.
 - the real deterministic fixture expectations and any non-direct runtime driver
   behavior
+  Keep fixture `profile_id`, `lease_fields`, and payload keys aligned with the
+  authored auth profile lease projection.
 - the package README sections for runtime family, auth posture, package-local
   verification, live-proof status, and package boundary
 - any package-local examples, scripts, or live acceptance proofs
@@ -253,6 +257,9 @@ After generation:
    For external sibling repos, use sibling-path-or-pinned-git fallback rather
    than connector-local vendored dependencies.
 4. update the companion fixtures so conformance reflects the real behavior
+   Keep fixture `profile_id`, `lease_fields`, and payload keys aligned with
+   the authored auth profile lease projection, and make sure runtime output
+   stays review-safe.
 5. update the package README with the real operation and trigger inventory plus validation
    commands
 6. add any package-local examples, scripts, or live acceptance proofs inside

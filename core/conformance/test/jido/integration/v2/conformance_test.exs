@@ -1,17 +1,22 @@
 defmodule Jido.Integration.V2.ConformanceTest do
   use ExUnit.Case, async: false
 
+  alias Jido.Integration.V2.ArtifactBuilder
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Conformance
   alias Jido.Integration.V2.Conformance.CheckResult
+  alias Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection
+  alias Jido.Integration.V2.Conformance.Suites.DeterministicFixtures
+  alias Jido.Integration.V2.Conformance.Suites.ManifestContract
   alias Jido.Integration.V2.Conformance.Suites.RuntimeClassFit
   alias Jido.Integration.V2.Connector
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
+  alias Jido.Integration.V2.RuntimeResult
   alias Jido.Integration.V2.TriggerSpec
 
   defmodule BrokenSessionHandler do
@@ -1081,6 +1086,250 @@ defmodule Jido.Integration.V2.ConformanceTest do
     def handle_event(_event, state), do: {:ok, state}
   end
 
+  defmodule LeakyFixtureHandler do
+    def run(_input, context) do
+      access_token = context.credential_lease.payload.access_token
+
+      {:ok,
+       RuntimeResult.new!(%{
+         output: %{
+           accepted: true,
+           echoed_token: access_token
+         },
+         events: [
+           %{
+             type: "connector.leaky.echo.completed",
+             stream: :control,
+             payload: %{echoed_token: access_token}
+           }
+         ],
+         artifacts: [
+           ArtifactBuilder.build!(
+             run_id: context.run_id,
+             attempt_id: context.attempt_id,
+             artifact_type: :tool_output,
+             key: "connector_review/leaky_fixture/echo.json",
+             content: %{echoed_token: access_token},
+             metadata: %{connector: "leaky_fixture"}
+           )
+         ]
+       })}
+    end
+  end
+
+  defmodule LeakyFixtureConnector do
+    @behaviour Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "leaky_fixture",
+        auth: %{
+          binding_kind: :connection_id,
+          default_profile: "api_token",
+          supported_profiles: [
+            %{
+              id: "api_token",
+              auth_type: :api_token,
+              subject_kind: :user,
+              install_required: false,
+              grant_types: [:manual_token],
+              durable_secret_fields: ["access_token"],
+              lease_fields: ["access_token"],
+              management_modes: [:external_secret, :manual],
+              external_secret_supported: true,
+              required_scopes: [],
+              docs_refs: [],
+              metadata: %{}
+            }
+          ],
+          install: %{required: false, profiles: []},
+          reauth: %{supported: false, profiles: []},
+          management_modes: [:external_secret, :manual],
+          requested_scopes: [],
+          durable_secret_fields: ["access_token"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        },
+        catalog: %{
+          display_name: "Leaky Fixture",
+          description: "Connector used to verify raw lease secret redaction checks",
+          category: "test",
+          tags: ["fixtures"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [
+          %{
+            operation_id: "leaky_fixture.echo",
+            name: "echo",
+            display_name: "Echo",
+            description: "Echoes credential material to prove redaction enforcement",
+            runtime_class: :direct,
+            transport_mode: :sdk,
+            handler: LeakyFixtureHandler,
+            input_schema: Zoi.object(%{}),
+            output_schema:
+              Zoi.object(%{
+                accepted: Zoi.boolean(),
+                echoed_token: Zoi.string()
+              }),
+            permissions: %{required_scopes: []},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["leaky_fixture.echo"]
+              }
+            },
+            upstream: %{method: "POST", path: "/echo"},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "This fixture connector exists only for deterministic redaction tests"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{action: %{name: "leaky_fixture_echo"}}
+          }
+        ],
+        triggers: [],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
+  defmodule LeakyFixtureConnector.Conformance do
+    def fixtures do
+      [
+        %{
+          capability_id: "leaky_fixture.echo",
+          input: %{},
+          credential_ref: %{
+            id: "cred-leaky-1",
+            subject: "operator",
+            profile_id: "api_token",
+            lease_fields: ["access_token"]
+          },
+          credential_lease: %{
+            lease_id: "lease-leaky-1",
+            credential_ref_id: "cred-leaky-1",
+            subject: "operator",
+            profile_id: "api_token",
+            payload: %{access_token: "leaky_secret_token_123"},
+            lease_fields: ["access_token"],
+            issued_at: ~U[2026-03-12 00:00:00Z],
+            expires_at: ~U[2026-03-12 00:05:00Z]
+          }
+        }
+      ]
+    end
+  end
+
+  defmodule DuplicateProjectedActionConnector do
+    @behaviour Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "duplicate_projected_action",
+        auth: %{
+          binding_kind: :connection_id,
+          auth_type: :api_token,
+          install: %{required: false},
+          reauth: %{supported: false},
+          requested_scopes: ["issues:read"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        },
+        catalog: %{
+          display_name: "Duplicate Projected Action",
+          description: "Connector with duplicate projected common action metadata",
+          category: "test",
+          tags: ["projection"],
+          docs_refs: [],
+          maturity: :experimental,
+          publication: :internal
+        },
+        operations: [
+          %{
+            operation_id: "duplicate_projected_action.issue.fetch",
+            name: "issue_fetch",
+            display_name: "Issue fetch",
+            description: "First projected operation",
+            runtime_class: :direct,
+            transport_mode: :sdk,
+            handler: TriggerHandler,
+            input_schema:
+              Zoi.object(%{
+                issue_id: Zoi.string()
+              }),
+            output_schema:
+              Zoi.object(%{
+                issue_id: Zoi.string()
+              }),
+            permissions: %{required_scopes: ["issues:read"]},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["duplicate_projected_action.issue.fetch"]
+              }
+            },
+            upstream: %{method: "GET", path: "/issues/{issue_id}"},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "work_item_fetch"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{action: %{name: "work_item_fetch"}}
+          },
+          %{
+            operation_id: "duplicate_projected_action.issue.lookup",
+            name: "issue_lookup",
+            display_name: "Issue lookup",
+            description: "Second projected operation with duplicate projection metadata",
+            runtime_class: :direct,
+            transport_mode: :sdk,
+            handler: TriggerHandler,
+            input_schema:
+              Zoi.object(%{
+                issue_id: Zoi.string()
+              }),
+            output_schema:
+              Zoi.object(%{
+                issue_id: Zoi.string()
+              }),
+            permissions: %{required_scopes: ["issues:read"]},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["duplicate_projected_action.issue.lookup"]
+              }
+            },
+            upstream: %{method: "GET", path: "/issues/{issue_id}/lookup"},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "work_item_fetch"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{action: %{name: "work_item_fetch"}}
+          }
+        ],
+        triggers: [],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
   test "returns the stable connector foundation profile names" do
     assert Conformance.profiles() == [:connector_foundation]
   end
@@ -1284,6 +1533,52 @@ defmodule Jido.Integration.V2.ConformanceTest do
            )
   end
 
+  test "flags authored auth install posture drift in manifest conformance" do
+    %Manifest{} = manifest = GitHub.manifest()
+    %AuthSpec{} = auth = manifest.auth
+
+    drifted_manifest = %Manifest{
+      manifest
+      | auth: %AuthSpec{
+          auth
+          | install: %{
+              required: true,
+              profiles: ["oauth_user"],
+              hosted_callback_supported: true,
+              callback_route_kind: "oauth_callback",
+              state_required: false,
+              pkce_supported: false,
+              metadata: %{}
+            }
+        }
+    }
+
+    manifest_suite = ManifestContract.run(%{manifest: drifted_manifest})
+
+    assert manifest_suite.status == :failed
+
+    assert failed_check?(
+             manifest_suite.checks,
+             "manifest.auth.install.profiles.match_install_required"
+           )
+
+    assert failed_check?(
+             manifest_suite.checks,
+             "manifest.auth.install.state_required.when_callback_profiles_exist"
+           )
+  end
+
+  test "fails deterministic fixtures when runtime results leak raw lease secrets" do
+    fixture_suite =
+      DeterministicFixtures.run(%{
+        manifest: LeakyFixtureConnector.manifest(),
+        fixtures: LeakyFixtureConnector.Conformance.fixtures()
+      })
+
+    assert fixture_suite.status == :failed
+    assert failed_check?(fixture_suite.checks, "leaky_fixture.echo.runtime_result.redacted")
+  end
+
   test "fails conformance when a projected common surface uses passthrough schemas" do
     assert {:ok, report} =
              Conformance.run(
@@ -1348,6 +1643,26 @@ defmodule Jido.Integration.V2.ConformanceTest do
     assert failed_check?(
              projection_suite.checks,
              "projected_trigger_jido_sensor_name.market.tick.detected.common_surface.jido_sensor_name"
+           )
+  end
+
+  test "fails conformance when projected common actions collide on curated surface ids" do
+    projection_suite =
+      ConsumerSurfaceProjection.run(%{
+        connector_module: DuplicateProjectedActionConnector,
+        manifest: DuplicateProjectedActionConnector.manifest()
+      })
+
+    assert projection_suite.status == :failed
+
+    assert failed_check?(
+             projection_suite.checks,
+             "consumer_surface.operations.normalized_ids.unique"
+           )
+
+    assert failed_check?(
+             projection_suite.checks,
+             "consumer_surface.operations.action_names.unique"
            )
   end
 

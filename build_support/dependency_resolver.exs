@@ -155,6 +155,15 @@ defmodule Jido.Integration.Build.DependencyResolver do
     )
   end
 
+  def pristine(opts \\ []) do
+    resolve_external(
+      :pristine,
+      local_root_path("PRISTINE_PATH", "../pristine/apps/pristine_runtime"),
+      [hex: :pristine, requirement: "~> 0.2.1"],
+      opts
+    )
+  end
+
   def self_hosted_inference_core(opts \\ []) do
     resolve_external(
       :self_hosted_inference_core,

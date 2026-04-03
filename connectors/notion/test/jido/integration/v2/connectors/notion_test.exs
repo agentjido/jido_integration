@@ -126,6 +126,7 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
     assert manifest.auth.binding_kind == :connection_id
     assert manifest.auth.auth_type == :oauth2
     assert manifest.auth.default_profile == "workspace_oauth"
+    assert manifest.auth.management_modes == [:external_secret, :hosted, :manual]
     assert manifest.catalog.display_name == "Notion"
     assert manifest.catalog.publication == :public
     assert manifest.runtime_families == [:direct]
@@ -133,21 +134,27 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
     assert manifest.auth.install == %{
              required: true,
              profiles: ["workspace_oauth"],
-             hosted_callback_supported: false,
-             callback_route_kind: nil,
+             hosted_callback_supported: true,
+             callback_route_kind: "oauth_callback",
              state_required: true,
              pkce_supported: false,
              expires_in_seconds: nil,
-             metadata: %{approval: :browser_oauth}
+             metadata: %{
+               approval: :browser_oauth,
+               completion_modes: [:hosted_callback, :manual_callback]
+             }
            }
 
     assert manifest.auth.reauth == %{
              supported: true,
              profiles: ["workspace_oauth"],
-             hosted_callback_supported: false,
+             hosted_callback_supported: true,
              state_required: true,
              pkce_supported: false,
-             metadata: %{reuse_install_path: true}
+             metadata: %{
+               reuse_install_path: true,
+               completion_modes: [:hosted_callback, :manual_callback]
+             }
            }
 
     assert [profile] = manifest.auth.supported_profiles
@@ -161,7 +168,8 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
     assert profile.refresh_supported == true
     assert profile.revoke_supported == true
     assert profile.reauth_supported == true
-    assert profile.management_modes == [:manual]
+    assert profile.external_secret_supported == true
+    assert profile.management_modes == [:external_secret, :hosted, :manual]
     assert profile.required_scopes == manifest.auth.requested_scopes
     assert "refresh_token" in profile.durable_secret_fields
     assert "workspace_id" in profile.lease_fields

@@ -7,6 +7,7 @@ defmodule <%= @connector_module %>Test do
     manifest = <%= @connector_module %>.manifest()
     [operation] = manifest.operations
     [trigger] = manifest.triggers
+    [profile] = manifest.auth.supported_profiles
 
     operation_capability =
       Enum.find(manifest.capabilities, &(&1.id == "<%= @operation_id %>"))
@@ -17,6 +18,47 @@ defmodule <%= @connector_module %>Test do
     assert manifest.connector == "<%= @connector_name %>"
     assert manifest.auth.binding_kind == :connection_id
     assert manifest.auth.auth_type == :api_token
+    assert manifest.auth.default_profile == "<%= @auth_profile_id %>"
+    assert manifest.auth.management_modes == [:external_secret, :manual]
+    assert manifest.auth.requested_scopes == ["<%= @required_scope %>"]
+    assert manifest.auth.durable_secret_fields == ["<%= @auth_lease_field %>"]
+    assert manifest.auth.lease_fields == ["<%= @auth_lease_field %>"]
+    assert manifest.auth.install == %{
+             required: false,
+             profiles: [],
+             hosted_callback_supported: false,
+             callback_route_kind: nil,
+             state_required: false,
+             pkce_supported: false,
+             expires_in_seconds: nil,
+             metadata: %{}
+           }
+    assert manifest.auth.reauth == %{
+             supported: false,
+             profiles: [],
+             hosted_callback_supported: false,
+             state_required: false,
+             pkce_supported: false,
+             metadata: %{}
+           }
+    assert profile.id == "<%= @auth_profile_id %>"
+    assert profile.auth_type == :api_token
+    assert profile.subject_kind == :user
+    assert profile.install_required == false
+    assert profile.grant_types == [:manual_token]
+    assert profile.durable_secret_fields == ["<%= @auth_lease_field %>"]
+    assert profile.lease_fields == ["<%= @auth_lease_field %>"]
+    assert profile.management_modes == [:external_secret, :manual]
+    assert profile.callback_required == false
+    assert profile.pkce_required == false
+    assert profile.refresh_supported == false
+    assert profile.revoke_supported == false
+    assert profile.reauth_supported == false
+    assert profile.external_secret_supported == true
+    assert profile.external_secret_lease_fields == []
+    assert profile.required_scopes == ["<%= @required_scope %>"]
+    assert profile.docs_refs == []
+    assert profile.metadata == %{}
     assert manifest.catalog.display_name == "<%= @connector_display_name %>"
     assert manifest.runtime_families == <%= @runtime_families_literal %>
     assert operation.operation_id == "<%= @operation_id %>"

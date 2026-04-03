@@ -43,6 +43,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.MixProject do
       WorkspaceDependencyResolver.jido_integration_v2_direct_runtime(),
       WorkspaceDependencyResolver.jido_integration_v2_conformance(only: :test, runtime: false),
       WorkspaceDependencyResolver.jido_integration_v2(only: [:dev, :test]),
+      WorkspaceDependencyResolver.pristine(override: true),
       {:zoi, "~> 0.17"},
       ConnectorDependencyResolver.github_ex(),
       {:jason, "~> 1.4"},

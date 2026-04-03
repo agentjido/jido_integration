@@ -46,6 +46,10 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     assert manifest.auth.binding_kind == :connection_id
     assert manifest.auth.auth_type == :api_token
     assert manifest.auth.default_profile == "personal_access_token"
+    assert manifest.auth.management_modes == [:external_secret, :hosted, :manual]
+    assert manifest.auth.requested_scopes == ["repo"]
+    assert manifest.auth.durable_secret_fields == ["access_token", "refresh_token"]
+    assert manifest.auth.lease_fields == ["access_token"]
     assert manifest.auth.secret_names == []
     assert manifest.catalog.display_name == "GitHub"
     assert manifest.catalog.publication == :public
@@ -55,37 +59,68 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
 
     assert manifest.auth.install == %{
              required: true,
-             profiles: ["personal_access_token"],
-             hosted_callback_supported: false,
-             callback_route_kind: nil,
-             state_required: false,
+             profiles: ["oauth_user", "personal_access_token"],
+             hosted_callback_supported: true,
+             callback_route_kind: "oauth_callback",
+             state_required: true,
              pkce_supported: false,
              expires_in_seconds: nil,
-             metadata: %{approval: :manual_token_entry}
+             metadata: %{
+               completion_modes: [:hosted_callback, :manual_callback],
+               approval_by_profile: %{
+                 oauth_user: :browser_oauth,
+                 personal_access_token: :manual_token_entry
+               }
+             }
            }
 
     assert manifest.auth.reauth == %{
-             supported: false,
-             profiles: [],
-             hosted_callback_supported: false,
-             state_required: false,
+             supported: true,
+             profiles: ["oauth_user"],
+             hosted_callback_supported: true,
+             state_required: true,
              pkce_supported: false,
-             metadata: %{}
+             metadata: %{reuse_install_path: true}
            }
 
-    assert [profile] = manifest.auth.supported_profiles
-    assert profile.id == "personal_access_token"
-    assert profile.auth_type == :api_token
-    assert profile.subject_kind == :user
-    assert profile.install_required == true
-    assert profile.grant_types == [:manual_token]
-    assert profile.refresh_supported == false
-    assert profile.revoke_supported == false
-    assert profile.reauth_supported == false
-    assert profile.durable_secret_fields == ["access_token"]
-    assert profile.lease_fields == ["access_token"]
-    assert profile.management_modes == [:manual]
-    assert profile.required_scopes == ["repo"]
+    assert Enum.map(manifest.auth.supported_profiles, & &1.id) == [
+             "oauth_user",
+             "personal_access_token"
+           ]
+
+    oauth_profile =
+      Enum.find(manifest.auth.supported_profiles, &(&1.id == "oauth_user"))
+
+    assert oauth_profile.auth_type == :oauth2
+    assert oauth_profile.subject_kind == :user
+    assert oauth_profile.install_required == true
+    assert oauth_profile.grant_types == [:authorization_code, :refresh_token]
+    assert oauth_profile.callback_required == true
+    assert oauth_profile.pkce_required == false
+    assert oauth_profile.refresh_supported == true
+    assert oauth_profile.revoke_supported == true
+    assert oauth_profile.reauth_supported == true
+    assert oauth_profile.external_secret_supported == true
+    assert oauth_profile.durable_secret_fields == ["access_token", "refresh_token"]
+    assert oauth_profile.lease_fields == ["access_token"]
+    assert oauth_profile.management_modes == [:external_secret, :hosted, :manual]
+    assert oauth_profile.required_scopes == ["repo"]
+
+    pat_profile =
+      Enum.find(manifest.auth.supported_profiles, &(&1.id == "personal_access_token"))
+
+    assert pat_profile.auth_type == :api_token
+    assert pat_profile.subject_kind == :user
+    assert pat_profile.install_required == true
+    assert pat_profile.grant_types == [:manual_token]
+    assert pat_profile.refresh_supported == false
+    assert pat_profile.revoke_supported == false
+    assert pat_profile.reauth_supported == false
+    assert pat_profile.external_secret_supported == true
+    assert pat_profile.durable_secret_fields == ["access_token"]
+    assert pat_profile.lease_fields == ["access_token"]
+    assert pat_profile.management_modes == [:external_secret, :manual]
+    assert pat_profile.required_scopes == ["repo"]
 
     assert Enum.map(manifest.operations, & &1.operation_id) ==
              Enum.sort(@published_capability_ids)

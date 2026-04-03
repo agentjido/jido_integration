@@ -47,10 +47,13 @@ questions without guessing. The minimum package sections are:
   and trigger contracts, with executable capabilities derived from that source
 - generated consumer surfaces remain derivative of authored manifest truth and
   do not silently absorb provider inventory or connector-local long-tail
-  helpers
+  helpers; curated common action and sensor ids stay unique within each
+  connector
 - authored auth remains internally consistent with the published slice:
-  `requested_scopes` cover all operation and trigger scope requirements, and
-  `secret_names` cover every trigger verification or webhook secret reference
+  `supported_profiles`, connector-level auth unions, `install`, and `reauth`
+  stay aligned; `requested_scopes` cover all operation and trigger scope
+  requirements; and `secret_names` cover every trigger verification or webhook
+  secret reference
 - public invocation can be expressed either as `invoke/3` or through the typed
   `InvocationRequest` helper, with `connection_id` as the public auth binding
   when auth is required
@@ -71,7 +74,8 @@ questions without guessing. The minimum package sections are:
   Harness `asm` seam and honestly keeps `runtime_ref: :session` because the
   selected driver returns a session-scoped handle
 - runtime execution uses short-lived credential leases, not durable credential
-  secrets
+  secrets, and conformance fixtures prove the published lease projection
+  without leaking raw secret values into runtime output, events, or artifacts
 - policy posture remains explicit at the capability boundary through declared
   scopes, environment, runtime-class, and sandbox metadata
 - Notion OAuth control endpoints stay in install/auth flow rather than widening

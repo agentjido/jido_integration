@@ -192,6 +192,9 @@ That lifecycle is now profile-driven from authored connector manifests:
   secret-source posture behind `core/auth` and the selected durability tier
 - runtime execution still receives only short-lived leases, never durable
   credential truth
+- connector conformance also checks curated common-surface uniqueness and
+  review-safe lease redaction so generated publication remains derivative and
+  safe to expose
 
 Hosted browser/provider callbacks, install cancellation, install expiration,
 and reauth are auth-control flows, not connector invoke capabilities. Apps may

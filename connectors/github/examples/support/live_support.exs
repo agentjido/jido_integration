@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
+  alias Jido.Integration.V2.Connectors.GitHub.InstallBinding
   alias Jido.Integration.V2.Connectors.GitHub.LiveEnv
   alias Jido.Integration.V2.Connectors.GitHub.LivePlan
 
@@ -172,6 +173,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
   defp install_connection!(spec) do
     now = DateTime.utc_now()
     auth = GitHub.manifest().auth
+    binding = InstallBinding.from_personal_access_token(spec.token)
 
     {:ok, %{install: install, connection: installing_connection}} =
       V2.start_install("github", spec.tenant_id, %{
@@ -192,13 +194,12 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     )
 
     {:ok, %{install: completed_install, connection: connection, credential_ref: credential_ref}} =
-      V2.complete_install(install.install_id, %{
-        subject: spec.subject,
-        granted_scopes: auth.requested_scopes,
-        secret: %{access_token: spec.token},
-        expires_at: nil,
-        now: now
-      })
+      V2.complete_install(
+        install.install_id,
+        InstallBinding.complete_install_attrs(spec.subject, auth.requested_scopes, binding,
+          now: now
+        )
+      )
 
     {:ok, fetched_install} = V2.fetch_install(install.install_id)
     {:ok, fetched_connection} = V2.connection_status(connection.connection_id)

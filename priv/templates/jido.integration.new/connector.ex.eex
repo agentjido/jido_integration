@@ -25,11 +25,15 @@ defmodule <%= @connector_module %> do
       auth:
         AuthSpec.new!(%{
           binding_kind: :connection_id,
-          auth_type: :api_token,
-          install: %{required: true},
-          reauth: %{supported: false},
-          requested_scopes: ["<%= @required_scope %>"],
-          lease_fields: ["<%= @auth_lease_field %>"],
+          supported_profiles:
+<%= @auth_supported_profiles_literal %>,
+          default_profile: <%= @auth_default_profile_literal %>,
+          install: <%= @auth_install_literal %>,
+          reauth: <%= @auth_reauth_literal %>,
+          management_modes: <%= @auth_management_modes_literal %>,
+          requested_scopes: <%= @auth_requested_scopes_literal %>,
+          durable_secret_fields: <%= @auth_durable_secret_fields_literal %>,
+          lease_fields: <%= @auth_lease_fields_literal %>,
           secret_names: []
         }),
       catalog:

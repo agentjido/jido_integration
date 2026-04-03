@@ -221,6 +221,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     attempt_id = "#{run_id}:1"
     handler_module = connector_module <> ".Actions.Perform"
     auth_token = "direct-demo-token"
+    auth_profile_id = default_auth_profile_id()
 
     %{
       runtime_dep_path:
@@ -276,7 +277,13 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
         inspect(%{run_id: run_id, attempt_id: attempt_id}, pretty: true, limit: :infinity),
       fixture_credential_ref_literal:
         inspect(
-          %{id: "cred-#{connector_name}", subject: "operator", scopes: [required_scope]},
+          %{
+            id: "cred-#{connector_name}",
+            subject: "operator",
+            profile_id: auth_profile_id,
+            scopes: [required_scope],
+            lease_fields: ["api_token"]
+          },
           pretty: true,
           limit: :infinity
         ),
@@ -286,8 +293,10 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
             lease_id: "lease-#{connector_name}",
             credential_ref_id: "cred-#{connector_name}",
             subject: "operator",
+            profile_id: auth_profile_id,
             scopes: [required_scope],
             payload: %{api_token: auth_token},
+            lease_fields: ["api_token"],
             issued_at: ~U[2026-03-12 00:00:00Z],
             expires_at: ~U[2026-03-12 00:05:00Z]
           },
@@ -334,6 +343,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
     }
+    |> Map.merge(auth_contract_context(required_scope, "api_token"))
   end
 
   defp runtime_context(
@@ -351,6 +361,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     attempt_id = "#{run_id}:1"
     handler_module = connector_module <> ".Handler"
     auth_token = "session-demo-token"
+    auth_profile_id = default_auth_profile_id()
     workspace = "/workspaces/#{connector_name}"
 
     %{
@@ -402,7 +413,13 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
         inspect(%{run_id: run_id, attempt_id: attempt_id}, pretty: true, limit: :infinity),
       fixture_credential_ref_literal:
         inspect(
-          %{id: "cred-#{connector_name}", subject: "operator", scopes: [required_scope]},
+          %{
+            id: "cred-#{connector_name}",
+            subject: "operator",
+            profile_id: auth_profile_id,
+            scopes: [required_scope],
+            lease_fields: ["access_token"]
+          },
           pretty: true,
           limit: :infinity
         ),
@@ -412,8 +429,10 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
             lease_id: "lease-#{connector_name}",
             credential_ref_id: "cred-#{connector_name}",
             subject: "operator",
+            profile_id: auth_profile_id,
             scopes: [required_scope],
             payload: %{access_token: auth_token},
+            lease_fields: ["access_token"],
             issued_at: ~U[2026-03-12 00:00:00Z],
             expires_at: ~U[2026-03-12 00:05:00Z]
           },
@@ -471,6 +490,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
     }
+    |> Map.merge(auth_contract_context(required_scope, "access_token"))
   end
 
   defp runtime_context(
@@ -488,6 +508,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     attempt_id = "#{run_id}:1"
     handler_module = connector_module <> ".Handler"
     api_key = "stream-demo-key"
+    auth_profile_id = default_auth_profile_id()
 
     %{
       handler_module: handler_module,
@@ -549,7 +570,13 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
         inspect(%{run_id: run_id, attempt_id: attempt_id}, pretty: true, limit: :infinity),
       fixture_credential_ref_literal:
         inspect(
-          %{id: "cred-#{connector_name}", subject: "operator", scopes: [required_scope]},
+          %{
+            id: "cred-#{connector_name}",
+            subject: "operator",
+            profile_id: auth_profile_id,
+            scopes: [required_scope],
+            lease_fields: ["api_key"]
+          },
           pretty: true,
           limit: :infinity
         ),
@@ -559,8 +586,10 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
             lease_id: "lease-#{connector_name}",
             credential_ref_id: "cred-#{connector_name}",
             subject: "operator",
+            profile_id: auth_profile_id,
             scopes: [required_scope],
             payload: %{api_key: api_key},
+            lease_fields: ["api_key"],
             issued_at: ~U[2026-03-12 00:00:00Z],
             expires_at: ~U[2026-03-12 00:05:00Z]
           },
@@ -623,6 +652,64 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       publish_ingress_definitions: true,
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
+    }
+    |> Map.merge(auth_contract_context(required_scope, "api_key"))
+  end
+
+  defp default_auth_profile_id, do: "default_manual_secret"
+
+  defp auth_contract_context(required_scope, lease_field) do
+    supported_profile = %{
+      id: default_auth_profile_id(),
+      auth_type: :api_token,
+      subject_kind: :user,
+      install_required: false,
+      grant_types: [:manual_token],
+      durable_secret_fields: [lease_field],
+      lease_fields: [lease_field],
+      management_modes: [:external_secret, :manual],
+      callback_required: false,
+      pkce_required: false,
+      refresh_supported: false,
+      revoke_supported: false,
+      reauth_supported: false,
+      external_secret_supported: true,
+      external_secret_lease_fields: [],
+      required_scopes: [required_scope],
+      docs_refs: [],
+      metadata: %{}
+    }
+
+    install = %{
+      required: false,
+      profiles: [],
+      hosted_callback_supported: false,
+      state_required: false,
+      pkce_supported: false,
+      metadata: %{}
+    }
+
+    reauth = %{
+      supported: false,
+      profiles: [],
+      hosted_callback_supported: false,
+      state_required: false,
+      pkce_supported: false,
+      metadata: %{}
+    }
+
+    %{
+      auth_profile_id: default_auth_profile_id(),
+      auth_supported_profiles_literal:
+        inspect([supported_profile], pretty: true, limit: :infinity),
+      auth_default_profile_literal: inspect(default_auth_profile_id()),
+      auth_install_literal: inspect(install, pretty: true, limit: :infinity),
+      auth_reauth_literal: inspect(reauth, pretty: true, limit: :infinity),
+      auth_management_modes_literal:
+        inspect([:external_secret, :manual], pretty: true, limit: :infinity),
+      auth_requested_scopes_literal: inspect([required_scope], pretty: true, limit: :infinity),
+      auth_durable_secret_fields_literal: inspect([lease_field], pretty: true, limit: :infinity),
+      auth_lease_fields_literal: inspect([lease_field], pretty: true, limit: :infinity)
     }
   end
 

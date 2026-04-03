@@ -19,7 +19,17 @@ defmodule Jido.Integration.V2.Connectors.Notion do
       auth:
         AuthSpec.new!(%{
           binding_kind: :connection_id,
+          management_modes: [:external_secret, :hosted, :manual],
           default_profile: "workspace_oauth",
+          requested_scopes: requested_scopes(),
+          durable_secret_fields: [
+            "access_token",
+            "refresh_token",
+            "workspace_id",
+            "workspace_name",
+            "bot_id"
+          ],
+          lease_fields: ["access_token", "workspace_id", "workspace_name", "bot_id"],
           supported_profiles: [
             %{
               id: "workspace_oauth",
@@ -32,6 +42,7 @@ defmodule Jido.Integration.V2.Connectors.Notion do
               refresh_supported: true,
               revoke_supported: true,
               reauth_supported: true,
+              external_secret_supported: true,
               durable_secret_fields: [
                 "access_token",
                 "refresh_token",
@@ -40,7 +51,7 @@ defmodule Jido.Integration.V2.Connectors.Notion do
                 "bot_id"
               ],
               lease_fields: ["access_token", "workspace_id", "workspace_name", "bot_id"],
-              management_modes: [:manual],
+              management_modes: [:external_secret, :hosted, :manual],
               required_scopes: requested_scopes(),
               docs_refs: ["https://developers.notion.com/docs/authorization"],
               metadata: %{provider: :notion_sdk, install_surface: :browser_oauth}
@@ -49,18 +60,25 @@ defmodule Jido.Integration.V2.Connectors.Notion do
           install: %{
             required: true,
             profiles: ["workspace_oauth"],
-            hosted_callback_supported: false,
+            hosted_callback_supported: true,
+            callback_route_kind: "oauth_callback",
             state_required: true,
             pkce_supported: false,
-            metadata: %{approval: :browser_oauth}
+            metadata: %{
+              approval: :browser_oauth,
+              completion_modes: [:hosted_callback, :manual_callback]
+            }
           },
           reauth: %{
             supported: true,
             profiles: ["workspace_oauth"],
-            hosted_callback_supported: false,
+            hosted_callback_supported: true,
             state_required: true,
             pkce_supported: false,
-            metadata: %{reuse_install_path: true}
+            metadata: %{
+              reuse_install_path: true,
+              completion_modes: [:hosted_callback, :manual_callback]
+            }
           },
           secret_names: []
         }),

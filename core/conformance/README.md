@@ -37,9 +37,10 @@ Suite order:
 7. `ingress_definition_discipline`
 
 `consumer_surface_projection` proves that published common generated actions,
-sensors, and plugins resolve and still match the authored projection metadata.
-Connector-local inventory stays outside that suite so connectors can keep
-unstable or host-specific capability slices private.
+sensors, and plugins resolve, keep unique curated common ids, and still match
+the authored projection metadata. Connector-local inventory stays outside that
+suite so connectors can keep unstable or host-specific capability slices
+private.
 
 Future profiles should extend this model with more suites instead of changing
 the root task shape.
@@ -71,13 +72,21 @@ defmodule MyApp.Connectors.Example.Conformance do
       %{
         capability_id: "example.echo",
         input: %{message: "hello"},
-        credential_ref: %{id: "cred-1", subject: "operator", scopes: ["echo:run"]},
+        credential_ref: %{
+          id: "cred-1",
+          subject: "operator",
+          profile_id: "default_manual_secret",
+          scopes: ["echo:run"],
+          lease_fields: ["token"]
+        },
         credential_lease: %{
           lease_id: "lease-1",
           credential_ref_id: "cred-1",
           subject: "operator",
+          profile_id: "default_manual_secret",
           scopes: ["echo:run"],
           payload: %{token: "lease-token"},
+          lease_fields: ["token"],
           issued_at: ~U[2026-03-12 00:00:00Z],
           expires_at: ~U[2026-03-12 00:05:00Z]
         },
@@ -95,6 +104,11 @@ end
 
 Trigger-capable connectors may also publish `ingress_definitions/0` from the
 same companion module.
+
+Conformance treats the authored auth profile as the source of truth for those
+fixtures. `credential_lease.lease_fields` and payload keys must match the
+published profile lease projection, and runtime output, events, and artifacts
+must not echo raw secret values.
 
 Non-direct connectors may also publish `runtime_drivers/0` from the same
 companion module so conformance can bind accepted Harness driver ids such as

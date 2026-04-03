@@ -23,12 +23,16 @@ This package keeps the boundary explicit:
 - runtime family: `:direct`
 - public auth binding is `connection_id`
 - default auth profile: `workspace_oauth`
-- current management mode: `:manual`
-- install and reauth use browser OAuth with explicit state correlation and no
-  hosted callback route in this package
+- connector-wide management modes: `[:external_secret, :hosted, :manual]`
+- install and reauth use browser OAuth with explicit state correlation and
+  hosted callback support in the published auth contract, while the package
+  still keeps HTTP callback ownership outside the invoke surface
 - durable secret fields include access/refresh tokens plus workspace identity;
   lease payloads project only `access_token`, `workspace_id`,
   `workspace_name`, and `bot_id`
+- external-secret completion is also supported for the published
+  `workspace_oauth` profile as long as the durable secret matches that same
+  lease projection
 - the connector mints short-lived credential leases and builds
   `NotionSDK.Client` instances from those leases only
 - the live execution path is

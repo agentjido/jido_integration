@@ -63,6 +63,10 @@ Optional shortcuts:
 
 Use one of those when you want to skip the interactive prompt.
 
+This auth proof exercises the published `workspace_oauth` profile. The same
+profile also supports external-secret completion, but this package-local auth
+script stays on the browser OAuth path.
+
 ### Read Acceptance
 
 Command:

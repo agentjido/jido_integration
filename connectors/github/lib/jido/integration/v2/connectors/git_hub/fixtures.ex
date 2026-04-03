@@ -11,6 +11,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
   @subject "octocat"
   @credential_ref_id "cred-github-test"
   @lease_id "lease-github-test"
+  @profile_id "personal_access_token"
   @access_token "gho_test"
   @repo "agentjido/jido_integration_v2"
 
@@ -99,8 +100,10 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
   def credential_ref(subject \\ @subject) do
     CredentialRef.new!(%{
       id: @credential_ref_id,
+      profile_id: @profile_id,
       subject: subject,
-      scopes: ["repo"]
+      scopes: ["repo"],
+      lease_fields: ["access_token"]
     })
   end
 
@@ -109,9 +112,11 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
     CredentialLease.new!(%{
       lease_id: @lease_id,
       credential_ref_id: @credential_ref_id,
+      profile_id: @profile_id,
       subject: subject,
       scopes: ["repo"],
       payload: %{access_token: token},
+      lease_fields: ["access_token"],
       issued_at: ~U[2026-03-12 00:00:00Z],
       expires_at: ~U[2026-03-12 00:05:00Z]
     })

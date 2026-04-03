@@ -39,8 +39,10 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Conformance do
   defp credential_ref do
     %{
       id: "cred-github-conformance",
+      profile_id: "personal_access_token",
       subject: @subject,
-      scopes: ["repo"]
+      scopes: ["repo"],
+      lease_fields: ["access_token"]
     }
   end
 
@@ -48,9 +50,11 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Conformance do
     %{
       lease_id: "lease-github-conformance",
       credential_ref_id: "cred-github-conformance",
+      profile_id: "personal_access_token",
       subject: @subject,
       scopes: ["repo"],
       payload: %{access_token: @access_token},
+      lease_fields: ["access_token"],
       issued_at: ~U[2026-03-12 00:00:00Z],
       expires_at: ~U[2026-03-12 00:05:00Z]
     }

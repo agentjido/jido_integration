@@ -14,7 +14,8 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
     projected_triggers = ConsumerProjection.projected_triggers(manifest)
 
     checks =
-      Enum.flat_map(manifest.operations, &operation_checks/1) ++
+      uniqueness_checks(manifest.operations, manifest.triggers) ++
+        Enum.flat_map(manifest.operations, &operation_checks/1) ++
         Enum.flat_map(manifest.triggers, &trigger_checks/1) ++
         Enum.flat_map(projected_operations, &generated_action_checks(connector_module, &1)) ++
         generated_plugin_checks(connector_module, projected_operations, projected_triggers) ++
@@ -25,6 +26,39 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
       checks,
       "Common consumer surfaces stay explicit, normalized, and schema-backed"
     )
+  end
+
+  defp uniqueness_checks(operations, triggers) do
+    common_operations = Enum.filter(operations, &common_surface_mode?(&1, :common))
+    common_triggers = Enum.filter(triggers, &common_surface_mode?(&1, :common))
+
+    [
+      SuiteSupport.check(
+        "consumer_surface.operations.normalized_ids.unique",
+        unique_consumer_surface_values?(common_operations, :normalized_id),
+        "common projected operations must use unique normalized_id values"
+      ),
+      SuiteSupport.check(
+        "consumer_surface.operations.action_names.unique",
+        unique_consumer_surface_values?(common_operations, :action_name),
+        "common projected operations must use unique action_name values"
+      ),
+      SuiteSupport.check(
+        "consumer_surface.triggers.normalized_ids.unique",
+        unique_consumer_surface_values?(common_triggers, :normalized_id),
+        "common projected triggers must use unique normalized_id values"
+      ),
+      SuiteSupport.check(
+        "consumer_surface.triggers.sensor_names.unique",
+        unique_consumer_surface_values?(common_triggers, :sensor_name),
+        "common projected triggers must use unique sensor_name values"
+      ),
+      SuiteSupport.check(
+        "consumer_surface.triggers.jido_sensor_names.unique",
+        unique_jido_sensor_names?(common_triggers),
+        "common projected triggers must use unique jido_name values"
+      )
+    ]
   end
 
   defp operation_checks(operation) do
@@ -529,5 +563,38 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
       {:subscriptions, 0},
       {:subscriptions, 2}
     ]
+  end
+
+  defp common_surface_mode?(entry, mode) do
+    entry
+    |> Map.get(:consumer_surface, %{})
+    |> SuiteSupport.fetch(:mode) == mode
+  end
+
+  defp unique_consumer_surface_values?(entries, field) do
+    values =
+      entries
+      |> Enum.map(fn entry ->
+        entry
+        |> Map.get(:consumer_surface, %{})
+        |> SuiteSupport.fetch(field)
+      end)
+      |> Enum.filter(&present_string?/1)
+
+    values == Enum.uniq(values)
+  end
+
+  defp unique_jido_sensor_names?(entries) do
+    values =
+      entries
+      |> Enum.map(fn entry ->
+        entry
+        |> Map.get(:jido, %{})
+        |> Contracts.get(:sensor, %{})
+        |> Contracts.get(:name)
+      end)
+      |> Enum.filter(&present_string?/1)
+
+    values == Enum.uniq(values)
   end
 end

@@ -21,12 +21,18 @@ Proves:
 
 - runtime family: `:direct`
 - public auth binding is `connection_id`
-- default auth profile: `personal_access_token`
-- supported management mode: `:manual`
-- durable secret fields: `["access_token"]`
-- lease fields: `["access_token"]`
-- install posture is explicit manual token entry with no hosted callback or
-  PKCE flow
+- supported auth profiles:
+  - `personal_access_token` as the default manual or external-secret profile
+  - `oauth_user` as the browser OAuth profile
+- connector-wide management modes: `[:external_secret, :hosted, :manual]`
+- durable secret fields union:
+  `["access_token", "refresh_token"]`
+- lease fields union:
+  `["access_token"]`
+- install posture is explicit by profile:
+  - `personal_access_token` stays manual or external-secret with no callback
+  - `oauth_user` supports browser OAuth, hosted callback completion, and state correlation
+- reauth is published only for `oauth_user`
 - the connector mints short-lived credential leases and builds `GitHubEx.Client`
   instances from those leases only
 - the live execution path is
@@ -137,6 +143,11 @@ the current v2 auth and platform surface:
 - `Jido.Integration.V2.complete_install/2`
 - `Jido.Integration.V2.request_lease/2`
 - `Jido.Integration.V2.invoke/3`
+
+The current package-local live scripts exercise the default
+`personal_access_token` profile. The published manifest also supports the
+`oauth_user` profile for hosted or manually completed OAuth installs without
+adding OAuth control endpoints to the invoke surface.
 
 Use the package-local wrapper:
 

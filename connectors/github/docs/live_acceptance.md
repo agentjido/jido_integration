@@ -76,6 +76,12 @@ What it proves:
 - `request_lease/2` mints a short-lived lease with only `access_token`
 - the connector package can drive that lifecycle locally through `Jido.Integration.V2`
 
+This package-local auth proof currently exercises the default
+`personal_access_token` profile. The published manifest also supports an
+`oauth_user` profile for browser OAuth plus hosted or manual callback
+completion, but that hosted callback lane is not owned by this package-local
+script surface.
+
 ### Read-Only Acceptance
 
 Command:

@@ -27,7 +27,10 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
              "Target descriptors only advertise compatibility and location; they do not override authored runtime posture."
 
     assert output =~
-             "Update connectors/acme_crm/README.md so it states the runtime family, auth posture, package-local verification commands, and live-proof status."
+             "Update connectors/acme_crm/README.md so it states the runtime family, auth posture, package-local verification commands, authored-vs-generated surface boundary, and live-proof status."
+
+    assert output =~
+             "Keep `supported_profiles`, `default_profile`, `install`, `reauth`, and connector-wide auth unions aligned."
 
     assert output =~ "Keep connector-local proof code inside connectors/acme_crm"
     assert output =~ "Run: mix ci"
@@ -130,6 +133,10 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert connector_content =~ "defmodule Jido.Integration.V2.Connectors.AcmeCrm do"
     assert connector_content =~ "Manifest.new!("
     assert connector_content =~ "AuthSpec.new!("
+    assert connector_content =~ "supported_profiles:"
+    assert connector_content =~ ~s(default_profile: "default_manual_secret")
+    assert connector_content =~ "management_modes: [:external_secret, :manual]"
+    assert connector_content =~ "durable_secret_fields: [\"api_token\"]"
     assert connector_content =~ "CatalogSpec.new!("
     assert connector_content =~ "OperationSpec.new!("
     assert connector_content =~ "TriggerSpec.new!("

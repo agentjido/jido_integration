@@ -180,8 +180,11 @@ The current surface also proves:
 - public invocation binds auth through `connection_id`; `credential_ref`
   remains internal execution plumbing
 - GitHub and Notion both publish generated common consumer surfaces from
-  authored contracts
+  authored contracts, and conformance keeps those curated common ids unique
+  within each connector
 - conformance runs from the root while connector evidence stays package-local
+- conformance fixtures now prove lease projection and redaction posture, not
+  just execution success
 - local durability, async queue state, and webhook route state are all
   explicit opt-in packages
 - the Postgres auth tier carries a forward-only expansion migration,

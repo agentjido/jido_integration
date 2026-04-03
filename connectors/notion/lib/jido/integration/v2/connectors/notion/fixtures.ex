@@ -11,6 +11,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
   @subject "workspace:acme"
   @credential_ref_id "cred-notion-test"
   @lease_id "lease-notion-test"
+  @profile_id "workspace_oauth"
   @access_token "secret-notion-access-token"
   @refresh_token "secret-notion-refresh-token"
   @base_url "https://api.notion.com"
@@ -56,8 +57,16 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
   def credential_ref_attrs do
     %{
       id: @credential_ref_id,
+      profile_id: @profile_id,
       subject: @subject,
-      scopes: ["notion.content.read", "notion.content.insert", "notion.content.update"]
+      scopes: [
+        "notion.comment.insert",
+        "notion.content.insert",
+        "notion.content.read",
+        "notion.content.update",
+        "notion.identity.self"
+      ],
+      lease_fields: ["access_token", "bot_id", "workspace_id", "workspace_name"]
     }
   end
 
@@ -71,6 +80,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
     %{
       lease_id: @lease_id,
       credential_ref_id: @credential_ref_id,
+      profile_id: @profile_id,
       subject: @subject,
       scopes: [
         "notion.identity.self",
@@ -81,11 +91,11 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
       ],
       payload: %{
         access_token: @access_token,
-        refresh_token: @refresh_token,
         workspace_id: "workspace-acme",
         workspace_name: "Acme Workspace",
         bot_id: "bot-acme"
       },
+      lease_fields: ["access_token", "bot_id", "workspace_id", "workspace_name"],
       issued_at: ~U[2026-03-12 00:00:00Z],
       expires_at: ~U[2026-03-12 00:05:00Z]
     }

@@ -42,11 +42,14 @@ giving the repo one canonical connector acceptance command.
 It exists to prove that a connector:
 
 - publishes a valid authored manifest contract and derived executable capabilities
+- keeps authored auth profiles, connector-level auth unions, install posture,
+  and reauth posture internally consistent
 - ships loadable generated common consumer surfaces whose action/plugin/sensor
-  metadata stays aligned with authored projection truth
+  metadata stays aligned with authored projection truth and remains unique
 - fits the declared runtime family
 - declares policy posture explicitly
-- can execute deterministic fixtures through lease-only auth context
+- can execute deterministic fixtures through lease-only auth context without
+  leaking raw lease secrets
 - publishes ingress definitions when it claims trigger capability
 
 ## Current Stable Profile
@@ -86,6 +89,9 @@ provider connector package.
    trigger `required_scopes`, and keep `auth.secret_names` as the authored
    superset of trigger `verification.secret_name` and
    `secret_requirements`.
+   Keep `supported_profiles`, `default_profile`, `install.profiles`, and
+   `reauth.profiles` aligned, and keep connector-level auth unions honest
+   against the authored profiles.
 3. keep runtime handlers in the connector package and declare explicit child
    deps in that package `mix.exs`
 4. add or update deterministic tests in the connector package
@@ -141,23 +147,29 @@ Each fixture map should declare:
 - `artifact_types`
 - `artifact_keys`
 
+For profile-driven connectors, fixture `credential_ref` and
+`credential_lease` should also carry `profile_id`, and
+`credential_lease.lease_fields` plus payload keys should match the authored
+profile `lease_fields`.
+
 ## How To Read Failures
 
 - `manifest_contract`
-  - fix connector id stability, authored auth/catalog/operation/trigger completeness, auth scope or trigger-secret coverage, or derived capability ownership
+  - fix connector id stability, authored auth/catalog/operation/trigger completeness, auth profile/install/reauth drift, auth scope or trigger-secret coverage, or derived capability ownership
 - `capability_contracts`
   - fix authored operation or trigger ids, projection drift, invalid policy metadata, or malformed derived capability structs
 - `consumer_surface_projection`
   - fix common-surface metadata, generated action/plugin/sensor module
     loadability, generated projection drift, plugin action drift, plugin
-    subscription drift, or placeholder-schema posture
+    subscription drift, curated common-surface uniqueness, or
+    placeholder-schema posture
 - `runtime_class_fit`
   - fix handler modules so they match `direct`, `session`, or `stream`
 - `policy_contract`
   - declare scopes, environment, runtime class, and sandbox posture explicitly
 - `deterministic_fixtures`
-  - fix provider determinism, expected output/events/artifacts, or auth lease
-    assumptions
+  - fix provider determinism, expected output/events/artifacts, auth lease
+    projection drift, or review-safe redaction failures
 - `ingress_definition_discipline`
   - keep trigger definitions explicit and aligned with the derived trigger capability surface
 

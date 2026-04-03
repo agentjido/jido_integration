@@ -1,6 +1,7 @@
 defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
   @moduledoc false
 
+  alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.Conformance.CheckResult
   alias Jido.Integration.V2.Conformance.SuiteResult
   alias Jido.Integration.V2.Conformance.SuiteSupport
@@ -90,7 +91,9 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
         first_summary == second_summary,
         "fixture output changed between identical runs"
       )
-    ] ++ expectation_checks(capability.id, fixture.expect, first_result)
+    ] ++
+      fixture_auth_checks(capability.id, fixture, first_result) ++
+      expectation_checks(capability.id, fixture.expect, first_result)
   end
 
   defp fixture_checks(capability, _fixture, _first_result, {:error, reason}) do
@@ -183,13 +186,16 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
              {:ok, credential_lease} <- normalize_credential_lease(raw_fixture),
              {:ok, input} <- normalize_map(raw_fixture, :input),
              {:ok, context} <- normalize_optional_map(raw_fixture, :context),
-             {:ok, expect} <- normalize_optional_map(raw_fixture, :expect) do
+             {:ok, expect} <- normalize_optional_map(raw_fixture, :expect),
+             {:ok, auth_profile} <-
+               resolve_auth_profile(manifest, credential_ref, credential_lease) do
           {:ok,
            %{
              capability_id: capability_id,
              input: input,
              credential_ref: credential_ref,
              credential_lease: credential_lease,
+             auth_profile: auth_profile,
              context: context,
              expect: expect
            }, capability}
@@ -252,6 +258,61 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
       map when is_map(map) -> {:ok, map}
       other -> {:error, "#{key} must be a map, got: #{inspect(other)}"}
     end
+  end
+
+  defp resolve_auth_profile(%{auth: %AuthSpec{} = auth}, credential_ref, credential_lease) do
+    profile_id = credential_lease.profile_id || credential_ref.profile_id || auth.default_profile
+
+    case AuthSpec.fetch_profile(auth, profile_id) do
+      nil ->
+        {:error,
+         "fixture credential profile_id must resolve to a declared auth profile, got: #{inspect(profile_id)}"}
+
+      profile ->
+        {:ok, profile}
+    end
+  end
+
+  defp fixture_auth_checks(capability_id, fixture, result) do
+    profile = fixture.auth_profile
+    profile_id = Map.get(profile, :id)
+    expected_lease_fields = normalize_string_list(Map.get(profile, :lease_fields, []))
+    credential_ref_lease_fields = normalize_string_list(fixture.credential_ref.lease_fields)
+    credential_lease_lease_fields = normalize_string_list(fixture.credential_lease.lease_fields)
+    payload_fields = payload_fields(fixture.credential_lease.payload)
+    sensitive_values = sensitive_values(fixture.credential_lease.payload)
+
+    [
+      SuiteSupport.check(
+        "#{capability_id}.credential_profile.consistent",
+        profile_consistent?(
+          fixture.credential_ref.profile_id,
+          fixture.credential_lease.profile_id,
+          profile_id
+        ),
+        "fixture credential_ref.profile_id and credential_lease.profile_id must match the resolved auth profile when declared"
+      ),
+      SuiteSupport.check(
+        "#{capability_id}.credential_ref.lease_fields.match_profile",
+        credential_ref_lease_fields in [[], expected_lease_fields],
+        "fixture credential_ref.lease_fields must stay empty or match the authored auth profile lease_fields"
+      ),
+      SuiteSupport.check(
+        "#{capability_id}.credential_lease.lease_fields.match_profile",
+        credential_lease_lease_fields == expected_lease_fields,
+        "fixture credential_lease.lease_fields must match the authored auth profile lease_fields"
+      ),
+      SuiteSupport.check(
+        "#{capability_id}.credential_lease.payload.match_lease_fields",
+        payload_fields == expected_lease_fields,
+        "fixture credential_lease.payload keys must match the authored auth profile lease_fields"
+      ),
+      SuiteSupport.check(
+        "#{capability_id}.runtime_result.redacted",
+        runtime_result_redacted?(result, sensitive_values),
+        "runtime output, events, and artifacts must not leak raw credential lease secrets"
+      )
+    ]
   end
 
   defp execute_fixture(capability, fixture) do
@@ -350,6 +411,99 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
 
   defp normalize_output(output) when is_list(output), do: Enum.map(output, &normalize_output/1)
   defp normalize_output(output), do: output
+
+  defp profile_consistent?(nil, nil, _profile_id), do: true
+
+  defp profile_consistent?(credential_ref_profile_id, nil, profile_id) do
+    credential_ref_profile_id in [nil, profile_id]
+  end
+
+  defp profile_consistent?(nil, credential_lease_profile_id, profile_id) do
+    credential_lease_profile_id in [nil, profile_id]
+  end
+
+  defp profile_consistent?(credential_ref_profile_id, credential_lease_profile_id, profile_id) do
+    credential_ref_profile_id == profile_id and credential_lease_profile_id == profile_id
+  end
+
+  defp payload_fields(payload) when is_map(payload) do
+    payload
+    |> Map.keys()
+    |> normalize_string_list()
+  end
+
+  defp payload_fields(_payload), do: []
+
+  defp sensitive_values(payload) do
+    payload
+    |> collect_sensitive_values([])
+    |> Enum.uniq()
+    |> Enum.reject(&(&1 in [nil, ""]))
+  end
+
+  defp collect_sensitive_values(%{} = payload, path) do
+    Enum.flat_map(payload, fn {key, value} ->
+      collect_sensitive_values(value, [normalize_key(key) | path])
+    end)
+  end
+
+  defp collect_sensitive_values(value, path) when is_list(value) do
+    Enum.flat_map(value, &collect_sensitive_values(&1, path))
+  end
+
+  defp collect_sensitive_values(value, path) when is_binary(value) do
+    if Enum.any?(path, &sensitive_key?/1), do: [value], else: []
+  end
+
+  defp collect_sensitive_values(_value, _path), do: []
+
+  defp normalize_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp normalize_key(key) when is_binary(key), do: key
+  defp normalize_key(key), do: to_string(key)
+
+  defp sensitive_key?(key) when is_binary(key) do
+    downcased = String.downcase(key)
+
+    downcased in [
+      "access_token",
+      "refresh_token",
+      "api_key",
+      "client_secret",
+      "webhook_secret",
+      "signing_secret",
+      "private_key",
+      "password",
+      "token",
+      "secret"
+    ] or String.contains?(downcased, "token") or String.contains?(downcased, "secret") or
+      String.contains?(downcased, "password") or String.contains?(downcased, "private_key")
+  end
+
+  defp runtime_result_redacted?(_result, []), do: true
+
+  defp runtime_result_redacted?(result, sensitive_values) do
+    haystack =
+      inspect(
+        %{
+          output: normalize_output(result.output),
+          events: result.events,
+          artifacts: result.artifacts
+        },
+        limit: :infinity,
+        printable_limit: :infinity
+      )
+
+    Enum.all?(sensitive_values, &(not String.contains?(haystack, &1)))
+  end
+
+  defp normalize_string_list(values) when is_list(values) do
+    values
+    |> Enum.map(&to_string/1)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp normalize_string_list(_values), do: []
 
   defp deep_merge(left, right) when is_map(left) and is_map(right) do
     Map.merge(left, right, fn _key, left_value, right_value ->
