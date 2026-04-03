@@ -43,7 +43,7 @@ database-backed operational guarantees.
 The auth tables now also carry a forward-only expansion migration,
 `20260403000000_expand_phase_0_auth_truth_columns.exs`, which repairs already
 migrated dev/test databases that applied an older auth-table shape before the
-Phase 0 lineage columns landed.
+current lineage columns landed.
 
 ## Test And Validation Defaults
 

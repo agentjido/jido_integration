@@ -265,8 +265,8 @@ surfaces.
 
 ## Inference Contracts
 
-Phase 0 adds the shared inference contract seam here instead of creating a
-parallel contracts repo.
+The shared inference contract seam lives here instead of creating a parallel
+contracts repo.
 
 The new public objects are:
 
