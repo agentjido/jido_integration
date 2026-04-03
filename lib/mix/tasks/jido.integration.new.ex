@@ -69,18 +69,22 @@ defmodule Mix.Tasks.Jido.Integration.New do
       2. Replace the placeholder authored manifest entries and provider logic with the real connector contract.
          Keep provider inventory connector-local unless you explicitly author it into the manifest.
          Keep `supported_profiles`, `default_profile`, `install`, `reauth`, and connector-wide auth unions aligned.
-      3. Decide which authored operations or triggers belong on the curated common consumer surface.
+      3. If the connector wraps a provider SDK, add connector-local `install_binding` and `client_factory` helpers.
+         Keep install, reauth, manual-auth, and rotation normalization out of runtime paths.
+         Build provider clients from credential leases only during runtime execution.
+      4. Decide which authored operations or triggers belong on the curated common consumer surface.
          Keep `consumer_surface.mode: :common` only for entries that should project into generated actions, sensors, or plugins.
-      4. Update #{Path.relative_to(Path.join(context.package_root, context.conformance_file), context.workspace_root)} so the deterministic fixture matches the real behavior and the published lease fields.
-      5. Update #{Path.join(context.package_root_relative, "README.md")} so it states the runtime family, auth posture, package-local verification commands, authored-vs-generated surface boundary, and live-proof status.
+         Generated actions, sensors, and plugins are derivative only; they are never a second authoring plane.
+      5. Update #{Path.relative_to(Path.join(context.package_root, context.conformance_file), context.workspace_root)} so the deterministic fixture matches the real behavior and the published lease fields.
+      6. Update #{Path.join(context.package_root_relative, "README.md")} so it states the runtime family, supported auth profiles, install modes, published runtime slice, package-local verification commands, authored-vs-generated surface boundary, and live-proof status.
          Target descriptors only advertise compatibility and location; they do not override authored runtime posture.
-      6. Keep connector-local proof code inside #{context.package_root_relative}; move hosted webhook or async composition into an app only when that behavior is not part of the connector contract.
-      7. Run: cd #{context.package_root_relative} && mix deps.get
-      8. Run: cd #{context.package_root_relative} && mix compile --warnings-as-errors
-      9. Run: cd #{context.package_root_relative} && mix test
-      10. Run: cd #{context.package_root_relative} && mix docs
-      11. Run: mix jido.conformance #{context.connector_module}
-      12. Run: mix ci
+      7. Keep connector-local proof code inside #{context.package_root_relative}; move hosted webhook or async composition into an app only when that behavior is not part of the connector contract.
+      8. Run: cd #{context.package_root_relative} && mix deps.get
+      9. Run: cd #{context.package_root_relative} && mix compile --warnings-as-errors
+      10. Run: cd #{context.package_root_relative} && mix test
+      11. Run: cd #{context.package_root_relative} && mix docs
+      12. Run: mix jido.conformance #{context.connector_module}
+      13. Run: mix ci
     """)
   end
 

@@ -30,5 +30,18 @@ defmodule Jido.Integration.Docs.ConformanceWorkflowTest do
     refute guide =~ "`test_support/`"
   end
 
+  test "documents direct connector package-test responsibilities for auth-control and lease-built clients" do
+    guide = @guide_path |> File.read!() |> normalize_whitespace()
+
+    assert guide =~
+             "For direct provider-SDK connectors, conformance proves the published surface and lease-only runtime posture."
+
+    assert guide =~ "`install_binding` stays in install, reauth, manual-auth, or rotation flows"
+
+    assert guide =~ "runtime execution builds provider clients from credential leases only"
+
+    assert guide =~ "generated actions, plugins, and sensors remain derivative common projections"
+  end
+
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
 end

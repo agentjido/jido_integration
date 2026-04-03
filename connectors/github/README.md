@@ -24,14 +24,19 @@ Proves:
 - supported auth profiles:
   - `personal_access_token` as the default manual or external-secret profile
   - `oauth_user` as the browser OAuth profile
+- the manifest is the authored source of truth for `supported_profiles`,
+  install modes, and reauth posture; nothing is inferred from `github_ex`
+  helper defaults
 - connector-wide management modes: `[:external_secret, :hosted, :manual]`
 - durable secret fields union:
   `["access_token", "refresh_token"]`
 - lease fields union:
   `["access_token"]`
 - install posture is explicit by profile:
-  - `personal_access_token` stays manual or external-secret with no callback
-  - `oauth_user` supports browser OAuth, hosted callback completion, and state correlation
+  - `personal_access_token` supports manual token entry or external-secret
+    completion with no callback
+  - `oauth_user` supports browser OAuth plus hosted or manual callback
+    completion with state correlation
 - reauth is published only for `oauth_user`
 - the connector mints short-lived credential leases and builds `GitHubEx.Client`
   instances from those leases only
@@ -77,6 +82,10 @@ That common layer now projects into:
 - the derived executable entry catalog used by the runtime and conformance seam
 - generated actions under `lib/jido/integration/v2/connectors/git_hub/generated/actions.ex`
 - a generated plugin bundle at `lib/jido/integration/v2/connectors/git_hub/generated/plugin.ex`
+
+Those generated outputs are derivative only. They stay pinned to the authored
+common operation specs and do not become a second authoring plane for GitHub
+inventory or auth behavior.
 
 The generated actions use the real `Jido.Action` contract with the authored
 operation input and output schemas. They resolve `connection_id` from params or

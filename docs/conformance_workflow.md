@@ -52,6 +52,15 @@ It exists to prove that a connector:
   leaking raw lease secrets
 - publishes ingress definitions when it claims trigger capability
 
+For direct provider-SDK connectors, conformance proves the published surface
+and lease-only runtime posture. Package tests still need to prove the
+connector-local call-graph boundary:
+
+- `install_binding` stays in install, reauth, manual-auth, or rotation flows
+- runtime execution builds provider clients from credential leases only
+- generated actions, plugins, and sensors remain derivative common projections,
+  not a second authoring plane
+
 ## Current Stable Profile
 
 The default and current stable profile is `connector_foundation`.
@@ -92,6 +101,10 @@ provider connector package.
    Keep `supported_profiles`, `default_profile`, `install.profiles`, and
    `reauth.profiles` aligned, and keep connector-level auth unions honest
    against the authored profiles.
+   If the connector wraps a provider SDK, keep install and reauth normalization
+   in connector-local `install_binding` helpers and keep runtime execution on a
+   lease-built `client_factory` seam instead of reaching back into durable or
+   provider-edge auth state.
 3. keep runtime handlers in the connector package and declare explicit child
    deps in that package `mix.exs`
 4. add or update deterministic tests in the connector package
@@ -163,6 +176,9 @@ profile `lease_fields`.
     loadability, generated projection drift, plugin action drift, plugin
     subscription drift, curated common-surface uniqueness, or
     placeholder-schema posture
+  - if the connector wraps an SDK, keep in mind that conformance only proves
+    the published generated surface boundary; package tests still need to prove
+    `install_binding` and lease-built client seams do not leak into runtime
 - `runtime_class_fit`
   - fix handler modules so they match `direct`, `session`, or `stream`
 - `policy_contract`

@@ -37,6 +37,20 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
              "Do not move connector proof code into the workspace root."
   end
 
+  test "documents connector-local install_binding and lease-built client_factory seams for provider SDK connectors" do
+    guide = @guide_path |> File.read!() |> normalize_whitespace()
+
+    assert guide =~
+             "The scaffold intentionally does not invent provider-specific auth helpers or SDK clients."
+
+    assert guide =~
+             "`install_binding.ex` for install, reauth, manual-auth, or rotation-facing secret normalization"
+
+    assert guide =~ "`client_factory.ex` for runtime lease-to-client construction"
+
+    assert guide =~ "lower-repo auth churn absorbed at the connector boundary"
+  end
+
   test "documents the runtime basis for both supported non-direct drivers" do
     guide = @guide_path |> File.read!() |> normalize_whitespace()
 

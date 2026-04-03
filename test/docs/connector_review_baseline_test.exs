@@ -26,5 +26,21 @@ defmodule Jido.Integration.Docs.ConnectorReviewBaselineTest do
     assert guide =~ "mix ci"
   end
 
+  test "documents the Phase 9 README questions for authored auth and derivative generated surfaces" do
+    guide = @guide_path |> File.read!() |> normalize_whitespace()
+
+    assert guide =~
+             "runtime family, published runtime slice, and auth posture"
+
+    assert guide =~
+             "supported auth profiles plus the authored install and reauth modes for each published profile"
+
+    assert guide =~
+             "for direct provider-SDK connectors, the authored auth-control and lease-build boundary below the SDK seam"
+
+    assert guide =~
+             "generated actions, plugins, and sensors remain derivative outputs only"
+  end
+
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
 end

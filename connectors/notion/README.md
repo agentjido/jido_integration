@@ -24,9 +24,17 @@ This package keeps the boundary explicit:
 - public auth binding is `connection_id`
 - default auth profile: `workspace_oauth`
 - connector-wide management modes: `[:external_secret, :hosted, :manual]`
+- the manifest is the authored source of truth for `supported_profiles`,
+  install modes, and reauth posture; lower-repo OAuth mechanics stay below the
+  connector boundary
 - install and reauth use browser OAuth with explicit state correlation and
   hosted callback support in the published auth contract, while the package
   still keeps HTTP callback ownership outside the invoke surface
+- authored install modes are explicit:
+  - browser OAuth with hosted callback completion
+  - browser OAuth with manual callback completion
+  - external-secret completion when the durable secret matches the published
+    lease projection
 - durable secret fields include access/refresh tokens plus workspace identity;
   lease payloads project only `access_token`, `workspace_id`,
   `workspace_name`, and `bot_id`
@@ -106,6 +114,10 @@ The connector now also publishes one common generated trigger/sensor slice:
 
 The generated plugin therefore publishes both the curated action bundle and one
 subscription for the recent-page-edits sensor.
+
+Those generated actions, sensors, and plugin subscriptions are derivative only.
+They stay pinned to authored common operations and triggers rather than opening
+up a second authoring plane beside the manifest.
 
 ## Authored Schema Classification
 

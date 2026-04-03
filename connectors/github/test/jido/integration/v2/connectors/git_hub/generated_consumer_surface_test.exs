@@ -46,8 +46,12 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
 
   test "compiles one generated action module per published operation with static metadata" do
     manifest = GitHub.manifest()
+    projected_operations = ConsumerProjection.projected_operations(manifest)
 
-    Enum.each(manifest.operations, fn operation ->
+    assert Enum.map(projected_operations, & &1.operation_id) ==
+             Enum.map(manifest.operations, & &1.operation_id)
+
+    Enum.each(projected_operations, fn operation ->
       action_module = ConsumerProjection.action_module(GitHub, operation.operation_id)
 
       assert Code.ensure_loaded?(action_module)
@@ -149,9 +153,10 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
   test "generated plugin exposes the real Jido.Plugin contract over the generated action bundle" do
     manifest = GitHub.manifest()
     plugin = GeneratedPlugin
+    projected_operations = ConsumerProjection.projected_operations(manifest)
 
     expected_actions =
-      Enum.map(manifest.operations, fn operation ->
+      Enum.map(projected_operations, fn operation ->
         ConsumerProjection.action_module(GitHub, operation.operation_id)
       end)
 

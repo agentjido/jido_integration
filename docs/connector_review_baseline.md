@@ -23,15 +23,22 @@ Supporting proof surfaces:
 ## Connector README Minimums
 
 Every connector README in this baseline should let a reviewer answer the same
-questions without guessing. The minimum package sections are:
+Phase 9 questions without guessing. The minimum package sections are:
 
-- runtime family and auth posture
+- runtime family, published runtime slice, and auth posture
+- supported auth profiles plus the authored install and reauth modes for each
+  published profile
+- for direct provider-SDK connectors, the authored auth-control and lease-build
+  boundary below the SDK seam
 - for session and stream packages, the authored `Jido.Harness` driver id plus
   the runtime basis beneath that seam:
   `/home/home/p/g/n/jido_harness` ->
   `/home/home/p/g/n/agent_session_manager` ->
   `/home/home/p/g/n/cli_subprocess_core`
-- authored-vs-generated boundary, including which inventory stays connector-local and which entries project into the shared generated consumer surface
+- authored-vs-generated boundary, including which inventory stays
+  connector-local, which entries project into the shared generated consumer
+  surface, and the fact that generated actions, plugins, and sensors remain
+  derivative outputs only
 - package-local `mix compile --warnings-as-errors`, `mix test`, and `mix docs`
   plus the root conformance and `mix ci` acceptance loop
 - live-proof status, including an explicit "none yet" when no live proof exists
@@ -60,6 +67,10 @@ questions without guessing. The minimum package sections are:
 - direct, session, and stream connectors all emit runtime-specific
   `RuntimeResult` evidence while keeping durable review truth in the control
   plane
+- direct provider-SDK connectors such as GitHub and Notion keep provider-edge
+  auth mechanics below the connector boundary: authored manifest truth,
+  connector-local install binding, and lease-built SDK clients stay explicit
+  instead of relying on repo-local hidden rules
 - target lookup starts from authored capability posture through
   `TargetDescriptor.authored_requirements/2`; target descriptors only
   advertise compatibility and location

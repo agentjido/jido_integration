@@ -27,10 +27,19 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
              "Target descriptors only advertise compatibility and location; they do not override authored runtime posture."
 
     assert output =~
-             "Update connectors/acme_crm/README.md so it states the runtime family, auth posture, package-local verification commands, authored-vs-generated surface boundary, and live-proof status."
+             "Update connectors/acme_crm/README.md so it states the runtime family, supported auth profiles, install modes, published runtime slice, package-local verification commands, authored-vs-generated surface boundary, and live-proof status."
 
     assert output =~
              "Keep `supported_profiles`, `default_profile`, `install`, `reauth`, and connector-wide auth unions aligned."
+
+    assert output =~
+             "If the connector wraps a provider SDK, add connector-local `install_binding` and `client_factory` helpers."
+
+    assert output =~
+             "Build provider clients from credential leases only during runtime execution."
+
+    assert output =~
+             "Generated actions, sensors, and plugins are derivative only; they are never a second authoring plane."
 
     assert output =~ "Keep connector-local proof code inside connectors/acme_crm"
     assert output =~ "Run: mix ci"
@@ -155,6 +164,18 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert readme =~ "## What You Must Author"
     assert readme =~ "## Proof Code Homes"
     assert readme =~ "mix ci"
+
+    assert readme =~
+             "do not rely on provider-local hidden rules or repo-local conventions"
+
+    assert readme =~
+             "add connector-local `install_binding.ex` and `client_factory.ex`"
+
+    assert readme =~
+             "published runtime slice, generated-vs-connector-local boundary"
+
+    assert readme =~
+             "Generated actions, sensors, and plugins remain derivative of the authored manifest."
 
     assert readme =~
              "Keep provider inventory, parity catalogs, and long-tail SDK helpers connector-local unless you explicitly publish them through the manifest."

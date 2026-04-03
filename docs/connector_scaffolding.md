@@ -133,6 +133,18 @@ The scaffold generates:
 - package-local conformance publication through `<ConnectorModule>.Conformance`
 - baseline tests and docs structure
 
+The scaffold intentionally does not invent provider-specific auth helpers or
+SDK clients. If the finished connector wraps a provider SDK, author those
+package-local helpers yourself:
+
+- `install_binding.ex` for install, reauth, manual-auth, or rotation-facing
+  secret normalization
+- `client_factory.ex` for runtime lease-to-client construction
+
+That keeps lower-repo auth churn absorbed at the connector boundary instead of
+turning the scaffold or generated surface into a provider-specific control
+plane.
+
 Connector authors still need to author by hand:
 
 - the real auth, catalog, operation, and trigger contract
@@ -151,6 +163,12 @@ Connector authors still need to author by hand:
   behavior
   Keep fixture `profile_id`, `lease_fields`, and payload keys aligned with the
   authored auth profile lease projection.
+- for direct provider-SDK connectors, the connector-local `install_binding`
+  and `client_factory` seam
+  `install_binding` belongs to install, reauth, manual-auth, and rotation
+  flows only.
+  `client_factory` belongs to runtime execution and must build provider clients
+  from credential leases only.
 - the package README sections for runtime family, auth posture, package-local
   verification, live-proof status, and package boundary
 - any package-local examples, scripts, or live acceptance proofs

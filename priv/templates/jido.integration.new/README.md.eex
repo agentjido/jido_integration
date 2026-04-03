@@ -9,6 +9,8 @@ workspace root.
 - public auth binding is `connection_id`
 - scaffolded default auth profile: `<%= @auth_profile_id %>`
 - scaffolded management modes: `[:external_secret, :manual]`
+- auth truth is authored in `supported_profiles`, `install`, and `reauth`; do
+  not rely on provider-local hidden rules or repo-local conventions
 - scaffolded install posture is explicit and non-hosted: `install.required: false`,
   `reauth.supported: false`
 - deterministic execution still uses short-lived credential leases published by
@@ -61,12 +63,19 @@ override authored runtime.driver, runtime.provider, or runtime.options.
 - auth, catalog, operation ids, trigger ids, schemas, scopes, and policy metadata in `[<%= @module_file %>]`
 - `supported_profiles`, `default_profile`, `install`, `reauth`, and any
   connector-local `consumer_surface.mode` decisions in `[<%= @module_file %>]`
+- if the connector wraps a provider SDK, add connector-local `install_binding.ex`
+  and `client_factory.ex`
+  `install_binding` should normalize install, reauth, manual-auth, or rotation
+  secrets only.
+  `client_factory` should build provider clients from credential leases only
+  during runtime execution.
 - handler logic in `[<%= @handler_file %>]`
 - poll trigger logic in `[<%= @trigger_handler_file %>]`
 - deterministic fixture expectations in `[<%= @conformance_file %>]`
 <%= if @include_test_support do %>- deterministic Harness runtime behavior in `[<%= @conformance_harness_driver_file %>]`
-<% end %>- this package `README.md` so it states the runtime families, auth posture,
-  package-local verification commands, and live-proof status
+<% end %>- this package `README.md` so it states the runtime families, supported auth
+  profiles, install modes, published runtime slice, generated-vs-connector-local
+  boundary, package-local verification commands, and live-proof status
 
 ## Proof Code Homes
 
@@ -77,6 +86,9 @@ workspace root.
 Hosted webhook routing, async handlers, and app composition belong above the
 connector package when that behavior is not part of the connector contract
 itself.
+
+Generated actions, sensors, and plugins remain derivative of the authored
+manifest. They are not a second authoring plane.
 
 ## Package Verification
 

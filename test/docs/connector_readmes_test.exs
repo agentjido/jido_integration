@@ -8,7 +8,7 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
     Path.expand("../../connectors/market_data/README.md", __DIR__)
   ]
 
-  test "connector packages publish the baseline Phase 6 review sections" do
+  test "connector packages publish the baseline Phase 9 review sections" do
     Enum.each(@readmes, fn path ->
       readme = File.read!(path)
 
@@ -75,6 +75,42 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
       refute Regex.match?(~r/\bbridge(?:d|s)?\b/i, readme),
              "#{path} must not preserve removed bridge wording"
     end
+  end
+
+  test "direct connector READMEs encode authored auth truth, install modes, and lease-built SDK clients" do
+    github_readme =
+      readme(Path.expand("../../connectors/github/README.md", __DIR__))
+      |> normalize_whitespace()
+
+    assert github_readme =~
+             "the manifest is the authored source of truth for `supported_profiles`, install modes, and reauth posture"
+
+    assert github_readme =~
+             "supports manual token entry or external-secret completion with no callback"
+
+    assert github_readme =~
+             "supports browser OAuth plus hosted or manual callback completion with state correlation"
+
+    assert github_readme =~
+             "builds `GitHubEx.Client` instances from those leases only"
+
+    assert github_readme =~
+             "Those generated outputs are derivative only."
+
+    notion_readme =
+      readme(Path.expand("../../connectors/notion/README.md", __DIR__))
+      |> normalize_whitespace()
+
+    assert notion_readme =~
+             "the manifest is the authored source of truth for `supported_profiles`, install modes, and reauth posture"
+
+    assert notion_readme =~ "browser OAuth with hosted callback completion"
+    assert notion_readme =~ "browser OAuth with manual callback completion"
+    assert notion_readme =~ "external-secret completion"
+    assert notion_readme =~ "builds `NotionSDK.Client` instances from those leases only"
+
+    assert notion_readme =~
+             "Those generated actions, sensors, and plugin subscriptions are derivative only."
   end
 
   defp readme(path), do: File.read!(path)
