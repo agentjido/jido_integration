@@ -133,6 +133,9 @@ defmodule Jido.Integration.V2.Operator do
          {:ok, target} <- resolve_target(run, attempt),
          {:ok, connection} <- resolve_connection(run.credential_ref),
          {:ok, install} <- resolve_install(connection, run.credential_ref) do
+      review_connection = review_safe_connection(connection)
+      review_install = review_safe_install(install)
+
       {:ok,
        %{
          metadata:
@@ -145,8 +148,8 @@ defmodule Jido.Integration.V2.Operator do
                artifacts: artifacts,
                triggers: triggers,
                target: target,
-               connection: connection,
-               install: install
+               connection: review_connection,
+               install: review_install
              },
              opts
            ),
@@ -157,8 +160,8 @@ defmodule Jido.Integration.V2.Operator do
          artifacts: artifacts,
          triggers: triggers,
          target: target,
-         connection: connection,
-         install: install,
+         connection: review_connection,
+         install: review_install,
          capability: capability_summary(catalog.capability),
          connector: connector_summary(catalog.connector)
        }}
@@ -280,6 +283,12 @@ defmodule Jido.Integration.V2.Operator do
       {:error, :unknown_install} -> {:ok, nil}
     end
   end
+
+  defp review_safe_connection(nil), do: nil
+  defp review_safe_connection(connection), do: connection
+
+  defp review_safe_install(nil), do: nil
+  defp review_safe_install(install), do: Auth.Install.review_safe(install)
 
   defp build_review_packet_metadata(
          run,

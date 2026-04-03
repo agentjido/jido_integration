@@ -232,6 +232,9 @@ truth that already lives in `core/auth` and `core/control_plane`:
 - planning, review, and sandbox execution stay secret-decoupled; operator
   packets and replay surfaces expose durable lineage and redacted execution
   truth, not raw secret material
+- auth install callback, state, PKCE, and redirect material stay on the
+  auth-control surface; `review_packet/2` only exposes a review-safe redacted
+  install projection
 - `review_packet/2` now keeps packet metadata explicit:
   - `ReviewProjection` is the contracts-only metadata object for northbound
     consumers

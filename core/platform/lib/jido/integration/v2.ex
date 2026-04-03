@@ -318,7 +318,8 @@ defmodule Jido.Integration.V2 do
 
   The packet keeps its read-side metadata explicit through `SubjectRef`,
   `EvidenceRef`, and `GovernanceRef`-shaped metadata entries while leaving the
-  underlying source facts where they already live.
+  underlying source facts where they already live. Auth install context in the
+  packet is review-safe and redacts callback, PKCE, and redirect material.
   """
   @spec review_packet(String.t(), map()) ::
           {:ok, map()}

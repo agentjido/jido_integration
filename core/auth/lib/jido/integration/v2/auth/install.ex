@@ -4,8 +4,18 @@ defmodule Jido.Integration.V2.Auth.Install do
   """
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Redaction
 
   @states [:installing, :awaiting_callback, :completed, :expired, :cancelled, :failed]
+  @review_auth_control_metadata_keys ~w(
+    callback_token
+    state_token
+    pkce_verifier
+    pkce_verifier_digest
+    callback_uri
+    callback_url
+    redirect_uri
+  )
 
   @enforce_keys [
     :install_id,
@@ -123,4 +133,44 @@ defmodule Jido.Integration.V2.Auth.Install do
   def expired?(%__MODULE__{expires_at: %DateTime{} = expires_at}, %DateTime{} = now) do
     DateTime.compare(expires_at, now) != :gt
   end
+
+  @doc """
+  Drop or redact auth-control callback material before exposing install truth on
+  review-facing read surfaces.
+  """
+  @spec review_safe(t()) :: t()
+  def review_safe(%__MODULE__{} = install) do
+    %__MODULE__{
+      install
+      | callback_token: Redaction.redacted(),
+        state_token: review_redacted_value(install.state_token),
+        pkce_verifier_digest: review_redacted_value(install.pkce_verifier_digest),
+        callback_uri: review_redacted_value(install.callback_uri),
+        metadata: review_safe_metadata(install.metadata)
+    }
+  end
+
+  defp review_redacted_value(nil), do: nil
+  defp review_redacted_value(_value), do: Redaction.redacted()
+
+  defp review_safe_metadata(metadata) when is_map(metadata) do
+    metadata
+    |> Enum.reject(fn {key, _value} -> review_auth_control_metadata_key?(key) end)
+    |> Map.new()
+    |> Redaction.redact()
+  end
+
+  defp review_safe_metadata(metadata), do: Redaction.redact(metadata)
+
+  defp review_auth_control_metadata_key?(key) when is_atom(key) do
+    key
+    |> Atom.to_string()
+    |> review_auth_control_metadata_key?()
+  end
+
+  defp review_auth_control_metadata_key?(key) when is_binary(key) do
+    key in @review_auth_control_metadata_keys
+  end
+
+  defp review_auth_control_metadata_key?(_key), do: false
 end

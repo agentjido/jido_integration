@@ -10,6 +10,7 @@ defmodule Jido.Integration.V2Test do
   alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.InvocationRequest
+  alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.TargetDescriptor
 
   @github %{
@@ -532,6 +533,7 @@ defmodule Jido.Integration.V2Test do
     assert packet.target.target_id == "target-shared-review-direct"
     assert packet.connection.connection_id == connection_id
     assert packet.install.connection_id == connection_id
+    assert packet.install.callback_token == Redaction.redacted()
     assert packet.triggers == []
     assert packet.capability.capability_id == "github.issue.create"
     assert packet.connector.connector_id == "github"
