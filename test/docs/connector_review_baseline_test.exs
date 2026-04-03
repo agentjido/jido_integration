@@ -6,7 +6,7 @@ defmodule Jido.Integration.Docs.ConnectorReviewBaselineTest do
   test "documents package-local verification commands for every baseline connector" do
     guide = File.read!(@guide_path)
 
-    for connector <- ["github", "notion", "codex_cli", "market_data"] do
+    for connector <- ["github", "linear", "notion", "codex_cli", "market_data"] do
       assert guide =~ "cd connectors/#{connector} && mix compile --warnings-as-errors"
       assert guide =~ "cd connectors/#{connector} && mix test"
       assert guide =~ "cd connectors/#{connector} && mix docs"
@@ -20,6 +20,7 @@ defmodule Jido.Integration.Docs.ConnectorReviewBaselineTest do
              "package-local `mix compile --warnings-as-errors`, `mix test`, and `mix docs` plus the root conformance and `mix ci` acceptance loop"
 
     assert guide =~ "mix jido.conformance Jido.Integration.V2.Connectors.GitHub"
+    assert guide =~ "mix jido.conformance Jido.Integration.V2.Connectors.Linear"
     assert guide =~ "mix jido.conformance Jido.Integration.V2.Connectors.Notion"
     assert guide =~ "mix jido.conformance Jido.Integration.V2.Connectors.CodexCli"
     assert guide =~ "mix jido.conformance Jido.Integration.V2.Connectors.MarketData"

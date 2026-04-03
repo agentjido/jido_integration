@@ -11,6 +11,7 @@ Example:
 
 ```bash
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix jido.conformance Jido.Integration.V2.Connectors.Linear
 mix jido.conformance Jido.Integration.V2.Connectors.MarketData
 mix jido.conformance Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector
 mix jido.conformance Jido.Integration.V2.Connectors.Notion
@@ -115,7 +116,8 @@ provider connector package.
    module that owns the published trigger evidence
 8. finish with the root monorepo gates and `mix ci`
 
-For thin provider-SDK connectors such as `connectors/notion`, deterministic
+For thin provider-SDK connectors such as `connectors/linear` and
+`connectors/notion`, deterministic
 fixtures should run through the provider package's transport seam instead of a
 second handwritten fake provider layer.
 

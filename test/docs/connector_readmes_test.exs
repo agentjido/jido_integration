@@ -3,6 +3,7 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
 
   @readmes [
     Path.expand("../../connectors/github/README.md", __DIR__),
+    Path.expand("../../connectors/linear/README.md", __DIR__),
     Path.expand("../../connectors/notion/README.md", __DIR__),
     Path.expand("../../connectors/codex_cli/README.md", __DIR__),
     Path.expand("../../connectors/market_data/README.md", __DIR__)
@@ -38,6 +39,9 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
     assert readme(Path.expand("../../connectors/notion/README.md", __DIR__)) =~
              "Package-local live proofs exist"
 
+    assert readme(Path.expand("../../connectors/linear/README.md", __DIR__)) =~
+             "No package-local live proof exists yet"
+
     assert readme(Path.expand("../../connectors/codex_cli/README.md", __DIR__)) =~
              "No package-local live proof exists yet"
 
@@ -59,6 +63,7 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
   test "direct connector READMEs keep the provider-SDK boundary explicit" do
     for {path, sdk_dep} <- [
           {Path.expand("../../connectors/github/README.md", __DIR__), "`github_ex`"},
+          {Path.expand("../../connectors/linear/README.md", __DIR__), "`linear_sdk`"},
           {Path.expand("../../connectors/notion/README.md", __DIR__), "`notion_sdk`"}
         ] do
       readme = path |> readme() |> normalize_whitespace()
@@ -96,6 +101,24 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
 
     assert github_readme =~
              "Those generated outputs are derivative only."
+
+    linear_readme =
+      readme(Path.expand("../../connectors/linear/README.md", __DIR__))
+      |> normalize_whitespace()
+
+    assert linear_readme =~
+             "the manifest is the authored source of truth for `supported_profiles`, install modes, and reauth posture"
+
+    assert linear_readme =~
+             "supports manual API key entry or external-secret completion with no callback"
+
+    assert linear_readme =~
+             "supports browser OAuth plus hosted or manual callback completion with state correlation"
+
+    assert linear_readme =~ "builds `LinearSDK.Client` instances from those leases only"
+
+    assert linear_readme =~
+             "Those generated actions and plugin exports are derivative only."
 
     notion_readme =
       readme(Path.expand("../../connectors/notion/README.md", __DIR__))

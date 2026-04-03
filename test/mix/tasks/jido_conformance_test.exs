@@ -44,6 +44,14 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   end
 
   @tag timeout: 180_000
+  test "loads the Linear connector package through the root conformance task" do
+    output = run_task(["Jido.Integration.V2.Connectors.Linear"])
+
+    assert output =~ "Connector: linear"
+    assert output =~ "[PASS] deterministic_fixtures"
+  end
+
+  @tag timeout: 180_000
   test "restores the original code path after loading a child package" do
     original_path = :code.get_path()
 

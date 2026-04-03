@@ -48,6 +48,7 @@ Current bridge packages:
 Current connector packages:
 
 - `connectors/github`
+- `connectors/linear`
 - `connectors/notion`
 - `connectors/codex_cli`
 - `connectors/market_data`
@@ -119,6 +120,7 @@ affected connector module, for example:
 
 ```bash
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix jido.conformance Jido.Integration.V2.Connectors.Linear
 ```
 
 The root `mix.exs` also exposes equivalent `mr.*` shortcuts for day-to-day

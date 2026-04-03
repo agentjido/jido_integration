@@ -10,7 +10,7 @@ defmodule Jido.Integration.Docs.RootBoundaryDocsTest do
     Enum.each(@root_docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 
-      assert doc =~ "GitHub and Notion stay on the direct provider-SDK path",
+      assert doc =~ "GitHub, Linear, and Notion stay on the direct provider-SDK path",
              "#{path} must keep direct connectors on the direct path explicitly"
 
       assert doc =~ "do not inherit session or stream runtime-kernel coupling",

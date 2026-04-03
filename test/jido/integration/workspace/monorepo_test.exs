@@ -23,6 +23,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "bridges/boundary_bridge",
              "connectors/codex_cli",
              "connectors/github",
+             "connectors/linear",
              "connectors/market_data",
              "connectors/notion",
              "apps/devops_incident_response",

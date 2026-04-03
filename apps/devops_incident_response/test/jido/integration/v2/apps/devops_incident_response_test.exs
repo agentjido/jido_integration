@@ -107,6 +107,15 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
         end
       )
 
+    _attempt_one =
+      DevopsIncidentResponse.wait_for_attempt(
+        runtime,
+        "#{completed_dispatch.run.run_id}:1",
+        fn attempt ->
+          attempt.status in [:accepted, :completed]
+        end
+      )
+
     runtime = DevopsIncidentResponse.restart_dispatch_runtime(runtime)
 
     recovered_dispatch =

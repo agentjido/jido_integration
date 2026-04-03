@@ -61,6 +61,9 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_github(opts \\ []),
     do: resolve_internal(:jido_integration_v2_github, "connectors/github", opts)
 
+  def jido_integration_v2_linear(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_linear, "connectors/linear", opts)
+
   def jido_integration_v2_harness_runtime(opts \\ []),
     do: resolve_internal(:jido_integration_v2_harness_runtime, "core/harness_runtime", opts)
 

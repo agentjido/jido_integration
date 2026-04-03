@@ -18,12 +18,14 @@
   ],
   dependencies: [
     github_ex: [requirement: "~> 0.1.0"],
+    linear_sdk: [requirement: "~> 0.2.0"],
     notion_sdk: [requirement: "~> 0.2.0"]
   ],
   artifacts: [
     jido_integration: [
       roots: [
         "connectors/github",
+        "connectors/linear",
         "connectors/notion",
         "core/auth",
         "core/consumer_surfaces",

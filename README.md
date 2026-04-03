@@ -124,6 +124,7 @@ Runtime families proved in-tree:
 
 - `:direct`
   - GitHub issue and comment operations
+  - Linear user, issue, and comment operations
   - Notion user, search, page, block, data-source, and comment operations
 - `:session`
   - `codex.exec.session`
@@ -179,7 +180,7 @@ The current surface also proves:
   truth
 - public invocation binds auth through `connection_id`; `credential_ref`
   remains internal execution plumbing
-- GitHub and Notion both publish generated common consumer surfaces from
+- GitHub, Linear, and Notion all publish generated common consumer surfaces from
   authored contracts, and conformance keeps those curated common ids unique
   within each connector
 - conformance runs from the root while connector evidence stays package-local
@@ -251,6 +252,7 @@ jido_integration/
     boundary_bridge/         # lower-boundary sandbox bridge package
   connectors/
     github/                  # direct GitHub connector + live acceptance runbook
+    linear/                  # direct Linear connector + package-local docs
     notion/                  # direct Notion connector + package-local live proofs
     codex_cli/               # Harness-routed session connector via `asm`
     market_data/             # Harness-routed stream connector via `asm`
@@ -262,7 +264,7 @@ jido_integration/
 
 ## Direct Versus Runtime Boundary
 
-GitHub and Notion stay on the direct provider-SDK path and do not inherit
+GitHub, Linear, and Notion stay on the direct provider-SDK path and do not inherit
 session or stream runtime-kernel coupling merely because the repo also ships
 non-direct capability families.
 
@@ -310,6 +312,7 @@ Primary package and app runbooks:
 - `bridges/boundary_bridge/README.md`
 - `connectors/github/README.md`
 - `connectors/github/docs/live_acceptance.md`
+- `connectors/linear/README.md`
 - `connectors/notion/README.md`
 - `connectors/notion/docs/live_acceptance.md`
 - `apps/trading_ops/README.md`

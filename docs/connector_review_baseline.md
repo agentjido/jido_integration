@@ -8,6 +8,7 @@ Status: final V2 proof surface
 Connector runtime-family baseline:
 
 - direct: `connectors/github`
+- direct: `connectors/linear`
 - direct: `connectors/notion`
 - session: `connectors/codex_cli`
 - stream: `connectors/market_data`
@@ -67,7 +68,7 @@ Phase 9 questions without guessing. The minimum package sections are:
 - direct, session, and stream connectors all emit runtime-specific
   `RuntimeResult` evidence while keeping durable review truth in the control
   plane
-- direct provider-SDK connectors such as GitHub and Notion keep provider-edge
+- direct provider-SDK connectors such as GitHub, Linear, and Notion keep provider-edge
   auth mechanics below the connector boundary: authored manifest truth,
   connector-local install binding, and lease-built SDK clients stay explicit
   instead of relying on repo-local hidden rules
@@ -109,6 +110,11 @@ Deterministic connector capabilities:
 - `github.issue.close`
 - `github.comment.create`
 - `github.comment.update`
+- `linear.users.get_self`
+- `linear.issues.list`
+- `linear.issues.retrieve`
+- `linear.comments.create`
+- `linear.issues.update`
 - `notion.users.get_self`
 - `notion.search.search`
 - `notion.pages.create`
@@ -146,6 +152,9 @@ Package-local connector proof commands:
 cd connectors/github && mix compile --warnings-as-errors
 cd connectors/github && mix test
 cd connectors/github && mix docs
+cd connectors/linear && mix compile --warnings-as-errors
+cd connectors/linear && mix test
+cd connectors/linear && mix docs
 cd connectors/notion && mix compile --warnings-as-errors
 cd connectors/notion && mix test
 cd connectors/notion && mix docs
@@ -161,6 +170,7 @@ Then finish from the repo root:
 
 ```bash
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
+mix jido.conformance Jido.Integration.V2.Connectors.Linear
 mix jido.conformance Jido.Integration.V2.Connectors.Notion
 mix jido.conformance Jido.Integration.V2.Connectors.CodexCli
 mix jido.conformance Jido.Integration.V2.Connectors.MarketData

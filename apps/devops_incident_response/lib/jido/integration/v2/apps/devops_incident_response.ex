@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
   alias Jido.Integration.V2, as: V2
   alias Jido.Integration.V2.Apps.DevopsIncidentResponse.ExecuteTriggerHandler
   alias Jido.Integration.V2.Apps.DevopsIncidentResponse.GitHubIssueConnector
+  alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.DispatchRuntime
   alias Jido.Integration.V2.DispatchRuntime.Dispatch
   alias Jido.Integration.V2.Run
@@ -211,6 +212,13 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
     do_wait_for_run(run_id, predicate, attempts, :missing)
   end
 
+  @spec wait_for_attempt(runtime(), String.t(), (Attempt.t() -> boolean()), non_neg_integer()) ::
+          Attempt.t()
+  def wait_for_attempt(_runtime, attempt_id, predicate, attempts \\ @default_wait_attempts)
+      when is_binary(attempt_id) and is_function(predicate, 1) do
+    do_wait_for_attempt(attempt_id, predicate, attempts, :missing)
+  end
+
   defp do_wait_for_dispatch(_dispatch_runtime, dispatch_id, _predicate, 0, last_seen) do
     raise "dispatch #{dispatch_id} did not reach the expected state; last seen: #{inspect(last_seen)}"
   end
@@ -255,6 +263,26 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse do
       :error ->
         Process.sleep(@wait_poll_ms)
         do_wait_for_run(run_id, predicate, attempts - 1, :missing)
+    end
+  end
+
+  defp do_wait_for_attempt(attempt_id, _predicate, 0, last_seen) do
+    raise "attempt #{attempt_id} did not reach the expected state; last seen: #{inspect(last_seen)}"
+  end
+
+  defp do_wait_for_attempt(attempt_id, predicate, attempts, _last_seen) do
+    case V2.fetch_attempt(attempt_id) do
+      {:ok, %Attempt{} = attempt} ->
+        if predicate.(attempt) do
+          attempt
+        else
+          Process.sleep(@wait_poll_ms)
+          do_wait_for_attempt(attempt_id, predicate, attempts - 1, attempt.status)
+        end
+
+      :error ->
+        Process.sleep(@wait_poll_ms)
+        do_wait_for_attempt(attempt_id, predicate, attempts - 1, :missing)
     end
   end
 

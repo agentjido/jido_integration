@@ -56,7 +56,7 @@ Durability tiers:
 
 ## Direct Versus Runtime Boundary
 
-GitHub and Notion stay on the direct provider-SDK path and do not inherit
+GitHub, Linear, and Notion stay on the direct provider-SDK path and do not inherit
 session or stream runtime-kernel coupling merely because the repo also ships
 non-direct capability families.
 
@@ -110,6 +110,9 @@ runtime lane:
 Connector packages:
 
 - `connectors/github`
+- `connectors/linear`
+  - publishes a curated generated common action/plugin slice backed by
+    `linear_sdk`
 - `connectors/notion`
   - publishes a curated generated common action/plugin slice plus one common
     poll-trigger sensor slice backed by `notion_sdk`

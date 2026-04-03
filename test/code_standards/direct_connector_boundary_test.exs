@@ -31,6 +31,21 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
       sdk_local_path: "[\"../../../notion_sdk\"]",
       sdk_hex_dep: "{:notion_sdk, \"~> 0.2.0\", opts}",
       forbidden_sdk_fallbacks: ["NOTION_SDK_PATH", "nshkrdotcom/notion_sdk"]
+    },
+    %{
+      mix_path: Path.expand("../../connectors/linear/mix.exs", __DIR__),
+      resolver_path:
+        Path.expand("../../connectors/linear/build_support/dependency_resolver.exs", __DIR__),
+      test_root: Path.expand("../../connectors/linear/test", __DIR__),
+      catalog_path:
+        Path.expand(
+          "../../connectors/linear/lib/jido/integration/v2/connectors/linear/operation_catalog.ex",
+          __DIR__
+        ),
+      sdk_resolver_call: "ConnectorDependencyResolver.linear_sdk()",
+      sdk_local_path: "[\"../../../linear_sdk\"]",
+      sdk_hex_dep: "{:linear_sdk, \"~> 0.2.0\", opts}",
+      forbidden_sdk_fallbacks: ["LINEAR_SDK_PATH", "nshkrdotcom/linear_sdk"]
     }
   ]
 
@@ -87,6 +102,9 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
                "#{mix_path} must not vendor provider SDKs under deps/"
 
         refute mix_exs =~ "deps/notion_sdk",
+               "#{mix_path} must not vendor provider SDKs under deps/"
+
+        refute mix_exs =~ "deps/linear_sdk",
                "#{mix_path} must not vendor provider SDKs under deps/"
 
         refute mix_exs =~ "deps/pristine",
