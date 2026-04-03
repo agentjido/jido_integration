@@ -171,13 +171,15 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
 
   defp install_connection!(spec) do
     now = DateTime.utc_now()
+    auth = GitHub.manifest().auth
 
     {:ok, %{install: install, connection: installing_connection}} =
       V2.start_install("github", spec.tenant_id, %{
         actor_id: spec.actor_id,
-        auth_type: :oauth2,
+        auth_type: auth.auth_type,
+        profile_id: auth.default_profile,
         subject: spec.subject,
-        requested_scopes: ["repo"],
+        requested_scopes: auth.requested_scopes,
         metadata: %{proof: "connectors/github live acceptance"},
         now: now
       })
@@ -192,7 +194,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     {:ok, %{install: completed_install, connection: connection, credential_ref: credential_ref}} =
       V2.complete_install(install.install_id, %{
         subject: spec.subject,
-        granted_scopes: ["repo"],
+        granted_scopes: auth.requested_scopes,
         secret: %{access_token: spec.token},
         expires_at: nil,
         now: now
@@ -217,7 +219,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     {:ok, lease} =
       V2.request_lease(connection.connection_id, %{
         actor_id: spec.actor_id,
-        required_scopes: ["repo"],
+        required_scopes: auth.requested_scopes,
         ttl_seconds: 300,
         now: now
       })

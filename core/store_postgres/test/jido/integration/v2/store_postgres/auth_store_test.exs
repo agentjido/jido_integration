@@ -86,14 +86,27 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
     assert credential_row.secret_envelope["ciphertext"]
     assert credential_row.secret_envelope["tag"]
     assert credential_row.secret_envelope["iv"]
+    assert credential_row.credential_ref_id == credential_ref.id
+    assert credential_row.profile_id == "default"
+    assert credential_row.version == 1
 
     install_row = Repo.get!(InstallRecord, install.install_id)
     connection_row = Repo.get!(ConnectionRecord, connection.connection_id)
     lease_row = Repo.get!(LeaseRecord, lease.lease_id)
 
     assert install_row.state == "completed"
+    assert install_row.profile_id == "default"
+    assert install_row.flow_kind == "manual_callback"
+    assert install_row.callback_uri == "/auth/github/callback"
     assert connection_row.state == "connected"
+    assert connection_row.profile_id == "default"
     assert connection_row.credential_ref_id == credential_ref.id
+    assert connection_row.current_credential_ref_id == credential_ref.id
+    assert connection_row.current_credential_id == credential_ref.id
+    assert connection_row.management_mode == "manual"
+    assert connection_row.secret_source == "hosted_callback"
+    assert lease_row.credential_id == credential_ref.id
+    assert lease_row.profile_id == "default"
     assert lease_row.payload_keys == ["access_token"]
     refute inspect(lease_row) =~ "secret-token"
     refute inspect(lease_row) =~ "refresh-secret"
@@ -161,11 +174,20 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
 
     assert lease.payload == %{access_token: "fresh-access-token"}
 
-    credential_row = Repo.get!(CredentialRecord, credential_ref.id)
+    assert {:ok, refreshed_connection} = Auth.connection_status(connection.connection_id)
+    assert refreshed_connection.current_credential_ref_id == credential_ref.id
+    refute refreshed_connection.current_credential_id == credential_ref.id
+
+    credential_row = Repo.get!(CredentialRecord, refreshed_connection.current_credential_id)
     lease_row = Repo.get!(LeaseRecord, lease.lease_id)
 
+    assert credential_row.credential_ref_id == credential_ref.id
+    assert credential_row.version == 2
+    assert credential_row.supersedes_credential_id == credential_ref.id
     refute inspect(credential_row.secret_envelope) =~ "fresh-access-token"
     refute inspect(credential_row.secret_envelope) =~ "rotated-refresh-token"
+    assert lease_row.credential_id == refreshed_connection.current_credential_id
+    assert lease_row.credential_ref_id == credential_ref.id
     refute inspect(lease_row) =~ "fresh-access-token"
     refute inspect(lease_row) =~ "rotated-refresh-token"
     assert lease_row.payload_keys == ["access_token"]

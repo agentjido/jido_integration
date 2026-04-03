@@ -1,13 +1,13 @@
 defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   use ExUnit.Case
 
+  alias ASM.ProviderBackend.{Event, Info}
+  alias CliSubprocessCore.Event, as: CoreEvent
+  alias CliSubprocessCore.Payload
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceRequest
-  alias ASM.ProviderBackend.{Event, Info}
-  alias CliSubprocessCore.Event, as: CoreEvent
-  alias CliSubprocessCore.Payload
   alias LlamaCppEx
 
   @socket_capable? (case :gen_tcp.listen(0, [
@@ -296,19 +296,21 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     defp content_length(headers) do
       headers
       |> String.split("\r\n", trim: true)
-      |> Enum.find_value(0, fn line ->
-        case String.split(line, ":", parts: 2) do
-          [name, value] ->
-            if String.downcase(name) == "content-length" do
-              value |> String.trim() |> String.to_integer()
-            else
-              false
-            end
+      |> Enum.find_value(0, &content_length_line/1)
+    end
 
-          _other ->
-            false
-        end
-      end)
+    defp content_length_line(line) do
+      case String.split(line, ":", parts: 2) do
+        [name, value] -> parse_content_length(name, value)
+        _other -> false
+      end
+    end
+
+    defp parse_content_length(name, value) do
+      case String.downcase(name) do
+        "content-length" -> value |> String.trim() |> String.to_integer()
+        _other -> false
+      end
     end
 
     defp http_response(response_body) do

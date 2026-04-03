@@ -12,9 +12,25 @@ defmodule Jido.Integration.V2.CredentialLease do
               lease_id: Contracts.non_empty_string_schema("credential_lease.lease_id"),
               credential_ref_id:
                 Contracts.non_empty_string_schema("credential_lease.credential_ref_id"),
+              credential_id:
+                Contracts.non_empty_string_schema("credential_lease.credential_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              connection_id:
+                Contracts.non_empty_string_schema("credential_lease.connection_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              profile_id:
+                Contracts.non_empty_string_schema("credential_lease.profile_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
               subject: Contracts.non_empty_string_schema("credential_lease.subject"),
               scopes: Contracts.string_list_schema("credential_lease.scopes") |> Zoi.default([]),
               payload: Contracts.any_map_schema(),
+              lease_fields:
+                Contracts.string_list_schema("credential_lease.lease_fields")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
               issued_at:
                 Contracts.datetime_schema("credential_lease.issued_at")
                 |> Zoi.nullish()
@@ -59,14 +75,32 @@ defmodule Jido.Integration.V2.CredentialLease do
 
   defp validate(%__MODULE__{} = credential_lease) do
     issued_at = credential_lease.issued_at || Contracts.now()
+    lease_fields = credential_lease.lease_fields || default_lease_fields(credential_lease.payload)
 
     if DateTime.compare(credential_lease.expires_at, issued_at) == :gt do
-      {:ok, %__MODULE__{credential_lease | issued_at: issued_at}}
+      {:ok,
+       %__MODULE__{
+         credential_lease
+         | credential_id: credential_lease.credential_id || credential_lease.credential_ref_id,
+           issued_at: issued_at,
+           lease_fields: lease_fields
+       }}
     else
       {:error,
        ArgumentError.exception(
          "credential lease expires_at must be after issued_at: #{inspect({issued_at, credential_lease.expires_at})}"
        )}
     end
+  end
+
+  defp default_lease_fields(payload) when is_map(payload) do
+    payload
+    |> Map.keys()
+    |> Enum.map(fn
+      key when is_atom(key) -> Atom.to_string(key)
+      key when is_binary(key) -> key
+    end)
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 end

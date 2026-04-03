@@ -33,6 +33,8 @@ defmodule Jido.Integration.V2.HarnessRuntime.MixProject do
       DependencyResolver.jido_integration_v2_runtime_asm_bridge(),
       DependencyResolver.jido_session(),
       DependencyResolver.jido_harness(override: true),
+      DependencyResolver.jido_shell(override: true),
+      DependencyResolver.sprites(override: true),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

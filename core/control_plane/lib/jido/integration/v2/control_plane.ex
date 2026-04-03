@@ -11,9 +11,9 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
-  alias Jido.Integration.V2.ControlPlane.Registry
   alias Jido.Integration.V2.ControlPlane.Inference
   alias Jido.Integration.V2.ControlPlane.InferenceRecorder
+  alias Jido.Integration.V2.ControlPlane.Registry
   alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
@@ -282,7 +282,7 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   defp continue_execute_run(capability, run, attempt_number, opts) do
     credential_ref = run.credential_ref
-    input = run.input
+    input = runtime_replay_input(run.input)
 
     with :ok <- validate_execution_status(run),
          :ok <- validate_target_selection(run, capability),
@@ -310,6 +310,46 @@ defmodule Jido.Integration.V2.ControlPlane do
       %PolicyDecision{status: status} = decision when status in [:denied, :shed] ->
         reject_run(run, decision)
     end
+  end
+
+  defp runtime_replay_input(value) when is_map(value) do
+    Enum.reduce(value, %{}, fn {key, nested_value}, acc ->
+      nested_value = runtime_replay_input(nested_value)
+
+      case key do
+        key when is_binary(key) ->
+          acc
+          |> Map.put(key, nested_value)
+          |> maybe_put_existing_atom_alias(key, nested_value)
+
+        key when is_atom(key) ->
+          acc
+          |> Map.put(key, nested_value)
+          |> Map.put_new(Atom.to_string(key), nested_value)
+
+        key ->
+          Map.put(acc, key, nested_value)
+      end
+    end)
+  end
+
+  defp runtime_replay_input(value) when is_list(value) do
+    Enum.map(value, &runtime_replay_input/1)
+  end
+
+  defp runtime_replay_input(value), do: value
+
+  defp maybe_put_existing_atom_alias(map, key, value) when is_binary(key) do
+    case existing_atom(key) do
+      nil -> map
+      atom -> Map.put_new(map, atom, value)
+    end
+  end
+
+  defp existing_atom(key) when is_binary(key) do
+    String.to_existing_atom(key)
+  rescue
+    ArgumentError -> nil
   end
 
   defp evaluate_policy(capability, resolved_credential, credential_ref, input, opts) do

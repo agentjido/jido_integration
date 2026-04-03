@@ -85,10 +85,10 @@ defmodule Jido.Integration.V2.StorePostgres.RunStore do
       capability_id: record.capability_id,
       runtime_class: record.runtime_class,
       status: record.status,
-      input: Serialization.load(record.input),
+      input: Serialization.load_json(record.input),
       credential_ref: to_credential_ref(record.credential_ref),
       target_id: record.target_id,
-      result: Serialization.load(record.result),
+      result: Serialization.load_json(record.result),
       artifact_refs: Enum.map(record.artifact_refs || [], &to_artifact_ref/1),
       inserted_at: record.inserted_at,
       updated_at: record.updated_at

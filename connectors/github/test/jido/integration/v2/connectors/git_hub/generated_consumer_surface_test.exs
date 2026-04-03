@@ -187,13 +187,15 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
 
   defp install_connection! do
     now = Contracts.now()
+    auth = GitHub.manifest().auth
 
     assert {:ok, %{install: install, connection: connection}} =
              V2.start_install("github", "tenant-generated-github", %{
                actor_id: "generated-consumer",
-               auth_type: :oauth2,
+               auth_type: auth.auth_type,
+               profile_id: auth.default_profile,
                subject: "octocat",
-               requested_scopes: ["repo"],
+               requested_scopes: auth.requested_scopes,
                now: now
              })
 
@@ -201,7 +203,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
             %{install: %{install_id: install_id}, connection: %{connection_id: connection_id}}} =
              V2.complete_install(install.install_id, %{
                subject: "octocat",
-               granted_scopes: ["repo"],
+               granted_scopes: auth.requested_scopes,
                secret: %{access_token: Fixtures.access_token()},
                expires_at: DateTime.add(now, 7 * 24 * 3_600, :second),
                now: now

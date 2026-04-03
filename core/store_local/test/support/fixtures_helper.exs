@@ -151,10 +151,18 @@ defmodule Jido.Integration.V2.StoreLocal.Fixtures do
   end
 
   def credential_fixture(attrs \\ %{}) do
+    attrs = Map.new(attrs)
+    credential_id = Map.get(attrs, :id, "cred-#{System.unique_integer([:positive])}")
+
+    connection_id =
+      Map.get(attrs, :connection_id, "connection-#{System.unique_integer([:positive])}")
+
     attrs =
       Enum.into(attrs, %{
-        id: "cred-#{System.unique_integer([:positive])}",
-        connection_id: "connection-#{System.unique_integer([:positive])}",
+        id: credential_id,
+        credential_ref_id: credential_id,
+        connection_id: connection_id,
+        profile_id: "default",
         subject: "operator",
         auth_type: :oauth2,
         scopes: ["repo"],
@@ -173,8 +181,10 @@ defmodule Jido.Integration.V2.StoreLocal.Fixtures do
         tenant_id: "tenant-1",
         connector_id: "github",
         auth_type: :oauth2,
+        profile_id: "default",
         subject: "operator",
         state: :connected,
+        management_mode: :manual,
         requested_scopes: ["repo"],
         granted_scopes: ["repo"],
         lease_fields: ["access_token"],
@@ -195,10 +205,13 @@ defmodule Jido.Integration.V2.StoreLocal.Fixtures do
         connector_id: "github",
         actor_id: "user-1",
         auth_type: :oauth2,
+        profile_id: "default",
         subject: "operator",
         state: :installing,
+        flow_kind: :manual_callback,
         callback_token: "callback-#{System.unique_integer([:positive])}",
         requested_scopes: ["repo"],
+        granted_scopes: [],
         expires_at: DateTime.add(now, 600, :second),
         metadata: %{source: "fixture"}
       })
@@ -212,9 +225,11 @@ defmodule Jido.Integration.V2.StoreLocal.Fixtures do
     attrs =
       Enum.into(attrs, %{
         lease_id: "lease-#{System.unique_integer([:positive])}",
-        credential_ref_id: credential.id,
+        credential_ref_id: credential.credential_ref_id || credential.id,
+        credential_id: credential.id,
         connection_id:
           credential.connection_id || "connection-#{System.unique_integer([:positive])}",
+        profile_id: credential.profile_id,
         subject: credential.subject,
         scopes: credential.scopes,
         payload_keys: credential.lease_fields,

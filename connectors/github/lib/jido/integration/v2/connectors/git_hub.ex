@@ -17,12 +17,34 @@ defmodule Jido.Integration.V2.Connectors.GitHub do
       auth:
         AuthSpec.new!(%{
           binding_kind: :connection_id,
-          auth_type: :oauth2,
-          install: %{required: true},
-          reauth: %{supported: true},
-          requested_scopes: ["repo"],
-          lease_fields: ["access_token"],
-          secret_names: ["webhook_secret"]
+          default_profile: "personal_access_token",
+          supported_profiles: [
+            %{
+              id: "personal_access_token",
+              auth_type: :api_token,
+              subject_kind: :user,
+              install_required: true,
+              grant_types: [:manual_token],
+              durable_secret_fields: ["access_token"],
+              lease_fields: ["access_token"],
+              management_modes: [:manual],
+              required_scopes: ["repo"],
+              docs_refs: [
+                "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens"
+              ],
+              metadata: %{token_kind: :personal_access_token}
+            }
+          ],
+          install: %{
+            required: true,
+            profiles: ["personal_access_token"],
+            hosted_callback_supported: false,
+            state_required: false,
+            pkce_supported: false,
+            metadata: %{approval: :manual_token_entry}
+          },
+          reauth: %{supported: false},
+          secret_names: []
         }),
       catalog:
         CatalogSpec.new!(%{

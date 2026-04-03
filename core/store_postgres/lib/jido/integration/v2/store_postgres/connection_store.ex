@@ -19,15 +19,26 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
         tenant_id: connection.tenant_id,
         connector_id: connection.connector_id,
         auth_type: Atom.to_string(connection.auth_type),
+        profile_id: connection.profile_id,
         subject: connection.subject,
         state: Atom.to_string(connection.state),
         credential_ref_id: connection.credential_ref_id,
+        current_credential_ref_id: connection.current_credential_ref_id,
+        current_credential_id: connection.current_credential_id,
         install_id: connection.install_id,
+        management_mode: dump_optional_atom(connection.management_mode),
+        secret_source: dump_optional_atom(connection.secret_source),
+        external_secret_ref: dump_optional_map(connection.external_secret_ref),
         requested_scopes: connection.requested_scopes,
         granted_scopes: connection.granted_scopes,
         lease_fields: connection.lease_fields,
         token_expires_at: connection.token_expires_at,
+        last_refresh_at: connection.last_refresh_at,
+        last_refresh_status: dump_optional_atom(connection.last_refresh_status),
         last_rotated_at: connection.last_rotated_at,
+        degraded_reason: connection.degraded_reason,
+        reauth_required_reason: connection.reauth_required_reason,
+        disabled_reason: connection.disabled_reason,
         revoked_at: connection.revoked_at,
         revocation_reason: connection.revocation_reason,
         actor_id: connection.actor_id,
@@ -45,15 +56,26 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
            :tenant_id,
            :connector_id,
            :auth_type,
+           :profile_id,
            :subject,
            :state,
            :credential_ref_id,
+           :current_credential_ref_id,
+           :current_credential_id,
            :install_id,
+           :management_mode,
+           :secret_source,
+           :external_secret_ref,
            :requested_scopes,
            :granted_scopes,
            :lease_fields,
            :token_expires_at,
+           :last_refresh_at,
+           :last_refresh_status,
            :last_rotated_at,
+           :degraded_reason,
+           :reauth_required_reason,
+           :disabled_reason,
            :revoked_at,
            :revocation_reason,
            :actor_id,
@@ -106,15 +128,26 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
       tenant_id: record.tenant_id,
       connector_id: record.connector_id,
       auth_type: String.to_existing_atom(record.auth_type),
+      profile_id: record.profile_id,
       subject: record.subject,
       state: String.to_existing_atom(record.state),
       credential_ref_id: record.credential_ref_id,
+      current_credential_ref_id: record.current_credential_ref_id,
+      current_credential_id: record.current_credential_id,
       install_id: record.install_id,
+      management_mode: load_optional_atom(record.management_mode),
+      secret_source: load_optional_atom(record.secret_source),
+      external_secret_ref: load_optional_map(record.external_secret_ref),
       requested_scopes: record.requested_scopes || [],
       granted_scopes: record.granted_scopes || [],
       lease_fields: record.lease_fields || [],
       token_expires_at: record.token_expires_at,
+      last_refresh_at: record.last_refresh_at,
+      last_refresh_status: load_optional_atom(record.last_refresh_status),
       last_rotated_at: record.last_rotated_at,
+      degraded_reason: record.degraded_reason,
+      reauth_required_reason: record.reauth_required_reason,
+      disabled_reason: record.disabled_reason,
       revoked_at: record.revoked_at,
       revocation_reason: record.revocation_reason,
       actor_id: record.actor_id,
@@ -123,4 +156,16 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
       updated_at: record.updated_at
     })
   end
+
+  defp dump_optional_atom(nil), do: nil
+  defp dump_optional_atom(value) when is_atom(value), do: Atom.to_string(value)
+
+  defp dump_optional_map(nil), do: nil
+  defp dump_optional_map(value), do: Serialization.dump(value)
+
+  defp load_optional_atom(nil), do: nil
+  defp load_optional_atom(value) when is_binary(value), do: String.to_existing_atom(value)
+
+  defp load_optional_map(nil), do: nil
+  defp load_optional_map(value), do: Serialization.load(value)
 end

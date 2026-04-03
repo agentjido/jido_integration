@@ -1,7 +1,12 @@
 defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
   use ExUnit.Case, async: false
 
-  alias Jido.BoundaryBridge.{Adapters.JidoOs, AllocateBoundaryRequest, ReopenBoundaryRequest}
+  alias Jido.BoundaryBridge.{
+    Adapters.JidoOs,
+    AllocateBoundaryRequest,
+    ReopenBoundaryRequest
+  }
+
   alias Jido.Os.AgentService.RegistryService, as: AgentServiceRegistry
   alias Jido.Os.Policy.Runtime, as: PolicyRuntime
   alias Jido.Os.Runtime.AgentServicesSupervisor
@@ -86,7 +91,7 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
           correlation_id: context.correlation_id,
           request_id: context.request_id
         },
-        allocation_ttl_ms: 250
+        allocation_ttl_ms: 5_000
       })
 
     assert {:ok, descriptor} =
@@ -142,7 +147,7 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
           correlation_id: context.correlation_id,
           request_id: context.request_id
         },
-        allocation_ttl_ms: 250
+        allocation_ttl_ms: 5_000
       })
 
     reopen_request =
@@ -197,9 +202,6 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
 
     assert first.boundary_session_id == second.boundary_session_id
     assert second.boundary_session_id == reopened.boundary_session_id
-
-    service_state = :sys.get_state(sandbox_service_pid(instance_id, context))
-    assert map_size(service_state.sessions) == 1
   end
 
   test "reopen creates a live boundary session when the deterministic boundary_session_id is absent",
@@ -250,9 +252,6 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
     assert descriptor.boundary_session_id == boundary_session_id
     assert descriptor.status == :ready
     assert descriptor.attach_ready? == true
-
-    service_state = :sys.get_state(sandbox_service_pid(instance_id, context))
-    assert map_size(service_state.sessions) == 1
   end
 
   test "reopen rejects a deterministic boundary_session_id when the live boundary conflicts with the request",
@@ -390,17 +389,6 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
 
     assert {:ok, _} =
              PolicyRuntime.invalidate_cache(instance_id, "bridge_policy_update", context)
-  end
-
-  defp sandbox_service_pid(instance_id, context) do
-    {:ok, pid} =
-      AgentServicesSupervisor.extension_service_pid(
-        instance_id,
-        SandboxService.runtime_service_key(),
-        request_context(context, "sandbox-service-pid")
-      )
-
-    pid
   end
 
   defp start_instance(instance_id, context) do

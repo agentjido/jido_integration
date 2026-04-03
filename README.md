@@ -167,6 +167,14 @@ Reference apps:
 
 The current surface also proves:
 
+- authored `AuthSpec` is now profile-driven, with explicit
+  `supported_profiles`, `default_profile`, connector-level `install` and
+  `reauth` posture, and honest per-profile scope, lease, and management-mode
+  publication
+- durable auth truth now spans `Install`, `Connection`, `CredentialRef`,
+  versioned `Credential`, and short-lived `CredentialLease`/lease metadata,
+  with `profile_id`, credential lineage, and secret-source posture staying
+  inside `core/auth`
 - connectors execute through short-lived auth leases, not durable credential
   truth
 - public invocation binds auth through `connection_id`; `credential_ref`
@@ -176,6 +184,10 @@ The current surface also proves:
 - conformance runs from the root while connector evidence stays package-local
 - local durability, async queue state, and webhook route state are all
   explicit opt-in packages
+- the Postgres auth tier carries a forward-only expansion migration,
+  `20260403000000_expand_phase_0_auth_truth_columns.exs`, so existing dev/test
+  databases can adopt the richer auth lineage shape without rewriting prior
+  migration history
 
 ## Publishing The Unified Package
 

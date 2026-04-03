@@ -19,11 +19,49 @@ defmodule Jido.Integration.V2.Connectors.Notion do
       auth:
         AuthSpec.new!(%{
           binding_kind: :connection_id,
-          auth_type: :oauth2,
-          install: %{required: true},
-          reauth: %{supported: true},
-          requested_scopes: requested_scopes(),
-          lease_fields: ["access_token"],
+          default_profile: "workspace_oauth",
+          supported_profiles: [
+            %{
+              id: "workspace_oauth",
+              auth_type: :oauth2,
+              subject_kind: :workspace,
+              install_required: true,
+              grant_types: [:authorization_code, :refresh_token],
+              callback_required: true,
+              pkce_required: false,
+              refresh_supported: true,
+              revoke_supported: true,
+              reauth_supported: true,
+              durable_secret_fields: [
+                "access_token",
+                "refresh_token",
+                "workspace_id",
+                "workspace_name",
+                "bot_id"
+              ],
+              lease_fields: ["access_token", "workspace_id", "workspace_name", "bot_id"],
+              management_modes: [:manual],
+              required_scopes: requested_scopes(),
+              docs_refs: ["https://developers.notion.com/docs/authorization"],
+              metadata: %{provider: :notion_sdk, install_surface: :browser_oauth}
+            }
+          ],
+          install: %{
+            required: true,
+            profiles: ["workspace_oauth"],
+            hosted_callback_supported: false,
+            state_required: true,
+            pkce_supported: false,
+            metadata: %{approval: :browser_oauth}
+          },
+          reauth: %{
+            supported: true,
+            profiles: ["workspace_oauth"],
+            hosted_callback_supported: false,
+            state_required: true,
+            pkce_supported: false,
+            metadata: %{reuse_install_path: true}
+          },
           secret_names: []
         }),
       catalog:

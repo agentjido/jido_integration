@@ -147,7 +147,7 @@ defmodule Jido.Integration.V2ExecuteRunTest do
 
     assert error.reason == :run_completed
     assert error.run.status == :completed
-    assert error.run.result == %{value: "stable", attempt: 1}
+    assert error.run.result == %{"value" => "stable", "attempt" => 1}
     assert error.attempt == nil
 
     assert {:ok, stored_run} = V2.fetch_run(completed.run.run_id)

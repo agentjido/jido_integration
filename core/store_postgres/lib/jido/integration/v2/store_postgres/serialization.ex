@@ -29,6 +29,17 @@ defmodule Jido.Integration.V2.StorePostgres.Serialization do
   def load(list) when is_list(list), do: Enum.map(list, &load/1)
   def load(value), do: value
 
+  def load_json(%_{} = struct), do: struct
+
+  def load_json(map) when is_map(map) do
+    Enum.into(map, %{}, fn {key, value} ->
+      {key, load_json(value)}
+    end)
+  end
+
+  def load_json(list) when is_list(list), do: Enum.map(list, &load_json/1)
+  def load_json(value), do: value
+
   def fetch(map, key, default \\ nil) when is_map(map) do
     Map.get(map, key, Map.get(map, Atom.to_string(key), default))
   end

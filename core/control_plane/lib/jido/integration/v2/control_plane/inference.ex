@@ -61,13 +61,15 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
           {:ok, invoke_result()} | {:error, term()}
   def invoke(request_or_attrs, opts \\ []) do
     with {:ok, request} <- normalize_request(request_or_attrs),
-         {:ok, context} <- build_context(request, opts),
-         {:ok, consumer_manifest} <- build_consumer_manifest(request, opts),
-         {:ok, route} <- resolve_route(request, context, consumer_manifest, opts),
-         {:ok, execution} <- execute_route(request, context, route, opts),
+         execution_request = prepare_execution_request(request, opts),
+         durable_request = sanitize_request_for_recording(execution_request),
+         {:ok, context} <- build_context(durable_request, opts),
+         {:ok, consumer_manifest} <- build_consumer_manifest(durable_request, opts),
+         {:ok, route} <- resolve_route(execution_request, context, consumer_manifest, opts),
+         {:ok, execution} <- execute_route(execution_request, context, route, opts),
          {:ok, recorded} <-
            ControlPlane.record_inference_attempt(%{
-             request: request,
+             request: durable_request,
              context: context,
              consumer_manifest: consumer_manifest,
              compatibility_result: route.compatibility_result,
@@ -79,7 +81,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
            }) do
       {:ok,
        %{
-         request: request,
+         request: durable_request,
          context: context,
          consumer_manifest: consumer_manifest,
          compatibility_result: route.compatibility_result,
@@ -102,6 +104,72 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     do: InferenceRequest.new(attrs)
 
   defp normalize_request(other), do: {:error, {:invalid_inference_request, other}}
+
+  defp prepare_execution_request(%InferenceRequest{} = request, opts) do
+    request
+    |> normalize_model_provider()
+    |> normalize_target_backend()
+    |> merge_target_backend_options(Keyword.get(opts, :target_backend_options, %{}))
+  end
+
+  defp sanitize_request_for_recording(%InferenceRequest{} = request) do
+    target_preference = map_or_empty(request.target_preference)
+
+    durable_target_preference =
+      case Contracts.get(target_preference, :backend_options) do
+        nil ->
+          target_preference
+
+        backend_options ->
+          put_normalized_field(
+            target_preference,
+            :backend_options,
+            sanitize_json_safe(backend_options)
+          )
+      end
+
+    %InferenceRequest{request | target_preference: durable_target_preference}
+  end
+
+  defp normalize_model_provider(%InferenceRequest{} = request) do
+    model_preference = map_or_empty(request.model_preference)
+
+    case Contracts.get(model_preference, :provider) do
+      nil ->
+        request
+
+      provider ->
+        %InferenceRequest{
+          request
+          | model_preference:
+              put_normalized_field(
+                model_preference,
+                :provider,
+                Contracts.normalize_atomish!(provider, "model_preference.provider")
+              )
+        }
+    end
+  end
+
+  defp normalize_target_backend(%InferenceRequest{} = request) do
+    target_preference = map_or_empty(request.target_preference)
+
+    case Contracts.get(target_preference, :backend) do
+      nil ->
+        request
+
+      backend ->
+        %InferenceRequest{
+          request
+          | target_preference:
+              put_normalized_field(
+                target_preference,
+                :backend,
+                Contracts.normalize_atomish!(backend, "target_preference.backend")
+              )
+        }
+    end
+  end
 
   defp build_context(%InferenceRequest{} = request, opts) do
     run_id = Keyword.get_lazy(opts, :run_id, fn -> Contracts.next_id("run-inference") end)
@@ -143,7 +211,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   end
 
   defp build_consumer_manifest(%InferenceRequest{} = request, opts) do
-    target_preference = Map.new(request.target_preference || %{})
+    target_preference = map_or_empty(request.target_preference)
 
     ConsumerManifest.new(
       consumer: :jido_integration_req_llm,
@@ -190,7 +258,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   end
 
   defp resolve_cloud_route(%InferenceRequest{} = request, %InferenceExecutionContext{} = context) do
-    model_preference = request.model_preference || %{}
+    model_preference = map_or_empty(request.model_preference)
 
     with provider when not is_nil(provider) <- Contracts.get(model_preference, :provider),
          model_id when not is_nil(model_id) <-
@@ -237,6 +305,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          %ConsumerManifest{} = consumer_manifest,
          opts
        ) do
+    request =
+      merge_target_backend_options(request, Keyword.get(opts, :target_backend_options, %{}))
+
     with {:ok, self_hosted_consumer_manifest} <-
            SelfHostedConsumerManifest.new(Map.from_struct(consumer_manifest)),
          {:ok, backend} <- fetch_target_backend(request),
@@ -244,7 +315,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
            SelfHostedInferenceCore.ensure_endpoint(
              request,
              self_hosted_consumer_manifest,
-             context,
+             Map.from_struct(context),
              owner_ref: Keyword.get(opts, :owner_ref, context.attempt_id),
              ttl_ms: Keyword.get(opts, :ttl_ms, 60_000),
              renewable?: Keyword.get(opts, :renewable?, true),
@@ -412,11 +483,65 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   end
 
   defp fetch_target_backend(%InferenceRequest{} = request) do
-    case request.target_preference |> Kernel.||(%{}) |> Map.new() |> Contracts.get(:backend) do
+    case request.target_preference |> map_or_empty() |> Contracts.get(:backend) do
       nil -> {:error, {:missing_target_preference, :backend}}
       backend -> {:ok, Contracts.normalize_atomish!(backend, "target_preference.backend")}
     end
   end
+
+  defp merge_target_backend_options(%InferenceRequest{} = request, extra_options)
+       when is_map(extra_options) and map_size(extra_options) > 0 do
+    target_preference = map_or_empty(request.target_preference)
+
+    backend_options =
+      target_preference
+      |> Contracts.get(:backend_options, %{})
+      |> Map.new()
+      |> Map.merge(extra_options)
+
+    %InferenceRequest{
+      request
+      | target_preference:
+          put_normalized_field(target_preference, :backend_options, backend_options)
+    }
+  end
+
+  defp merge_target_backend_options(%InferenceRequest{} = request, _extra_options), do: request
+
+  defp put_normalized_field(map, key, value) when is_map(map) do
+    map
+    |> Map.delete(key)
+    |> Map.delete(Atom.to_string(key))
+    |> Map.put(key, value)
+  end
+
+  defp sanitize_json_safe(%DateTime{} = value), do: value
+  defp sanitize_json_safe(%NaiveDateTime{} = value), do: value
+  defp sanitize_json_safe(%Date{} = value), do: value
+  defp sanitize_json_safe(%Time{} = value), do: value
+  defp sanitize_json_safe(%_{} = value), do: value |> Map.from_struct() |> sanitize_json_safe()
+
+  defp sanitize_json_safe(value) when is_map(value) do
+    Enum.reduce(value, %{}, fn {key, nested_value}, acc ->
+      case sanitize_json_safe(nested_value) do
+        :drop -> acc
+        sanitized -> Map.put(acc, key, sanitized)
+      end
+    end)
+  end
+
+  defp sanitize_json_safe(value) when is_list(value) do
+    value
+    |> Enum.map(&sanitize_json_safe/1)
+    |> Enum.reject(&(&1 == :drop))
+  end
+
+  defp sanitize_json_safe(value)
+       when is_atom(value) or is_binary(value) or is_integer(value) or is_float(value) or
+              is_boolean(value) or is_nil(value),
+       do: value
+
+  defp sanitize_json_safe(_value), do: :drop
 
   defp build_lease_ref(%EndpointDescriptor{lease_ref: nil}, _context, _opts), do: nil
 
@@ -442,7 +567,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   end
 
   defp cli_backend_manifest_data(%EndpointDescriptor{} = endpoint_descriptor) do
-    metadata = Map.new(endpoint_descriptor.metadata || %{})
+    metadata = map_or_empty(endpoint_descriptor.metadata)
 
     case Contracts.get(metadata, :backend_manifest) do
       %{} = manifest ->
@@ -508,7 +633,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   defp call_input(%ReqLLMCallSpec{messages: messages}), do: messages
 
   defp target_class(%InferenceRequest{} = request) do
-    target_preference = Map.new(request.target_preference || %{})
+    target_preference = map_or_empty(request.target_preference)
 
     case Contracts.get(target_preference, :target_class) do
       nil ->
@@ -559,7 +684,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   defp required_capabilities(%InferenceRequest{}), do: %{}
 
   defp optional_capabilities(%InferenceRequest{} = request) do
-    case Contracts.get(request.tool_policy || %{}, :tools) do
+    case Contracts.get(request.tool_policy, :tools) do
       tools when is_list(tools) and tools != [] -> %{tool_calling?: true}
       _ -> %{}
     end
@@ -607,4 +732,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp map_or_empty(nil), do: %{}
+  defp map_or_empty(%{} = value), do: Map.new(value)
 end

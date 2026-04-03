@@ -17,7 +17,8 @@ Public facade and shared model:
 Core runtime graph:
 
 - `core/auth`
-  - install, connection, credential, and lease truth
+  - profile-driven install, connection, credential, and lease truth behind the
+    `connection_id` public auth binding
 - `core/control_plane`
   - connector registry, capability lookup, run truth, event truth, artifact
     truth, trigger truth, and target truth
@@ -175,6 +176,16 @@ Invocation surface:
 
 Public invoke requests use `connection_id` as the consumer-facing auth binding
 when the capability requires auth. Anonymous capabilities may omit it.
+
+That lifecycle is now profile-driven from authored connector manifests:
+
+- connectors publish `supported_profiles`, `default_profile`, connector-level
+  `install`/`reauth` posture, and per-profile scope, lease, and management
+  rules through `AuthSpec`
+- durable auth records keep `profile_id`, credential lineage, and
+  secret-source posture behind `core/auth` and the selected durability tier
+- runtime execution still receives only short-lived leases, never durable
+  credential truth
 
 Durable review surface:
 

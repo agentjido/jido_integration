@@ -299,13 +299,15 @@ defmodule Jido.Integration.V2.Connectors.Notion.GeneratedConsumerSurfaceTest do
 
   defp install_connection! do
     now = Contracts.now()
-    requested_scopes = Notion.manifest().auth.requested_scopes
+    auth = Notion.manifest().auth
+    requested_scopes = auth.requested_scopes
     payload = Fixtures.credential_lease_attrs().payload
 
     assert {:ok, %{install: install}} =
              V2.start_install("notion", "tenant-generated-notion", %{
                actor_id: "generated-consumer",
-               auth_type: :oauth2,
+               auth_type: auth.auth_type,
+               profile_id: auth.default_profile,
                subject: "workspace:acme",
                requested_scopes: requested_scopes,
                now: now

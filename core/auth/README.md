@@ -30,6 +30,26 @@ material.
 - delegate restart-safe local auth durability to `core/store_local`
 - delegate Postgres repo and migration ownership to `core/store_postgres`
 
+## Current Durable Auth Model
+
+- `Install` is the control-plane-managed install or reauth attempt and records
+  `profile_id`, `flow_kind`, callback/state correlation, PKCE digest,
+  requested/granted scopes, and terminal timestamps/reasons
+- `Connection` is the durable public auth binding keyed by `connection_id` and
+  records `profile_id`, `management_mode`, `secret_source`,
+  `current_credential_ref_id`, `current_credential_id`, refresh/rotation
+  posture, and degradation or revocation reasons
+- `CredentialRef` is the stable non-secret handle owned by auth
+- `Credential` is the versioned secret-bearing record tied back to
+  `credential_ref_id`, `connection_id`, and `profile_id`
+- `CredentialLease` and auth-owned `LeaseRecord` keep runtime execution
+  short-lived; durable lease rows store only safe lineage and payload-key
+  metadata, and auth reconstructs lease payloads from current credential truth
+
+The public facade still binds authenticated invocation through `connection_id`
+only. `credential_ref_id`, `credential_id`, and secret-bearing lineage stay
+inside auth and store implementations.
+
 ## Boundary
 
 `core/auth` owns auth truth only.

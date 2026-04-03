@@ -21,4 +21,22 @@ defmodule Jido.Integration.V2.StorePostgres.SerializationTest do
     assert Map.has_key?(loaded.metadata, "not_preexisting_key_123")
     assert loaded.metadata["not_preexisting_key_123"].trace_id == "trace-1"
   end
+
+  test "load_json preserves JSON-safe string keys recursively" do
+    loaded =
+      Serialization.load_json(%{
+        "connector" => "github",
+        "items" => [%{"seq" => 1, "venue" => "CME"}],
+        "metadata" => %{
+          "content_encoding" => "gzip",
+          "route" => "cloud"
+        }
+      })
+
+    assert loaded["connector"] == "github"
+    assert hd(loaded["items"])["seq"] == 1
+    assert hd(loaded["items"])["venue"] == "CME"
+    assert loaded["metadata"]["content_encoding"] == "gzip"
+    assert loaded["metadata"]["route"] == "cloud"
+  end
 end

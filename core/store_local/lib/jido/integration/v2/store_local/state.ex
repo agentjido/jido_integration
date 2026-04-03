@@ -19,13 +19,20 @@ defmodule Jido.Integration.V2.StoreLocal.State do
   @type event_entry :: %{event: Event.t(), inserted_at: DateTime.t()}
   @type persisted_credential :: %{
           id: String.t(),
+          credential_ref_id: String.t(),
           connection_id: String.t() | nil,
+          profile_id: String.t() | nil,
           subject: String.t(),
           auth_type: atom(),
+          version: pos_integer(),
           scopes: [String.t()],
           lease_fields: [String.t()],
           secret_envelope: map(),
           expires_at: DateTime.t() | nil,
+          refresh_token_expires_at: DateTime.t() | nil,
+          source: atom() | nil,
+          source_ref: map() | nil,
+          supersedes_credential_id: String.t() | nil,
           revoked_at: DateTime.t() | nil,
           metadata: map()
         }
@@ -105,13 +112,20 @@ defmodule Jido.Integration.V2.StoreLocal.State do
   def store_credential(%__MODULE__{} = state, %Credential{} = credential) do
     persisted = %{
       id: credential.id,
+      credential_ref_id: credential.credential_ref_id,
       connection_id: credential.connection_id,
+      profile_id: credential.profile_id,
       subject: credential.subject,
       auth_type: credential.auth_type,
+      version: credential.version,
       scopes: credential.scopes,
       lease_fields: credential.lease_fields,
       secret_envelope: SecretEnvelope.encrypt(credential.secret, credential.id),
       expires_at: credential.expires_at,
+      refresh_token_expires_at: credential.refresh_token_expires_at,
+      source: credential.source,
+      source_ref: credential.source_ref,
+      supersedes_credential_id: credential.supersedes_credential_id,
       revoked_at: credential.revoked_at,
       metadata: credential.metadata
     }
@@ -129,13 +143,20 @@ defmodule Jido.Integration.V2.StoreLocal.State do
         {:ok,
          Credential.new!(%{
            id: persisted.id,
+           credential_ref_id: persisted.credential_ref_id,
            connection_id: persisted.connection_id,
+           profile_id: persisted.profile_id,
            subject: persisted.subject,
            auth_type: persisted.auth_type,
+           version: persisted.version,
            scopes: persisted.scopes,
            lease_fields: persisted.lease_fields,
            secret: SecretEnvelope.decrypt(persisted.secret_envelope, persisted.id),
            expires_at: persisted.expires_at,
+           refresh_token_expires_at: persisted.refresh_token_expires_at,
+           source: persisted.source,
+           source_ref: persisted.source_ref,
+           supersedes_credential_id: persisted.supersedes_credential_id,
            revoked_at: persisted.revoked_at,
            metadata: persisted.metadata
          })}

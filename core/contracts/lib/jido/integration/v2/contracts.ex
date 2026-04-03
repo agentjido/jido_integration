@@ -80,7 +80,15 @@ defmodule Jido.Integration.V2.Contracts do
     end)
   end
 
-  def dump_json_safe!(value) when is_list(value), do: Enum.map(value, &dump_json_safe!/1)
+  def dump_json_safe!(value) when is_list(value) do
+    if value != [] and Keyword.keyword?(value) do
+      Enum.into(value, %{}, fn {key, nested_value} ->
+        {dump_json_key!(key), dump_json_safe!(nested_value)}
+      end)
+    else
+      Enum.map(value, &dump_json_safe!/1)
+    end
+  end
 
   def dump_json_safe!(value) when is_atom(value) do
     if value in [nil, true, false], do: value, else: Atom.to_string(value)

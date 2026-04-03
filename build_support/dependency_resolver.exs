@@ -111,6 +111,15 @@ defmodule Jido.Integration.Build.DependencyResolver do
     )
   end
 
+  def external_runtime_transport(opts \\ []) do
+    resolve_external(
+      :external_runtime_transport,
+      local_root_path("EXTERNAL_RUNTIME_TRANSPORT_PATH", "../external_runtime_transport"),
+      [github: "nshkrdotcom/external_runtime_transport", branch: "main"],
+      opts
+    )
+  end
+
   def jido_os(opts \\ []) do
     resolve_external(
       :jido_os,
@@ -118,6 +127,23 @@ defmodule Jido.Integration.Build.DependencyResolver do
       [github: "agentjido/jido_os", branch: "main"],
       opts
     )
+  end
+
+  def jido_shell(opts \\ []) do
+    resolve_external(
+      :jido_shell,
+      local_root_path("JIDO_SHELL_PATH", "../jido_shell"),
+      [github: "agentjido/jido_shell", branch: "main"],
+      opts
+    )
+  end
+
+  def sprites(opts \\ []) do
+    {:sprites,
+     Keyword.merge(
+       [git: "https://github.com/mikehostetler/sprites-ex.git", branch: "main"],
+       opts
+     )}
   end
 
   def req_llm(opts \\ []) do

@@ -125,9 +125,46 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
     assert manifest.connector == "notion"
     assert manifest.auth.binding_kind == :connection_id
     assert manifest.auth.auth_type == :oauth2
+    assert manifest.auth.default_profile == "workspace_oauth"
     assert manifest.catalog.display_name == "Notion"
     assert manifest.catalog.publication == :public
     assert manifest.runtime_families == [:direct]
+
+    assert manifest.auth.install == %{
+             required: true,
+             profiles: ["workspace_oauth"],
+             hosted_callback_supported: false,
+             callback_route_kind: nil,
+             state_required: true,
+             pkce_supported: false,
+             expires_in_seconds: nil,
+             metadata: %{approval: :browser_oauth}
+           }
+
+    assert manifest.auth.reauth == %{
+             supported: true,
+             profiles: ["workspace_oauth"],
+             hosted_callback_supported: false,
+             state_required: true,
+             pkce_supported: false,
+             metadata: %{reuse_install_path: true}
+           }
+
+    assert [profile] = manifest.auth.supported_profiles
+    assert profile.id == "workspace_oauth"
+    assert profile.auth_type == :oauth2
+    assert profile.subject_kind == :workspace
+    assert profile.install_required == true
+    assert profile.grant_types == [:authorization_code, :refresh_token]
+    assert profile.callback_required == true
+    assert profile.pkce_required == false
+    assert profile.refresh_supported == true
+    assert profile.revoke_supported == true
+    assert profile.reauth_supported == true
+    assert profile.management_modes == [:manual]
+    assert profile.required_scopes == manifest.auth.requested_scopes
+    assert "refresh_token" in profile.durable_secret_fields
+    assert "workspace_id" in profile.lease_fields
 
     assert Enum.map(manifest.operations, & &1.operation_id) ==
              Enum.sort(@published_capability_ids)

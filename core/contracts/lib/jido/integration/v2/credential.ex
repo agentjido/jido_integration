@@ -12,12 +12,21 @@ defmodule Jido.Integration.V2.Credential do
             __MODULE__,
             %{
               id: Contracts.non_empty_string_schema("credential.id"),
+              credential_ref_id:
+                Contracts.non_empty_string_schema("credential.credential_ref_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
               connection_id:
                 Contracts.non_empty_string_schema("credential.connection_id")
                 |> Zoi.nullish()
                 |> Zoi.optional(),
+              profile_id:
+                Contracts.non_empty_string_schema("credential.profile_id")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
               subject: Contracts.non_empty_string_schema("credential.subject"),
               auth_type: Zoi.atom(),
+              version: Zoi.integer() |> Zoi.min(1) |> Zoi.default(1),
               scopes: Contracts.string_list_schema("credential.scopes") |> Zoi.default([]),
               secret: Contracts.any_map_schema() |> Zoi.default(%{}),
               lease_fields:
@@ -26,6 +35,16 @@ defmodule Jido.Integration.V2.Credential do
                 |> Zoi.optional(),
               expires_at:
                 Contracts.datetime_schema("credential.expires_at")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              refresh_token_expires_at:
+                Contracts.datetime_schema("credential.refresh_token_expires_at")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
+              source: Zoi.atom() |> Zoi.nullish() |> Zoi.optional(),
+              source_ref: Contracts.any_map_schema() |> Zoi.nullish() |> Zoi.optional(),
+              supersedes_credential_id:
+                Contracts.non_empty_string_schema("credential.supersedes_credential_id")
                 |> Zoi.nullish()
                 |> Zoi.optional(),
               revoked_at:
@@ -96,13 +115,20 @@ defmodule Jido.Integration.V2.Credential do
   def now, do: Contracts.now()
 
   defp validate(%__MODULE__{} = credential) do
+    credential_ref_id = credential.credential_ref_id || credential.id
+
     lease_fields =
       case credential.lease_fields do
         nil -> default_lease_fields(credential.secret)
         fields -> normalize_lease_fields(fields)
       end
 
-    {:ok, %__MODULE__{credential | lease_fields: lease_fields}}
+    {:ok,
+     %__MODULE__{
+       credential
+       | credential_ref_id: credential_ref_id,
+         lease_fields: lease_fields
+     }}
   end
 
   defp default_lease_fields(secret) when is_map(secret) do

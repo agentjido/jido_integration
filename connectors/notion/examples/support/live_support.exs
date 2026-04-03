@@ -204,12 +204,14 @@ defmodule Jido.Integration.V2.Connectors.Notion.LiveSupport do
 
   defp install_connection!(spec, permission_profile, binding, proof_mode) do
     now = DateTime.utc_now()
+    auth = Notion.manifest().auth
     scopes = PermissionProfile.scopes(permission_profile)
 
     {:ok, %{install: install, connection: installing_connection}} =
       V2.start_install("notion", spec.tenant_id, %{
         actor_id: spec.actor_id,
-        auth_type: :oauth2,
+        auth_type: auth.auth_type,
+        profile_id: auth.default_profile,
         subject: spec.subject,
         requested_scopes: scopes,
         metadata: %{

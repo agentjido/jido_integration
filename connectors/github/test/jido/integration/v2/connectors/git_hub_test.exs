@@ -44,12 +44,48 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
 
     assert manifest.connector == "github"
     assert manifest.auth.binding_kind == :connection_id
-    assert manifest.auth.auth_type == :oauth2
+    assert manifest.auth.auth_type == :api_token
+    assert manifest.auth.default_profile == "personal_access_token"
+    assert manifest.auth.secret_names == []
     assert manifest.catalog.display_name == "GitHub"
     assert manifest.catalog.publication == :public
     assert manifest.runtime_families == [:direct]
     assert manifest.metadata.provider_sdk == :github_ex
     assert manifest.metadata.published_slice == :a0_issue_workflows
+
+    assert manifest.auth.install == %{
+             required: true,
+             profiles: ["personal_access_token"],
+             hosted_callback_supported: false,
+             callback_route_kind: nil,
+             state_required: false,
+             pkce_supported: false,
+             expires_in_seconds: nil,
+             metadata: %{approval: :manual_token_entry}
+           }
+
+    assert manifest.auth.reauth == %{
+             supported: false,
+             profiles: [],
+             hosted_callback_supported: false,
+             state_required: false,
+             pkce_supported: false,
+             metadata: %{}
+           }
+
+    assert [profile] = manifest.auth.supported_profiles
+    assert profile.id == "personal_access_token"
+    assert profile.auth_type == :api_token
+    assert profile.subject_kind == :user
+    assert profile.install_required == true
+    assert profile.grant_types == [:manual_token]
+    assert profile.refresh_supported == false
+    assert profile.revoke_supported == false
+    assert profile.reauth_supported == false
+    assert profile.durable_secret_fields == ["access_token"]
+    assert profile.lease_fields == ["access_token"]
+    assert profile.management_modes == [:manual]
+    assert profile.required_scopes == ["repo"]
 
     assert Enum.map(manifest.operations, & &1.operation_id) ==
              Enum.sort(@published_capability_ids)

@@ -104,7 +104,8 @@ use the same policy:
 Generated files include:
 
 - package-local `mix.exs`, `mix.lock`, `.formatter.exs`, and `.gitignore`
-- a connector module that authors `AuthSpec`, `CatalogSpec`, and `OperationSpec`
+- a connector module that authors profile-driven `AuthSpec`, `CatalogSpec`, and
+  `OperationSpec`
 - a derived executable capability projection through `Manifest`
 - a runtime-class-appropriate handler skeleton
 - a `<ConnectorModule>.Conformance` companion module with deterministic fixtures
@@ -133,6 +134,17 @@ The scaffold generates:
 Connector authors still need to author by hand:
 
 - the real auth, catalog, operation, and trigger contract
+  Keep `auth.supported_profiles` explicit even when the connector has only one
+  current profile.
+  Keep `auth.default_profile`, `auth.install.profiles`, and
+  `auth.reauth.profiles` aligned.
+  Keep connector-wide `auth.requested_scopes`, `auth.management_modes`,
+  `auth.durable_secret_fields`, and `auth.lease_fields` honest against the
+  authored profile set when you choose to publish them explicitly instead of
+  letting `AuthSpec` derive the unions.
+  For each profile, make install, callback, refresh, revoke, reauth, and
+  external-secret posture explicit rather than relying on provider-specific
+  hidden rules.
 - the real deterministic fixture expectations and any non-direct runtime driver
   behavior
 - the package README sections for runtime family, auth posture, package-local
@@ -215,6 +227,12 @@ CLI subprocess implementation details.
 After generation:
 
 1. replace the placeholder authored auth, catalog, and operation contract with the real connector surface
+   Keep the auth contract profile-driven: declare explicit
+   `supported_profiles` entries with correct `grant_types`,
+   `management_modes`, `durable_secret_fields`, and `lease_fields`.
+   Keep `install_required`, `callback_required`, `pkce_required`,
+   `refresh_supported`, `revoke_supported`, and `reauth_supported` honest for
+   each published profile.
    Keep `auth.requested_scopes` aligned as the authored superset of every
    published operation or trigger `required_scopes`.
    Keep `auth.secret_names` aligned as the authored superset of any trigger

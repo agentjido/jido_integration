@@ -37,6 +37,8 @@ defmodule Jido.Integration.V2.Connectors.MarketData.MixProject do
       DependencyResolver.jido_integration_v2_consumer_surfaces(),
       DependencyResolver.jido_integration_v2_ingress(),
       DependencyResolver.jido_harness(override: true),
+      DependencyResolver.jido_shell(override: true),
+      DependencyResolver.sprites(override: true),
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

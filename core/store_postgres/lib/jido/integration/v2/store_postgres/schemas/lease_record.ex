@@ -9,7 +9,9 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord do
 
   schema "credential_leases" do
     field(:credential_ref_id, :string)
+    field(:credential_id, :string)
     field(:connection_id, :string)
+    field(:profile_id, :string)
     field(:subject, :string)
     field(:scopes, {:array, :string}, default: [])
     field(:payload_keys, {:array, :string}, default: [])
@@ -26,7 +28,9 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord do
     |> cast(attrs, [
       :lease_id,
       :credential_ref_id,
+      :credential_id,
       :connection_id,
+      :profile_id,
       :subject,
       :scopes,
       :payload_keys,
@@ -39,6 +43,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord do
     |> validate_required([
       :lease_id,
       :credential_ref_id,
+      :credential_id,
       :connection_id,
       :subject,
       :payload_keys,

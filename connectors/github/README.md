@@ -21,6 +21,12 @@ Proves:
 
 - runtime family: `:direct`
 - public auth binding is `connection_id`
+- default auth profile: `personal_access_token`
+- supported management mode: `:manual`
+- durable secret fields: `["access_token"]`
+- lease fields: `["access_token"]`
+- install posture is explicit manual token entry with no hosted callback or
+  PKCE flow
 - the connector mints short-lived credential leases and builds `GitHubEx.Client`
   instances from those leases only
 - the live execution path is

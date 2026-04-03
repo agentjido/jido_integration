@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
   """
 
   alias Jido.Integration.V2
+  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.InferenceRequest
   alias SelfHostedInferenceCore.Ollama.AttachSpec
 
@@ -103,7 +104,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
       },
       target_preference: %{
         target_class: "self_hosted_endpoint",
-        backend: Keyword.get(opts, :backend, "llama_cpp"),
+        backend: normalize_self_hosted_backend(Keyword.get(opts, :backend, :llama_cpp)),
         boot_spec: boot_spec
       },
       stream?: Keyword.get(opts, :stream?, true),
@@ -123,7 +124,6 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
             AttachSpec.default_root_url()
           )
       }
-      |> maybe_put(:ollama_http, Keyword.get(opts, :ollama_http))
 
     InferenceRequest.new!(%{
       request_id: Keyword.get(opts, :request_id, "req-inference-ops-ollama-attach"),
@@ -141,7 +141,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
       },
       target_preference: %{
         target_class: "self_hosted_endpoint",
-        backend: "ollama",
+        backend: normalize_self_hosted_backend(Keyword.get(opts, :backend, :ollama)),
         backend_options: backend_options
       },
       stream?: Keyword.get(opts, :stream?, false),
@@ -163,7 +163,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
       ],
       prompt: nil,
       model_preference: %{
-        provider: Keyword.get(opts, :provider, "gemini"),
+        provider: normalize_cli_provider(Keyword.get(opts, :provider, :gemini)),
         id: Keyword.get(opts, :model_id, "gemini-2.5-pro")
       },
       target_preference: %{target_class: "cli_endpoint"},
@@ -192,8 +192,23 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
         :tenant_id
       ]
     )
+    |> maybe_put_runtime_opt(
+      :target_backend_options,
+      %{} |> maybe_put(:ollama_http, Keyword.get(opts, :ollama_http))
+    )
   end
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp maybe_put_runtime_opt(opts, _key, value) when value == %{}, do: opts
+  defp maybe_put_runtime_opt(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp normalize_cli_provider(provider) do
+    Contracts.normalize_atomish!(provider, "inference_ops.cli.provider")
+  end
+
+  defp normalize_self_hosted_backend(backend) do
+    Contracts.normalize_atomish!(backend, "inference_ops.self_hosted.backend")
+  end
 end

@@ -127,7 +127,7 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
       credential_lease_id: record.credential_lease_id,
       target_id: record.target_id,
       runtime_ref_id: record.runtime_ref_id,
-      output: Serialization.load(record.output),
+      output: Serialization.load_json(record.output),
       inserted_at: record.inserted_at,
       updated_at: record.updated_at
     })

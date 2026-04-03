@@ -18,7 +18,15 @@ defmodule Jido.Integration.V2.Auth do
 
   @type refresh_handler ::
           (Connection.t(), Credential.t() ->
-             {:ok, %{optional(:secret) => map(), optional(:expires_at) => DateTime.t() | nil}}
+             {:ok,
+              %{
+                optional(:secret) => map(),
+                optional(:expires_at) => DateTime.t() | nil,
+                optional(:refresh_token_expires_at) => DateTime.t() | nil,
+                optional(:lease_fields) => [String.t()],
+                optional(:metadata) => map(),
+                optional(:source_ref) => map()
+              }}
              | {:error, term()})
 
   @type connection_binding :: %{
@@ -35,12 +43,23 @@ defmodule Jido.Integration.V2.Auth do
     now = now(opts)
     actor_id = Map.fetch!(opts, :actor_id)
     auth_type = Map.fetch!(opts, :auth_type)
+    profile_id = Map.get(opts, :profile_id, default_profile_id())
+    flow_kind = Map.get(opts, :flow_kind, default_flow_kind(auth_type))
     subject = Map.fetch!(opts, :subject)
     requested_scopes = Map.get(opts, :requested_scopes, [])
     metadata = Map.get(opts, :metadata, %{})
 
     with {:ok, connection} <-
-           install_connection_for_start(connector_id, tenant_id, auth_type, subject, opts, now) do
+           install_connection_for_start(
+             connector_id,
+             tenant_id,
+             auth_type,
+             profile_id,
+             flow_kind,
+             subject,
+             opts,
+             now
+           ) do
       install =
         Install.new!(%{
           install_id: Contracts.next_id("install"),
@@ -49,9 +68,14 @@ defmodule Jido.Integration.V2.Auth do
           connector_id: connector_id,
           actor_id: actor_id,
           auth_type: auth_type,
+          profile_id: profile_id,
           subject: subject,
           state: :installing,
+          flow_kind: flow_kind,
           callback_token: Contracts.next_id("install_callback"),
+          state_token: Map.get(opts, :state_token),
+          pkce_verifier_digest: Map.get(opts, :pkce_verifier_digest),
+          callback_uri: Map.get(opts, :callback_uri, Contracts.get(metadata, :redirect_uri)),
           requested_scopes: requested_scopes,
           granted_scopes: [],
           expires_at:
@@ -60,6 +84,7 @@ defmodule Jido.Integration.V2.Auth do
               Map.get(opts, :install_ttl_seconds, @default_install_ttl_seconds),
               :second
             ),
+          reauth_of_connection_id: Map.get(opts, :connection_id),
           metadata: metadata,
           inserted_at: now,
           updated_at: now
@@ -94,17 +119,47 @@ defmodule Jido.Integration.V2.Auth do
              :install_subject_mismatch
            ),
          {:ok, %Connection{} = next_connection} <- transition_connection(connection, :connected),
-         credential <- build_credential(next_connection, attrs),
-         credential_ref <- build_credential_ref(credential, next_connection, install),
+         {:ok, previous_credential} <- fetch_current_credential(connection),
+         credential_ref_id =
+           connection.credential_ref_id || credential_ref_id(connection.connection_id),
+         credential <-
+           build_credential(
+             next_connection,
+             install,
+             attrs,
+             credential_ref_id,
+             previous_credential
+           ),
+         credential_ref <-
+           build_credential_ref(credential, next_connection, install, credential_ref_id),
          completed_install <- complete_install_record(install, attrs, now),
          connected_connection <-
            %Connection{
              next_connection
              | credential_ref_id: credential_ref.id,
+               current_credential_ref_id: credential_ref.id,
+               current_credential_id: credential.id,
                install_id: install.install_id,
                granted_scopes: credential.scopes,
                lease_fields: credential.lease_fields,
                token_expires_at: credential.expires_at,
+               profile_id: credential.profile_id,
+               management_mode:
+                 Map.get(
+                   attrs,
+                   :management_mode,
+                   connection.management_mode || default_management_mode(install.flow_kind)
+                 ),
+               secret_source:
+                 Map.get(
+                   attrs,
+                   :secret_source,
+                   connection.secret_source || default_secret_source(install.flow_kind)
+                 ),
+               last_refresh_at: nil,
+               last_refresh_status: nil,
+               degraded_reason: nil,
+               reauth_required_reason: nil,
                revoked_at: nil,
                revocation_reason: nil,
                actor_id: Map.get(attrs, :actor_id, install.actor_id),
@@ -157,7 +212,7 @@ defmodule Jido.Integration.V2.Auth do
 
     with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
          :ok <- ensure_connection_available(connection),
-         {:ok, credential} <- fetch_durable_credential(connection.credential_ref_id),
+         {:ok, credential} <- fetch_active_credential(connection),
          :ok <-
            ensure_subject_match(
              connection.subject,
@@ -174,8 +229,10 @@ defmodule Jido.Integration.V2.Auth do
       lease_record =
         LeaseRecord.new!(%{
           lease_id: Contracts.next_id("lease"),
-          credential_ref_id: refreshed_credential.id,
+          credential_ref_id: refreshed_credential.credential_ref_id,
+          credential_id: refreshed_credential.id,
           connection_id: refreshed_connection.connection_id,
+          profile_id: refreshed_connection.profile_id || refreshed_credential.profile_id,
           subject: refreshed_credential.subject,
           scopes: requested_scopes,
           payload_keys: payload_keys,
@@ -209,7 +266,7 @@ defmodule Jido.Integration.V2.Auth do
 
     with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
          :ok <- ensure_connection_available(connection),
-         {:ok, credential} <- fetch_durable_credential(connection.credential_ref_id),
+         {:ok, credential} <- fetch_active_credential(connection),
          :ok <-
            ensure_subject_match(
              connection.subject,
@@ -218,7 +275,13 @@ defmodule Jido.Integration.V2.Auth do
            ),
          {:ok, refreshed_connection, refreshed_credential} <-
            maybe_refresh(connection, credential, now),
-         credential_ref <- build_credential_ref(refreshed_credential, refreshed_connection, nil) do
+         credential_ref <-
+           build_credential_ref(
+             refreshed_credential,
+             refreshed_connection,
+             nil,
+             refreshed_connection.credential_ref_id || refreshed_credential.credential_ref_id
+           ) do
       {:ok,
        %{
          connection: refreshed_connection,
@@ -241,7 +304,7 @@ defmodule Jido.Integration.V2.Auth do
              | :reauth_required
              | {:missing_connection_scopes, [String.t()]}}
   def issue_lease(%CredentialRef{} = credential_ref, context \\ %{}) when is_map(context) do
-    with {:ok, credential} <- fetch_durable_credential(credential_ref.id),
+    with {:ok, credential} <- fetch_durable_credential(current_credential_id(credential_ref)),
          :ok <- match_subject(credential_ref, credential),
          connection_id when is_binary(connection_id) <- connection_id(credential_ref, credential) do
       request_lease(connection_id, context)
@@ -268,7 +331,7 @@ defmodule Jido.Integration.V2.Auth do
          {:ok, connection} <-
            Stores.connection_store().fetch_connection(lease_record.connection_id),
          :ok <- ensure_connection_available(connection),
-         {:ok, credential} <- fetch_durable_credential(lease_record.credential_ref_id),
+         {:ok, credential} <- fetch_durable_credential(lease_record.credential_id),
          :ok <-
            ensure_subject_match(
              lease_record.subject,
@@ -282,7 +345,7 @@ defmodule Jido.Integration.V2.Auth do
   @spec resolve(CredentialRef.t(), map()) ::
           {:ok, Credential.t()} | {:error, :unknown_credential | :credential_subject_mismatch}
   def resolve(%CredentialRef{} = credential_ref, _context \\ %{}) do
-    with {:ok, credential} <- fetch_durable_credential(credential_ref.id),
+    with {:ok, credential} <- fetch_durable_credential(current_credential_id(credential_ref)),
          :ok <- match_subject(credential_ref, credential) do
       {:ok, Credential.sanitized(credential)}
     end
@@ -292,7 +355,7 @@ defmodule Jido.Integration.V2.Auth do
           {:ok, term()}
           | {:error, :unknown_credential | :credential_subject_mismatch | :unknown_secret}
   def resolve_secret(%CredentialRef{} = credential_ref, secret_key) do
-    with {:ok, credential} <- fetch_durable_credential(credential_ref.id),
+    with {:ok, credential} <- fetch_durable_credential(current_credential_id(credential_ref)),
          :ok <- match_subject(credential_ref, credential) do
       fetch_secret_value(credential, secret_key)
     end
@@ -306,18 +369,34 @@ defmodule Jido.Integration.V2.Auth do
     now = now(attrs)
 
     with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
-         {:ok, credential} <- fetch_durable_credential(connection.credential_ref_id),
+         {:ok, credential} <- fetch_active_credential(connection),
          {:ok, %Connection{} = next_connection} <- transition_connection(connection, :connected),
          rotated_credential <- build_rotated_credential(credential, next_connection, attrs),
-         credential_ref <- build_credential_ref(rotated_credential, next_connection, nil),
+         credential_ref <-
+           build_credential_ref(
+             rotated_credential,
+             next_connection,
+             nil,
+             connection.credential_ref_id || credential.credential_ref_id
+           ),
          rotated_connection <-
            %Connection{
              next_connection
              | credential_ref_id: credential_ref.id,
+               current_credential_ref_id: credential_ref.id,
+               current_credential_id: rotated_credential.id,
                granted_scopes: rotated_credential.scopes,
                lease_fields: rotated_credential.lease_fields,
                token_expires_at: rotated_credential.expires_at,
                last_rotated_at: now,
+               secret_source:
+                 Map.get(
+                   attrs,
+                   :secret_source,
+                   connection.secret_source || default_secret_source(:manual)
+                 ),
+               degraded_reason: nil,
+               reauth_required_reason: nil,
                revoked_at: nil,
                revocation_reason: nil,
                actor_id: Map.get(attrs, :actor_id),
@@ -336,12 +415,12 @@ defmodule Jido.Integration.V2.Auth do
 
     with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
          {:ok, %Connection{} = next_connection} <- transition_connection(connection, :revoked),
-         {:ok, %Credential{} = credential} <-
-           fetch_durable_credential(connection.credential_ref_id) do
+         {:ok, %Credential{} = credential} <- fetch_active_credential(connection) do
       revoked_connection =
         %Connection{
           next_connection
           | state: :revoked,
+            reauth_required_reason: nil,
             revoked_at: now,
             revocation_reason: Map.get(attrs, :reason),
             actor_id: Map.get(attrs, :actor_id),
@@ -372,7 +451,16 @@ defmodule Jido.Integration.V2.Auth do
     reset_store(Stores.credential_store())
   end
 
-  defp install_connection_for_start(connector_id, tenant_id, auth_type, subject, opts, now) do
+  defp install_connection_for_start(
+         connector_id,
+         tenant_id,
+         auth_type,
+         profile_id,
+         flow_kind,
+         subject,
+         opts,
+         now
+       ) do
     case Map.get(opts, :connection_id) do
       nil ->
         connection =
@@ -381,8 +469,12 @@ defmodule Jido.Integration.V2.Auth do
             tenant_id: tenant_id,
             connector_id: connector_id,
             auth_type: auth_type,
+            profile_id: profile_id,
             subject: subject,
             state: :installing,
+            management_mode: Map.get(opts, :management_mode, default_management_mode(flow_kind)),
+            secret_source: Map.get(opts, :secret_source),
+            external_secret_ref: Map.get(opts, :external_secret_ref),
             requested_scopes: Map.get(opts, :requested_scopes, []),
             granted_scopes: [],
             actor_id: Map.get(opts, :actor_id),
@@ -404,6 +496,13 @@ defmodule Jido.Integration.V2.Auth do
             %Connection{
               installing_connection
               | requested_scopes: Map.get(opts, :requested_scopes, connection.requested_scopes),
+                profile_id: profile_id,
+                management_mode:
+                  Map.get(
+                    opts,
+                    :management_mode,
+                    connection.management_mode || default_management_mode(flow_kind)
+                  ),
                 actor_id: Map.get(opts, :actor_id),
                 updated_at: now
             }
@@ -419,39 +518,86 @@ defmodule Jido.Integration.V2.Auth do
   defp fetch_durable_credential(credential_id),
     do: Stores.credential_store().fetch_credential(credential_id)
 
-  defp build_credential(%Connection{} = connection, attrs) do
+  defp fetch_current_credential(%Connection{} = connection) do
+    case current_credential_id(connection) do
+      nil -> {:ok, nil}
+      credential_id -> fetch_durable_credential(credential_id)
+    end
+  end
+
+  defp fetch_active_credential(%Connection{} = connection) do
+    connection
+    |> current_credential_id()
+    |> fetch_durable_credential()
+  end
+
+  defp build_credential(
+         %Connection{} = connection,
+         %Install{} = install,
+         attrs,
+         credential_ref_id,
+         previous_credential
+       ) do
+    version = next_credential_version(previous_credential)
+
     Credential.new!(%{
-      id: credential_id(connection.connection_id),
+      id: credential_id(credential_ref_id, version),
+      credential_ref_id: credential_ref_id,
       connection_id: connection.connection_id,
+      profile_id: connection.profile_id || install.profile_id,
       subject: connection.subject,
       auth_type: connection.auth_type,
+      version: version,
       scopes: Map.get(attrs, :granted_scopes, connection.requested_scopes),
       secret: Map.get(attrs, :secret, %{}),
       lease_fields: Map.get(attrs, :lease_fields),
       expires_at: Map.get(attrs, :expires_at),
+      refresh_token_expires_at: Map.get(attrs, :refresh_token_expires_at),
+      source: Map.get(attrs, :source, default_credential_source(install.flow_kind)),
+      source_ref: Map.get(attrs, :source_ref),
+      supersedes_credential_id: previous_credential && previous_credential.id,
       metadata: Map.get(attrs, :metadata, %{})
     })
   end
 
   defp build_rotated_credential(%Credential{} = credential, %Connection{} = connection, attrs) do
+    version = next_credential_version(credential)
+
     Credential.new!(%{
-      id: credential.id,
+      id: credential_id(credential.credential_ref_id, version),
+      credential_ref_id: credential.credential_ref_id,
       connection_id: connection.connection_id,
+      profile_id: connection.profile_id || credential.profile_id,
       subject: connection.subject,
       auth_type: connection.auth_type,
+      version: version,
       scopes: Map.get(attrs, :granted_scopes, credential.scopes),
       secret: Map.fetch!(attrs, :secret),
       lease_fields: Map.get(attrs, :lease_fields, credential.lease_fields),
       expires_at: Map.get(attrs, :expires_at, credential.expires_at),
+      refresh_token_expires_at:
+        Map.get(attrs, :refresh_token_expires_at, credential.refresh_token_expires_at),
+      source: Map.get(attrs, :source, :rotation),
+      source_ref: Map.get(attrs, :source_ref),
+      supersedes_credential_id: credential.id,
       metadata: Map.get(attrs, :metadata, credential.metadata)
     })
   end
 
-  defp build_credential_ref(%Credential{} = credential, %Connection{} = connection, install) do
+  defp build_credential_ref(
+         %Credential{} = credential,
+         %Connection{} = connection,
+         install,
+         credential_ref_id
+       ) do
     CredentialRef.new!(%{
-      id: credential.id,
+      id: credential_ref_id,
+      connection_id: connection.connection_id,
+      profile_id: credential.profile_id || connection.profile_id,
       subject: credential.subject,
+      current_credential_id: credential.id,
       scopes: credential.scopes,
+      lease_fields: credential.lease_fields,
       metadata: %{
         connection_id: connection.connection_id,
         install_id: install && install.install_id,
@@ -467,6 +613,7 @@ defmodule Jido.Integration.V2.Auth do
       install
       | state: :completed,
         granted_scopes: Map.get(attrs, :granted_scopes, install.requested_scopes),
+        callback_received_at: Map.get(attrs, :callback_received_at),
         completed_at: now,
         updated_at: now
     }
@@ -478,16 +625,30 @@ defmodule Jido.Integration.V2.Auth do
            handler when is_function(handler, 2) <-
              Store.refresh_handler() || {:error, :credential_expired},
            {:ok, refresh_result} <- handler.(connection, credential) do
+        next_version = next_credential_version(credential)
+
         refreshed_credential =
           Credential.new!(%{
-            id: credential.id,
+            id: credential_id(credential.credential_ref_id, next_version),
+            credential_ref_id: credential.credential_ref_id,
             connection_id: credential.connection_id,
+            profile_id: credential.profile_id || connection.profile_id,
             subject: credential.subject,
             auth_type: credential.auth_type,
+            version: next_version,
             scopes: Map.get(refresh_result, :scopes, credential.scopes),
             secret: Map.get(refresh_result, :secret, credential.secret),
             lease_fields: Map.get(refresh_result, :lease_fields, credential.lease_fields),
             expires_at: Map.get(refresh_result, :expires_at, credential.expires_at),
+            refresh_token_expires_at:
+              Map.get(
+                refresh_result,
+                :refresh_token_expires_at,
+                credential.refresh_token_expires_at
+              ),
+            source: :refresh,
+            source_ref: Map.get(refresh_result, :source_ref),
+            supersedes_credential_id: credential.id,
             metadata: Map.get(refresh_result, :metadata, credential.metadata)
           })
 
@@ -495,9 +656,14 @@ defmodule Jido.Integration.V2.Auth do
           %Connection{
             connection
             | state: :connected,
+              current_credential_id: refreshed_credential.id,
               granted_scopes: refreshed_credential.scopes,
               lease_fields: refreshed_credential.lease_fields,
               token_expires_at: refreshed_credential.expires_at,
+              last_refresh_at: now,
+              last_refresh_status: :ok,
+              degraded_reason: nil,
+              reauth_required_reason: nil,
               updated_at: now
           }
 
@@ -505,20 +671,23 @@ defmodule Jido.Integration.V2.Auth do
         :ok = Stores.connection_store().store_connection(refreshed_connection)
         {:ok, refreshed_connection, refreshed_credential}
       else
-        {:error, _reason} ->
-          mark_reauth_required(connection, now)
+        {:error, reason} ->
+          mark_reauth_required(connection, now, reason)
       end
     else
       {:ok, connection, credential}
     end
   end
 
-  defp mark_reauth_required(%Connection{} = connection, now) do
+  defp mark_reauth_required(%Connection{} = connection, now, reason) do
     with {:ok, %Connection{} = reauth_connection} <-
            transition_connection(connection, :reauth_required) do
       reauth_connection = %Connection{
         reauth_connection
         | state: :reauth_required,
+          last_refresh_at: now,
+          last_refresh_status: :error,
+          reauth_required_reason: normalize_reason(reason),
           updated_at: now
       }
 
@@ -531,9 +700,13 @@ defmodule Jido.Integration.V2.Auth do
     CredentialLease.new!(%{
       lease_id: lease_record.lease_id,
       credential_ref_id: lease_record.credential_ref_id,
+      credential_id: lease_record.credential_id,
+      connection_id: lease_record.connection_id,
+      profile_id: lease_record.profile_id || credential.profile_id,
       subject: lease_record.subject,
       scopes: lease_record.scopes,
       payload: Credential.lease_payload(credential, lease_record.payload_keys),
+      lease_fields: lease_record.payload_keys,
       issued_at: lease_record.issued_at,
       expires_at: lease_record.expires_at,
       metadata: Map.merge(lease_record.metadata, %{connection_id: lease_record.connection_id})
@@ -572,7 +745,7 @@ defmodule Jido.Integration.V2.Auth do
 
   defp ensure_install_open(%Install{} = install, now) do
     cond do
-      install.state != :installing ->
+      install.state not in [:installing, :awaiting_callback] ->
         {:error, :install_already_consumed}
 
       Install.expired?(install, now) ->
@@ -641,16 +814,54 @@ defmodule Jido.Integration.V2.Auth do
   end
 
   defp connection_id(%CredentialRef{} = credential_ref, %Credential{} = credential) do
-    metadata = Map.get(credential_ref, :metadata, %{})
+    if is_binary(credential_ref.connection_id) do
+      credential_ref.connection_id
+    else
+      metadata = Map.get(credential_ref, :metadata, %{})
 
-    Map.get(
-      metadata,
-      :connection_id,
-      Map.get(metadata, "connection_id", credential.connection_id)
-    )
+      Map.get(
+        metadata,
+        :connection_id,
+        Map.get(metadata, "connection_id", credential.connection_id)
+      )
+    end
   end
 
-  defp credential_id(connection_id), do: "cred:" <> connection_id
+  defp current_credential_id(%Connection{} = connection) do
+    connection.current_credential_id || connection.credential_ref_id
+  end
+
+  defp current_credential_id(%CredentialRef{} = credential_ref) do
+    credential_ref.current_credential_id || credential_ref.id
+  end
+
+  defp credential_ref_id(connection_id), do: "cred:" <> connection_id
+
+  defp credential_id(credential_ref_id, 1), do: credential_ref_id
+  defp credential_id(credential_ref_id, version), do: "#{credential_ref_id}:v#{version}"
+
+  defp next_credential_version(nil), do: 1
+  defp next_credential_version(%Credential{version: version}), do: version + 1
+
+  defp default_profile_id, do: "default"
+
+  defp default_flow_kind(:oauth2), do: :manual_callback
+  defp default_flow_kind(:app_installation), do: :provider_install
+  defp default_flow_kind(_auth_type), do: :manual
+
+  defp default_management_mode(:provider_install), do: :provider_app
+  defp default_management_mode(_flow_kind), do: :manual
+
+  defp default_secret_source(:provider_install), do: :hosted_callback
+  defp default_secret_source(:manual_callback), do: :hosted_callback
+  defp default_secret_source(_flow_kind), do: :manual
+
+  defp default_credential_source(:provider_install), do: :hosted_callback
+  defp default_credential_source(:manual_callback), do: :hosted_callback
+  defp default_credential_source(_flow_kind), do: :manual
+
+  defp normalize_reason(reason) when is_binary(reason), do: reason
+  defp normalize_reason(reason), do: inspect(reason)
 
   defp now(map), do: Map.get(map, :now, Contracts.now())
 

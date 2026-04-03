@@ -31,8 +31,19 @@ database-backed operational guarantees.
 - durable round-tripping of integrity metadata and target compatibility inputs
 - auth rows with:
   - encrypted secret-bearing credential fields
-  - explicit connection state and install-session state
-  - lease records that persist only bounded metadata, not raw lease payloads
+  - explicit install-session state including `profile_id`, flow/callback
+    correlation, and reauth lineage
+  - explicit connection state including profile, management, secret-source, and
+    current-credential lineage fields
+  - versioned credential lineage through `credential_ref_id`, `version`,
+    source/source-ref metadata, and supersession links
+  - lease records that persist only bounded metadata, not raw lease payloads,
+    including `credential_id` and `profile_id`
+
+The auth tables now also carry a forward-only expansion migration,
+`20260403000000_expand_phase_0_auth_truth_columns.exs`, which repairs already
+migrated dev/test databases that applied an older auth-table shape before the
+Phase 0 lineage columns landed.
 
 ## Test And Validation Defaults
 

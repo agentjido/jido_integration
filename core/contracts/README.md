@@ -9,6 +9,7 @@ surfaces.
 ## Public Types
 
 - `ArtifactRef`
+- `AuthSpec`
 - `BoundaryCapability`
 - `Capability`
 - `Credential`
@@ -73,6 +74,11 @@ surfaces.
 - `InvocationRequest` is the typed public invoke helper that normalizes stable
   facade fields, uses `connection_id` as the public auth binding, and derives
   the requested capability allowlist by default
+- `AuthSpec` is the authored, profile-driven auth contract; it carries
+  `supported_profiles`, `default_profile`, connector-level `install` and
+  `reauth` posture, connector-wide derived scope/lease/secret posture, and the
+  validation rules that keep callback, PKCE, and external-secret semantics
+  explicit
 - `OperationSpec` and `TriggerSpec` distinguish three layers explicitly:
   - provider inventory in connector-local catalogs
   - runtime-published manifest entries
@@ -107,12 +113,15 @@ surfaces.
 - generated actions build typed `InvocationRequest` structs and call the fixed
   `Jido.Integration.V2.invoke/1` facade path rather than honoring a
   caller-supplied invoker module
-- `CredentialRef` remains durable while `CredentialLease` is the short-lived
-  execution boundary
-- `Credential` carries durable subject/scope/auth metadata plus secret-bearing
-  fields that are meant to stay behind auth APIs
+- `CredentialRef` remains the durable, non-secret handle and now carries
+  profile plus current-credential lineage while `CredentialLease` stays the
+  short-lived execution boundary
+- `Credential` is the versioned durable secret-bearing record and now carries
+  `credential_ref_id`, `profile_id`, `version`, source lineage, and optional
+  supersession/revocation metadata behind auth APIs
 - `CredentialLease` carries only the execution-time payload needed for a
-  bounded lease lifetime
+  bounded lease lifetime plus safe lineage such as `credential_id` and
+  `profile_id`
 - `TargetDescriptor` matches against authored capability ids while remaining a
   compatibility and location advertisement rather than a second override plane
 - `TargetDescriptor.extensions["boundary"]` is the authored baseline boundary
@@ -202,6 +211,20 @@ surfaces.
   runtime context without collapsing back to an untyped map wrapper
 - exposes `to_opts/1` so `invoke/1` and `invoke/3` can share one normalized
   request shape
+
+`AuthSpec`
+
+- authors connector auth truth through explicit profile records rather than one
+  flat auth mode
+- derives connector-wide `auth_type`, `management_modes`,
+  `requested_scopes`, `durable_secret_fields`, and `lease_fields` from the
+  authored profile set when those connector-wide unions are omitted
+- normalizes legacy single-profile manifests into one deterministic
+  `"default"` profile so older authored connectors can be upgraded without a
+  second compatibility struct
+- keeps connector install and reauth posture explicit through the top-level
+  `install` and `reauth` maps instead of hiding callback or browser-flow rules
+  in provider helpers
 
 `OperationSpec` and `TriggerSpec`
 

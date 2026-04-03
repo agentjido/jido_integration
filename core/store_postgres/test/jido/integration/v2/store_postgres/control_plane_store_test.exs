@@ -89,6 +89,51 @@ defmodule Jido.Integration.V2.StorePostgres.ControlPlaneStoreTest do
     assert Enum.map(AttemptStore.list_attempts(run.run_id), & &1.attempt) == [1, 2]
   end
 
+  test "preserves JSON-safe string keys for durable runtime payload families" do
+    run =
+      run_fixture(%{
+        input: %{prompt: "hello", metadata: %{tenant_id: "tenant-1"}},
+        result: %{
+          inference_result: %{status: :ok},
+          compatibility_result: %{metadata: %{route: :cloud}}
+        }
+      })
+
+    attempt =
+      attempt_fixture(run, %{
+        output: %{
+          inference_result: %{status: :ok},
+          compatibility_result: %{metadata: %{route: :cloud}}
+        }
+      })
+
+    event =
+      event_fixture(run, attempt, %{
+        payload: %{authorization: "Bearer 123", route: :cloud},
+        trace: %{trace_id: "trace-1"}
+      })
+
+    assert :ok = RunStore.put_run(run)
+    assert :ok = AttemptStore.put_attempt(attempt)
+
+    assert :ok =
+             EventStore.append_events(
+               [event],
+               aggregator_id: attempt.aggregator_id,
+               aggregator_epoch: attempt.aggregator_epoch
+             )
+
+    assert {:ok, stored_run} = RunStore.fetch_run(run.run_id)
+    assert {:ok, stored_attempt} = AttemptStore.fetch_attempt(attempt.attempt_id)
+    [stored_event] = EventStore.list_events(run.run_id)
+
+    assert stored_run.input["prompt"] == "hello"
+    assert stored_run.input["metadata"]["tenant_id"] == "tenant-1"
+    assert stored_run.result["compatibility_result"]["metadata"]["route"] == "cloud"
+    assert stored_attempt.output["compatibility_result"]["metadata"]["route"] == "cloud"
+    assert stored_event.payload["route"] == "cloud"
+  end
+
   test "parameterizes identifiers and redacts secrets in durable run and event truth" do
     run =
       run_fixture(%{

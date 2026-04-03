@@ -118,11 +118,18 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
   defp valid_attrs(Credential) do
     %{
       id: "cred-1",
+      credential_ref_id: "cred-ref-1",
       connection_id: "conn-1",
+      profile_id: "oauth_default",
       subject: "operator",
       auth_type: :oauth2,
+      version: 2,
       scopes: ["issues:read"],
       secret: %{access_token: "token", refresh_token: "refresh"},
+      refresh_token_expires_at: ~U[2026-03-20 00:00:00Z],
+      source: :refresh,
+      source_ref: %{flow: :refresh},
+      supersedes_credential_id: "cred-0",
       metadata: %{tenant: "tenant-1"}
     }
   end
@@ -131,9 +138,13 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
     %{
       lease_id: "lease-1",
       credential_ref_id: "cred-ref-1",
+      credential_id: "cred-1",
+      connection_id: "conn-1",
+      profile_id: "oauth_default",
       subject: "operator",
       scopes: ["issues:read"],
       payload: %{access_token: "token"},
+      lease_fields: ["access_token"],
       issued_at: ~U[2026-03-19 00:00:00Z],
       expires_at: ~U[2026-03-19 00:05:00Z]
     }
@@ -142,8 +153,12 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
   defp valid_attrs(CredentialRef) do
     %{
       id: "cred-ref-1",
+      connection_id: "conn-1",
+      profile_id: "oauth_default",
       subject: "operator",
+      current_credential_id: "cred-1",
       scopes: ["issues:read"],
+      lease_fields: ["access_token"],
       metadata: %{tenant: "tenant-1"}
     }
   end

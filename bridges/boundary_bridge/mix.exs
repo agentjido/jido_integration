@@ -37,7 +37,10 @@ defmodule Jido.BoundaryBridge.MixProject do
   defp deps do
     [
       DependencyResolver.jido_os(),
+      DependencyResolver.jido_shell(override: true),
+      DependencyResolver.sprites(override: true),
       DependencyResolver.cli_subprocess_core(override: true),
+      DependencyResolver.external_runtime_transport(override: true),
       {:zoi, "~> 0.17"},
       {:splode, "~> 0.3.0"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

@@ -38,6 +38,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       DependencyResolver.self_hosted_inference_core(override: true),
       DependencyResolver.llama_cpp_ex(only: :test),
       DependencyResolver.jido_integration_v2_harness_runtime(only: :test),
+      {:plug, "~> 1.19", only: [:dev, :test]},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

@@ -14,7 +14,21 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
     |> to_record_attrs()
     |> then(&LeaseSchema.changeset(%LeaseSchema{}, &1))
     |> Repo.insert(
-      on_conflict: {:replace, [:payload_keys, :expires_at, :revoked_at, :metadata]},
+      on_conflict:
+        {:replace,
+         [
+           :credential_ref_id,
+           :credential_id,
+           :connection_id,
+           :profile_id,
+           :subject,
+           :scopes,
+           :payload_keys,
+           :issued_at,
+           :expires_at,
+           :revoked_at,
+           :metadata
+         ]},
       conflict_target: [:lease_id]
     )
     |> case do
@@ -34,7 +48,9 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
          AuthLeaseRecord.new!(%{
            lease_id: record.lease_id,
            credential_ref_id: record.credential_ref_id,
+           credential_id: record.credential_id,
            connection_id: record.connection_id,
+           profile_id: record.profile_id,
            subject: record.subject,
            scopes: record.scopes || [],
            payload_keys: record.payload_keys || [],
@@ -55,7 +71,9 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
     %{
       lease_id: lease.lease_id,
       credential_ref_id: lease.credential_ref_id,
+      credential_id: lease.credential_id,
       connection_id: lease.connection_id,
+      profile_id: lease.profile_id,
       subject: lease.subject,
       scopes: lease.scopes,
       payload_keys: lease.payload_keys,

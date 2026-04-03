@@ -107,8 +107,12 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
 
     defp parse_content_length(line) do
       case String.split(line, ":", parts: 2) do
-        [name, value] when name |> String.downcase() == "content-length" ->
-          value |> String.trim() |> String.to_integer()
+        [name, value] ->
+          if String.downcase(name) == "content-length" do
+            value |> String.trim() |> String.to_integer()
+          else
+            false
+          end
 
         _other ->
           false

@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.ContractsTest do
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
@@ -12,7 +13,35 @@ defmodule Jido.Integration.V2.ContractsTest do
   alias Jido.Integration.V2.TargetDescriptor
 
   test "run and attempt identities stay canonical as contracts broaden" do
-    credential_ref = CredentialRef.new!(%{id: "cred-1", subject: "operator"})
+    credential_ref =
+      CredentialRef.new!(%{
+        id: "cred-ref-1",
+        connection_id: "conn-1",
+        profile_id: "manual_token",
+        subject: "operator",
+        current_credential_id: "cred-ref-1:v2",
+        scopes: ["issues:write"],
+        lease_fields: ["access_token"]
+      })
+
+    credential =
+      Credential.new!(%{
+        id: "cred-ref-1:v2",
+        credential_ref_id: credential_ref.id,
+        connection_id: "conn-1",
+        profile_id: "manual_token",
+        subject: "operator",
+        auth_type: :api_token,
+        version: 2,
+        scopes: ["issues:write"],
+        secret: %{access_token: "gho_test", refresh_token: "ghr_test"},
+        lease_fields: ["access_token"],
+        source: :refresh,
+        source_ref: %{flow: :refresh},
+        supersedes_credential_id: "cred-ref-1",
+        metadata: %{tenant: "tenant-1"}
+      })
+
     checksum = "sha256:" <> String.duplicate("a", 64)
 
     artifact_ref =
@@ -76,9 +105,13 @@ defmodule Jido.Integration.V2.ContractsTest do
       CredentialLease.new!(%{
         lease_id: "lease-1",
         credential_ref_id: credential_ref.id,
+        credential_id: credential.id,
+        connection_id: credential.connection_id,
+        profile_id: credential.profile_id,
         subject: credential_ref.subject,
         scopes: ["issues:write"],
         payload: %{access_token: "gho_test"},
+        lease_fields: ["access_token"],
         issued_at: ~U[2026-03-09 12:00:00Z],
         expires_at: ~U[2026-03-09 12:05:00Z]
       })
@@ -96,6 +129,12 @@ defmodule Jido.Integration.V2.ContractsTest do
     assert run.capability_id == capability.id
     assert run.target_id == target_descriptor.target_id
     assert run.artifact_refs == [artifact_ref]
+    assert credential.version == 2
+    assert credential.credential_ref_id == credential_ref.id
+    assert credential.supersedes_credential_id == "cred-ref-1"
+    assert lease.credential_id == credential.id
+    assert lease.connection_id == credential.connection_id
+    assert lease.profile_id == credential.profile_id
     assert attempt.run_id == run.run_id
     assert attempt.attempt == 1
     assert attempt.attempt_id == "#{run.run_id}:1"

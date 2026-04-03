@@ -5,7 +5,7 @@ defmodule Jido.Integration.V2.Auth.Install do
 
   alias Jido.Integration.V2.Contracts
 
-  @states [:installing, :completed, :expired, :cancelled]
+  @states [:installing, :awaiting_callback, :completed, :expired, :cancelled, :failed]
 
   @enforce_keys [
     :install_id,
@@ -14,6 +14,7 @@ defmodule Jido.Integration.V2.Auth.Install do
     :connector_id,
     :actor_id,
     :auth_type,
+    :profile_id,
     :subject,
     :state,
     :callback_token,
@@ -26,11 +27,20 @@ defmodule Jido.Integration.V2.Auth.Install do
     :connector_id,
     :actor_id,
     :auth_type,
+    :profile_id,
     :subject,
     :state,
+    :flow_kind,
     :callback_token,
+    :state_token,
+    :pkce_verifier_digest,
+    :callback_uri,
     :expires_at,
+    :callback_received_at,
     :completed_at,
+    :cancelled_at,
+    :failure_reason,
+    :reauth_of_connection_id,
     :inserted_at,
     :updated_at,
     requested_scopes: [],
@@ -38,7 +48,7 @@ defmodule Jido.Integration.V2.Auth.Install do
     metadata: %{}
   ]
 
-  @type state :: :installing | :completed | :expired | :cancelled
+  @type state :: :installing | :awaiting_callback | :completed | :expired | :cancelled | :failed
 
   @type t :: %__MODULE__{
           install_id: String.t(),
@@ -47,13 +57,22 @@ defmodule Jido.Integration.V2.Auth.Install do
           connector_id: String.t(),
           actor_id: String.t(),
           auth_type: atom(),
+          profile_id: String.t(),
           subject: String.t(),
           state: state(),
+          flow_kind: atom() | nil,
           callback_token: String.t(),
+          state_token: String.t() | nil,
+          pkce_verifier_digest: String.t() | nil,
+          callback_uri: String.t() | nil,
           requested_scopes: [String.t()],
           granted_scopes: [String.t()],
           expires_at: DateTime.t(),
+          callback_received_at: DateTime.t() | nil,
           completed_at: DateTime.t() | nil,
+          cancelled_at: DateTime.t() | nil,
+          failure_reason: String.t() | nil,
+          reauth_of_connection_id: String.t() | nil,
           metadata: map(),
           inserted_at: DateTime.t(),
           updated_at: DateTime.t()
@@ -71,13 +90,22 @@ defmodule Jido.Integration.V2.Auth.Install do
       connector_id: Map.fetch!(attrs, :connector_id),
       actor_id: Map.fetch!(attrs, :actor_id),
       auth_type: Map.fetch!(attrs, :auth_type),
+      profile_id: Map.fetch!(attrs, :profile_id),
       subject: Map.fetch!(attrs, :subject),
       state: validate_state!(Map.fetch!(attrs, :state)),
+      flow_kind: Map.get(attrs, :flow_kind),
       callback_token: Map.fetch!(attrs, :callback_token),
+      state_token: Map.get(attrs, :state_token),
+      pkce_verifier_digest: Map.get(attrs, :pkce_verifier_digest),
+      callback_uri: Map.get(attrs, :callback_uri),
       requested_scopes: Map.get(attrs, :requested_scopes, []),
       granted_scopes: Map.get(attrs, :granted_scopes, []),
       expires_at: Map.fetch!(attrs, :expires_at),
+      callback_received_at: Map.get(attrs, :callback_received_at),
       completed_at: Map.get(attrs, :completed_at),
+      cancelled_at: Map.get(attrs, :cancelled_at),
+      failure_reason: Map.get(attrs, :failure_reason),
+      reauth_of_connection_id: Map.get(attrs, :reauth_of_connection_id),
       metadata: Map.get(attrs, :metadata, %{}),
       inserted_at: timestamp,
       updated_at: Map.get(attrs, :updated_at, timestamp)
