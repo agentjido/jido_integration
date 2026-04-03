@@ -15,7 +15,9 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
       sdk_resolver_call: "ConnectorDependencyResolver.github_ex()",
       sdk_local_path: "[\"../../../github_ex\"]",
       sdk_hex_dep: "{:github_ex, \"~> 0.1.0\", opts}",
-      forbidden_sdk_fallbacks: ["GITHUB_EX_PATH", "nshkrdotcom/github_ex"]
+      forbidden_sdk_fallbacks: ["GITHUB_EX_PATH", "nshkrdotcom/github_ex"],
+      required_auth_dep: "WorkspaceDependencyResolver.pristine(override: true)",
+      forbidden_auth_dep: "ConnectorDependencyResolver.prismatic("
     },
     %{
       mix_path: Path.expand("../../connectors/notion/mix.exs", __DIR__),
@@ -30,7 +32,9 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
       sdk_resolver_call: "ConnectorDependencyResolver.notion_sdk()",
       sdk_local_path: "[\"../../../notion_sdk\"]",
       sdk_hex_dep: "{:notion_sdk, \"~> 0.2.0\", opts}",
-      forbidden_sdk_fallbacks: ["NOTION_SDK_PATH", "nshkrdotcom/notion_sdk"]
+      forbidden_sdk_fallbacks: ["NOTION_SDK_PATH", "nshkrdotcom/notion_sdk"],
+      required_auth_dep: "WorkspaceDependencyResolver.pristine(override: true)",
+      forbidden_auth_dep: "ConnectorDependencyResolver.prismatic("
     },
     %{
       mix_path: Path.expand("../../connectors/linear/mix.exs", __DIR__),
@@ -45,7 +49,9 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
       sdk_resolver_call: "ConnectorDependencyResolver.linear_sdk()",
       sdk_local_path: "[\"../../../linear_sdk\"]",
       sdk_hex_dep: "{:linear_sdk, \"~> 0.2.0\", opts}",
-      forbidden_sdk_fallbacks: ["LINEAR_SDK_PATH", "nshkrdotcom/linear_sdk"]
+      forbidden_sdk_fallbacks: ["LINEAR_SDK_PATH", "nshkrdotcom/linear_sdk"],
+      required_auth_dep: "ConnectorDependencyResolver.prismatic(override: true)",
+      forbidden_auth_dep: "WorkspaceDependencyResolver.pristine(override: true)"
     }
   ]
 
@@ -120,6 +126,25 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           refute resolver =~ forbidden_sdk_fallback,
                  "#{resolver_path} must not carry non-Hex, non-local SDK fallback #{inspect(forbidden_sdk_fallback)}"
         end)
+      end
+    )
+  end
+
+  test "direct connector packages declare lower-repo auth dependencies honestly" do
+    Enum.each(
+      @direct_connectors,
+      fn %{
+           mix_path: mix_path,
+           required_auth_dep: required_auth_dep,
+           forbidden_auth_dep: forbidden_auth_dep
+         } ->
+        mix_exs = File.read!(mix_path)
+
+        assert mix_exs =~ required_auth_dep,
+               "#{mix_path} must declare the lower-repo auth dependency it uses directly"
+
+        refute mix_exs =~ forbidden_auth_dep,
+               "#{mix_path} must not carry an unrelated lower-repo auth dependency"
       end
     )
   end

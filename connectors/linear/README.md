@@ -30,8 +30,10 @@ non-direct capability families.
 - reauth is published only for `oauth_user`
 - the connector mints short-lived credential leases and builds
   `LinearSDK.Client` instances from those leases only
+- `install_binding` remains connector-local and only feeds install, reauth,
+  manual-auth, or rotation completion flows
 - the live execution path is
-  `Jido.Integration.V2 -> DirectRuntime -> connector -> linear_sdk -> pristine`
+  `Jido.Integration.V2 -> DirectRuntime -> connector -> linear_sdk -> prismatic`
 - the current authored capability slice requires the Linear `read` and `write`
   scopes
 - OAuth control endpoints stay in the install/auth flow rather than widening
@@ -131,8 +133,12 @@ The connector owns:
 
 - provider HTTP execution
 - GraphQL request construction
-- OAuth helper functions and token exchange helpers
+- OAuth helper functions and token exchange helpers built on `Prismatic.OAuth2`
 - provider error envelopes and transport behavior
+
+This connector depends on `prismatic` directly only for token-struct
+normalization inside `install_binding`; the runtime invoke path still stays
+lease-bound through `LinearSDK.Client`.
 
 Offline tests override the SDK transport with deterministic fixture responses.
 That seam keeps provider HTTP behavior in `linear_sdk` instead of recreating it

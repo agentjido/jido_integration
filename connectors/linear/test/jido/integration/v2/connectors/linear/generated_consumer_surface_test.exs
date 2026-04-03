@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.GeneratedConsumerSurfaceTest do
   alias Jido.Integration.V2.Connectors.Linear.Fixtures
   alias Jido.Integration.V2.Connectors.Linear.Generated.Actions.UsersGetSelf
   alias Jido.Integration.V2.Connectors.Linear.Generated.Plugin, as: GeneratedPlugin
+  alias Jido.Integration.V2.Connectors.Linear.InstallBinding
   alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.InvocationRequest
@@ -167,6 +168,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.GeneratedConsumerSurfaceTest do
   defp install_connection! do
     now = Contracts.now()
     auth = Linear.manifest().auth
+    binding = InstallBinding.from_api_key(Fixtures.api_key())
 
     assert {:ok, %{install: install, connection: connection}} =
              V2.start_install("linear", "tenant-generated-linear", %{
@@ -180,13 +182,15 @@ defmodule Jido.Integration.V2.Connectors.Linear.GeneratedConsumerSurfaceTest do
 
     assert {:ok,
             %{install: %{install_id: install_id}, connection: %{connection_id: connection_id}}} =
-             V2.complete_install(install.install_id, %{
-               subject: "usr-linear-viewer",
-               granted_scopes: auth.requested_scopes,
-               secret: %{api_key: Fixtures.api_key()},
-               expires_at: DateTime.add(now, 7 * 24 * 3_600, :second),
-               now: now
-             })
+             V2.complete_install(
+               install.install_id,
+               InstallBinding.complete_install_attrs(
+                 "usr-linear-viewer",
+                 auth.requested_scopes,
+                 %{binding | expires_at: DateTime.add(now, 7 * 24 * 3_600, :second)},
+                 now: now
+               )
+             )
 
     assert install_id == install.install_id
     assert connection_id == connection.connection_id

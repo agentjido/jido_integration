@@ -207,7 +207,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
       [
         issue_id: Zoi.string()
       ],
-      description: "Retrieve a Linear issue by issue id or identifier such as ENG-123"
+      description: "Retrieve a Linear issue by its provider id"
     )
   end
 

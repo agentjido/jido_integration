@@ -17,6 +17,12 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
       uniqueness_checks(manifest.operations, manifest.triggers) ++
         Enum.flat_map(manifest.operations, &operation_checks/1) ++
         Enum.flat_map(manifest.triggers, &trigger_checks/1) ++
+        auth_control_helper_checks(
+          connector_module,
+          manifest,
+          projected_operations,
+          projected_triggers
+        ) ++
         Enum.flat_map(projected_operations, &generated_action_checks(connector_module, &1)) ++
         generated_plugin_checks(connector_module, projected_operations, projected_triggers) ++
         Enum.flat_map(projected_triggers, &generated_sensor_checks(connector_module, &1))
@@ -217,6 +223,49 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
   end
 
   defp present_string?(value), do: is_binary(value) and String.trim(value) != ""
+
+  defp auth_control_helper_checks(
+         connector_module,
+         manifest,
+         projected_operations,
+         projected_triggers
+       ) do
+    if install_binding_module?(connector_module) do
+      [
+        SuiteSupport.check(
+          "#{manifest.connector}.auth_control.install_binding.absent_from_operation_ids",
+          Enum.all?(manifest.operations, &(not leaked_install_binding_surface?(&1.operation_id))),
+          "auth-control helpers such as install_binding must stay out of authored operation ids"
+        ),
+        SuiteSupport.check(
+          "#{manifest.connector}.auth_control.install_binding.absent_from_trigger_ids",
+          Enum.all?(manifest.triggers, &(not leaked_install_binding_surface?(&1.trigger_id))),
+          "auth-control helpers such as install_binding must stay out of authored trigger ids"
+        ),
+        SuiteSupport.check(
+          "#{manifest.connector}.auth_control.install_binding.absent_from_common_operations",
+          Enum.all?(projected_operations, &common_operation_surface_safe?/1),
+          "auth-control helpers such as install_binding must stay out of common action ids and names"
+        ),
+        SuiteSupport.check(
+          "#{manifest.connector}.auth_control.install_binding.absent_from_common_triggers",
+          Enum.all?(projected_triggers, &common_trigger_surface_safe?/1),
+          "auth-control helpers such as install_binding must stay out of common sensor ids and names"
+        ),
+        SuiteSupport.check(
+          "#{manifest.connector}.auth_control.install_binding.absent_from_generated_plugin",
+          generated_plugin_surface_safe?(
+            connector_module,
+            projected_operations,
+            projected_triggers
+          ),
+          "generated plugins must not expose install_binding or other auth-control helpers"
+        )
+      ]
+    else
+      []
+    end
+  end
 
   defp generated_action_checks(connector_module, %OperationSpec{} = operation) do
     case safe_projection(fn ->
@@ -597,4 +646,60 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
 
     values == Enum.uniq(values)
   end
+
+  defp install_binding_module?(connector_module) do
+    connector_module
+    |> Module.concat("InstallBinding")
+    |> Code.ensure_loaded?()
+  end
+
+  defp common_operation_surface_safe?(%OperationSpec{} = operation) do
+    surface = Map.get(operation, :consumer_surface, %{})
+
+    Enum.all?(
+      [SuiteSupport.fetch(surface, :normalized_id), SuiteSupport.fetch(surface, :action_name)],
+      &(not leaked_install_binding_surface?(&1))
+    )
+  end
+
+  defp common_trigger_surface_safe?(%TriggerSpec{} = trigger) do
+    surface = Map.get(trigger, :consumer_surface, %{})
+
+    Enum.all?(
+      [SuiteSupport.fetch(surface, :normalized_id), SuiteSupport.fetch(surface, :sensor_name)],
+      &(not leaked_install_binding_surface?(&1))
+    )
+  end
+
+  defp generated_plugin_surface_safe?(connector_module, projected_operations, projected_triggers) do
+    if projected_operations == [] and projected_triggers == [] do
+      true
+    else
+      plugin_module = ConsumerProjection.plugin_module(connector_module)
+
+      generated_plugin_module_resolves?(plugin_module) and
+        Enum.all?(
+          plugin_module.actions() ++ plugin_module.subscriptions(),
+          &(not helper_module?(&1, "InstallBinding"))
+        )
+    end
+  rescue
+    _error -> false
+  end
+
+  defp helper_module?(module, helper_name) when is_atom(module) and is_binary(helper_name) do
+    module
+    |> Module.split()
+    |> Enum.any?(&(&1 == helper_name))
+  end
+
+  defp helper_module?(_module, _helper_name), do: false
+
+  defp leaked_install_binding_surface?(value) when is_binary(value) do
+    value
+    |> String.downcase()
+    |> String.contains?("install_binding")
+  end
+
+  defp leaked_install_binding_surface?(_value), do: false
 end

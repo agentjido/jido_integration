@@ -118,6 +118,14 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
     assert linear_readme =~ "builds `LinearSDK.Client` instances from those leases only"
 
     assert linear_readme =~
+             "`install_binding` remains connector-local and only feeds install, reauth, manual-auth, or rotation completion flows"
+
+    assert linear_readme =~
+             "`Jido.Integration.V2 -> DirectRuntime -> connector -> linear_sdk -> prismatic`"
+
+    refute linear_readme =~ "linear_sdk -> pristine"
+
+    assert linear_readme =~
              "Those generated actions and plugin exports are derivative only."
 
     notion_readme =

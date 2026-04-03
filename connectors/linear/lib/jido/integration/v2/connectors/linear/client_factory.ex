@@ -8,7 +8,6 @@ defmodule Jido.Integration.V2.Connectors.Linear.ClientFactory do
   @allowed_option_keys [
     :base_url,
     :headers,
-    :oauth2,
     :req_options,
     :telemetry_prefix,
     :transport

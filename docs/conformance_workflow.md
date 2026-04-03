@@ -47,6 +47,8 @@ It exists to prove that a connector:
   and reauth posture internally consistent
 - ships loadable generated common consumer surfaces whose action/plugin/sensor
   metadata stays aligned with authored projection truth and remains unique
+- rejects auth-control helper leakage such as `install_binding` in authored
+  runtime ids and generated action/plugin surfaces
 - fits the declared runtime family
 - declares policy posture explicitly
 - can execute deterministic fixtures through lease-only auth context without

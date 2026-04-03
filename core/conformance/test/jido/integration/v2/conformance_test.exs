@@ -1330,6 +1330,109 @@ defmodule Jido.Integration.V2.ConformanceTest do
     end
   end
 
+  defmodule AuthControlLeakHandler do
+    def run(_input, _context), do: {:ok, RuntimeResult.new!(%{output: %{ok: true}})}
+  end
+
+  defmodule LeakyAuthControlSurfaceConnector do
+    @behaviour Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "leaky_auth_control",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            management_modes: [:manual],
+            requested_scopes: ["issues:read"],
+            durable_secret_fields: ["access_token"],
+            lease_fields: ["access_token"],
+            default_profile: "oauth_user",
+            supported_profiles: [
+              %{
+                id: "oauth_user",
+                auth_type: :oauth2,
+                subject_kind: :user,
+                install_required: true,
+                grant_types: [:authorization_code],
+                callback_required: true,
+                refresh_supported: false,
+                revoke_supported: false,
+                reauth_supported: false,
+                external_secret_supported: false,
+                durable_secret_fields: ["access_token"],
+                lease_fields: ["access_token"],
+                management_modes: [:manual],
+                required_scopes: ["issues:read"],
+                docs_refs: [],
+                metadata: %{}
+              }
+            ],
+            install: %{
+              required: true,
+              profiles: ["oauth_user"],
+              hosted_callback_supported: true,
+              callback_route_kind: "oauth_callback",
+              state_required: true,
+              pkce_supported: false,
+              metadata: %{}
+            },
+            reauth: %{supported: false},
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "Leaky Auth Control",
+            description: "Test connector that leaks install_binding into common action names",
+            category: "test",
+            tags: ["conformance"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "leaky_auth.issue.fetch",
+            name: "issue_fetch",
+            display_name: "Issue Fetch",
+            description:
+              "Operation that should not leak auth-control helpers into generated names",
+            runtime_class: :direct,
+            transport_mode: :sdk,
+            handler: AuthControlLeakHandler,
+            input_schema: Zoi.object(%{issue_id: Zoi.string()}),
+            output_schema: Zoi.object(%{issue: Zoi.object(%{id: Zoi.string()})}),
+            permissions: %{required_scopes: ["issues:read"]},
+            policy: %{
+              environment: %{allowed: [:prod]},
+              sandbox: %{
+                level: :standard,
+                egress: :restricted,
+                approvals: :auto,
+                allowed_tools: ["leaky_auth.issue.fetch"]
+              }
+            },
+            upstream: %{transport: :sdk},
+            consumer_surface: %{
+              mode: :common,
+              normalized_id: "work_item.fetch",
+              action_name: "install_binding"
+            },
+            schema_policy: %{input: :defined, output: :defined},
+            jido: %{action: %{name: "install_binding"}},
+            metadata: %{publication: :public}
+          })
+        ],
+        triggers: [],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
+  defmodule LeakyAuthControlSurfaceConnector.InstallBinding do
+  end
+
   test "returns the stable connector foundation profile names" do
     assert Conformance.profiles() == [:connector_foundation]
   end
@@ -1390,6 +1493,34 @@ defmodule Jido.Integration.V2.ConformanceTest do
            )
   end
 
+  test "passes explicit auth-control helper boundary checks for a shipped direct connector surface" do
+    assert {:ok, report} =
+             Conformance.run(
+               GitHub,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-04-03 00:00:00Z]
+             )
+
+    projection_suite = Enum.find(report.suite_results, &(&1.id == :consumer_surface_projection))
+
+    assert projection_suite.status == :passed
+
+    assert passed_check?(
+             projection_suite.checks,
+             "github.auth_control.install_binding.absent_from_operation_ids"
+           )
+
+    assert passed_check?(
+             projection_suite.checks,
+             "github.auth_control.install_binding.absent_from_common_operations"
+           )
+
+    assert passed_check?(
+             projection_suite.checks,
+             "github.auth_control.install_binding.absent_from_generated_plugin"
+           )
+  end
+
   test "fails conformance when projected common surfaces omit generated modules" do
     assert {:ok, report} =
              Conformance.run(
@@ -1443,6 +1574,21 @@ defmodule Jido.Integration.V2.ConformanceTest do
     assert failed_check?(
              projection_suite.checks,
              "drifted_generated.issue.updated.generated_sensor.projection_consistent"
+           )
+  end
+
+  test "fails conformance when install_binding leaks into the curated common action surface" do
+    projection_suite =
+      ConsumerSurfaceProjection.run(%{
+        connector_module: LeakyAuthControlSurfaceConnector,
+        manifest: LeakyAuthControlSurfaceConnector.manifest()
+      })
+
+    assert projection_suite.status == :failed
+
+    assert failed_check?(
+             projection_suite.checks,
+             "leaky_auth_control.auth_control.install_binding.absent_from_common_operations"
            )
   end
 

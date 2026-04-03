@@ -43,7 +43,6 @@ defmodule Jido.Integration.V2.Connectors.Linear.MixProject do
       WorkspaceDependencyResolver.jido_integration_v2_direct_runtime(),
       WorkspaceDependencyResolver.jido_integration_v2_conformance(only: :test, runtime: false),
       WorkspaceDependencyResolver.jido_integration_v2(only: [:dev, :test]),
-      WorkspaceDependencyResolver.pristine(override: true),
       {:zoi, "~> 0.17"},
       ConnectorDependencyResolver.linear_sdk(),
       ConnectorDependencyResolver.prismatic(override: true),
@@ -57,7 +56,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.MixProject do
   defp dialyzer do
     [
       plt_add_deps: :apps_direct,
-      plt_add_apps: [:mix, :pristine]
+      plt_add_apps: [:mix, :prismatic]
     ]
   end
 

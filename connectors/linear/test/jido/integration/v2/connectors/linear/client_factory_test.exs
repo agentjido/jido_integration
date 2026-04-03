@@ -47,4 +47,34 @@ defmodule Jido.Integration.V2.Connectors.Linear.ClientFactoryTest do
                opts: %{}
              })
   end
+
+  test "ignores configured and runtime oauth2 sources so invoke stays lease-bound" do
+    previous_config =
+      Application.get_env(:jido_integration_v2_linear, ClientFactory, [])
+
+    Application.put_env(
+      :jido_integration_v2_linear,
+      ClientFactory,
+      oauth2: [token_source: {:static, %{access_token: "shadow-config-token"}}]
+    )
+
+    on_exit(fn ->
+      case previous_config do
+        nil -> Application.delete_env(:jido_integration_v2_linear, ClientFactory)
+        value -> Application.put_env(:jido_integration_v2_linear, ClientFactory, value)
+      end
+    end)
+
+    context =
+      Fixtures.execution_context("linear.users.get_self",
+        linear_client: %{
+          oauth2: [token_source: {:static, %{access_token: "shadow-runtime-token"}}],
+          transport: FixtureTransport
+        }
+      )
+
+    assert {:ok, client} = ClientFactory.build(context)
+    assert client.runtime.context.auth == {:header, "Authorization", Fixtures.api_key()}
+    assert client.runtime.context.oauth2 == nil
+  end
 end
