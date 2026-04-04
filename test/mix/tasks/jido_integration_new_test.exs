@@ -354,12 +354,14 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   end
 
   defp run_task(args) do
-    reload_module!(Jido.Integration.Workspace.ConnectorScaffold)
-    reload_module!(Mix.Tasks.Jido.Integration.New)
-    Mix.Task.reenable("jido.integration.new")
+    with_progress("scaffold #{Enum.join(args, " ")}", fn ->
+      reload_module!(Jido.Integration.Workspace.ConnectorScaffold)
+      reload_module!(Mix.Tasks.Jido.Integration.New)
+      Mix.Task.reenable("jido.integration.new")
 
-    capture_io(fn ->
-      NewTask.run(args)
+      capture_io(fn ->
+        NewTask.run(args)
+      end)
     end)
   end
 
@@ -430,24 +432,40 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       {"WELD_PATH", Path.expand("../weld", repo_root)}
     ]
 
-    case System.cmd(mix_command, args,
-           cd: project_root,
-           env: env,
-           stderr_to_stdout: true
-         ) do
-      {output, 0} ->
-        output
+    label = "mix #{Enum.join(args, " ")} in #{Path.relative_to(project_root, workspace_root)}"
 
-      {output, exit_code} ->
-        flunk("""
-        mix #{Enum.join(args, " ")} failed in #{project_root} with exit code #{exit_code}
+    with_progress(label, fn ->
+      case System.cmd(mix_command, args,
+             cd: project_root,
+             env: env,
+             stderr_to_stdout: true
+           ) do
+        {output, 0} ->
+          output
 
-        #{output}
-        """)
-    end
+        {output, exit_code} ->
+          flunk("""
+          mix #{Enum.join(args, " ")} failed in #{project_root} with exit code #{exit_code}
+
+          #{output}
+          """)
+      end
+    end)
   end
 
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+
+  defp with_progress(label, fun) when is_function(fun, 0) do
+    started_at = System.monotonic_time(:millisecond)
+    IO.puts(:stderr, "[progress] starting #{label}")
+
+    try do
+      fun.()
+    after
+      finished_at = System.monotonic_time(:millisecond)
+      IO.puts(:stderr, "[progress] finished #{label} in #{finished_at - started_at}ms")
+    end
+  end
 
   defp removed_session_bridge_id, do: removed_bridge_id("session")
   defp removed_stream_bridge_id, do: removed_bridge_id("stream")

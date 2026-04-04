@@ -73,10 +73,12 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   end
 
   defp run_task(args) do
-    Mix.Task.reenable("jido.conformance")
+    with_progress("jido.conformance #{Enum.join(args, " ")}", fn ->
+      Mix.Task.reenable("jido.conformance")
 
-    capture_io(fn ->
-      ConformanceTask.run(args)
+      capture_io(fn ->
+        ConformanceTask.run(args)
+      end)
     end)
   end
 
@@ -85,5 +87,17 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
 
     on_exit(fn -> TestTmpDir.cleanup!(path) end)
     path
+  end
+
+  defp with_progress(label, fun) when is_function(fun, 0) do
+    started_at = System.monotonic_time(:millisecond)
+    IO.puts(:stderr, "[progress] starting #{label}")
+
+    try do
+      fun.()
+    after
+      finished_at = System.monotonic_time(:millisecond)
+      IO.puts(:stderr, "[progress] finished #{label} in #{finished_at - started_at}ms")
+    end
   end
 end
