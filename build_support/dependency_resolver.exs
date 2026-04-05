@@ -4,7 +4,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
   @repo_root Path.expand("..", __DIR__)
   @repo_fallback [
     github: "agentjido/jido_integration",
-    branch: "feat/universal-contract-standards"
+    branch: "bridge/jido_os_compose"
   ]
 
   def jido_integration_v2(opts \\ []),
