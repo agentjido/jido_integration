@@ -1,4 +1,7 @@
-Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
+  Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+end
+
 Code.require_file("build_support/dependency_resolver.exs", __DIR__)
 
 defmodule Jido.Integration.V2.Connectors.Notion.MixProject do

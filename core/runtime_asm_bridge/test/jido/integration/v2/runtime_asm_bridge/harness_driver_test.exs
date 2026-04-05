@@ -2,7 +2,6 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
   use ExUnit.Case, async: false
 
   alias Jido.Integration.V2.RuntimeAsmBridge.{HarnessDriver, SessionStore}
-  alias Jido.Integration.V2.RuntimeAsmBridge.TestSupport.BoundaryTestAdapter
   alias Jido.Integration.V2.RuntimeAsmBridge.TestSupport.StreamScriptedDriver
 
   alias Jido.Harness.{
@@ -192,120 +191,6 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     assert info.options[:execution_environment].allowed_tools == ["test.session.exec"]
     assert info.options[:execution_environment].approval_posture == :none
     assert info.options[:execution_environment].permission_mode == :bypass
-  end
-
-  test "start_session/1 projects a boundary-backed attach descriptor into ASM's execution_surface lane" do
-    {:ok, store} = start_supervised(BoundaryTestAdapter)
-
-    boundary_request = %{
-      boundary_session_id: "bnd-runtime-asm-boundary",
-      backend_kind: :microvm,
-      boundary_class: :leased_cell,
-      attach: %{mode: :attachable, working_directory: "/srv/boundary"},
-      policy_intent: %{
-        sandbox_level: :strict,
-        egress: :restricted,
-        approvals: :manual,
-        allowed_tools: ["git"],
-        file_scope: "/srv/boundary"
-      },
-      refs: %{
-        target_id: "target-boundary-asm",
-        lease_ref: "lease-boundary-asm",
-        surface_ref: "surface-boundary-asm",
-        runtime_ref: "runtime-boundary-asm",
-        correlation_id: "corr-boundary-asm",
-        request_id: "req-boundary-asm"
-      },
-      allocation_ttl_ms: 250
-    }
-
-    assert {:ok, session} =
-             HarnessDriver.start_session(
-               provider: :claude,
-               boundary_request: boundary_request,
-               boundary_adapter: BoundaryTestAdapter,
-               boundary_adapter_opts: [store: store]
-             )
-
-    on_exit(fn ->
-      _ = HarnessDriver.stop_session(session)
-    end)
-
-    assert {:ok, session_ref} = SessionStore.fetch(session.session_id)
-    assert {:ok, info} = ASM.session_info(session_ref)
-
-    assert info.options[:execution_surface].surface_kind == :guest_bridge
-    assert info.options[:execution_surface].target_id == "target-boundary-asm"
-    assert info.options[:execution_surface].lease_ref == "lease-boundary-asm"
-    assert info.options[:execution_environment].workspace_root == "/srv/boundary"
-    assert session.metadata["boundary"]["descriptor"]["descriptor_version"] == 1
-
-    assert session.metadata["boundary"]["descriptor"]["boundary_session_id"] ==
-             "bnd-runtime-asm-boundary"
-  end
-
-  test "start_session/1 fails closed on an unsupported boundary descriptor_version" do
-    {:ok, store} = start_supervised(BoundaryTestAdapter)
-
-    BoundaryTestAdapter.put_descriptor(store, "bnd-runtime-asm-unsupported", %{
-      descriptor_version: 2,
-      boundary_session_id: "bnd-runtime-asm-unsupported",
-      backend_kind: :microvm,
-      boundary_class: :leased_cell,
-      status: :ready,
-      attach_ready?: true,
-      workspace: %{
-        workspace_root: "/srv/unsupported",
-        snapshot_ref: nil,
-        artifact_namespace: "req"
-      },
-      attach: %{
-        mode: :attachable,
-        execution_surface: %{
-          surface_kind: :guest_bridge,
-          transport_options: [
-            endpoint: %{kind: :unix_socket, path: "/tmp/unsupported.sock"},
-            bridge_ref: "bridge-unsupported",
-            bridge_profile: "core_cli_transport",
-            supported_protocol_versions: [1]
-          ],
-          target_id: "target-unsupported",
-          lease_ref: "lease-unsupported",
-          surface_ref: "surface-unsupported",
-          boundary_class: :leased_cell,
-          observability: %{}
-        },
-        working_directory: "/srv/unsupported"
-      },
-      checkpointing: %{supported?: false, last_checkpoint_id: nil},
-      policy_intent_echo: %{},
-      refs: %{target_id: "target-unsupported", correlation_id: "corr", request_id: "req"},
-      extensions: %{},
-      metadata: %{}
-    })
-
-    assert {:error, error} =
-             HarnessDriver.start_session(
-               provider: :claude,
-               boundary_request: %{
-                 boundary_session_id: "bnd-runtime-asm-unsupported",
-                 backend_kind: :microvm,
-                 boundary_class: :leased_cell,
-                 attach: %{mode: :attachable, working_directory: "/srv/unsupported"},
-                 policy_intent: %{sandbox_level: :strict},
-                 refs: %{
-                   target_id: "target-unsupported",
-                   correlation_id: "corr",
-                   request_id: "req"
-                 },
-                 allocation_ttl_ms: 250
-               },
-               boundary_adapter: BoundaryTestAdapter,
-               boundary_adapter_opts: [store: store]
-             )
-
-    assert Exception.message(error) =~ "descriptor_version"
   end
 
   test "stream_run/3 keeps request cwd separate from authored workspace_root" do

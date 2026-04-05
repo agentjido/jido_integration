@@ -8,27 +8,21 @@ defmodule Jido.Integration.Docs.BoundaryRuntimeDocsTest do
     Path.expand("../../core/session_runtime/README.md", __DIR__)
   ]
 
-  test "runtime docs describe the authored baseline and runtime-merged live capability view" do
+  test "runtime docs describe asm and jido_session as the two harness-backed lanes" do
     Enum.each(@docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 
-      assert doc =~ "authored baseline",
-             "#{path} must name the authored baseline boundary capability contract"
+      assert doc =~ "`asm`",
+             "#{path} must name the asm runtime lane explicitly"
 
-      assert doc =~ "runtime-merged live capability",
-             "#{path} must name the runtime-merged live capability view"
-    end)
-  end
+      assert doc =~ "`jido_session`",
+             "#{path} must name the jido_session runtime lane explicitly"
 
-  test "runtime docs describe boundary-backed asm and jido_session as peer lanes" do
-    Enum.each(@docs, fn path ->
-      doc = path |> File.read!() |> normalize_whitespace()
+      refute doc =~ "boundary-backed `asm`",
+             "#{path} must not describe asm as boundary-backed anymore"
 
-      assert doc =~ "boundary-backed `asm`",
-             "#{path} must describe the boundary-backed asm lane explicitly"
-
-      assert doc =~ "boundary-backed `jido_session`",
-             "#{path} must describe the boundary-backed jido_session lane explicitly"
+      refute doc =~ "boundary-backed `jido_session`",
+             "#{path} must not describe jido_session as boundary-backed anymore"
     end)
   end
 

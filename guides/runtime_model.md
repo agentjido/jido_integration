@@ -35,11 +35,8 @@ Use it when:
 - the capability publishes session or stream behavior honestly rather than
   pretending to be direct
 
-For lower-boundary readiness, target descriptors publish
-`extensions["boundary"]` as the authored baseline boundary capability
-advertisement. Runtime code may merge worker-local facts into a
-runtime-merged live capability view when the lower-boundary result becomes
-more specific for boundary-backed `asm` or boundary-backed `jido_session`.
+The current harness-backed model stops at those two lanes. Lower-boundary
+experiments are intentionally outside the active core runtime path.
 
 ## Hosted Async And Webhooks
 

@@ -1,5 +1,9 @@
 # Jido Integration V2 Boundary Bridge
 
+Deprecated package. `boundary_bridge` is no longer part of the default core
+runtime path or workspace CI. It remains in-repo only as legacy reference code
+while the replacement lower-boundary runtime is designed separately.
+
 Lower-boundary sandbox bridge package for runtime kernels that live outside the
 core `jido_integration` control-plane packages.
 

@@ -34,9 +34,6 @@ runtime behavior lives.
 - `core/runtime_asm_bridge` projects the authored `asm` driver into Harness.
 - `core/session_runtime` owns the integration-managed `jido_session` driver
   implementation consumed by the harness adapter.
-- `bridges/boundary_bridge` owns the typed `Jido.BoundaryBridge`
-  lower-boundary sandbox contract and adapter seam that does not belong in
-  `core/` and is not an `apps/` proof surface.
 - `core/dispatch_runtime` handles async transport, retry, replay, and recovery.
 - `core/ingress` normalizes triggers and admits them into the control plane.
 - `core/webhook_router` owns hosted route registration and route resolution.
@@ -66,12 +63,9 @@ Direct connectors stay on the provider SDK path. Only actual `:session` and
 metadata into Harness execution. `asm` stays behind `core/runtime_asm_bridge`.
 `jido_session` stays behind `core/session_runtime`.
 
-Boundary readiness does not introduce a new northbound runtime lane. Target
-descriptors publish `extensions["boundary"]` as the authored baseline
-boundary capability advertisement, and runtime code may derive a
-runtime-merged live capability view when worker-local facts sharpen the
-lower-boundary result for boundary-backed `asm` or boundary-backed
-`jido_session`.
+The active core runtime graph stops there. Legacy lower-boundary bridge code is
+not part of the default workspace CI or the active dependency path for those
+two runtime packages.
 
 Inference stays on a separate seam:
 

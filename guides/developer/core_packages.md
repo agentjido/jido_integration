@@ -7,9 +7,8 @@ This is the internal map for contributors. If you are deciding where code
 belongs, start here before touching the root workspace or widening an existing
 package.
 
-Non-core bridge packages live under `bridges/`. The current dedicated bridge
-package is `bridges/boundary_bridge`, which exposes the typed
-`Jido.BoundaryBridge` lower-boundary seam.
+Legacy bridge packages live under `bridges/`. `bridges/boundary_bridge` is
+deprecated and no longer part of the active core runtime path.
 
 ## Package Map
 

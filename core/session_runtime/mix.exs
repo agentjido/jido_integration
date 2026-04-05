@@ -1,4 +1,6 @@
-Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
+  Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+end
 
 defmodule Jido.Session.MixProject do
   use Mix.Project
@@ -36,7 +38,6 @@ defmodule Jido.Session.MixProject do
       DependencyResolver.jido_harness(override: true),
       DependencyResolver.jido_shell(override: true),
       DependencyResolver.sprites(override: true),
-      DependencyResolver.jido_integration_v2_boundary_bridge(),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

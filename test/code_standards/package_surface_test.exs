@@ -216,7 +216,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
   defp child_package_roots do
     repo_root()
-    |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
+    |> Path.join("{core,connectors,apps}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.map(&Path.dirname/1)
     |> Enum.sort()
@@ -224,7 +224,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
   defp child_package_mix_paths do
     repo_root()
-    |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
+    |> Path.join("{core,connectors,apps}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.sort()
   end

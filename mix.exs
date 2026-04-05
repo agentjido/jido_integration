@@ -1,4 +1,6 @@
-Code.require_file("build_support/dependency_resolver.exs", __DIR__)
+unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
+  Code.require_file("build_support/dependency_resolver.exs", __DIR__)
+end
 
 defmodule Jido.Integration.Workspace.MixProject do
   use Mix.Project
@@ -198,7 +200,7 @@ defmodule Jido.Integration.Workspace.MixProject do
   defp blitz_workspace do
     [
       root: __DIR__,
-      projects: [".", "core/*", "bridges/*", "connectors/*", "apps/*"],
+      projects: [".", "core/*", "connectors/*", "apps/*"],
       isolation: [
         deps_path: true,
         build_path: true,

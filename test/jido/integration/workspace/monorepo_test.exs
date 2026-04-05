@@ -20,7 +20,6 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "core/store_local",
              "core/store_postgres",
              "core/webhook_router",
-             "bridges/boundary_bridge",
              "connectors/codex_cli",
              "connectors/github",
              "connectors/linear",
@@ -107,13 +106,6 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              max_bytes: 63
            ) ==
              "jido_integration_v2_test_core_dispatch_runtime_7510d0e3"
-
-    assert Blitz.MixWorkspace.hashed_project_name(
-             "jido_integration_v2_test",
-             "bridges/boundary_bridge",
-             max_bytes: 63
-           ) ==
-             "jido_integration_v2_test_bridges_boundary_bridge_5c7d0993"
 
     assert Blitz.MixWorkspace.hashed_project_name(
              "jido_integration_v2_test",

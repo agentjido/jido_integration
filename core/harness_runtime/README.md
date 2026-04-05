@@ -9,10 +9,9 @@ Harness-backed session and stream runtime adapter for the control plane.
 - the built-in `asm` and `jido_session` driver ids
 - translation between authored runtime metadata and `Jido.Harness` requests
 
-Target descriptors publish `extensions["boundary"]` as the authored baseline
-boundary capability advertisement. Runtime code may combine worker-local facts
-with that baseline to build a runtime-merged live capability view before
-invoking boundary-backed `asm` or boundary-backed `jido_session`.
+The current harness-backed runtime graph is intentionally simple: `asm` and
+`jido_session` are the two non-direct runtime lanes, and lower-boundary
+experiments are not part of this package's active dependency path.
 
 ## Publication Boundary
 

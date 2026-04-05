@@ -29,23 +29,6 @@ This package is intentionally narrow.
 The richer internal state stays in `Jido.Session.Runtime.*`, while the shared
 projection surface lives in `Jido.Session.HarnessProjection`.
 
-Boundary readiness keeps this package on the same Harness seam as `asm`.
-Target descriptors publish `extensions["boundary"]` as the authored baseline
-boundary capability advertisement, and runtime code may combine worker-local
-facts with that baseline to build a runtime-merged live capability view for
-boundary-backed `jido_session` just as it does for boundary-backed `asm`.
-
-As built for Stage 4, the in-repo `jido_session` lane now consumes the shared
-`Jido.BoundaryBridge` seam directly:
-
-- `start_session/1` can allocate or reopen through the bridge
-- consumer entrypoints fail closed on unsupported `descriptor_version`
-- `jido_session` claims the ready boundary before exposing the session handle
-- the normalized boundary descriptor is carried on the public session handle and
-  projected terminal results
-- `policy_intent_echo` stays evidence-only; runtime policy still comes from the
-  authored request and target context above the descriptor seam
-
 ## Usage
 
 Direct runtime use:
@@ -84,30 +67,6 @@ Application.put_env(:jido_harness, :default_runtime_driver, :jido_session)
 request = Jido.Harness.RunRequest.new!(%{prompt: "through harness", metadata: %{}})
 {:ok, session} = Jido.Harness.start_session(session_id: "session-1", provider: :jido_session)
 {:ok, _run, events} = Jido.Harness.stream_run(session, request)
-```
-
-Boundary-backed internal session:
-
-```elixir
-{:ok, session} =
-  Jido.Session.start_session(
-    session_id: "session-boundary-1",
-    provider: :jido_session,
-    boundary_request: %{
-      boundary_session_id: "bnd-session-1",
-      backend_kind: :microvm,
-      boundary_class: :leased_cell,
-      attach: %{mode: :not_applicable, working_directory: "/srv/jido_session"},
-      policy_intent: %{sandbox_level: :strict},
-      refs: %{target_id: "target-session-1", runtime_ref: "runtime-session-1"},
-      allocation_ttl_ms: 250
-    },
-    boundary_adapter: Jido.BoundaryBridge.Adapters.JidoOs,
-    boundary_adapter_opts: [instance_id: "instance-local", actor_id: "system:jido_session"]
-  )
-
-session.metadata["boundary"]["descriptor"]["boundary_session_id"]
-#=> "bnd-session-1"
 ```
 
 ## Public Modules

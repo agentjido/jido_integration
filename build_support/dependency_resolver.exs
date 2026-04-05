@@ -150,10 +150,10 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def req_llm(opts \\ []) do
-    resolve_external(
+    resolve_external_hex(
       :req_llm,
       local_root_path("REQ_LLM_PATH", "../req_llm"),
-      [hex: :req_llm, requirement: "~> 1.9"],
+      "~> 1.9",
       opts
     )
   end
@@ -217,6 +217,13 @@ defmodule Jido.Integration.Build.DependencyResolver do
   defp resolve_external(app, path, fallback_opts, opts) do
     case existing_path(path) do
       nil -> {app, Keyword.merge(fallback_opts, opts)}
+      resolved_path -> {app, Keyword.merge([path: resolved_path], opts)}
+    end
+  end
+
+  defp resolve_external_hex(app, path, requirement, opts) do
+    case existing_path(path) do
+      nil -> {app, requirement, opts}
       resolved_path -> {app, Keyword.merge([path: resolved_path], opts)}
     end
   end

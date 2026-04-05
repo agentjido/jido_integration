@@ -429,6 +429,10 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       {"REQ_LLM_PATH", "disabled"},
       {"AGENT_SESSION_MANAGER_PATH", Path.expand("../agent_session_manager", repo_root)},
       {"CLI_SUBPROCESS_CORE_PATH", Path.expand("../cli_subprocess_core", repo_root)},
+      {"EXTERNAL_RUNTIME_TRANSPORT_PATH",
+       Path.expand("../external_runtime_transport", repo_root)},
+      {"SELF_HOSTED_INFERENCE_CORE_PATH",
+       Path.expand("../self_hosted_inference_core", repo_root)},
       {"WELD_PATH", Path.expand("../weld", repo_root)}
     ]
 

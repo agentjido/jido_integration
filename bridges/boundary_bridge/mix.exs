@@ -1,4 +1,6 @@
-Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
+  Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+end
 
 defmodule Jido.BoundaryBridge.MixProject do
   use Mix.Project
@@ -21,7 +23,8 @@ defmodule Jido.BoundaryBridge.MixProject do
       docs: docs(),
       source_url: @source_url,
       name: "Jido Integration V2 Boundary Bridge",
-      description: "Typed lower-boundary sandbox bridge package for authored runtime kernels"
+      description:
+        "Deprecated lower-boundary sandbox bridge package retained as legacy reference code"
     ]
   end
 

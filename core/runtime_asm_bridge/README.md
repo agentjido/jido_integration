@@ -52,19 +52,16 @@ This means future core-owned surfaces continue to flow through the same bridge
 shape. `runtime_asm_bridge` authors placement and environment separately but
 does not branch on transport-family internals.
 
-## Boundary-Backed Attach Proof
+## Runtime Scope
 
-The bridge now proves two execution-surface families through the same ASM seam:
+This package is now direct about its scope:
 
-- `HarnessDriver` carries final `:ssh_exec` surface input without exposing
-  adapter modules
-- boundary-backed external sessions first allocate or reopen through
-  `Jido.BoundaryBridge`, fail closed on unsupported `descriptor_version`, claim
-  the ready boundary, then hand only `attach.execution_surface` into ASM
+- `HarnessDriver` carries authored execution-surface and execution-environment
+  input into ASM without exposing adapter modules
 - streamed runs, interruption, terminal failures, and session shutdown stay on
   the existing ASM session surface
-- execution-event and result metadata retain normalized boundary descriptor and
-  attach metadata without making ASM backend-aware above the descriptor seam
+- lower-boundary lifecycle work is not part of this package's dependency graph
+  or public behavior
 
 ## Boundary
 
