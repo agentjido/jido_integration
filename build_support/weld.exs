@@ -62,13 +62,18 @@
           "guides/index.md",
           "guides/architecture.md",
           "guides/runtime_model.md",
+          "guides/inference_baseline.md",
           "guides/durability.md",
           "guides/connector_lifecycle.md",
           "guides/conformance.md",
           "guides/async_and_webhooks.md",
           "guides/publishing.md",
           "guides/reference_apps.md",
-          "guides/observability.md"
+          "guides/observability.md",
+          "guides/developer/index.md",
+          "guides/developer/core_packages.md",
+          "guides/developer/request_lifecycle.md",
+          "guides/developer/state_and_verification.md"
         ],
         assets: ["LICENSE"]
       ],

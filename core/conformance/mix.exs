@@ -37,7 +37,7 @@ defmodule Jido.Integration.V2.Conformance.MixProject do
       DependencyResolver.jido_integration_v2_ingress(),
       DependencyResolver.jido_integration_v2(only: :test, runtime: false),
       DependencyResolver.jido_integration_v2_github(only: :test),
-      DependencyResolver.req_llm(override: true),
+      DependencyResolver.req_llm(),
       DependencyResolver.jido_shell(override: true),
       DependencyResolver.sprites(override: true),
       {:zoi, "~> 0.17"},

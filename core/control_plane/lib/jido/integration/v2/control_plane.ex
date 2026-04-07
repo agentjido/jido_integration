@@ -249,9 +249,14 @@ defmodule Jido.Integration.V2.ControlPlane do
           {:ok, %{run: Run.t(), attempt: Attempt.t()}} | {:error, Exception.t() | term()}
   def record_inference_attempt(spec), do: InferenceRecorder.record(spec)
 
+  @doc """
+  Public inference entrypoint for the control plane.
+  """
   @spec invoke_inference(Jido.Integration.V2.InferenceRequest.t() | map() | keyword(), keyword()) ::
           {:ok, map()} | {:error, term()}
-  defdelegate invoke_inference(request, opts \\ []), to: Inference, as: :invoke
+  def invoke_inference(request, opts \\ []) do
+    Inference.invoke(request, opts)
+  end
 
   defp filter_records(records, filters) when is_map(filters) do
     Enum.filter(records, fn record ->

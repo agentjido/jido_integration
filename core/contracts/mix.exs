@@ -44,7 +44,7 @@ defmodule Jido.Integration.V2.Contracts.MixProject do
       extras: [
         "README.md",
         "guides/inference_contracts.md",
-        "examples/README.md",
+        {"examples/README.md", filename: "examples_readme"},
         "../../guides/inference_baseline.md",
         "../../guides/architecture.md",
         "../../guides/runtime_model.md",

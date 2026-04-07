@@ -35,10 +35,10 @@ defmodule Jido.Integration.Workspace.MixProject do
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_v2_contracts(),
       DependencyResolver.jido_shell(override: true, runtime: false),
-      DependencyResolver.cli_subprocess_core(override: true, runtime: false),
-      DependencyResolver.external_runtime_transport(override: true, runtime: false),
+      DependencyResolver.cli_subprocess_core(runtime: false),
+      DependencyResolver.external_runtime_transport(runtime: false),
       DependencyResolver.sprites(override: true, runtime: false),
-      DependencyResolver.req_llm(override: true, runtime: false),
+      DependencyResolver.req_llm(runtime: false),
       DependencyResolver.weld(runtime: false),
       {:jason, "~> 1.4", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
@@ -101,11 +101,11 @@ defmodule Jido.Integration.Workspace.MixProject do
 
   defp docs do
     [
-      main: "readme",
+      main: "workspace_readme",
       extras: [
-        "README.md",
+        {"README.md", filename: "workspace_readme"},
         "AGENTS.md",
-        "guides/index.md",
+        {"guides/index.md", filename: "guides_index"},
         "guides/architecture.md",
         "guides/runtime_model.md",
         "guides/inference_baseline.md",
@@ -114,10 +114,10 @@ defmodule Jido.Integration.Workspace.MixProject do
         "guides/conformance.md",
         "guides/async_and_webhooks.md",
         "guides/publishing.md",
-        "guides/reference_apps.md",
+        {"guides/reference_apps.md", filename: "guides_reference_apps"},
         "guides/observability.md",
-        "examples/README.md",
-        "guides/developer/index.md",
+        {"examples/README.md", filename: "examples_readme"},
+        {"guides/developer/index.md", filename: "developer_index"},
         "guides/developer/core_packages.md",
         "guides/developer/request_lifecycle.md",
         "guides/developer/state_and_verification.md",
@@ -128,7 +128,7 @@ defmodule Jido.Integration.Workspace.MixProject do
         "docs/local_durability.md",
         "docs/async_dispatch_and_replay.md",
         "docs/webhook_routing.md",
-        "docs/reference_apps.md",
+        {"docs/reference_apps.md", filename: "docs_reference_apps"},
         "docs/observability_and_pressure_semantics.md"
       ],
       groups_for_extras: [

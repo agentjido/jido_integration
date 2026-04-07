@@ -52,7 +52,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOps.MixProject do
       extras: [
         "README.md",
         "guides/proof_flow.md",
-        "examples/README.md"
+        {"examples/README.md", filename: "examples_readme"}
       ],
       groups_for_extras: [
         Overview: ["README.md"],
