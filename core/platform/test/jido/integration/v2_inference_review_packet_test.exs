@@ -65,7 +65,7 @@ defmodule Jido.Integration.V2InferenceReviewPacketTest do
                  }),
                backend_manifest:
                  BackendManifest.new!(%{
-                   backend: :llama_cpp,
+                   backend: :llama_cpp_sdk,
                    runtime_kind: :service,
                    management_modes: [:jido_managed, :externally_managed],
                    startup_kind: :spawned,
@@ -84,9 +84,9 @@ defmodule Jido.Integration.V2InferenceReviewPacketTest do
                    protocol: :openai_chat_completions,
                    base_url: "http://127.0.0.1:8080/v1",
                    headers: %{"authorization" => "Bearer local"},
-                   provider_identity: :llama_cpp,
+                   provider_identity: :llama_cpp_sdk,
                    model_identity: "llama-3.2-3b-instruct",
-                   source_runtime: :llama_cpp_ex,
+                   source_runtime: :llama_cpp_sdk,
                    source_runtime_ref: "llama-runtime-review-1",
                    lease_ref: "lease-review-1",
                    health_ref: "health-review-1",
@@ -145,7 +145,7 @@ defmodule Jido.Integration.V2InferenceReviewPacketTest do
                    finish_reason: :stop,
                    usage: %{input_tokens: 15, output_tokens: 44},
                    error: nil,
-                   metadata: %{provider: :llama_cpp}
+                   metadata: %{provider: :llama_cpp_sdk}
                  })
              })
 

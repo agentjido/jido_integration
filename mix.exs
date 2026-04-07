@@ -35,6 +35,8 @@ defmodule Jido.Integration.Workspace.MixProject do
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_v2_contracts(),
       DependencyResolver.jido_shell(override: true, runtime: false),
+      DependencyResolver.cli_subprocess_core(override: true, runtime: false),
+      DependencyResolver.external_runtime_transport(override: true, runtime: false),
       DependencyResolver.sprites(override: true, runtime: false),
       DependencyResolver.req_llm(override: true, runtime: false),
       DependencyResolver.weld(runtime: false),

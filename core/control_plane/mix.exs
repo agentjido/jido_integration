@@ -38,7 +38,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       DependencyResolver.agent_session_manager(env: :dev, override: true),
       DependencyResolver.req_llm(override: true),
       DependencyResolver.self_hosted_inference_core(override: true),
-      DependencyResolver.llama_cpp_ex(only: :test),
+      DependencyResolver.llama_cpp_sdk(only: :test),
       DependencyResolver.jido_integration_v2_harness_runtime(only: :test),
       {:plug, "~> 1.19", only: [:dev, :test]},
       {:zoi, "~> 0.17"},

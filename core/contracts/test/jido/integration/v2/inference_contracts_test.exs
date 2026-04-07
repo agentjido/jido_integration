@@ -73,9 +73,9 @@ defmodule Jido.Integration.V2.InferenceContractsTest do
         protocol: "openai_chat_completions",
         base_url: "http://127.0.0.1:8080/v1",
         headers: %{"authorization" => "Bearer local"},
-        provider_identity: "llama_cpp",
+        provider_identity: "llama_cpp_sdk",
         model_identity: "llama-3.2-3b-instruct",
-        source_runtime: "llama_cpp_ex",
+        source_runtime: "llama_cpp_sdk",
         source_runtime_ref: "llama-runtime-1",
         lease_ref: "lease-inference-1",
         health_ref: "health-1",
@@ -86,7 +86,7 @@ defmodule Jido.Integration.V2.InferenceContractsTest do
 
     backend =
       BackendManifest.new!(%{
-        backend: "llama_cpp",
+        backend: "llama_cpp_sdk",
         runtime_kind: "service",
         management_modes: ["jido_managed", "externally_managed"],
         startup_kind: "spawned",
@@ -125,7 +125,7 @@ defmodule Jido.Integration.V2.InferenceContractsTest do
     assert backend.supported_surfaces == [:local_subprocess]
     assert consumer.accepted_runtime_kinds == [:client, :task, :service]
     assert endpoint_dump["protocol"] == "openai_chat_completions"
-    assert backend_dump["backend"] == "llama_cpp"
+    assert backend_dump["backend"] == "llama_cpp_sdk"
     assert consumer_dump["consumer"] == "jido_integration_req_llm"
     assert_json_safe(endpoint_dump)
     assert_json_safe(backend_dump)
@@ -145,7 +145,7 @@ defmodule Jido.Integration.V2.InferenceContractsTest do
         resolved_protocol: "openai_chat_completions",
         warnings: ["warmup_pending"],
         missing_requirements: [],
-        metadata: %{"backend" => "llama_cpp"}
+        metadata: %{"backend" => "llama_cpp_sdk"}
       })
 
     result =

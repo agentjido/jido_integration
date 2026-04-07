@@ -97,30 +97,15 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def agent_session_manager(opts \\ []) do
-    resolve_external(
-      :agent_session_manager,
-      local_root_path("AGENT_SESSION_MANAGER_PATH", "../agent_session_manager"),
-      [github: "nshkrdotcom/agent_session_manager", branch: "rebuild/foundation-v1"],
-      opts
-    )
+    {:agent_session_manager, "~> 0.9.0", opts}
   end
 
   def cli_subprocess_core(opts \\ []) do
-    resolve_external(
-      :cli_subprocess_core,
-      local_root_path("CLI_SUBPROCESS_CORE_PATH", "../cli_subprocess_core"),
-      [github: "nshkrdotcom/cli_subprocess_core", branch: "main"],
-      opts
-    )
+    {:cli_subprocess_core, "~> 0.1.0", opts}
   end
 
   def external_runtime_transport(opts \\ []) do
-    resolve_external(
-      :external_runtime_transport,
-      local_root_path("EXTERNAL_RUNTIME_TRANSPORT_PATH", "../external_runtime_transport"),
-      [github: "nshkrdotcom/external_runtime_transport", branch: "main"],
-      opts
-    )
+    {:external_runtime_transport, "~> 0.1.0", opts}
   end
 
   def jido_os(opts \\ []) do
@@ -150,57 +135,27 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def req_llm(opts \\ []) do
-    resolve_external_hex(
-      :req_llm,
-      local_root_path("REQ_LLM_PATH", "../req_llm"),
-      "~> 1.9",
-      opts
-    )
+    {:req_llm, "~> 1.9", opts}
   end
 
   def pristine(opts \\ []) do
-    resolve_external(
-      :pristine,
-      local_root_path("PRISTINE_PATH", "../pristine/apps/pristine_runtime"),
-      [hex: :pristine, requirement: "~> 0.2.1"],
-      opts
-    )
+    {:pristine, "~> 0.2.1", opts}
   end
 
   def self_hosted_inference_core(opts \\ []) do
-    resolve_external(
-      :self_hosted_inference_core,
-      local_root_path("SELF_HOSTED_INFERENCE_CORE_PATH", "../self_hosted_inference_core"),
-      [github: "nshkrdotcom/self_hosted_inference_core", branch: "main"],
-      opts
-    )
+    {:self_hosted_inference_core, "~> 0.1.0", opts}
   end
 
-  def llama_cpp_ex(opts \\ []) do
-    resolve_external(
-      :llama_cpp_ex,
-      local_root_path("LLAMA_CPP_EX_PATH", "../llama_cpp_ex"),
-      [github: "nshkrdotcom/llama_cpp_ex", branch: "main"],
-      opts
-    )
+  def llama_cpp_sdk(opts \\ []) do
+    {:llama_cpp_sdk, "~> 0.1.0", opts}
   end
 
   def erlexec(opts \\ []) do
-    resolve_external(
-      :erlexec,
-      local_root_path("ERLEXEC_PATH", "../cli_subprocess_core/deps/erlexec"),
-      [hex: :erlexec, requirement: "~> 2.2"],
-      opts
-    )
+    {:erlexec, "~> 2.2", opts}
   end
 
   def weld(opts \\ []) do
-    resolve_external(
-      :weld,
-      local_root_path("WELD_PATH", "../weld"),
-      [github: "nshkrdotcom/weld", ref: "67d6b7d58541ec8085f4d8e95d6d252b15bddff4"],
-      opts
-    )
+    {:weld, "~> 0.1.0", opts}
   end
 
   def repo_root, do: @repo_root
@@ -217,13 +172,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
   defp resolve_external(app, path, fallback_opts, opts) do
     case existing_path(path) do
       nil -> {app, Keyword.merge(fallback_opts, opts)}
-      resolved_path -> {app, Keyword.merge([path: resolved_path], opts)}
-    end
-  end
-
-  defp resolve_external_hex(app, path, requirement, opts) do
-    case existing_path(path) do
-      nil -> {app, requirement, opts}
       resolved_path -> {app, Keyword.merge([path: resolved_path], opts)}
     end
   end

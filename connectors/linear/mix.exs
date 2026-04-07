@@ -48,7 +48,6 @@ defmodule Jido.Integration.V2.Connectors.Linear.MixProject do
       WorkspaceDependencyResolver.jido_integration_v2(only: [:dev, :test]),
       {:zoi, "~> 0.17"},
       ConnectorDependencyResolver.linear_sdk(),
-      ConnectorDependencyResolver.prismatic(override: true),
       {:jason, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

@@ -11,7 +11,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
 
   @spec register_self_hosted_backend() :: :ok | {:error, term()}
   def register_self_hosted_backend do
-    case LlamaCppEx.register_backend() do
+    case LlamaCppSdk.register_backend() do
       :ok -> :ok
       {:error, :already_registered} -> :ok
       {:error, {:already_registered, _module}} -> :ok
@@ -104,7 +104,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
       },
       target_preference: %{
         target_class: "self_hosted_endpoint",
-        backend: normalize_self_hosted_backend(Keyword.get(opts, :backend, :llama_cpp)),
+        backend: normalize_self_hosted_backend(Keyword.get(opts, :backend, :llama_cpp_sdk)),
         boot_spec: boot_spec
       },
       stream?: Keyword.get(opts, :stream?, true),

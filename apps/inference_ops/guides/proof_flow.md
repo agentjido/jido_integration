@@ -21,7 +21,7 @@ The app remains above the shared platform seam:
 - `core/control_plane` owns durable inference truth
 - `agent_session_manager` owns CLI endpoint publication
 - `self_hosted_inference_core` owns reusable service leases
-- `llama_cpp_ex` owns the first spawned self-hosted backend package
+- `llama_cpp_sdk` owns the first spawned self-hosted backend package
 - `self_hosted_inference_core.Ollama` owns the first attached-local backend
   adapter
 - `req_llm` stays the singular client layer

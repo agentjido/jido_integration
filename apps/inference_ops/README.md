@@ -9,7 +9,7 @@ flows:
 
 - cloud provider execution through `req_llm`
 - CLI endpoint execution through `ASM.InferenceEndpoint` plus `req_llm`
-- self-hosted spawned `llama_cpp_ex` endpoint execution through `req_llm`
+- self-hosted spawned `llama_cpp_sdk` endpoint execution through `req_llm`
 - self-hosted attached `ollama` endpoint execution through `req_llm`
 
 ## Public Entry Points
@@ -27,7 +27,7 @@ the public facade. `run_cli_proof/1` builds a `target_class: "cli_endpoint"`
 request and drives it through `ASM.InferenceEndpoint` plus `req_llm`.
 `run_self_hosted_proof/1` requires a `:boot_spec` and then drives the
 self-hosted spawned route through `self_hosted_inference_core`,
-`llama_cpp_ex`, and `req_llm` without reclaiming runtime ownership inside the
+`llama_cpp_sdk`, and `req_llm` without reclaiming runtime ownership inside the
 app layer. `run_ollama_attach_proof/1` requires a `:root_url` and drives the
 attached-local route through `self_hosted_inference_core`, the built-in
 `ollama` adapter, and `req_llm`.
@@ -40,7 +40,7 @@ attached-local route through `self_hosted_inference_core`, the built-in
 
 The package tests keep the cloud lane offline with `Req.Test` while the
 self-hosted spawned lane uses the shared fake `llama-server` fixture script
-published by `llama_cpp_ex`. The attached-local lane stays offline in tests by
+published by `llama_cpp_sdk`. The attached-local lane stays offline in tests by
 stubbing the Ollama readiness/health seam and the `req_llm` client call
 separately. The CLI lane uses a fake ASM backend under the real
 endpoint-publication seam and prefers Gemini as the first common-surface proof

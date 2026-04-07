@@ -133,7 +133,7 @@ Runtime families proved in-tree:
 - `:inference`
   - cloud provider execution through `req_llm`
   - CLI endpoint execution through `ASM.InferenceEndpoint` plus `req_llm`
-  - self-hosted `llama_cpp_ex` endpoint execution through `req_llm`
+  - self-hosted `llama_cpp_sdk` endpoint execution through `req_llm`
   - attached local `ollama` endpoint execution through `req_llm`
 
 Inference phase-1 proofs:
@@ -164,7 +164,7 @@ Reference apps:
   - keeps durable review truth in `core/control_plane`
   - keeps client execution in `req_llm` and self-hosted service ownership in
     `self_hosted_inference_core`, the built-in `ollama` adapter, and
-    `llama_cpp_ex`
+    `llama_cpp_sdk`
 
 The current surface also proves:
 

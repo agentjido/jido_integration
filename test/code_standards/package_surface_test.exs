@@ -78,6 +78,9 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
              {:weld, opts} when is_list(opts) ->
                Keyword.has_key?(opts, :path) or Keyword.has_key?(opts, :github)
 
+             {:weld, requirement, opts} when is_binary(requirement) and is_list(opts) ->
+               true
+
              {:weld, _requirement, opts} when is_list(opts) ->
                Keyword.has_key?(opts, :path) or Keyword.has_key?(opts, :github)
 

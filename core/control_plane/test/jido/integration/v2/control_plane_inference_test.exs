@@ -104,7 +104,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
     assert target_payload.endpoint_id == "endpoint-llama-1"
     assert target_payload.target_class == :self_hosted_endpoint
     assert target_payload.protocol == :openai_chat_completions
-    assert target_payload.source_runtime == :llama_cpp_ex
+    assert target_payload.source_runtime == :llama_cpp_sdk
     assert target_payload.lease_ref == "lease-inference-1"
 
     assert opened_payload == %{
@@ -281,7 +281,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
       consumer_manifest: consumer_manifest(required_capabilities: %{streaming?: true}),
       backend_manifest:
         BackendManifest.new!(%{
-          backend: "llama_cpp",
+          backend: "llama_cpp_sdk",
           runtime_kind: :service,
           management_modes: [:jido_managed, :externally_managed],
           startup_kind: :spawned,
@@ -300,9 +300,9 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           protocol: :openai_chat_completions,
           base_url: "http://127.0.0.1:8080/v1",
           headers: %{"authorization" => "Bearer local"},
-          provider_identity: "llama_cpp",
+          provider_identity: "llama_cpp_sdk",
           model_identity: "llama-3.2-3b-instruct",
-          source_runtime: "llama_cpp_ex",
+          source_runtime: "llama_cpp_sdk",
           source_runtime_ref: "llama-runtime-1",
           lease_ref: "lease-inference-1",
           health_ref: "health-1",
@@ -361,7 +361,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
           finish_reason: :stop,
           usage: %{input_tokens: 12, output_tokens: 34},
           error: nil,
-          metadata: %{provider: "llama_cpp"}
+          metadata: %{provider: "llama_cpp_sdk"}
         })
     }
   end

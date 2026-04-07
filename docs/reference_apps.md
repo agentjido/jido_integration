@@ -95,7 +95,7 @@ What it proves:
 
 - cloud execution through `req_llm` with `runtime_kind: :client`
 - self-hosted endpoint publication through `self_hosted_inference_core` and
-  `llama_cpp_ex`
+  `llama_cpp_sdk`
 - self-hosted execution through `req_llm` with `runtime_kind: :service`
 - durable inference event recording and packet review through the control plane
 

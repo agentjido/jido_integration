@@ -73,7 +73,7 @@ Inference stays on a separate seam:
 
 For self-hosted execution, endpoint publication remains below the control plane:
 
-`Jido.Integration.V2 -> ControlPlane.Inference -> self_hosted_inference_core -> llama_cpp_ex`
+`Jido.Integration.V2 -> ControlPlane.Inference -> self_hosted_inference_core -> llama_cpp_sdk`
 
 ## Consumer Surface Boundary
 

@@ -22,7 +22,7 @@ plugin contract layer used by the common trigger path.
 This app proves the first live `:inference` runtime family.
 
 - cloud provider calls stay `runtime_kind: :client`
-- self-hosted `llama_cpp_ex` calls stay `runtime_kind: :service`
+- self-hosted `llama_cpp_sdk` calls stay `runtime_kind: :service`
 - both routes execute through `req_llm`
 - both routes remain reviewable through durable control-plane records
 

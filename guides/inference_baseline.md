@@ -41,7 +41,7 @@ It:
 
 The self-hosted lane now proves both ownership shapes:
 
-- spawned: `llama_cpp_ex`
+- spawned: `llama_cpp_sdk`
 - attached existing service: built-in `ollama`
 
 This keeps the client layer singular while keeping service-runtime ownership
@@ -106,7 +106,7 @@ app-level proof harness:
 The cloud lane stays offline with `Req.Test` fixtures. The CLI lane stays
 offline with a fake ASM backend under the real endpoint-publication seam, with
 Gemini as the preferred first common-surface proof provider. The spawned
-self-hosted lane uses `llama_cpp_ex` and the shared fake `llama-server`
+self-hosted lane uses `llama_cpp_sdk` and the shared fake `llama-server`
 fixture so the northbound endpoint contract remains honest without requiring a
 real model download. The attached-local lane proves the same northbound route
 through the built-in `ollama` adapter, with offline stubs in tests and a real

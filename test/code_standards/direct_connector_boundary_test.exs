@@ -13,11 +13,8 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           __DIR__
         ),
       sdk_resolver_call: "ConnectorDependencyResolver.github_ex()",
-      sdk_local_path: "[\"../../../github_ex\"]",
       sdk_hex_dep: "{:github_ex, \"~> 0.1.0\", opts}",
-      forbidden_sdk_fallbacks: ["GITHUB_EX_PATH", "nshkrdotcom/github_ex"],
-      required_auth_dep: "WorkspaceDependencyResolver.pristine(override: true)",
-      forbidden_auth_dep: "ConnectorDependencyResolver.prismatic("
+      forbidden_sdk_fallbacks: ["GITHUB_EX_PATH", "nshkrdotcom/github_ex"]
     },
     %{
       mix_path: Path.expand("../../connectors/notion/mix.exs", __DIR__),
@@ -30,11 +27,8 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           __DIR__
         ),
       sdk_resolver_call: "ConnectorDependencyResolver.notion_sdk()",
-      sdk_local_path: "[\"../../../notion_sdk\"]",
       sdk_hex_dep: "{:notion_sdk, \"~> 0.2.0\", opts}",
-      forbidden_sdk_fallbacks: ["NOTION_SDK_PATH", "nshkrdotcom/notion_sdk"],
-      required_auth_dep: "WorkspaceDependencyResolver.pristine(override: true)",
-      forbidden_auth_dep: "ConnectorDependencyResolver.prismatic("
+      forbidden_sdk_fallbacks: ["NOTION_SDK_PATH", "nshkrdotcom/notion_sdk"]
     },
     %{
       mix_path: Path.expand("../../connectors/linear/mix.exs", __DIR__),
@@ -47,11 +41,8 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           __DIR__
         ),
       sdk_resolver_call: "ConnectorDependencyResolver.linear_sdk()",
-      sdk_local_path: "[\"../../../linear_sdk\"]",
       sdk_hex_dep: "{:linear_sdk, \"~> 0.2.0\", opts}",
-      forbidden_sdk_fallbacks: ["LINEAR_SDK_PATH", "nshkrdotcom/linear_sdk"],
-      required_auth_dep: "ConnectorDependencyResolver.prismatic(override: true)",
-      forbidden_auth_dep: "WorkspaceDependencyResolver.pristine(override: true)"
+      forbidden_sdk_fallbacks: ["LINEAR_SDK_PATH", "nshkrdotcom/linear_sdk"]
     }
   ]
 
@@ -97,7 +88,6 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
       fn %{
            mix_path: mix_path,
            resolver_path: resolver_path,
-           sdk_local_path: sdk_local_path,
            sdk_hex_dep: sdk_hex_dep,
            forbidden_sdk_fallbacks: forbidden_sdk_fallbacks
          } ->
@@ -116,8 +106,8 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         refute mix_exs =~ "deps/pristine",
                "#{mix_path} must not vendor pristine under deps/"
 
-        assert resolver =~ sdk_local_path,
-               "#{resolver_path} must check for a sibling provider SDK checkout first"
+        refute mix_exs =~ "deps/prismatic",
+               "#{mix_path} must not vendor prismatic under deps/"
 
         assert resolver =~ sdk_hex_dep,
                "#{resolver_path} must fall back to a Hex dependency for its provider SDK"
@@ -133,18 +123,14 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
   test "direct connector packages declare lower-repo auth dependencies honestly" do
     Enum.each(
       @direct_connectors,
-      fn %{
-           mix_path: mix_path,
-           required_auth_dep: required_auth_dep,
-           forbidden_auth_dep: forbidden_auth_dep
-         } ->
+      fn %{mix_path: mix_path} ->
         mix_exs = File.read!(mix_path)
 
-        assert mix_exs =~ required_auth_dep,
-               "#{mix_path} must declare the lower-repo auth dependency it uses directly"
+        refute mix_exs =~ "WorkspaceDependencyResolver.pristine(",
+               "#{mix_path} must rely on provider SDK transitive auth deps instead of declaring pristine directly"
 
-        refute mix_exs =~ forbidden_auth_dep,
-               "#{mix_path} must not carry an unrelated lower-repo auth dependency"
+        refute mix_exs =~ "ConnectorDependencyResolver.prismatic(",
+               "#{mix_path} must rely on provider SDK transitive auth deps instead of declaring prismatic directly"
       end
     )
   end

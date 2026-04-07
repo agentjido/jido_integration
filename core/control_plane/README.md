@@ -104,7 +104,7 @@ It:
 
 The self-hosted route now proves both runtime ownership shapes:
 
-- spawned `llama_cpp_ex`
+- spawned `llama_cpp_sdk`
 - attached-local `ollama`
 
 The durable record includes:

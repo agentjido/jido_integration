@@ -107,7 +107,7 @@ defmodule ExampleFixture do
     %{
       binary_path: System.find_executable("python3") || "python3",
       launcher_args: [
-        Path.expand("../../../../llama_cpp_ex/examples/support/fake_llama_server.py", __DIR__)
+        Path.expand("../../../../llama_cpp_sdk/examples/support/fake_llama_server.py", __DIR__)
       ],
       model: "/models/demo.gguf",
       alias: "fixture-llama",
@@ -125,7 +125,9 @@ defmodule ExampleFixture do
       execution_surface: [surface_kind: :local_subprocess],
       environment: %{
         "LLAMA_CPP_EX_FAKE_MODE" => "ready",
-        "LLAMA_CPP_EX_FAKE_STATE_DIR" => fixture.state_dir
+        "LLAMA_CPP_EX_FAKE_STATE_DIR" => fixture.state_dir,
+        "LLAMA_CPP_SDK_FAKE_MODE" => "ready",
+        "LLAMA_CPP_SDK_FAKE_STATE_DIR" => fixture.state_dir
       },
       metadata: %{}
     }
@@ -264,5 +266,5 @@ after
 
   ExampleFixture.cleanup(fixture)
   _ = SelfHostedInferenceCore.stop_all_instances()
-  _ = LlamaCppEx.unregister_backend()
+  _ = LlamaCppSdk.unregister_backend()
 end

@@ -8,7 +8,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   alias Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceRequest
-  alias LlamaCppEx
+  alias LlamaCppSdk
 
   @socket_capable? (case :gen_tcp.listen(0, [
                            :binary,
@@ -77,7 +77,9 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         execution_surface: [surface_kind: :local_subprocess],
         environment: %{
           "LLAMA_CPP_EX_FAKE_MODE" => Map.get(overrides_map, :mode, "ready"),
-          "LLAMA_CPP_EX_FAKE_STATE_DIR" => fixture.state_dir
+          "LLAMA_CPP_EX_FAKE_STATE_DIR" => fixture.state_dir,
+          "LLAMA_CPP_SDK_FAKE_MODE" => Map.get(overrides_map, :mode, "ready"),
+          "LLAMA_CPP_SDK_FAKE_STATE_DIR" => fixture.state_dir
         },
         metadata: Map.get(overrides_map, :metadata, %{})
       }
@@ -86,7 +88,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
 
     defp script_path do
       Path.expand(
-        "../../../../../../../llama_cpp_ex/examples/support/fake_llama_server.py",
+        "../../../../../../../llama_cpp_sdk/examples/support/fake_llama_server.py",
         __DIR__
       )
     end
@@ -420,13 +422,13 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     Application.ensure_all_started(:inets)
     Application.ensure_all_started(:ssl)
     ControlPlane.reset!()
-    _ = LlamaCppEx.unregister_backend()
+    _ = LlamaCppSdk.unregister_backend()
     _ = SelfHostedInferenceCore.Ollama.unregister_backend()
     original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
 
     on_exit(fn ->
       _ = SelfHostedInferenceCore.stop_all_instances()
-      _ = LlamaCppEx.unregister_backend()
+      _ = LlamaCppSdk.unregister_backend()
       _ = SelfHostedInferenceCore.Ollama.unregister_backend()
 
       if is_nil(original_asm_endpoint) do
@@ -466,9 +468,9 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
           "authorization" => "Bearer local-token",
           "x-jido-route" => "inference"
         },
-        provider_identity: :llama_cpp,
+        provider_identity: :llama_cpp_sdk,
         model_identity: "llama-3.2-3b-instruct",
-        source_runtime: :llama_cpp_ex,
+        source_runtime: :llama_cpp_sdk,
         source_runtime_ref: "llama-runtime-1",
         lease_ref: "lease-call-spec-1",
         health_ref: "health-call-spec-1",
@@ -627,7 +629,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
 
   @tag skip:
          not @socket_capable? and
-           "requires a socket-capable environment for llama_cpp_ex endpoint proof"
+           "requires a socket-capable environment for llama_cpp_sdk endpoint proof"
   test "invoke_inference/2 records durable self-hosted streaming truth through a llama.cpp endpoint" do
     fixture = FakeLlamaServerFixture.new!()
 
@@ -635,7 +637,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
       FakeLlamaServerFixture.cleanup(fixture)
     end)
 
-    assert :ok = LlamaCppEx.register_backend()
+    assert :ok = LlamaCppSdk.register_backend()
 
     request =
       InferenceRequest.new!(%{
@@ -646,7 +648,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         model_preference: %{provider: "openai", id: "fixture-llama"},
         target_preference: %{
           target_class: "self_hosted_endpoint",
-          backend: "llama_cpp",
+          backend: "llama_cpp_sdk",
           boot_spec:
             FakeLlamaServerFixture.boot_spec(
               fixture,
@@ -676,7 +678,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     assert result.compatibility_result.metadata.route == :self_hosted
     assert result.endpoint_descriptor.target_class == :self_hosted_endpoint
     assert result.endpoint_descriptor.base_url == "http://127.0.0.1:#{fixture.port}/managed/v1"
-    assert result.backend_manifest.backend == :llama_cpp
+    assert result.backend_manifest.backend == :llama_cpp_sdk
     assert result.lease_ref.lease_ref == result.endpoint_descriptor.lease_ref
     assert result.stream.opened.checkpoint_policy == :summary
     assert result.stream.closed.chunk_count > 0
@@ -694,7 +696,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
            ]
 
     assert {:ok, attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
-    assert attempt.output["endpoint_descriptor"]["provider_identity"] == "llama_cpp"
+    assert attempt.output["endpoint_descriptor"]["provider_identity"] == "llama_cpp_sdk"
     assert attempt.output["compatibility_result"]["metadata"]["route"] == "self_hosted"
     assert attempt.output["lease_ref"]["lease_ref"] == result.lease_ref.lease_ref
   end

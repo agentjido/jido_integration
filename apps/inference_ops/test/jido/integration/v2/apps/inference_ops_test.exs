@@ -6,7 +6,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
   alias CliSubprocessCore.Payload
   alias Jido.Integration.V2.Apps.InferenceOps
   alias Jido.Integration.V2.{ControlPlane, InferenceRequest}
-  alias LlamaCppEx
+  alias LlamaCppSdk
 
   @socket_capable? (case :gen_tcp.listen(0, [
                            :binary,
@@ -272,7 +272,9 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
         execution_surface: [surface_kind: :local_subprocess],
         environment: %{
           "LLAMA_CPP_EX_FAKE_MODE" => Map.get(overrides_map, :mode, "ready"),
-          "LLAMA_CPP_EX_FAKE_STATE_DIR" => fixture.state_dir
+          "LLAMA_CPP_EX_FAKE_STATE_DIR" => fixture.state_dir,
+          "LLAMA_CPP_SDK_FAKE_MODE" => Map.get(overrides_map, :mode, "ready"),
+          "LLAMA_CPP_SDK_FAKE_STATE_DIR" => fixture.state_dir
         },
         metadata: Map.get(overrides_map, :metadata, %{})
       }
@@ -281,7 +283,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
 
     defp script_path do
       Path.expand(
-        "../../../../../../../../llama_cpp_ex/examples/support/fake_llama_server.py",
+        "../../../../../../../../llama_cpp_sdk/examples/support/fake_llama_server.py",
         __DIR__
       )
     end
@@ -418,13 +420,13 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
     Application.ensure_all_started(:inets)
     Application.ensure_all_started(:ssl)
     ControlPlane.reset!()
-    _ = LlamaCppEx.unregister_backend()
+    _ = LlamaCppSdk.unregister_backend()
     _ = SelfHostedInferenceCore.Ollama.unregister_backend()
     original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
 
     on_exit(fn ->
       _ = SelfHostedInferenceCore.stop_all_instances()
-      _ = LlamaCppEx.unregister_backend()
+      _ = LlamaCppSdk.unregister_backend()
       _ = SelfHostedInferenceCore.Ollama.unregister_backend()
 
       if is_nil(original_asm_endpoint) do
@@ -597,7 +599,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
              "inference.attempt_completed"
            ]
 
-    assert packet.attempt.output["endpoint_descriptor"]["provider_identity"] == "llama_cpp"
+    assert packet.attempt.output["endpoint_descriptor"]["provider_identity"] == "llama_cpp_sdk"
     assert packet.attempt.output["lease_ref"]["lease_ref"] == result.lease_ref.lease_ref
   end
 

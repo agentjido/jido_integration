@@ -17,9 +17,13 @@
     ]
   ],
   dependencies: [
+    agent_session_manager: [requirement: "~> 0.9.0"],
     github_ex: [requirement: "~> 0.1.0"],
     linear_sdk: [requirement: "~> 0.2.0"],
-    notion_sdk: [requirement: "~> 0.2.0"]
+    notion_sdk: [requirement: "~> 0.2.0"],
+    req_llm: [requirement: "~> 1.9"],
+    self_hosted_inference_core: [requirement: "~> 0.1.0"],
+    llama_cpp_sdk: [requirement: "~> 0.1.0"]
   ],
   artifacts: [
     jido_integration: [
