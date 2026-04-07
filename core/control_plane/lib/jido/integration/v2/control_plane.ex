@@ -15,6 +15,8 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.ControlPlane.Registry
   alias Jido.Integration.V2.ControlPlane.Stores
+  alias Jido.Integration.V2.ControlPlane.Application, as: ControlPlaneApplication
+  alias Jido.Integration.V2.ControlPlane.Supervisor, as: ControlPlaneSupervisor
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
@@ -230,6 +232,7 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   @spec reset!() :: :ok
   def reset! do
+    ensure_started!()
     Registry.reset!()
     reset_store(Stores.target_store())
     reset_store(Stores.artifact_store())
@@ -887,6 +890,54 @@ defmodule Jido.Integration.V2.ControlPlane do
   defp reset_store(module) do
     if function_exported?(module, :reset!, 0) do
       module.reset!()
+    end
+  end
+
+  defp ensure_started! do
+    case Process.whereis(Registry) do
+      nil ->
+        ensure_registry_started!()
+
+      _pid ->
+        :ok
+    end
+  end
+
+  defp ensure_registry_started! do
+    case Process.whereis(ControlPlaneSupervisor) do
+      nil ->
+        case ControlPlaneApplication.start(:normal, []) do
+          {:ok, _pid} -> :ok
+          {:error, {:already_started, _pid}} -> :ok
+          {:error, reason} -> raise("control plane application did not start: #{inspect(reason)}")
+        end
+
+      _pid ->
+        case Supervisor.restart_child(ControlPlaneSupervisor, Registry) do
+          {:ok, _child} -> :ok
+          {:ok, _child, _info} -> :ok
+          {:error, :already_present} -> :ok
+          {:error, :running} -> :ok
+          {:error, reason} ->
+            raise("control plane registry did not restart: #{inspect(reason)}")
+        end
+    end
+
+    wait_for_process!(Registry, "control plane registry")
+  end
+
+  defp wait_for_process!(name, label, attempts \\ 40)
+
+  defp wait_for_process!(_name, label, 0), do: raise("#{label} did not start")
+
+  defp wait_for_process!(name, label, attempts) do
+    case Process.whereis(name) do
+      nil ->
+        Process.sleep(50)
+        wait_for_process!(name, label, attempts - 1)
+
+      _pid ->
+        :ok
     end
   end
 

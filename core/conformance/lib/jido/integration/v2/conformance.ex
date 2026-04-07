@@ -144,7 +144,7 @@ defmodule Jido.Integration.V2.Conformance do
     previous_runtime_drivers =
       Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
 
-    {:ok, _apps} = Application.ensure_all_started(:jido_integration_v2_control_plane)
+    ensure_control_plane_started!()
     Application.put_env(:jido_integration_v2_control_plane, :runtime_drivers, runtime_drivers)
     HarnessRuntime.reset!()
 
@@ -182,6 +182,18 @@ defmodule Jido.Integration.V2.Conformance do
       nil -> "0.1.0"
       version when is_list(version) -> List.to_string(version)
       version -> to_string(version)
+    end
+  end
+
+  defp ensure_control_plane_started! do
+    if Process.whereis(Jido.Integration.V2.ControlPlane.Registry) do
+      :ok
+    else
+      case Jido.Integration.V2.ControlPlane.Application.start(:normal, []) do
+        {:ok, _pid} -> :ok
+        {:error, {:already_started, _pid}} -> :ok
+        {:error, reason} -> raise "failed to start control_plane application: #{inspect(reason)}"
+      end
     end
   end
 

@@ -19,8 +19,8 @@ defmodule Jido.Integration.V2.HarnessRuntime do
 
   alias Jido.Harness.{ExecutionResult, RunRequest, SessionHandle}
   alias Jido.Integration.V2.{Capability, Contracts, RuntimeResult, TargetDescriptor}
+  alias Jido.Integration.V2.HarnessRuntime.Application, as: HarnessRuntimeApplication
   alias Jido.Integration.V2.HarnessRuntime.SessionStore
-  @app :jido_integration_v2_harness_runtime
 
   @target_driver_modules %{
     "asm" => Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver,
@@ -87,9 +87,19 @@ defmodule Jido.Integration.V2.HarnessRuntime do
   end
 
   defp ensure_started do
-    case Application.ensure_all_started(@app) do
-      {:ok, _apps} -> :ok
-      {:error, reason} -> {:error, {:unable_to_start_harness_runtime, reason}}
+    if available?() do
+      :ok
+    else
+      case HarnessRuntimeApplication.start(:normal, []) do
+        {:ok, _pid} ->
+          :ok
+
+        {:error, {:already_started, _pid}} ->
+          :ok
+
+        {:error, reason} ->
+          {:error, {:unable_to_start_harness_runtime, reason}}
+      end
     end
   end
 

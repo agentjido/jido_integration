@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Platform.DurableSupport
 
   using do
     quote do
@@ -16,22 +17,15 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
     end
   end
 
-  setup do
-    ensure_started(
-      [
-        Jido.Integration.V2.ControlPlane.Registry,
-        Jido.Integration.V2.ControlPlane.RunLedger,
-        Jido.Integration.V2.HarnessRuntime.SessionStore
-      ],
-      Jido.Integration.V2.ControlPlane.Supervisor,
-      Jido.Integration.V2.ControlPlane.Application
-    )
+  setup_all do
+    DurableSupport.setup_all!()
+    :ok
+  end
 
-    ensure_started(
-      [Jido.Integration.V2.Auth.Store],
-      Jido.Integration.V2.Auth.Supervisor,
-      Jido.Integration.V2.Auth.Application
-    )
+  setup do
+    cleanup = DurableSupport.setup!()
+
+    on_exit(cleanup)
 
     V2.reset!()
     :ok
@@ -113,31 +107,6 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
     Enum.each(secret_values, fn secret ->
       refute inspected =~ secret
     end)
-  end
-
-  defp ensure_started(required_processes, supervisor_name, application_module) do
-    if Enum.all?(required_processes, &Process.whereis/1) do
-      :ok
-    else
-      if pid = Process.whereis(supervisor_name) do
-        try do
-          GenServer.stop(pid, :normal)
-        catch
-          :exit, _reason -> :ok
-        end
-      end
-
-      case application_module.start(:normal, []) do
-        {:ok, _pid} ->
-          :ok
-
-        {:error, {:already_started, _pid}} ->
-          :ok
-
-        {:error, reason} ->
-          raise "failed to start #{inspect(supervisor_name)}: #{inspect(reason)}"
-      end
-    end
   end
 
   defp auth_type_for(secret) do

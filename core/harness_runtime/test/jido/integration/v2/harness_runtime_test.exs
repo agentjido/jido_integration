@@ -214,6 +214,25 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
     refute_received {:override_driver_run, _session_id, _prompt, _opts}
   end
 
+  test "starts its supervisor directly when no standalone OTP app resource is available" do
+    stop_harness_runtime!()
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    assert {:ok, _result} =
+             HarnessRuntime.execute(
+               capability_fixture(),
+               %{prompt: "hello"},
+               runtime_context()
+             )
+
+    assert Process.whereis(Jido.Integration.V2.HarnessRuntime.Supervisor)
+  end
+
   defp capability_fixture(overrides \\ %{}) do
     runtime =
       Map.get(overrides, :runtime, %{
@@ -278,5 +297,20 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
   defp removed_bridge_id(kind) do
     ["integration", kind, "bridge"]
     |> Enum.join("_")
+  end
+
+  defp stop_harness_runtime! do
+    if pid = Process.whereis(Jido.Integration.V2.HarnessRuntime.Supervisor) do
+      ref = Process.monitor(pid)
+      GenServer.stop(pid, :normal)
+
+      receive do
+        {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
+      after
+        5_000 -> flunk("harness runtime supervisor did not stop")
+      end
+    else
+      :ok
+    end
   end
 end

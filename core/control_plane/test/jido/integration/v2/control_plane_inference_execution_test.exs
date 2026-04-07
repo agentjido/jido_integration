@@ -87,10 +87,19 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     end
 
     defp script_path do
-      Path.expand(
-        "../../../../../../../llama_cpp_sdk/examples/support/fake_llama_server.py",
-        __DIR__
-      )
+      candidates =
+        [
+          Mix.Project.deps_paths()[:llama_cpp_sdk] &&
+            Path.join(Mix.Project.deps_paths()[:llama_cpp_sdk], "examples/support/fake_llama_server.py"),
+          Path.expand(
+            "../../../../../../../llama_cpp_sdk/examples/support/fake_llama_server.py",
+            __DIR__
+          )
+        ]
+        |> Enum.reject(&is_nil/1)
+
+      Enum.find(candidates, &File.regular?/1) ||
+        raise "unable to locate llama_cpp_sdk fake server script"
     end
 
     defp unique_state_dir do

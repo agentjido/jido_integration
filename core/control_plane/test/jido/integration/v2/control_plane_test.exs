@@ -437,10 +437,10 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   test "reset tolerates the compiled harness runtime when its application is not started" do
-    assert :ok = Application.stop(:jido_integration_v2_harness_runtime)
+    assert :ok = stop_harness_runtime!()
 
     on_exit(fn ->
-      assert {:ok, _apps} = Application.ensure_all_started(:jido_integration_v2_harness_runtime)
+      assert :ok = ensure_harness_runtime_started!()
     end)
 
     assert Process.whereis(SessionStore) == nil
@@ -1242,5 +1242,28 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
       health: :healthy,
       location: %{mode: :beam, region: "test", workspace_root: "/srv/tenant-1"}
     })
+  end
+
+  defp stop_harness_runtime! do
+    if pid = Process.whereis(Jido.Integration.V2.HarnessRuntime.Supervisor) do
+      ref = Process.monitor(pid)
+      GenServer.stop(pid, :normal)
+
+      receive do
+        {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
+      after
+        5_000 -> flunk("harness runtime supervisor did not stop")
+      end
+    else
+      :ok
+    end
+  end
+
+  defp ensure_harness_runtime_started! do
+    case Jido.Integration.V2.HarnessRuntime.Application.start(:normal, []) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> flunk("failed to start harness runtime: #{inspect(reason)}")
+    end
   end
 end

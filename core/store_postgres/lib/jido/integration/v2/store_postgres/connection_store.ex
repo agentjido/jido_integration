@@ -112,6 +112,7 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
   end
 
   def reset! do
+    Jido.Integration.V2.StorePostgres.ensure_started!()
     Repo.delete_all(ConnectionRecord)
     :ok
   end

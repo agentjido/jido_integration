@@ -31,7 +31,7 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
     on_exit(fn ->
       Auth.set_refresh_handler(nil)
       TestSupport.reset_database!()
-      Sandbox.mode(Repo, :manual)
+      Sandbox.mode(Repo, :auto)
     end)
 
     assert {:ok,

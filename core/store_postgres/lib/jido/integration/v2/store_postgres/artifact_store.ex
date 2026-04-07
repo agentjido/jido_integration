@@ -44,6 +44,7 @@ defmodule Jido.Integration.V2.StorePostgres.ArtifactStore do
   end
 
   def reset! do
+    Jido.Integration.V2.StorePostgres.ensure_started!()
     Repo.delete_all(ArtifactRecord)
     :ok
   end

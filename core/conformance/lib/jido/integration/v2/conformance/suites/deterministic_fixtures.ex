@@ -375,7 +375,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
   defp reset_runtime!(:direct), do: :ok
 
   defp reset_runtime!(runtime_class) when runtime_class in [:session, :stream] do
-    {:ok, _apps} = Application.ensure_all_started(:jido_integration_v2_control_plane)
+    ensure_control_plane_started!()
     HarnessRuntime.reset!()
   end
 
@@ -411,6 +411,18 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
 
   defp normalize_output(output) when is_list(output), do: Enum.map(output, &normalize_output/1)
   defp normalize_output(output), do: output
+
+  defp ensure_control_plane_started! do
+    if Process.whereis(Jido.Integration.V2.ControlPlane.Registry) do
+      :ok
+    else
+      case Jido.Integration.V2.ControlPlane.Application.start(:normal, []) do
+        {:ok, _pid} -> :ok
+        {:error, {:already_started, _pid}} -> :ok
+        {:error, reason} -> raise "failed to start control_plane application: #{inspect(reason)}"
+      end
+    end
+  end
 
   defp profile_consistent?(nil, nil, _profile_id), do: true
 

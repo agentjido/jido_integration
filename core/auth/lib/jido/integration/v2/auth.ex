@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.Auth do
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Auth.LeaseRecord
   alias Jido.Integration.V2.Auth.Store
+  alias Jido.Integration.V2.Auth.Supervisor, as: AuthSupervisor
   alias Jido.Integration.V2.Auth.Stores
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Credential
@@ -563,6 +564,7 @@ defmodule Jido.Integration.V2.Auth do
 
   @spec set_refresh_handler(refresh_handler() | nil) :: :ok
   def set_refresh_handler(handler) when is_function(handler, 2) or is_nil(handler) do
+    ensure_started!()
     Store.set_refresh_handler(handler)
     :ok
   end
@@ -570,18 +572,67 @@ defmodule Jido.Integration.V2.Auth do
   @spec set_external_secret_resolver(external_secret_resolver() | nil) :: :ok
   def set_external_secret_resolver(handler)
       when is_function(handler, 3) or is_nil(handler) do
+    ensure_started!()
     Store.set_external_secret_resolver(handler)
     :ok
   end
 
   @spec reset!() :: :ok
   def reset! do
+    ensure_started!()
     Store.set_refresh_handler(nil)
     Store.set_external_secret_resolver(nil)
     reset_store(Stores.install_store())
     reset_store(Stores.connection_store())
     reset_store(Stores.lease_store())
     reset_store(Stores.credential_store())
+  end
+
+  defp ensure_started! do
+    case Process.whereis(Store) do
+      nil ->
+        ensure_store_started!()
+
+      _pid ->
+        :ok
+    end
+  end
+
+  defp ensure_store_started! do
+    case Process.whereis(AuthSupervisor) do
+      nil ->
+        case Jido.Integration.V2.Auth.Application.start(:normal, []) do
+          {:ok, _pid} -> :ok
+          {:error, {:already_started, _pid}} -> :ok
+          {:error, reason} -> raise("auth application did not start: #{inspect(reason)}")
+        end
+
+      _pid ->
+        case Supervisor.restart_child(AuthSupervisor, Store) do
+          {:ok, _child} -> :ok
+          {:ok, _child, _info} -> :ok
+          {:error, :already_present} -> :ok
+          {:error, :running} -> :ok
+          {:error, reason} -> raise("auth store did not restart: #{inspect(reason)}")
+        end
+    end
+
+    wait_for_process!(Store, "auth store")
+  end
+
+  defp wait_for_process!(name, label, attempts \\ 40)
+
+  defp wait_for_process!(_name, label, 0), do: raise("#{label} did not start")
+
+  defp wait_for_process!(name, label, attempts) do
+    case Process.whereis(name) do
+      nil ->
+        Process.sleep(50)
+        wait_for_process!(name, label, attempts - 1)
+
+      _pid ->
+        :ok
+    end
   end
 
   defp install_connection_for_start(

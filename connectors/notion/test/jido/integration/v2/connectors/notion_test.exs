@@ -294,7 +294,7 @@ defmodule Jido.Integration.V2.Connectors.NotionTest do
              "/tmp/notion_sdk_priv/upstream/parity_inventory.json"
 
     assert OperationCatalog.inventory_path()
-           |> String.ends_with?("/connectors/notion/priv/upstream/parity_inventory.json")
+           |> String.ends_with?("/priv/upstream/parity_inventory.json")
 
     assert File.exists?(OperationCatalog.inventory_path())
   end

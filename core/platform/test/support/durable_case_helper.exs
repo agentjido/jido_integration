@@ -1,7 +1,5 @@
-defmodule Jido.Integration.V2.StorePostgres.DataCase do
+defmodule Jido.Integration.V2.Platform.DurableSupport do
   @moduledoc false
-
-  use ExUnit.CaseTemplate
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Jido.Integration.V2.StorePostgres.Repo
@@ -11,44 +9,29 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
   @auth_keys [:credential_store, :lease_store, :connection_store, :install_store, :keyring]
   @store_postgres_keys [:ecto_repos, Repo]
 
-  using do
-    quote do
-      alias Jido.Integration.V2.StorePostgres.Repo
-      import Ecto.Query
-      import Jido.Integration.V2.StorePostgres.DataCase
-      import Jido.Integration.V2.StorePostgres.Fixtures
-    end
-  end
-
-  setup_all do
-    TestSupport.setup_database!()
+  @spec setup_all!(keyword()) :: :ok
+  def setup_all!(opts \\ []) do
+    TestSupport.setup_database!(opts)
+    maybe_enable_auto_sandbox(opts)
     :ok
   end
 
-  setup tags do
+  @spec setup!(keyword()) :: (-> :ok)
+  def setup!(opts \\ []) do
     previous_env = snapshot_env()
-    TestSupport.configure_defaults!()
-    :ok = Sandbox.checkout(Repo)
+    TestSupport.configure_defaults!(opts)
+    maybe_enable_auto_sandbox(opts)
 
-    unless tags[:async] do
-      Sandbox.mode(Repo, {:shared, self()})
-    end
-
-    TestSupport.reset_database!()
-
-    on_exit(fn ->
+    fn ->
       restore_env(previous_env)
-    end)
-
-    :ok
+      :ok
+    end
   end
 
-  @spec restart_repo!(atom()) :: :ok
-  def restart_repo!(mode \\ :auto), do: TestSupport.restart_repo!(mode)
-
-  @spec fetch_map_value(map(), atom()) :: term()
-  def fetch_map_value(map, key) when is_map(map) do
-    Map.get(map, key, Map.get(map, Atom.to_string(key)))
+  defp maybe_enable_auto_sandbox(opts) do
+    if TestSupport.repo_config(opts)[:pool] == Sandbox do
+      Sandbox.mode(Repo, :auto)
+    end
   end
 
   defp snapshot_env do
@@ -75,5 +58,30 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
       {key, :__missing__} -> Application.delete_env(app, key)
       {key, value} -> Application.put_env(app, key, value)
     end)
+  end
+end
+
+defmodule Jido.Integration.V2.Platform.DurableCase do
+  @moduledoc false
+
+  use ExUnit.CaseTemplate
+
+  alias Jido.Integration.V2.Platform.DurableSupport
+
+  using do
+    quote do
+      use ExUnit.Case, async: false
+    end
+  end
+
+  setup_all do
+    DurableSupport.setup_all!()
+    :ok
+  end
+
+  setup do
+    cleanup = DurableSupport.setup!()
+    on_exit(cleanup)
+    :ok
   end
 end

@@ -53,6 +53,7 @@ defmodule Jido.Integration.V2.StorePostgres.RunStore do
   end
 
   def reset! do
+    Jido.Integration.V2.StorePostgres.ensure_started!()
     Repo.delete_all(EventRecord)
     Repo.delete_all(AttemptRecord)
     Repo.delete_all(RunRecord)

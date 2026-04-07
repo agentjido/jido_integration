@@ -12,21 +12,6 @@ defmodule Jido.Integration.V2.Connectors.Linear.GeneratedConsumerSurfaceTest do
   alias Jido.Integration.V2.InvocationRequest
 
   setup do
-    ensure_started(
-      [
-        Jido.Integration.V2.ControlPlane.Registry,
-        Jido.Integration.V2.ControlPlane.RunLedger
-      ],
-      Jido.Integration.V2.ControlPlane.Supervisor,
-      Jido.Integration.V2.ControlPlane.Application
-    )
-
-    ensure_started(
-      [Jido.Integration.V2.Auth.Store],
-      Jido.Integration.V2.Auth.Supervisor,
-      Jido.Integration.V2.Auth.Application
-    )
-
     V2.reset!()
     :ok
   end
@@ -202,32 +187,4 @@ defmodule Jido.Integration.V2.Connectors.Linear.GeneratedConsumerSurfaceTest do
       raise "missing capability #{capability_id}"
   end
 
-  defp ensure_started(required_processes, supervisor_name, application_module) do
-    if Enum.all?(required_processes, &Process.whereis/1) do
-      :ok
-    else
-      ensure_stopped(supervisor_name)
-
-      case application_module.start(:normal, []) do
-        {:ok, _pid} ->
-          :ok
-
-        {:error, {:already_started, _pid}} ->
-          :ok
-
-        {:error, reason} ->
-          raise "failed to start #{inspect(supervisor_name)}: #{inspect(reason)}"
-      end
-    end
-  end
-
-  defp ensure_stopped(supervisor_name) do
-    if pid = Process.whereis(supervisor_name) do
-      try do
-        GenServer.stop(pid, :normal)
-      catch
-        :exit, _reason -> :ok
-      end
-    end
-  end
 end

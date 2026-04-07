@@ -1,5 +1,5 @@
 defmodule Jido.Integration.V2ExecuteRunTest do
-  use ExUnit.Case, async: false
+  use Jido.Integration.V2.Platform.DurableCase
 
   alias Jido.Integration.V2
   alias Jido.Integration.V2.AuthSpec

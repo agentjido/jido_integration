@@ -102,6 +102,7 @@ defmodule Jido.Integration.V2.StorePostgres.InstallStore do
   end
 
   def reset! do
+    Jido.Integration.V2.StorePostgres.ensure_started!()
     Repo.delete_all(InstallRecord)
     :ok
   end

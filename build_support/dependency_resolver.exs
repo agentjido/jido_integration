@@ -4,7 +4,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
   @repo_root Path.expand("..", __DIR__)
   @repo_fallback [
     github: "agentjido/jido_integration",
-    branch: "bridge/jido_os_compose"
+    branch: "main"
   ]
 
   def jido_integration_v2(opts \\ []),
@@ -128,10 +128,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
 
   def sprites(opts \\ []) do
     {:sprites,
-     Keyword.merge(
-       [git: "https://github.com/mikehostetler/sprites-ex.git", branch: "main"],
-       opts
-     )}
+     Keyword.merge([git: "https://github.com/mikehostetler/sprites-ex.git"], opts)}
   end
 
   def req_llm(opts \\ []) do
@@ -155,7 +152,10 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def weld(opts \\ []) do
-    {:weld, "~> 0.1.0", opts}
+    case local_root_path("WELD_PATH", nil) do
+      nil -> {:weld, "~> 0.1.0", opts}
+      path -> {:weld, Keyword.merge([path: path], opts)}
+    end
   end
 
   def repo_root, do: @repo_root
@@ -192,9 +192,15 @@ defmodule Jido.Integration.Build.DependencyResolver do
   defp local_root_path(env_var, default_relative_path) do
     case System.get_env(env_var) do
       nil ->
-        default_relative_path
-        |> Path.expand(@repo_root)
-        |> existing_path()
+        case default_relative_path do
+          nil ->
+            nil
+
+          path ->
+            path
+            |> Path.expand(@repo_root)
+            |> existing_path()
+        end
 
       value when value in ["", "0", "false", "disabled"] ->
         nil

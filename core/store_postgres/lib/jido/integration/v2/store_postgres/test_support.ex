@@ -89,34 +89,28 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
       }
     })
 
-    Application.put_env(:jido_integration_v2_store_postgres, :ecto_repos, [Repo])
-    Application.put_env(:jido_integration_v2_store_postgres, Repo, repo_config(opts))
+    configure_repo_defaults!(opts)
     :ok
   end
 
   @spec setup_database!(keyword()) :: :ok
   def setup_database!(opts \\ []) do
-    configure_defaults!(opts)
+    configure_repo_defaults!(opts)
     _ = PostgresAdapter.storage_up(repo_config(opts))
+    ensure_repo_started!()
+    with_repo_ownership(opts, fn ->
+      {:ok, _, _} =
+        Migrator.with_repo(Repo, fn repo ->
+          Migrator.run(repo, StorePostgres.migrations_path(), :up, all: true)
+        end)
 
-    {:ok, _} = Application.ensure_all_started(:jido_integration_v2_store_postgres)
-
-    {:ok, _, _} =
-      Migrator.with_repo(Repo, fn repo ->
-        Migrator.run(repo, StorePostgres.migrations_path(), :up, all: true)
-      end)
-
-    reset_database!()
-
-    if repo_config(opts)[:pool] == Sandbox do
-      Sandbox.mode(Repo, :manual)
-    end
-
-    :ok
+      reset_database!()
+      :ok
+    end)
   end
 
   @spec restart_repo!(atom()) :: :ok
-  def restart_repo!(mode \\ :manual) do
+  def restart_repo!(mode \\ :auto) do
     previous_pid =
       case Process.whereis(Repo) do
         nil ->
@@ -135,6 +129,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
           pid
       end
 
+    StorePostgres.ensure_started!()
     wait_for_repo(previous_pid)
     maybe_set_sandbox_mode(mode)
     :ok
@@ -180,6 +175,31 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
       timeout: 15_000,
       ownership_timeout: 60_000
     ] ++ connection_config(socket_dir)
+  end
+
+  defp ensure_repo_started! do
+    StorePostgres.ensure_started!()
+  end
+
+  defp configure_repo_defaults!(opts) do
+    Application.put_env(:jido_integration_v2_store_postgres, :ecto_repos, [Repo])
+    Application.put_env(:jido_integration_v2_store_postgres, Repo, repo_config(opts))
+    :ok
+  end
+
+  defp with_repo_ownership(opts, fun) do
+    if repo_config(opts)[:pool] == Sandbox do
+      :ok = Sandbox.checkout(Repo)
+
+      try do
+        fun.()
+      after
+        Sandbox.checkin(Repo)
+        Sandbox.mode(Repo, :manual)
+      end
+    else
+      fun.()
+    end
   end
 
   defp wait_for_repo(previous_pid, attempts \\ 40)

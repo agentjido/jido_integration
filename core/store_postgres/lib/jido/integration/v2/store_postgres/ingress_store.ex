@@ -126,6 +126,7 @@ defmodule Jido.Integration.V2.StorePostgres.IngressStore do
   end
 
   def reset! do
+    Jido.Integration.V2.StorePostgres.ensure_started!()
     Repo.delete_all(TriggerRecordSchema)
     Repo.delete_all(DedupeKeyRecord)
     Repo.delete_all(TriggerCheckpointRecord)

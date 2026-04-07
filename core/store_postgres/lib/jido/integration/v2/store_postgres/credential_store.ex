@@ -76,6 +76,7 @@ defmodule Jido.Integration.V2.StorePostgres.CredentialStore do
   end
 
   def reset! do
+    Jido.Integration.V2.StorePostgres.ensure_started!()
     Repo.delete_all(CredentialRecord)
     :ok
   end

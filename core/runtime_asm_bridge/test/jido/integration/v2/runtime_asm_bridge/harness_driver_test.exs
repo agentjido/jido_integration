@@ -17,6 +17,17 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     :ok
   end
 
+  test "start_session/1 starts the bridge session store when the standalone app is not already running" do
+    assert :ok = stop_runtime_asm_bridge!()
+    assert Process.whereis(SessionStore) == nil
+
+    assert {:ok, session} = HarnessDriver.start_session(provider: :claude)
+    assert Process.whereis(SessionStore)
+    assert {:ok, _session_ref} = SessionStore.fetch(session.session_id)
+
+    assert :ok = HarnessDriver.stop_session(session)
+  end
+
   test "runtime_descriptor/1 reports provider-aware capabilities truthfully" do
     descriptor = HarnessDriver.runtime_descriptor(provider: :claude)
 
@@ -290,5 +301,20 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     assert reuse_key.lease_ref == "lease-from-runtime"
     assert reuse_key.surface_ref == "surface-from-runtime"
     assert reuse_key.target_id == "target-from-runtime"
+  end
+
+  defp stop_runtime_asm_bridge! do
+    if pid = Process.whereis(Jido.Integration.V2.RuntimeAsmBridge.Application.Supervisor) do
+      ref = Process.monitor(pid)
+      GenServer.stop(pid, :normal)
+
+      receive do
+        {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
+      after
+        5_000 -> flunk("runtime_asm_bridge supervisor did not stop")
+      end
+    else
+      :ok
+    end
   end
 end

@@ -14,19 +14,6 @@ db_pool_size =
 
 db_socket_dir = System.get_env("JIDO_INTEGRATION_V2_DB_SOCKET_DIR")
 
-config :jido_integration_v2_control_plane,
-  run_store: Jido.Integration.V2.StorePostgres.RunStore,
-  attempt_store: Jido.Integration.V2.StorePostgres.AttemptStore,
-  event_store: Jido.Integration.V2.StorePostgres.EventStore,
-  artifact_store: Jido.Integration.V2.StorePostgres.ArtifactStore,
-  target_store: Jido.Integration.V2.StorePostgres.TargetStore
-
-config :jido_integration_v2_auth,
-  credential_store: Jido.Integration.V2.StorePostgres.CredentialStore,
-  lease_store: Jido.Integration.V2.StorePostgres.LeaseStore,
-  connection_store: Jido.Integration.V2.StorePostgres.ConnectionStore,
-  install_store: Jido.Integration.V2.StorePostgres.InstallStore
-
 config :jido_integration_v2_store_postgres,
   ecto_repos: [Jido.Integration.V2.StorePostgres.Repo]
 

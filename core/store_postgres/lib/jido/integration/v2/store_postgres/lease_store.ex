@@ -63,6 +63,7 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
   end
 
   def reset! do
+    Jido.Integration.V2.StorePostgres.ensure_started!()
     Repo.delete_all(LeaseSchema)
     :ok
   end

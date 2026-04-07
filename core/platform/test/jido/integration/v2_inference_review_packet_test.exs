@@ -1,5 +1,5 @@
 defmodule Jido.Integration.V2InferenceReviewPacketTest do
-  use ExUnit.Case
+  use Jido.Integration.V2.Platform.DurableCase
 
   alias Jido.Integration.V2
   alias Jido.Integration.V2.BackendManifest
