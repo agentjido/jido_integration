@@ -1242,9 +1242,6 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   defp stop_harness_runtime! do
-    case Application.stop(:jido_integration_v2_harness_runtime) do
-      :ok -> :ok
-      {:error, {:not_started, :jido_integration_v2_harness_runtime}} -> :ok
-    end
+    HarnessRuntime.stop!()
   end
 end

@@ -36,17 +36,28 @@ defmodule Jido.Integration.V2.HarnessRuntime do
         }
 
   @doc """
-  Starts the authored non-direct runtime boundary and its declared OTP dependencies.
+  Starts the authored non-direct runtime boundary and its owned runtime dependencies.
   """
   @spec start!() :: :ok
   def start! do
-    case Application.ensure_all_started(:jido_integration_v2_harness_runtime) do
-      {:ok, _started_applications} ->
-        :ok
+    start_component!(Jido.Integration.V2.RuntimeAsmBridge.Application, "runtime_asm_bridge")
+    start_component!(Jido.Session.Application, "jido_session")
+    start_component!(Jido.Integration.V2.HarnessRuntime.Application, "harness runtime")
+  end
 
-      {:error, {application, reason}} ->
-        raise ArgumentError,
-              "failed to start harness runtime application #{inspect(application)}: #{inspect(reason)}"
+  @spec stop!() :: :ok
+  def stop! do
+    if pid = Process.whereis(Jido.Integration.V2.HarnessRuntime.Supervisor) do
+      ref = Process.monitor(pid)
+      GenServer.stop(pid, :normal)
+
+      receive do
+        {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
+      after
+        5_000 -> raise ArgumentError, "harness runtime supervisor did not stop"
+      end
+    else
+      :ok
     end
   end
 
@@ -542,6 +553,20 @@ defmodule Jido.Integration.V2.HarnessRuntime do
 
   defp normalize_driver_id(driver_id) when is_atom(driver_id), do: Atom.to_string(driver_id)
   defp normalize_driver_id(driver_id) when is_binary(driver_id), do: driver_id
+
+  defp start_component!(application_module, label) do
+    case application_module.start(:normal, []) do
+      {:ok, pid} ->
+        Process.unlink(pid)
+        :ok
+
+      {:error, {:already_started, _pid}} ->
+        :ok
+
+      {:error, reason} ->
+        raise ArgumentError, "failed to start #{label}: #{inspect(reason)}"
+    end
+  end
 
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, _key, []), do: opts

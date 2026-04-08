@@ -4,6 +4,7 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   import ExUnit.CaptureIO
 
   alias Jido.Integration.TestTmpDir
+  alias Jido.Integration.V2.HarnessRuntime
   alias Mix.Tasks.Jido.Conformance, as: ConformanceTask
 
   @tag timeout: 180_000
@@ -112,9 +113,6 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   end
 
   defp stop_harness_runtime! do
-    case Application.stop(:jido_integration_v2_harness_runtime) do
-      :ok -> :ok
-      {:error, {:not_started, :jido_integration_v2_harness_runtime}} -> :ok
-    end
+    HarnessRuntime.stop!()
   end
 end
