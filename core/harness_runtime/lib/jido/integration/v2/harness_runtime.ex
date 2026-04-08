@@ -19,7 +19,6 @@ defmodule Jido.Integration.V2.HarnessRuntime do
 
   alias Jido.Harness.{ExecutionResult, RunRequest, SessionHandle}
   alias Jido.Integration.V2.{Capability, Contracts, RuntimeResult, TargetDescriptor}
-  alias Jido.Integration.V2.HarnessRuntime.Application, as: HarnessRuntimeApplication
   alias Jido.Integration.V2.HarnessRuntime.SessionStore
 
   @target_driver_modules %{
@@ -40,8 +39,9 @@ defmodule Jido.Integration.V2.HarnessRuntime do
           {:ok, RuntimeResult.t()} | {:error, term(), RuntimeResult.t()}
   def execute(%Capability{runtime_class: runtime_class} = capability, input, context)
       when runtime_class in [:session, :stream] and is_map(input) and is_map(context) do
-    with :ok <- ensure_started(),
-         {:ok, resolution} <- resolve_driver(capability, input, context),
+    assert_started!()
+
+    with {:ok, resolution} <- resolve_driver(capability, input, context),
          {:ok, %{session: session, lifecycle: lifecycle}} <-
            fetch_or_start_session(resolution, capability, input, context) do
       case run_driver(resolution, session, capability, input, context, lifecycle) do
@@ -53,14 +53,6 @@ defmodule Jido.Integration.V2.HarnessRuntime do
            failure_runtime_result(capability, context, reason, lifecycle, session.session_id)}
       end
     else
-      {:error, {:unable_to_start_harness_runtime, reason}} ->
-        {:error, {:unable_to_start_harness_runtime, reason},
-         failure_runtime_result(
-           capability,
-           context,
-           {:unable_to_start_harness_runtime, reason}
-         )}
-
       {:error, reason} ->
         {:error, reason, failure_runtime_result(capability, context, reason)}
     end
@@ -83,20 +75,12 @@ defmodule Jido.Integration.V2.HarnessRuntime do
     Process.whereis(SessionStore) != nil
   end
 
-  defp ensure_started do
+  defp assert_started! do
     if available?() do
       :ok
     else
-      case HarnessRuntimeApplication.start(:normal, []) do
-        {:ok, _pid} ->
-          :ok
-
-        {:error, {:already_started, _pid}} ->
-          :ok
-
-        {:error, reason} ->
-          {:error, {:unable_to_start_harness_runtime, reason}}
-      end
+      raise ArgumentError,
+            "harness runtime is not started; start Jido.Integration.V2.HarnessRuntime.Application before invoking session or stream runtimes"
     end
   end
 

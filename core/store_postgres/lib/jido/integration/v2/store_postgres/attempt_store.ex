@@ -87,7 +87,7 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
   end
 
   def reset! do
-    StorePostgres.ensure_started!()
+    StorePostgres.assert_started!()
     Repo.delete_all(AttemptRecord)
     :ok
   end

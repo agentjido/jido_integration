@@ -4,7 +4,6 @@ defmodule Jido.Integration.V2.StoreLocal.Server do
   use GenServer
 
   alias Jido.Integration.V2.StoreLocal
-  alias Jido.Integration.V2.StoreLocal.Application, as: StoreLocalApplication
   alias Jido.Integration.V2.StoreLocal.State
 
   @type mutation_fun :: (State.t() -> {term(), State.t()})
@@ -119,81 +118,17 @@ defmodule Jido.Integration.V2.StoreLocal.Server do
     end
   end
 
-  defp ensure_started! do
-    case Process.whereis(__MODULE__) do
-      nil ->
-        ensure_server_started!()
-
-      _pid ->
-        :ok
+  defp assert_started! do
+    if Process.whereis(__MODULE__) do
+      :ok
+    else
+      raise ArgumentError,
+            "store_local server is not started; start Jido.Integration.V2.StoreLocal.Application before using Jido.Integration.V2.StoreLocal"
     end
   end
 
-  defp ensure_server_started! do
-    case Process.whereis(StoreLocalApplication) do
-      nil -> start_store_local_application!()
-      _pid -> restart_store_local_server!()
-    end
-
-    wait_for_process!(__MODULE__, "store_local server")
-  end
-
-  defp start_store_local_application! do
-    case StoreLocalApplication.start(:normal, []) do
-      {:ok, _pid} -> :ok
-      {:error, {:already_started, _pid}} -> :ok
-      {:error, reason} -> raise("store_local application did not start: #{inspect(reason)}")
-    end
-  end
-
-  defp restart_store_local_server! do
-    case Supervisor.restart_child(StoreLocalApplication, __MODULE__) do
-      {:ok, _child} -> :ok
-      {:ok, _child, _info} -> :ok
-      {:error, :already_present} -> :ok
-      {:error, :running} -> :ok
-      {:error, reason} -> raise("store_local server did not restart: #{inspect(reason)}")
-    end
-  end
-
-  defp call!(message, timeout \\ 5_000, attempts \\ 2)
-
-  defp call!(message, timeout, attempts) do
-    ensure_started!()
-
+  defp call!(message, timeout \\ 5_000) do
+    assert_started!()
     GenServer.call(__MODULE__, message, timeout)
-  catch
-    :exit, {:noproc, _reason} ->
-      retry_call!(message, timeout, attempts)
-
-    :exit, {{:shutdown, _reason}, _stack} ->
-      retry_call!(message, timeout, attempts)
-
-    :exit, {:shutdown, _reason} ->
-      retry_call!(message, timeout, attempts)
-  end
-
-  defp retry_call!(_message, _timeout, 1) do
-    raise "store_local server call failed after restart retry"
-  end
-
-  defp retry_call!(message, timeout, attempts) do
-    Process.sleep(50)
-    call!(message, timeout, attempts - 1)
-  end
-
-  defp wait_for_process!(name, label, attempts \\ 40)
-
-  defp wait_for_process!(_name, label, 0), do: raise("#{label} did not start")
-
-  defp wait_for_process!(name, label, attempts) do
-    case Process.whereis(name) do
-      nil ->
-        Process.sleep(50)
-        wait_for_process!(name, label, attempts - 1)
-
-      _pid ->
-        :ok
-    end
   end
 end

@@ -66,8 +66,11 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
   end
 
   defp ensure_store_local_started! do
-    _ = StoreLocalServer.storage_path()
-    :ok
+    case StoreLocalApplication.start(:normal, []) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> raise("store local application did not start: #{inspect(reason)}")
+    end
   end
 
   defp restart_supervised_server!(pid) do

@@ -15,7 +15,6 @@ defmodule Jido.Session do
     SessionHandle
   }
 
-  alias Jido.Session.Application, as: SessionApplication
   alias Jido.Session.{HarnessProjection, Store}
   alias Jido.Session.Runtime.{LocalEcho, Run, Session}
 
@@ -35,7 +34,7 @@ defmodule Jido.Session do
   @doc "Starts a new internal session and returns its Session Control handle."
   @spec start_session(keyword()) :: {:ok, SessionHandle.t()} | {:error, term()}
   def start_session(opts \\ []) when is_list(opts) do
-    ensure_started!()
+    assert_started!()
 
     with session <- Session.new(opts),
          :ok <- Store.put_session(session) do
@@ -46,7 +45,7 @@ defmodule Jido.Session do
   @doc "Stops an internal session."
   @spec stop_session(SessionHandle.t()) :: :ok
   def stop_session(%SessionHandle{session_id: session_id}) do
-    ensure_started!()
+    assert_started!()
 
     case Store.delete_session(session_id) do
       {:ok, _session} -> :ok
@@ -57,21 +56,21 @@ defmodule Jido.Session do
   @doc "Fetches the richer internal session record."
   @spec fetch_session(String.t()) :: {:ok, session_record()} | {:error, :not_found}
   def fetch_session(session_id) when is_binary(session_id) do
-    ensure_started!()
+    assert_started!()
     Store.fetch_session(session_id)
   end
 
   @doc "Fetches the richer internal run record."
   @spec fetch_run(String.t()) :: {:ok, run_record()} | {:error, :not_found}
   def fetch_run(run_id) when is_binary(run_id) do
-    ensure_started!()
+    assert_started!()
     Store.fetch_run(run_id)
   end
 
   @doc "Projects session status through the Harness Session Control IR."
   @spec session_status(SessionHandle.t()) :: {:ok, ExecutionStatus.t()} | {:error, term()}
   def session_status(%SessionHandle{session_id: session_id}) do
-    ensure_started!()
+    assert_started!()
 
     with {:ok, %Session{} = session} <- Store.fetch_session(session_id) do
       {:ok, HarnessProjection.session_status(session)}
@@ -82,7 +81,7 @@ defmodule Jido.Session do
   @spec stream_run(SessionHandle.t(), RunRequest.t(), keyword()) ::
           {:ok, RunHandle.t(), Enumerable.t(Jido.Harness.ExecutionEvent.t())} | {:error, term()}
   def stream_run(%SessionHandle{session_id: session_id}, %RunRequest{} = request, opts \\ []) do
-    ensure_started!()
+    assert_started!()
 
     with {:ok, %Session{} = session} <- Store.fetch_session(session_id),
          {:ok, started_run, completed_run} <- execute_run(session, request, opts),
@@ -96,7 +95,7 @@ defmodule Jido.Session do
   @spec run(SessionHandle.t(), RunRequest.t(), keyword()) ::
           {:ok, ExecutionResult.t()} | {:error, term()}
   def run(%SessionHandle{session_id: session_id}, %RunRequest{} = request, opts \\ []) do
-    ensure_started!()
+    assert_started!()
 
     with {:ok, %Session{} = session} <- Store.fetch_session(session_id),
          {:ok, _started_run, completed_run} <- execute_run(session, request, opts),
@@ -112,7 +111,7 @@ defmodule Jido.Session do
     do: cancel_run(session, run_id)
 
   def cancel_run(%SessionHandle{session_id: session_id}, run_id) when is_binary(run_id) do
-    ensure_started!()
+    assert_started!()
 
     with {:ok, %Run{} = run} <- Store.fetch_run(run_id),
          true <- run.session_id == session_id do
@@ -140,60 +139,12 @@ defmodule Jido.Session do
     end
   end
 
-  defp ensure_started! do
-    case Process.whereis(Store) do
-      nil ->
-        ensure_store_started!()
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp ensure_store_started! do
-    case Process.whereis(Jido.Session.Supervisor) do
-      nil -> start_session_runtime_application!()
-      _pid -> restart_session_runtime_store!()
-    end
-
-    wait_for_process!(Store, "session runtime store")
-  end
-
-  defp start_session_runtime_application! do
-    case SessionApplication.start(:normal, []) do
-      {:ok, _pid} ->
-        :ok
-
-      {:error, {:already_started, _pid}} ->
-        :ok
-
-      {:error, reason} ->
-        raise("session runtime application did not start: #{inspect(reason)}")
-    end
-  end
-
-  defp restart_session_runtime_store! do
-    case Supervisor.restart_child(Jido.Session.Supervisor, Store) do
-      {:ok, _child} -> :ok
-      {:ok, _child, _info} -> :ok
-      {:error, :already_present} -> :ok
-      {:error, :running} -> :ok
-      {:error, reason} -> raise("session runtime store did not restart: #{inspect(reason)}")
-    end
-  end
-
-  defp wait_for_process!(name, label, attempts \\ 40)
-
-  defp wait_for_process!(_name, label, 0), do: raise("#{label} did not start")
-
-  defp wait_for_process!(name, label, attempts) do
-    case Process.whereis(name) do
-      nil ->
-        Process.sleep(50)
-        wait_for_process!(name, label, attempts - 1)
-
-      _pid ->
-        :ok
+  defp assert_started! do
+    if Process.whereis(Store) do
+      :ok
+    else
+      raise ArgumentError,
+            "session runtime store is not started; start Jido.Session.Application before using Jido.Session"
     end
   end
 end

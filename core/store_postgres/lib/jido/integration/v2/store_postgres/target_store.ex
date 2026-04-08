@@ -42,7 +42,7 @@ defmodule Jido.Integration.V2.StorePostgres.TargetStore do
   end
 
   def reset! do
-    StorePostgres.ensure_started!()
+    StorePostgres.assert_started!()
     Repo.delete_all(TargetRecord)
     :ok
   end

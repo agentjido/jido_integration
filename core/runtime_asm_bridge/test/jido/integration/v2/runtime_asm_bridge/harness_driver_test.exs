@@ -18,15 +18,13 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     :ok
   end
 
-  test "start_session/1 starts the bridge session store when the standalone app is not already running" do
+  test "start_session/1 fails loudly when the runtime app is not started" do
     assert :ok = stop_runtime_asm_bridge!()
     assert Process.whereis(SessionStore) == nil
 
-    assert {:ok, session} = HarnessDriver.start_session(provider: :claude)
-    assert Process.whereis(SessionStore)
-    assert {:ok, _session_ref} = SessionStore.fetch(session.session_id)
-
-    assert :ok = HarnessDriver.stop_session(session)
+    assert_raise ArgumentError, ~r/runtime_asm_bridge session store is not started/, fn ->
+      HarnessDriver.start_session(provider: :claude)
+    end
   end
 
   test "runtime_descriptor/1 reports provider-aware capabilities truthfully" do

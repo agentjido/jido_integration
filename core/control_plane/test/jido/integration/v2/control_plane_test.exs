@@ -14,6 +14,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.HarnessRuntime.SessionStore
+  alias Jido.Integration.V2.HarnessRuntime.TestSupport, as: HarnessRuntimeTestSupport
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.Redaction
@@ -432,16 +433,13 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   setup do
+    HarnessRuntimeTestSupport.ensure_started!()
     ControlPlane.reset!()
     :ok
   end
 
   test "reset tolerates the compiled harness runtime when its application is not started" do
     assert :ok = stop_harness_runtime!()
-
-    on_exit(fn ->
-      assert :ok = ensure_harness_runtime_started!()
-    end)
 
     assert Process.whereis(SessionStore) == nil
     assert :ok = ControlPlane.reset!()
@@ -1256,14 +1254,6 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
       end
     else
       :ok
-    end
-  end
-
-  defp ensure_harness_runtime_started! do
-    case Jido.Integration.V2.HarnessRuntime.Application.start(:normal, []) do
-      {:ok, _pid} -> :ok
-      {:error, {:already_started, _pid}} -> :ok
-      {:error, reason} -> flunk("failed to start harness runtime: #{inspect(reason)}")
     end
   end
 end

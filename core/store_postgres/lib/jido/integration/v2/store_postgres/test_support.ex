@@ -132,7 +132,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
           pid
       end
 
-    StorePostgres.ensure_started!()
+    ensure_repo_started!()
     wait_for_repo(previous_pid)
     maybe_set_sandbox_mode(mode)
     :ok
@@ -181,7 +181,13 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   end
 
   defp ensure_repo_started! do
-    StorePostgres.ensure_started!()
+    case Jido.Integration.V2.StorePostgres.Application.start(:normal, []) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> raise("store_postgres application did not start: #{inspect(reason)}")
+    end
+
+    StorePostgres.assert_started!()
   end
 
   defp restart_repo_if_pool_changed!(previous_pool, opts) do

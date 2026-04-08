@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
   alias Jido.Harness.{ExecutionResult, SessionHandle}
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.HarnessRuntime
+  alias Jido.Integration.V2.HarnessRuntime.TestSupport, as: HarnessRuntimeTestSupport
   alias Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver
   alias Jido.Integration.V2.TargetDescriptor
 
@@ -82,6 +83,8 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
   end
 
   setup do
+    HarnessRuntimeTestSupport.ensure_started!()
+
     previous_runtime_drivers =
       Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
 
@@ -214,7 +217,7 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
     refute_received {:override_driver_run, _session_id, _prompt, _opts}
   end
 
-  test "starts its supervisor directly when no standalone OTP app resource is available" do
+  test "fails loudly when the harness runtime application is not started" do
     stop_harness_runtime!()
 
     Application.put_env(
@@ -223,14 +226,13 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
       %{authored_driver: AuthoredDriver}
     )
 
-    assert {:ok, _result} =
-             HarnessRuntime.execute(
-               capability_fixture(),
-               %{prompt: "hello"},
-               runtime_context()
-             )
-
-    assert Process.whereis(Jido.Integration.V2.HarnessRuntime.Supervisor)
+    assert_raise ArgumentError, ~r/harness runtime is not started/, fn ->
+      HarnessRuntime.execute(
+        capability_fixture(),
+        %{prompt: "hello"},
+        runtime_context()
+      )
+    end
   end
 
   defp capability_fixture(overrides \\ %{}) do

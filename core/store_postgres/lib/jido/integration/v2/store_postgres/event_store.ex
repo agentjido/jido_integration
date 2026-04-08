@@ -47,7 +47,7 @@ defmodule Jido.Integration.V2.StorePostgres.EventStore do
   end
 
   def reset! do
-    StorePostgres.ensure_started!()
+    StorePostgres.assert_started!()
     Repo.delete_all(EventRecord)
     :ok
   end

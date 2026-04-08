@@ -9,7 +9,6 @@ defmodule Jido.Integration.V2.Auth do
   alias Jido.Integration.V2.Auth.LeaseRecord
   alias Jido.Integration.V2.Auth.Store
   alias Jido.Integration.V2.Auth.Stores
-  alias Jido.Integration.V2.Auth.Supervisor, as: AuthSupervisor
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
@@ -577,7 +576,7 @@ defmodule Jido.Integration.V2.Auth do
 
   @spec reset!() :: :ok
   def reset! do
-    ensure_started!()
+    assert_started!()
     put_runtime_handler(:refresh_handler, nil)
     put_runtime_handler(:external_secret_resolver, nil)
     reset_store(Stores.install_store())
@@ -586,55 +585,12 @@ defmodule Jido.Integration.V2.Auth do
     reset_store(Stores.credential_store())
   end
 
-  defp ensure_started! do
-    case Process.whereis(Store) do
-      nil ->
-        ensure_store_started!()
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp ensure_store_started! do
-    case Process.whereis(AuthSupervisor) do
-      nil -> start_auth_application!()
-      _pid -> restart_auth_store!()
-    end
-
-    wait_for_process!(Store, "auth store")
-  end
-
-  defp start_auth_application! do
-    case Jido.Integration.V2.Auth.Application.start(:normal, []) do
-      {:ok, _pid} -> :ok
-      {:error, {:already_started, _pid}} -> :ok
-      {:error, reason} -> raise("auth application did not start: #{inspect(reason)}")
-    end
-  end
-
-  defp restart_auth_store! do
-    case Supervisor.restart_child(AuthSupervisor, Store) do
-      {:ok, _child} -> :ok
-      {:ok, _child, _info} -> :ok
-      {:error, :already_present} -> :ok
-      {:error, :running} -> :ok
-      {:error, reason} -> raise("auth store did not restart: #{inspect(reason)}")
-    end
-  end
-
-  defp wait_for_process!(name, label, attempts \\ 40)
-
-  defp wait_for_process!(_name, label, 0), do: raise("#{label} did not start")
-
-  defp wait_for_process!(name, label, attempts) do
-    case Process.whereis(name) do
-      nil ->
-        Process.sleep(50)
-        wait_for_process!(name, label, attempts - 1)
-
-      _pid ->
-        :ok
+  defp assert_started! do
+    if Process.whereis(Store) do
+      :ok
+    else
+      raise ArgumentError,
+            "auth store is not started; start Jido.Integration.V2.Auth.Application before calling Jido.Integration.V2.Auth.reset!/0"
     end
   end
 

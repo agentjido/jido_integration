@@ -126,7 +126,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
 
   @impl true
   def start_session(opts) when is_list(opts) do
-    ensure_runtime_started!()
+    assert_runtime_started!()
 
     with {:ok, requested_provider, provider} <- fetch_provider(opts),
          {:ok, session_ref} <-
@@ -156,7 +156,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
 
   @impl true
   def stop_session(%SessionHandle{session_id: session_id}) when is_binary(session_id) do
-    ensure_runtime_started!()
+    assert_runtime_started!()
 
     result =
       case SessionStore.fetch(session_id) do
@@ -173,7 +173,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
 
   @impl true
   def stream_run(%SessionHandle{} = session, %RunRequest{} = request, opts) when is_list(opts) do
-    ensure_runtime_started!()
+    assert_runtime_started!()
 
     with {:ok, provider} <- fetch_session_provider(session, opts) do
       run_id = Keyword.get_lazy(opts, :run_id, &Event.generate_id/0)
@@ -204,7 +204,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
 
   @impl true
   def run(%SessionHandle{} = session, %RunRequest{} = request, opts) when is_list(opts) do
-    ensure_runtime_started!()
+    assert_runtime_started!()
 
     with {:ok, provider} <- fetch_session_provider(session, opts) do
       result =
@@ -231,19 +231,19 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
 
   @impl true
   def cancel_run(%SessionHandle{} = session, %RunHandle{run_id: run_id}) do
-    ensure_runtime_started!()
+    assert_runtime_started!()
     ASM.interrupt(session_ref!(session), run_id)
   end
 
   def cancel_run(%SessionHandle{} = session, run_id) when is_binary(run_id) do
-    ensure_runtime_started!()
+    assert_runtime_started!()
     ASM.interrupt(session_ref!(session), run_id)
   end
 
   @impl true
   def session_status(%SessionHandle{session_id: session_id} = session)
       when is_binary(session_id) do
-    ensure_runtime_started!()
+    assert_runtime_started!()
 
     health =
       case SessionStore.fetch(session_id) do
@@ -280,13 +280,13 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
   @impl true
   def approve(%SessionHandle{} = session, approval_id, decision, _opts)
       when is_binary(approval_id) and decision in [:allow, :deny] do
-    ensure_runtime_started!()
+    assert_runtime_started!()
     ASM.approve(session_ref!(session), approval_id, decision)
   end
 
   @impl true
   def cost(%SessionHandle{} = session) do
-    ensure_runtime_started!()
+    assert_runtime_started!()
     {:ok, ASM.cost(session_ref!(session)) |> Normalizer.normalize() |> default_map()}
   end
 
@@ -567,75 +567,12 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
   defp map_value(keyword, key) when is_list(keyword), do: Keyword.get(keyword, key)
   defp map_value(_other, _key), do: nil
 
-  defp ensure_runtime_started! do
-    case Process.whereis(SessionStore) do
-      pid when is_pid(pid) ->
-        :ok
-
-      nil ->
-        ensure_session_store_started!()
-    end
-  end
-
-  defp ensure_session_store_started! do
-    supervisor_name = Jido.Integration.V2.RuntimeAsmBridge.Application.Supervisor
-
-    case Process.whereis(supervisor_name) do
-      nil -> start_runtime_asm_bridge_application!()
-      _pid -> restart_session_store!(supervisor_name)
-    end
-
-    wait_for_process!(SessionStore, "RuntimeAsmBridge.SessionStore")
-  end
-
-  defp start_runtime_asm_bridge_application! do
-    app = :jido_integration_v2_runtime_asm_bridge
-
-    case Application.ensure_all_started(app) do
-      {:ok, _apps} ->
-        :ok
-
-      {:error, {started_app, {:already_started, _pid}}} when started_app == app ->
-        :ok
-
-      {:error, reason} ->
-        raise ArgumentError,
-              "RuntimeAsmBridge application did not start: #{inspect(reason)}"
-    end
-  end
-
-  defp restart_session_store!(supervisor_name) do
-    case Supervisor.restart_child(supervisor_name, SessionStore) do
-      {:ok, _child} ->
-        :ok
-
-      {:ok, _child, _info} ->
-        :ok
-
-      {:error, :already_present} ->
-        :ok
-
-      {:error, :running} ->
-        :ok
-
-      {:error, reason} ->
-        raise ArgumentError,
-              "RuntimeAsmBridge.SessionStore did not restart: #{inspect(reason)}"
-    end
-  end
-
-  defp wait_for_process!(name, label, attempts \\ 40)
-
-  defp wait_for_process!(_name, label, 0), do: raise("#{label} did not start")
-
-  defp wait_for_process!(name, label, attempts) do
-    case Process.whereis(name) do
-      nil ->
-        Process.sleep(50)
-        wait_for_process!(name, label, attempts - 1)
-
-      _pid ->
-        :ok
+  defp assert_runtime_started! do
+    if Process.whereis(SessionStore) do
+      :ok
+    else
+      raise ArgumentError,
+            "runtime_asm_bridge session store is not started; start Jido.Integration.V2.RuntimeAsmBridge.Application before using the ASM bridge runtime"
     end
   end
 end
