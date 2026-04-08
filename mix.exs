@@ -38,7 +38,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       DependencyResolver.cli_subprocess_core(runtime: false),
       DependencyResolver.external_runtime_transport(runtime: false),
       DependencyResolver.sprites(override: true, runtime: false),
-      {:libgraph, "~> 0.16.1-mg.1", hex: :multigraph, app: false, override: true, runtime: false},
+      {:libgraph, "== 0.16.1-mg.1", hex: :multigraph, app: false, override: true, runtime: false},
       DependencyResolver.req_llm(runtime: false),
       DependencyResolver.weld(runtime: false),
       {:jason, "~> 1.4", runtime: false},

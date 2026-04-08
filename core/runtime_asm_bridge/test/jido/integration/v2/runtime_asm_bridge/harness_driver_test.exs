@@ -305,9 +305,11 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
   end
 
   defp stop_runtime_asm_bridge! do
+    app = :jido_integration_v2_runtime_asm_bridge
+
     if pid = Process.whereis(Jido.Integration.V2.RuntimeAsmBridge.Application.Supervisor) do
       ref = Process.monitor(pid)
-      GenServer.stop(pid, :normal)
+      :ok = Application.stop(app)
 
       receive do
         {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
@@ -320,9 +322,8 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
   end
 
   defp ensure_runtime_asm_bridge_started! do
-    case Jido.Integration.V2.RuntimeAsmBridge.Application.start(:normal, []) do
-      {:ok, _pid} -> :ok
-      {:error, {:already_started, _pid}} -> :ok
+    case Application.ensure_all_started(:jido_integration_v2_runtime_asm_bridge) do
+      {:ok, _apps} -> :ok
       {:error, reason} -> flunk("failed to start runtime_asm_bridge: #{inspect(reason)}")
     end
   end

@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
   @behaviour Jido.Integration.V2.Auth.LeaseStore
 
   alias Jido.Integration.V2.Auth.LeaseRecord, as: AuthLeaseRecord
+  alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord, as: LeaseSchema
   alias Jido.Integration.V2.StorePostgres.Serialization
@@ -63,7 +64,7 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
   end
 
   def reset! do
-    Jido.Integration.V2.StorePostgres.ensure_started!()
+    StorePostgres.ensure_started!()
     Repo.delete_all(LeaseSchema)
     :ok
   end

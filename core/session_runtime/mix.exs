@@ -36,8 +36,6 @@ defmodule Jido.Session.MixProject do
   defp deps do
     [
       DependencyResolver.jido_harness(override: true),
-      DependencyResolver.jido_shell(override: true),
-      DependencyResolver.sprites(override: true),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

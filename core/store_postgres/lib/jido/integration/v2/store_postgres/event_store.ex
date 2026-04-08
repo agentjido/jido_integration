@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.StorePostgres.EventStore do
 
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Redaction
+  alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.AttemptRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.EventRecord
@@ -46,7 +47,7 @@ defmodule Jido.Integration.V2.StorePostgres.EventStore do
   end
 
   def reset! do
-    Jido.Integration.V2.StorePostgres.ensure_started!()
+    StorePostgres.ensure_started!()
     Repo.delete_all(EventRecord)
     :ok
   end

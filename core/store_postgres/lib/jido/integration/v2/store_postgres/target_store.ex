@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.StorePostgres.TargetStore do
 
   import Ecto.Query
 
+  alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.TargetRecord
   alias Jido.Integration.V2.StorePostgres.Serialization
@@ -41,7 +42,7 @@ defmodule Jido.Integration.V2.StorePostgres.TargetStore do
   end
 
   def reset! do
-    Jido.Integration.V2.StorePostgres.ensure_started!()
+    StorePostgres.ensure_started!()
     Repo.delete_all(TargetRecord)
     :ok
   end

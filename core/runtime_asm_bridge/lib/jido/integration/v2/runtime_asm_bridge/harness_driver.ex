@@ -581,40 +581,47 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
     supervisor_name = Jido.Integration.V2.RuntimeAsmBridge.Application.Supervisor
 
     case Process.whereis(supervisor_name) do
-      nil ->
-        case Jido.Integration.V2.RuntimeAsmBridge.Application.start(:normal, []) do
-          {:ok, _pid} ->
-            :ok
-
-          {:error, {:already_started, _pid}} ->
-            :ok
-
-          {:error, reason} ->
-            raise ArgumentError,
-                  "RuntimeAsmBridge application did not start: #{inspect(reason)}"
-        end
-
-      _pid ->
-        case Supervisor.restart_child(supervisor_name, SessionStore) do
-          {:ok, _child} ->
-            :ok
-
-          {:ok, _child, _info} ->
-            :ok
-
-          {:error, :already_present} ->
-            :ok
-
-          {:error, :running} ->
-            :ok
-
-          {:error, reason} ->
-            raise ArgumentError,
-                  "RuntimeAsmBridge.SessionStore did not restart: #{inspect(reason)}"
-        end
+      nil -> start_runtime_asm_bridge_application!()
+      _pid -> restart_session_store!(supervisor_name)
     end
 
     wait_for_process!(SessionStore, "RuntimeAsmBridge.SessionStore")
+  end
+
+  defp start_runtime_asm_bridge_application! do
+    app = :jido_integration_v2_runtime_asm_bridge
+
+    case Application.ensure_all_started(app) do
+      {:ok, _apps} ->
+        :ok
+
+      {:error, {started_app, {:already_started, _pid}}} when started_app == app ->
+        :ok
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "RuntimeAsmBridge application did not start: #{inspect(reason)}"
+    end
+  end
+
+  defp restart_session_store!(supervisor_name) do
+    case Supervisor.restart_child(supervisor_name, SessionStore) do
+      {:ok, _child} ->
+        :ok
+
+      {:ok, _child, _info} ->
+        :ok
+
+      {:error, :already_present} ->
+        :ok
+
+      {:error, :running} ->
+        :ok
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "RuntimeAsmBridge.SessionStore did not restart: #{inspect(reason)}"
+    end
   end
 
   defp wait_for_process!(name, label, attempts \\ 40)

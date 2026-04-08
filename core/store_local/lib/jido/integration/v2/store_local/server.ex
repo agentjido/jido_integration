@@ -131,24 +131,29 @@ defmodule Jido.Integration.V2.StoreLocal.Server do
 
   defp ensure_server_started! do
     case Process.whereis(StoreLocalApplication) do
-      nil ->
-        case StoreLocalApplication.start(:normal, []) do
-          {:ok, _pid} -> :ok
-          {:error, {:already_started, _pid}} -> :ok
-          {:error, reason} -> raise("store_local application did not start: #{inspect(reason)}")
-        end
-
-      _pid ->
-        case Supervisor.restart_child(StoreLocalApplication, __MODULE__) do
-          {:ok, _child} -> :ok
-          {:ok, _child, _info} -> :ok
-          {:error, :already_present} -> :ok
-          {:error, :running} -> :ok
-          {:error, reason} -> raise("store_local server did not restart: #{inspect(reason)}")
-        end
+      nil -> start_store_local_application!()
+      _pid -> restart_store_local_server!()
     end
 
     wait_for_process!(__MODULE__, "store_local server")
+  end
+
+  defp start_store_local_application! do
+    case StoreLocalApplication.start(:normal, []) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> raise("store_local application did not start: #{inspect(reason)}")
+    end
+  end
+
+  defp restart_store_local_server! do
+    case Supervisor.restart_child(StoreLocalApplication, __MODULE__) do
+      {:ok, _child} -> :ok
+      {:ok, _child, _info} -> :ok
+      {:error, :already_present} -> :ok
+      {:error, :running} -> :ok
+      {:error, reason} -> raise("store_local server did not restart: #{inspect(reason)}")
+    end
   end
 
   defp call!(message, timeout \\ 5_000, attempts \\ 2)

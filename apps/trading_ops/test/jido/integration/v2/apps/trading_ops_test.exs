@@ -109,12 +109,12 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert Enum.sort(packet.targets.market_data.features.feature_ids) ==
              ["asm", "market.ticks.pull"]
 
-    assert packet.targets.market_data.extensions == %{runtime: %{driver: "asm"}}
+    assert packet.targets.market_data.extensions == %{"runtime" => %{"driver" => "asm"}}
 
     assert Enum.sort(packet.targets.analyst.features.feature_ids) ==
              ["asm", "codex.exec.session"]
 
-    assert packet.targets.analyst.extensions == %{runtime: %{driver: "asm"}}
+    assert packet.targets.analyst.extensions == %{"runtime" => %{"driver" => "asm"}}
 
     assert packet.runs.market_pull.run.target_id == "target-trading-ops-market-feed"
     assert packet.runs.market_pull.attempt.target_id == "target-trading-ops-market-feed"

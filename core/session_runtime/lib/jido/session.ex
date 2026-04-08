@@ -152,29 +152,34 @@ defmodule Jido.Session do
 
   defp ensure_store_started! do
     case Process.whereis(Jido.Session.Supervisor) do
-      nil ->
-        case SessionApplication.start(:normal, []) do
-          {:ok, _pid} ->
-            :ok
-
-          {:error, {:already_started, _pid}} ->
-            :ok
-
-          {:error, reason} ->
-            raise("session runtime application did not start: #{inspect(reason)}")
-        end
-
-      _pid ->
-        case Supervisor.restart_child(Jido.Session.Supervisor, Store) do
-          {:ok, _child} -> :ok
-          {:ok, _child, _info} -> :ok
-          {:error, :already_present} -> :ok
-          {:error, :running} -> :ok
-          {:error, reason} -> raise("session runtime store did not restart: #{inspect(reason)}")
-        end
+      nil -> start_session_runtime_application!()
+      _pid -> restart_session_runtime_store!()
     end
 
     wait_for_process!(Store, "session runtime store")
+  end
+
+  defp start_session_runtime_application! do
+    case SessionApplication.start(:normal, []) do
+      {:ok, _pid} ->
+        :ok
+
+      {:error, {:already_started, _pid}} ->
+        :ok
+
+      {:error, reason} ->
+        raise("session runtime application did not start: #{inspect(reason)}")
+    end
+  end
+
+  defp restart_session_runtime_store! do
+    case Supervisor.restart_child(Jido.Session.Supervisor, Store) do
+      {:ok, _child} -> :ok
+      {:ok, _child, _info} -> :ok
+      {:error, :already_present} -> :ok
+      {:error, :running} -> :ok
+      {:error, reason} -> raise("session runtime store did not restart: #{inspect(reason)}")
+    end
   end
 
   defp wait_for_process!(name, label, attempts \\ 40)

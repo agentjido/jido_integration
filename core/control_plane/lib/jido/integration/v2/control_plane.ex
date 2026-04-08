@@ -11,11 +11,11 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.ControlPlane.Application, as: ControlPlaneApplication
   alias Jido.Integration.V2.ControlPlane.Inference
   alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.ControlPlane.Registry
   alias Jido.Integration.V2.ControlPlane.Stores
-  alias Jido.Integration.V2.ControlPlane.Application, as: ControlPlaneApplication
   alias Jido.Integration.V2.ControlPlane.Supervisor, as: ControlPlaneSupervisor
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
@@ -906,33 +906,29 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   defp ensure_registry_started! do
     case Process.whereis(ControlPlaneSupervisor) do
-      nil ->
-        case ControlPlaneApplication.start(:normal, []) do
-          {:ok, _pid} -> :ok
-          {:error, {:already_started, _pid}} -> :ok
-          {:error, reason} -> raise("control plane application did not start: #{inspect(reason)}")
-        end
-
-      _pid ->
-        case Supervisor.restart_child(ControlPlaneSupervisor, Registry) do
-          {:ok, _child} ->
-            :ok
-
-          {:ok, _child, _info} ->
-            :ok
-
-          {:error, :already_present} ->
-            :ok
-
-          {:error, :running} ->
-            :ok
-
-          {:error, reason} ->
-            raise("control plane registry did not restart: #{inspect(reason)}")
-        end
+      nil -> start_control_plane_application!()
+      _pid -> restart_control_plane_registry!()
     end
 
     wait_for_process!(Registry, "control plane registry")
+  end
+
+  defp start_control_plane_application! do
+    case ControlPlaneApplication.start(:normal, []) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> raise("control plane application did not start: #{inspect(reason)}")
+    end
+  end
+
+  defp restart_control_plane_registry! do
+    case Supervisor.restart_child(ControlPlaneSupervisor, Registry) do
+      {:ok, _child} -> :ok
+      {:ok, _child, _info} -> :ok
+      {:error, :already_present} -> :ok
+      {:error, :running} -> :ok
+      {:error, reason} -> raise("control plane registry did not restart: #{inspect(reason)}")
+    end
   end
 
   defp wait_for_process!(name, label, attempts \\ 40)

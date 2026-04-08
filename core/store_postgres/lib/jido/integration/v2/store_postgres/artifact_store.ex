@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.StorePostgres.ArtifactStore do
   import Ecto.Query
 
   alias Jido.Integration.V2.ArtifactRef
+  alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.ArtifactRecord
   alias Jido.Integration.V2.StorePostgres.Serialization
@@ -44,7 +45,7 @@ defmodule Jido.Integration.V2.StorePostgres.ArtifactStore do
   end
 
   def reset! do
-    Jido.Integration.V2.StorePostgres.ensure_started!()
+    StorePostgres.ensure_started!()
     Repo.delete_all(ArtifactRecord)
     :ok
   end

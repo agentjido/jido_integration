@@ -8,8 +8,8 @@ defmodule Jido.Integration.V2.Auth do
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Auth.LeaseRecord
   alias Jido.Integration.V2.Auth.Store
-  alias Jido.Integration.V2.Auth.Supervisor, as: AuthSupervisor
   alias Jido.Integration.V2.Auth.Stores
+  alias Jido.Integration.V2.Auth.Supervisor, as: AuthSupervisor
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
@@ -598,24 +598,29 @@ defmodule Jido.Integration.V2.Auth do
 
   defp ensure_store_started! do
     case Process.whereis(AuthSupervisor) do
-      nil ->
-        case Jido.Integration.V2.Auth.Application.start(:normal, []) do
-          {:ok, _pid} -> :ok
-          {:error, {:already_started, _pid}} -> :ok
-          {:error, reason} -> raise("auth application did not start: #{inspect(reason)}")
-        end
-
-      _pid ->
-        case Supervisor.restart_child(AuthSupervisor, Store) do
-          {:ok, _child} -> :ok
-          {:ok, _child, _info} -> :ok
-          {:error, :already_present} -> :ok
-          {:error, :running} -> :ok
-          {:error, reason} -> raise("auth store did not restart: #{inspect(reason)}")
-        end
+      nil -> start_auth_application!()
+      _pid -> restart_auth_store!()
     end
 
     wait_for_process!(Store, "auth store")
+  end
+
+  defp start_auth_application! do
+    case Jido.Integration.V2.Auth.Application.start(:normal, []) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> raise("auth application did not start: #{inspect(reason)}")
+    end
+  end
+
+  defp restart_auth_store! do
+    case Supervisor.restart_child(AuthSupervisor, Store) do
+      {:ok, _child} -> :ok
+      {:ok, _child, _info} -> :ok
+      {:error, :already_present} -> :ok
+      {:error, :running} -> :ok
+      {:error, reason} -> raise("auth store did not restart: #{inspect(reason)}")
+    end
   end
 
   defp wait_for_process!(name, label, attempts \\ 40)

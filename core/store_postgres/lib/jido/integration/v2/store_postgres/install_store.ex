@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.StorePostgres.InstallStore do
 
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.InstallRecord
   alias Jido.Integration.V2.StorePostgres.Serialization
@@ -102,7 +103,7 @@ defmodule Jido.Integration.V2.StorePostgres.InstallStore do
   end
 
   def reset! do
-    Jido.Integration.V2.StorePostgres.ensure_started!()
+    StorePostgres.ensure_started!()
     Repo.delete_all(InstallRecord)
     :ok
   end

@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.StorePostgres.CredentialStore do
   alias Jido.Integration.V2.Auth.SecretEnvelope
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Credential
+  alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.CredentialRecord
   alias Jido.Integration.V2.StorePostgres.Serialization
@@ -76,7 +77,7 @@ defmodule Jido.Integration.V2.StorePostgres.CredentialStore do
   end
 
   def reset! do
-    Jido.Integration.V2.StorePostgres.ensure_started!()
+    StorePostgres.ensure_started!()
     Repo.delete_all(CredentialRecord)
     :ok
   end

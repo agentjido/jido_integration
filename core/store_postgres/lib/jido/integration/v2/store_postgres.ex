@@ -3,6 +3,8 @@ defmodule Jido.Integration.V2.StorePostgres do
   Postgres durability package owning the Repo, migrations, and SQL sandbox posture.
   """
 
+  alias Ecto.Adapters.SQL.Sandbox
+  alias Jido.Integration.V2.StorePostgres.Application, as: StorePostgresApplication
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Supervisor, as: StorePostgresSupervisor
 
@@ -21,8 +23,8 @@ defmodule Jido.Integration.V2.StorePostgres do
           false
       end
 
-    if started_repo? and Repo.config()[:pool] == Ecto.Adapters.SQL.Sandbox do
-      Ecto.Adapters.SQL.Sandbox.mode(Repo, :auto)
+    if started_repo? and Repo.config()[:pool] == Sandbox do
+      Sandbox.mode(Repo, :auto)
     end
 
     :ok
@@ -38,29 +40,34 @@ defmodule Jido.Integration.V2.StorePostgres do
 
   defp ensure_repo_process_started! do
     case Process.whereis(StorePostgresSupervisor) do
-      nil ->
-        case Jido.Integration.V2.StorePostgres.Application.start(:normal, []) do
-          {:ok, _pid} ->
-            :ok
-
-          {:error, {:already_started, _pid}} ->
-            :ok
-
-          {:error, reason} ->
-            raise("store_postgres application did not start: #{inspect(reason)}")
-        end
-
-      _pid ->
-        case Supervisor.restart_child(StorePostgresSupervisor, Repo) do
-          {:ok, _child} -> :ok
-          {:ok, _child, _info} -> :ok
-          {:error, :already_present} -> :ok
-          {:error, :running} -> :ok
-          {:error, reason} -> raise("store_postgres repo did not restart: #{inspect(reason)}")
-        end
+      nil -> start_store_postgres_application!()
+      _pid -> restart_store_postgres_repo!()
     end
 
     wait_for_process!(Repo, "store_postgres repo")
+  end
+
+  defp start_store_postgres_application! do
+    case StorePostgresApplication.start(:normal, []) do
+      {:ok, _pid} ->
+        :ok
+
+      {:error, {:already_started, _pid}} ->
+        :ok
+
+      {:error, reason} ->
+        raise("store_postgres application did not start: #{inspect(reason)}")
+    end
+  end
+
+  defp restart_store_postgres_repo! do
+    case Supervisor.restart_child(StorePostgresSupervisor, Repo) do
+      {:ok, _child} -> :ok
+      {:ok, _child, _info} -> :ok
+      {:error, :already_present} -> :ok
+      {:error, :running} -> :ok
+      {:error, reason} -> raise("store_postgres repo did not restart: #{inspect(reason)}")
+    end
   end
 
   defp wait_for_process!(name, label, attempts \\ 40)

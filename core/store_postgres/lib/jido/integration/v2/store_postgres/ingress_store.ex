@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.StorePostgres.IngressStore do
   import Ecto.Query
 
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.DedupeKeyRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.TriggerCheckpointRecord
@@ -126,7 +127,7 @@ defmodule Jido.Integration.V2.StorePostgres.IngressStore do
   end
 
   def reset! do
-    Jido.Integration.V2.StorePostgres.ensure_started!()
+    StorePostgres.ensure_started!()
     Repo.delete_all(TriggerRecordSchema)
     Repo.delete_all(DedupeKeyRecord)
     Repo.delete_all(TriggerCheckpointRecord)

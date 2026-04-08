@@ -3,6 +3,8 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
 
   alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.StoreLocal
+  alias Jido.Integration.V2.StoreLocal.Application, as: StoreLocalApplication
+  alias Jido.Integration.V2.StoreLocal.Server, as: StoreLocalServer
 
   @spec reconfigure!(keyword()) :: :ok
   def reconfigure!(opts \\ []) do
@@ -49,7 +51,7 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
   defp wait_for_server_restart(_previous_pid, 0), do: raise("store local server did not restart")
 
   defp wait_for_server_restart(previous_pid, attempts) do
-    case Process.whereis(Jido.Integration.V2.StoreLocal.Server) do
+    case Process.whereis(StoreLocalServer) do
       nil ->
         Process.sleep(50)
         wait_for_server_restart(previous_pid, attempts - 1)
@@ -64,12 +66,12 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
   end
 
   defp ensure_store_local_started! do
-    _ = Jido.Integration.V2.StoreLocal.Server.storage_path()
+    _ = StoreLocalServer.storage_path()
     :ok
   end
 
   defp restart_supervised_server!(pid) do
-    supervisor = Jido.Integration.V2.StoreLocal.Application
+    supervisor = StoreLocalApplication
 
     case Process.whereis(supervisor) do
       nil ->
@@ -77,9 +79,9 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
         ensure_store_local_started!()
 
       _supervisor_pid ->
-        :ok = Supervisor.terminate_child(supervisor, Jido.Integration.V2.StoreLocal.Server)
+        :ok = Supervisor.terminate_child(supervisor, StoreLocalServer)
 
-        case Supervisor.restart_child(supervisor, Jido.Integration.V2.StoreLocal.Server) do
+        case Supervisor.restart_child(supervisor, StoreLocalServer) do
           {:ok, _child} -> :ok
           {:ok, _child, _info} -> :ok
           {:error, reason} -> raise("store local server did not restart: #{inspect(reason)}")
