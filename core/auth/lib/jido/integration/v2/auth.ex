@@ -564,24 +564,22 @@ defmodule Jido.Integration.V2.Auth do
 
   @spec set_refresh_handler(refresh_handler() | nil) :: :ok
   def set_refresh_handler(handler) when is_function(handler, 2) or is_nil(handler) do
-    ensure_started!()
-    Store.set_refresh_handler(handler)
+    put_runtime_handler(:refresh_handler, handler)
     :ok
   end
 
   @spec set_external_secret_resolver(external_secret_resolver() | nil) :: :ok
   def set_external_secret_resolver(handler)
       when is_function(handler, 3) or is_nil(handler) do
-    ensure_started!()
-    Store.set_external_secret_resolver(handler)
+    put_runtime_handler(:external_secret_resolver, handler)
     :ok
   end
 
   @spec reset!() :: :ok
   def reset! do
     ensure_started!()
-    Store.set_refresh_handler(nil)
-    Store.set_external_secret_resolver(nil)
+    put_runtime_handler(:refresh_handler, nil)
+    put_runtime_handler(:external_secret_resolver, nil)
     reset_store(Stores.install_store())
     reset_store(Stores.connection_store())
     reset_store(Stores.lease_store())
@@ -823,7 +821,7 @@ defmodule Jido.Integration.V2.Auth do
              hydrate_credential_secret(connection, credential, ["refresh_token"], now, :refresh),
            true <- refreshable?(hydrated_credential) or {:error, :credential_expired},
            handler when is_function(handler, 2) <-
-             Store.refresh_handler() || {:error, :credential_expired},
+             runtime_handler(:refresh_handler) || {:error, :credential_expired},
            {:ok, refresh_result} <- handler.(hydrated_connection, hydrated_credential) do
         next_version = next_credential_version(hydrated_credential)
 
@@ -1004,7 +1002,7 @@ defmodule Jido.Integration.V2.Auth do
       now: now
     }
 
-    case Store.external_secret_resolver() do
+    case runtime_handler(:external_secret_resolver) do
       handler when is_function(handler, 3) ->
         handler.(connection, credential, opts)
         |> handle_external_secret_result(connection, credential, requested_fields, opts)
@@ -1700,5 +1698,17 @@ defmodule Jido.Integration.V2.Auth do
     if function_exported?(module, :reset!, 0) do
       module.reset!()
     end
+  end
+
+  defp runtime_handler(key) do
+    Application.get_env(:jido_integration_v2_auth, key)
+  end
+
+  defp put_runtime_handler(key, nil) do
+    Application.delete_env(:jido_integration_v2_auth, key)
+  end
+
+  defp put_runtime_handler(key, handler) do
+    Application.put_env(:jido_integration_v2_auth, key, handler)
   end
 end

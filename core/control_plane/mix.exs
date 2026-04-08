@@ -13,6 +13,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       version: "0.1.0",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       consolidate_protocols: false,
       deps: deps(),
       dialyzer: dialyzer(),
@@ -28,6 +29,9 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       mod: {Jido.Integration.V2.ControlPlane.Application, []}
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
     [

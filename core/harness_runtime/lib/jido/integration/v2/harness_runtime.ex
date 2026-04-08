@@ -68,17 +68,14 @@ defmodule Jido.Integration.V2.HarnessRuntime do
 
   @spec reset!() :: :ok
   def reset! do
-    if available?() do
-      Enum.each(SessionStore.entries(), fn {key,
-                                            %{driver_module: driver_module, session: session}} ->
-        _ = safe_stop_session(driver_module, session)
-        SessionStore.delete(key)
-      end)
+    session_store_entries()
+    |> Enum.each(fn {key, %{driver_module: driver_module, session: session}} ->
+      _ = safe_stop_session(driver_module, session)
+      delete_session_entry(key)
+    end)
 
-      SessionStore.reset!()
-    else
-      :ok
-    end
+    reset_session_store()
+    :ok
   end
 
   @spec available?() :: boolean()
@@ -559,5 +556,41 @@ defmodule Jido.Integration.V2.HarnessRuntime do
     driver_module.stop_session(session)
   rescue
     _error -> :ok
+  end
+
+  defp session_store_entries do
+    if available?() do
+      SessionStore.entries()
+    else
+      []
+    end
+  catch
+    :exit, {:noproc, _reason} -> []
+    :exit, {{:shutdown, _reason}, _stack} -> []
+    :exit, {:shutdown, _reason} -> []
+  end
+
+  defp delete_session_entry(key) do
+    if available?() do
+      SessionStore.delete(key)
+    else
+      :ok
+    end
+  catch
+    :exit, {:noproc, _reason} -> :ok
+    :exit, {{:shutdown, _reason}, _stack} -> :ok
+    :exit, {:shutdown, _reason} -> :ok
+  end
+
+  defp reset_session_store do
+    if available?() do
+      SessionStore.reset!()
+    else
+      :ok
+    end
+  catch
+    :exit, {:noproc, _reason} -> :ok
+    :exit, {{:shutdown, _reason}, _stack} -> :ok
+    :exit, {:shutdown, _reason} -> :ok
   end
 end

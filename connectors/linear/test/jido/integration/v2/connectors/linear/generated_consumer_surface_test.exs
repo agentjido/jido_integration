@@ -186,5 +186,4 @@ defmodule Jido.Integration.V2.Connectors.Linear.GeneratedConsumerSurfaceTest do
     Enum.find(Linear.manifest().capabilities, &(&1.id == capability_id)) ||
       raise "missing capability #{capability_id}"
   end
-
 end

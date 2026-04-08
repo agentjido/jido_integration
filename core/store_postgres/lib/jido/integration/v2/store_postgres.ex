@@ -40,9 +40,14 @@ defmodule Jido.Integration.V2.StorePostgres do
     case Process.whereis(StorePostgresSupervisor) do
       nil ->
         case Jido.Integration.V2.StorePostgres.Application.start(:normal, []) do
-          {:ok, _pid} -> :ok
-          {:error, {:already_started, _pid}} -> :ok
-          {:error, reason} -> raise("store_postgres application did not start: #{inspect(reason)}")
+          {:ok, _pid} ->
+            :ok
+
+          {:error, {:already_started, _pid}} ->
+            :ok
+
+          {:error, reason} ->
+            raise("store_postgres application did not start: #{inspect(reason)}")
         end
 
       _pid ->

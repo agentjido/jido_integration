@@ -175,6 +175,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
       |> Enum.with_index(start_seq)
       |> Enum.map(fn {event_spec, seq} ->
         Event.new!(%{
+          event_id: Contracts.event_id(run.run_id, attempt.attempt_id, seq),
           run_id: run.run_id,
           attempt: attempt.attempt,
           attempt_id: attempt.attempt_id,

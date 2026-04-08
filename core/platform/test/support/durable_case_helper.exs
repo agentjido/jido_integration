@@ -5,8 +5,23 @@ defmodule Jido.Integration.V2.Platform.DurableSupport do
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.TestSupport
 
-  @control_plane_keys [:run_store, :attempt_store, :event_store, :artifact_store, :target_store, :ingress_store]
-  @auth_keys [:credential_store, :lease_store, :connection_store, :install_store, :keyring]
+  @control_plane_keys [
+    :run_store,
+    :attempt_store,
+    :event_store,
+    :artifact_store,
+    :target_store,
+    :ingress_store
+  ]
+  @auth_keys [
+    :credential_store,
+    :lease_store,
+    :connection_store,
+    :install_store,
+    :keyring,
+    :refresh_handler,
+    :external_secret_resolver
+  ]
   @store_postgres_keys [:ecto_repos, Repo]
 
   @spec setup_all!(keyword()) :: :ok

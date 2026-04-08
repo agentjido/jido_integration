@@ -107,7 +107,7 @@ defmodule ExampleFixture do
     %{
       binary_path: System.find_executable("python3") || "python3",
       launcher_args: [
-        Path.expand("../../../../llama_cpp_sdk/examples/support/fake_llama_server.py", __DIR__)
+        Path.expand("../test/support/fake_llama_server.py", __DIR__)
       ],
       model: "/models/demo.gguf",
       alias: "fixture-llama",

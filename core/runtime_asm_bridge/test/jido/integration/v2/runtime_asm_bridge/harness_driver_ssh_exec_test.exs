@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
   alias Jido.Integration.V2.RuntimeAsmBridge.{HarnessDriver, SessionStore}
 
   setup do
+    ensure_runtime_asm_bridge_started!()
     SessionStore.reset!()
     :ok
   end
@@ -252,5 +253,13 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverSSHExecTest do
 
   defp assert_eventually(_fun, 0) do
     flunk("condition did not become true")
+  end
+
+  defp ensure_runtime_asm_bridge_started! do
+    case Jido.Integration.V2.RuntimeAsmBridge.Application.start(:normal, []) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> flunk("failed to start runtime_asm_bridge: #{inspect(reason)}")
+    end
   end
 end

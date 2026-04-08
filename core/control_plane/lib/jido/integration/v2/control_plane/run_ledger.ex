@@ -92,6 +92,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
       |> Enum.with_index(start_seq)
       |> Enum.map(fn {spec, seq} ->
         Event.new!(%{
+          event_id: Contracts.event_id(run_id, attempt_id(attempt), seq),
           run_id: run_id,
           attempt: attempt_number(attempt),
           attempt_id: attempt_id(attempt),

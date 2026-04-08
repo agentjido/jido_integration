@@ -40,7 +40,9 @@ defmodule Jido.Integration.V2.StoreLocal.Case do
           :credential_store,
           :lease_store,
           :connection_store,
-          :install_store
+          :install_store,
+          :refresh_handler,
+          :external_secret_resolver
         ]),
       control_plane:
         snapshot_keys(:jido_integration_v2_control_plane, [

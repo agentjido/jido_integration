@@ -108,6 +108,16 @@ defmodule Jido.Integration.V2.Contracts do
     "#{prefix}-#{System.unique_integer([:positive, :monotonic])}"
   end
 
+  @spec event_id(String.t(), String.t() | nil, non_neg_integer()) :: String.t()
+  def event_id(run_id, attempt_id, seq)
+      when is_binary(run_id) and (is_binary(attempt_id) or is_nil(attempt_id)) and
+             is_integer(seq) and seq >= 0 do
+    run_id = validate_non_empty_string!(run_id, "event.run_id")
+    attempt_key = attempt_id || "#{run_id}:run"
+
+    "#{attempt_key}:#{seq}"
+  end
+
   @spec reference_uri(String.t(), atom(), String.t()) :: String.t()
   def reference_uri(namespace, kind, id)
       when is_binary(namespace) and is_atom(kind) and is_binary(id) do

@@ -95,9 +95,12 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
 
   @spec setup_database!(keyword()) :: :ok
   def setup_database!(opts \\ []) do
+    previous_pool = current_repo_pool()
     configure_repo_defaults!(opts)
+    restart_repo_if_pool_changed!(previous_pool, opts)
     _ = PostgresAdapter.storage_up(repo_config(opts))
     ensure_repo_started!()
+
     with_repo_ownership(opts, fn ->
       {:ok, _, _} =
         Migrator.with_repo(Repo, fn repo ->
@@ -118,7 +121,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
 
         pid ->
           ref = Process.monitor(pid)
-          GenServer.stop(pid, :normal)
+          restart_supervised_repo!(pid)
 
           receive do
             {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
@@ -179,6 +182,22 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
 
   defp ensure_repo_started! do
     StorePostgres.ensure_started!()
+  end
+
+  defp restart_repo_if_pool_changed!(previous_pool, opts) do
+    desired_pool = repo_config(opts)[:pool]
+
+    if Process.whereis(Repo) && previous_pool != desired_pool do
+      restart_repo!()
+    else
+      :ok
+    end
+  end
+
+  defp current_repo_pool do
+    if Process.whereis(Repo) do
+      repo_runtime_config()[:pool]
+    end
   end
 
   defp configure_repo_defaults!(opts) do
@@ -245,6 +264,24 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
 
   defp repo_runtime_config do
     Application.get_env(:jido_integration_v2_store_postgres, Repo, repo_config())
+  end
+
+  defp restart_supervised_repo!(pid) do
+    supervisor = Jido.Integration.V2.StorePostgres.Supervisor
+
+    case Process.whereis(supervisor) do
+      nil ->
+        GenServer.stop(pid, :normal)
+
+      _supervisor_pid ->
+        :ok = Supervisor.terminate_child(supervisor, Repo)
+
+        case Supervisor.restart_child(supervisor, Repo) do
+          {:ok, _child} -> :ok
+          {:ok, _child, _info} -> :ok
+          {:error, reason} -> raise("store_postgres repo did not restart: #{inspect(reason)}")
+        end
+    end
   end
 
   defp parse_integer(value, fallback) do

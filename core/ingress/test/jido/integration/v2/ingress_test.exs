@@ -10,8 +10,23 @@ defmodule Jido.Integration.V2.IngressTest do
   alias Jido.Integration.V2.StorePostgres.TestSupport
   alias Jido.Integration.V2.TriggerSpec
 
-  @control_plane_keys [:run_store, :attempt_store, :event_store, :artifact_store, :target_store, :ingress_store]
-  @auth_keys [:credential_store, :lease_store, :connection_store, :install_store, :keyring]
+  @control_plane_keys [
+    :run_store,
+    :attempt_store,
+    :event_store,
+    :artifact_store,
+    :target_store,
+    :ingress_store
+  ]
+  @auth_keys [
+    :credential_store,
+    :lease_store,
+    :connection_store,
+    :install_store,
+    :keyring,
+    :refresh_handler,
+    :external_secret_resolver
+  ]
   @store_postgres_keys [:ecto_repos, Jido.Integration.V2.StorePostgres.Repo]
 
   defmodule NoopHandler do

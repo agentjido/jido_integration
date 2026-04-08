@@ -208,5 +208,4 @@ defmodule Jido.Integration.V2.Connectors.GitHub.GeneratedConsumerSurfaceTest do
     Enum.find(GitHub.manifest().capabilities, &(&1.id == capability_id)) ||
       raise "missing capability #{capability_id}"
   end
-
 end

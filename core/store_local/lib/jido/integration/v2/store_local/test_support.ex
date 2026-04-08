@@ -2,8 +2,6 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
   @moduledoc false
 
   alias Jido.Integration.TestTmpDir
-  alias Jido.Integration.V2.ControlPlane
-  alias Jido.Integration.V2.ControlPlane.Application, as: ControlPlaneApplication
   alias Jido.Integration.V2.StoreLocal
 
   @spec reconfigure!(keyword()) :: :ok
@@ -15,8 +13,9 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
   @spec reset_all!() :: :ok
   def reset_all! do
     ensure_store_local_started!()
-    ensure_control_plane_started!()
-    ControlPlane.reset!()
+    StoreLocal.reset!()
+    Application.delete_env(:jido_integration_v2_auth, :refresh_handler)
+    Application.delete_env(:jido_integration_v2_auth, :external_secret_resolver)
     :ok
   end
 
@@ -29,8 +28,7 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
         ensure_store_local_started!()
 
       pid ->
-        GenServer.stop(pid, :normal)
-        ensure_store_local_started!()
+        restart_supervised_server!(pid)
         wait_for_server_restart(pid)
     end
 
@@ -70,34 +68,22 @@ defmodule Jido.Integration.V2.StoreLocal.TestSupport do
     :ok
   end
 
-  defp ensure_control_plane_started! do
-    case Process.whereis(Jido.Integration.V2.ControlPlane.Registry) do
+  defp restart_supervised_server!(pid) do
+    supervisor = Jido.Integration.V2.StoreLocal.Application
+
+    case Process.whereis(supervisor) do
       nil ->
-        case Process.whereis(Jido.Integration.V2.ControlPlane.Supervisor) do
-          nil ->
-            case ControlPlaneApplication.start(:normal, []) do
-              {:ok, _pid} -> :ok
-              {:error, {:already_started, _pid}} -> :ok
-              {:error, reason} ->
-                raise("control plane application did not start: #{inspect(reason)}")
-            end
+        GenServer.stop(pid, :normal)
+        ensure_store_local_started!()
 
-          _pid ->
-            case Supervisor.restart_child(
-                   Jido.Integration.V2.ControlPlane.Supervisor,
-                   Jido.Integration.V2.ControlPlane.Registry
-                 ) do
-              {:ok, _child} -> :ok
-              {:ok, _child, _info} -> :ok
-              {:error, :already_present} -> :ok
-              {:error, :running} -> :ok
-              {:error, reason} ->
-                raise("control plane registry did not restart: #{inspect(reason)}")
-            end
+      _supervisor_pid ->
+        :ok = Supervisor.terminate_child(supervisor, Jido.Integration.V2.StoreLocal.Server)
+
+        case Supervisor.restart_child(supervisor, Jido.Integration.V2.StoreLocal.Server) do
+          {:ok, _child} -> :ok
+          {:ok, _child, _info} -> :ok
+          {:error, reason} -> raise("store local server did not restart: #{inspect(reason)}")
         end
-
-      _pid ->
-        :ok
     end
   end
 end

@@ -12,8 +12,6 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.SessionStore do
 
   @spec fetch(String.t()) :: {:ok, entry()} | :error
   def fetch(session_id) when is_binary(session_id) do
-    ensure_started!()
-
     Agent.get_and_update(__MODULE__, fn state ->
       case Map.fetch(state, session_id) do
         {:ok, pid} when is_pid(pid) ->
@@ -38,77 +36,18 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.SessionStore do
 
   @spec put(String.t(), entry()) :: :ok
   def put(session_id, pid) when is_binary(session_id) and is_pid(pid) do
-    ensure_started!()
     Agent.update(__MODULE__, fn state -> Map.put(state, session_id, pid) end)
   end
 
   @spec delete(String.t()) :: :ok
   def delete(session_id) when is_binary(session_id) do
-    ensure_started!()
     Agent.update(__MODULE__, fn state -> Map.delete(state, session_id) end)
   end
 
   @spec reset!() :: :ok
   def reset! do
-    ensure_started!()
     Agent.update(__MODULE__, fn _state -> %{} end)
   end
 
   defp prune_session(state, session_id), do: Map.delete(state, session_id)
-
-  defp ensure_started! do
-    case Process.whereis(__MODULE__) do
-      nil ->
-        ensure_store_started!()
-
-      _pid ->
-        :ok
-    end
-  end
-
-  defp ensure_store_started! do
-    supervisor_name = Jido.Integration.V2.RuntimeAsmBridge.Application.Supervisor
-
-    case Process.whereis(supervisor_name) do
-      nil ->
-        case start_link([]) do
-          {:ok, pid} ->
-            Process.unlink(pid)
-            :ok
-
-          {:error, {:already_started, _pid}} ->
-            :ok
-
-          {:error, reason} ->
-            raise("runtime_asm_bridge session store did not start: #{inspect(reason)}")
-        end
-
-      _pid ->
-        case Supervisor.restart_child(supervisor_name, __MODULE__) do
-          {:ok, _child} -> :ok
-          {:ok, _child, _info} -> :ok
-          {:error, :already_present} -> :ok
-          {:error, :running} -> :ok
-          {:error, reason} ->
-            raise("runtime_asm_bridge session store did not restart: #{inspect(reason)}")
-        end
-    end
-
-    wait_for_process!(__MODULE__, "runtime_asm_bridge session store")
-  end
-
-  defp wait_for_process!(name, label, attempts \\ 40)
-
-  defp wait_for_process!(_name, label, 0), do: raise("#{label} did not start")
-
-  defp wait_for_process!(name, label, attempts) do
-    case Process.whereis(name) do
-      nil ->
-        Process.sleep(50)
-        wait_for_process!(name, label, attempts - 1)
-
-      _pid ->
-        :ok
-    end
-  end
 end

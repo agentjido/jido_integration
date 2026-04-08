@@ -383,5 +383,4 @@ defmodule Jido.Integration.V2.Connectors.Notion.GeneratedConsumerSurfaceTest do
 
   defp request_body_map(%{body: body}) when is_binary(body), do: Jason.decode!(body)
   defp request_body_map(%{body: body}) when is_map(body), do: body
-
 end

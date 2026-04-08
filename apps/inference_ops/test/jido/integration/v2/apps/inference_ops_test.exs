@@ -282,10 +282,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
     end
 
     defp script_path do
-      Path.expand(
-        "../../../../../../../../llama_cpp_sdk/examples/support/fake_llama_server.py",
-        __DIR__
-      )
+      Path.expand("../../../../support/fake_llama_server.py", __DIR__)
     end
 
     defp unique_state_dir do

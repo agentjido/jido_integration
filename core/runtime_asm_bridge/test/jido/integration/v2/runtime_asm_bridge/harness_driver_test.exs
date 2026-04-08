@@ -13,6 +13,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
   }
 
   setup do
+    ensure_runtime_asm_bridge_started!()
     SessionStore.reset!()
     :ok
   end
@@ -315,6 +316,14 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
       end
     else
       :ok
+    end
+  end
+
+  defp ensure_runtime_asm_bridge_started! do
+    case Jido.Integration.V2.RuntimeAsmBridge.Application.start(:normal, []) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> flunk("failed to start runtime_asm_bridge: #{inspect(reason)}")
     end
   end
 end

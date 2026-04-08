@@ -848,6 +848,7 @@ defmodule Jido.Integration.V2.ControlPlane do
       |> Enum.with_index(start_seq)
       |> Enum.map(fn {spec, seq} ->
         Event.new!(%{
+          event_id: Contracts.event_id(run_id, attempt_id, seq),
           run_id: run_id,
           attempt: attempt && attempt.attempt,
           attempt_id: attempt_id,
@@ -914,10 +915,18 @@ defmodule Jido.Integration.V2.ControlPlane do
 
       _pid ->
         case Supervisor.restart_child(ControlPlaneSupervisor, Registry) do
-          {:ok, _child} -> :ok
-          {:ok, _child, _info} -> :ok
-          {:error, :already_present} -> :ok
-          {:error, :running} -> :ok
+          {:ok, _child} ->
+            :ok
+
+          {:ok, _child, _info} ->
+            :ok
+
+          {:error, :already_present} ->
+            :ok
+
+          {:error, :running} ->
+            :ok
+
           {:error, reason} ->
             raise("control plane registry did not restart: #{inspect(reason)}")
         end
