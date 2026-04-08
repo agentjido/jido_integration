@@ -153,7 +153,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
 
   def weld(opts \\ []) do
     case local_root_path("WELD_PATH", nil) do
-      nil -> {:weld, "~> 0.1.0", opts}
+      nil -> {:weld, "~> 0.2.0", opts}
       path -> {:weld, Keyword.merge([path: path], opts)}
     end
   end
