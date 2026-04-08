@@ -14,7 +14,6 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.HarnessRuntime.SessionStore
-  alias Jido.Integration.V2.HarnessRuntime.TestSupport, as: HarnessRuntimeTestSupport
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.Redaction
@@ -433,7 +432,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   setup do
-    HarnessRuntimeTestSupport.ensure_started!()
+    HarnessRuntime.start!()
     ControlPlane.reset!()
     :ok
   end
@@ -1243,17 +1242,9 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   defp stop_harness_runtime! do
-    if pid = Process.whereis(Jido.Integration.V2.HarnessRuntime.Supervisor) do
-      ref = Process.monitor(pid)
-      GenServer.stop(pid, :normal)
-
-      receive do
-        {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
-      after
-        5_000 -> flunk("harness runtime supervisor did not stop")
-      end
-    else
-      :ok
+    case Application.stop(:jido_integration_v2_harness_runtime) do
+      :ok -> :ok
+      {:error, {:not_started, :jido_integration_v2_harness_runtime}} -> :ok
     end
   end
 end

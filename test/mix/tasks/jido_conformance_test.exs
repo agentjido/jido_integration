@@ -52,6 +52,16 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   end
 
   @tag timeout: 180_000
+  test "boots the harness runtime explicitly for non-direct connector conformance" do
+    stop_harness_runtime!()
+
+    output = run_task(["Jido.Integration.V2.Connectors.CodexCli"])
+
+    assert output =~ "Connector: codex_cli"
+    assert output =~ "[PASS] deterministic_fixtures"
+  end
+
+  @tag timeout: 180_000
   test "restores the original code path after loading a child package" do
     original_path = :code.get_path()
 
@@ -98,6 +108,13 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
     after
       finished_at = System.monotonic_time(:millisecond)
       IO.puts(:stderr, "[progress] finished #{label} in #{finished_at - started_at}ms")
+    end
+  end
+
+  defp stop_harness_runtime! do
+    case Application.stop(:jido_integration_v2_harness_runtime) do
+      :ok -> :ok
+      {:error, {:not_started, :jido_integration_v2_harness_runtime}} -> :ok
     end
   end
 end

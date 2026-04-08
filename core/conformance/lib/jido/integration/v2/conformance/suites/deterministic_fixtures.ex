@@ -375,6 +375,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
   defp reset_runtime!(:direct), do: :ok
 
   defp reset_runtime!(runtime_class) when runtime_class in [:session, :stream] do
+    HarnessRuntime.start!()
     HarnessRuntime.reset!()
   end
 

@@ -35,6 +35,21 @@ defmodule Jido.Integration.V2.HarnessRuntime do
           session_key: term()
         }
 
+  @doc """
+  Starts the authored non-direct runtime boundary and its declared OTP dependencies.
+  """
+  @spec start!() :: :ok
+  def start! do
+    case Application.ensure_all_started(:jido_integration_v2_harness_runtime) do
+      {:ok, _started_applications} ->
+        :ok
+
+      {:error, {application, reason}} ->
+        raise ArgumentError,
+              "failed to start harness runtime application #{inspect(application)}: #{inspect(reason)}"
+    end
+  end
+
   @spec execute(Capability.t(), map(), map()) ::
           {:ok, RuntimeResult.t()} | {:error, term(), RuntimeResult.t()}
   def execute(%Capability{runtime_class: runtime_class} = capability, input, context)
@@ -80,7 +95,7 @@ defmodule Jido.Integration.V2.HarnessRuntime do
       :ok
     else
       raise ArgumentError,
-            "harness runtime is not started; start Jido.Integration.V2.HarnessRuntime.Application before invoking session or stream runtimes"
+            "harness runtime is not started; call Jido.Integration.V2.HarnessRuntime.start!/0 before invoking session or stream runtimes"
     end
   end
 

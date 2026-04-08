@@ -141,6 +141,8 @@ defmodule Jido.Integration.V2.Conformance do
   defp with_runtime_drivers(runtime_drivers, fun) when runtime_drivers in [%{}, []], do: fun.()
 
   defp with_runtime_drivers(runtime_drivers, fun) when is_map(runtime_drivers) do
+    HarnessRuntime.start!()
+
     previous_runtime_drivers =
       Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
 

@@ -4,7 +4,6 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
   alias Jido.Harness.{ExecutionResult, SessionHandle}
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.HarnessRuntime
-  alias Jido.Integration.V2.HarnessRuntime.TestSupport, as: HarnessRuntimeTestSupport
   alias Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver
   alias Jido.Integration.V2.TargetDescriptor
 
@@ -83,7 +82,7 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
   end
 
   setup do
-    HarnessRuntimeTestSupport.ensure_started!()
+    HarnessRuntime.start!()
 
     previous_runtime_drivers =
       Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
@@ -108,6 +107,18 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
     end)
 
     :ok
+  end
+
+  test "start!/0 boots the harness runtime and its declared runtime dependencies" do
+    stop_harness_runtime!()
+
+    assert :ok = HarnessRuntime.start!()
+    assert :ok = HarnessRuntime.start!()
+
+    assert Process.whereis(Jido.Integration.V2.HarnessRuntime.Supervisor)
+    assert Process.whereis(Jido.Integration.V2.HarnessRuntime.SessionStore)
+    assert Process.whereis(Jido.Integration.V2.RuntimeAsmBridge.SessionStore)
+    assert Process.whereis(Jido.Session.Store)
   end
 
   test "publishes asm and jido_session as the only built-in Harness driver ids" do
@@ -226,7 +237,7 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
       %{authored_driver: AuthoredDriver}
     )
 
-    assert_raise ArgumentError, ~r/harness runtime is not started/, fn ->
+    assert_raise ArgumentError, ~r/call Jido\.Integration\.V2\.HarnessRuntime\.start!\/0/, fn ->
       HarnessRuntime.execute(
         capability_fixture(),
         %{prompt: "hello"},
@@ -302,17 +313,9 @@ defmodule Jido.Integration.V2.HarnessRuntimeTest do
   end
 
   defp stop_harness_runtime! do
-    if pid = Process.whereis(Jido.Integration.V2.HarnessRuntime.Supervisor) do
-      ref = Process.monitor(pid)
-      GenServer.stop(pid, :normal)
-
-      receive do
-        {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
-      after
-        5_000 -> flunk("harness runtime supervisor did not stop")
-      end
-    else
-      :ok
+    case Application.stop(:jido_integration_v2_harness_runtime) do
+      :ok -> :ok
+      {:error, {:not_started, :jido_integration_v2_harness_runtime}} -> :ok
     end
   end
 end
