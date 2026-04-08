@@ -31,7 +31,7 @@ defmodule Jido.Integration.Workspace.MixProject do
 
   defp deps do
     [
-      {:blitz, "~> 0.1.0", runtime: false},
+      {:blitz, "~> 0.2.0", runtime: false},
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_v2_contracts(),
       DependencyResolver.jido_shell(override: true, runtime: false),
