@@ -107,9 +107,23 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     assert File.exists?(Path.join(repo_root(), "packaging/weld/jido_integration/smoke.ex"))
   end
 
-  test "shared dependency resolver prefers a sibling weld checkout when present" do
-    assert {:weld, opts} = DependencyResolver.weld()
-    assert Path.expand(Keyword.fetch!(opts, :path)) == Path.expand("../weld", repo_root())
+  test "shared dependency resolver honors weld path overrides and sibling fallback" do
+    case System.get_env("WELD_PATH") do
+      "disabled" ->
+        assert {:weld, requirement, opts} = DependencyResolver.weld()
+        assert is_binary(requirement)
+        refute Keyword.has_key?(opts, :path)
+
+      override when is_binary(override) ->
+        assert {:weld, opts} = DependencyResolver.weld()
+
+        assert Path.expand(Keyword.fetch!(opts, :path), repo_root()) ==
+                 Path.expand(override, repo_root())
+
+      nil ->
+        assert {:weld, opts} = DependencyResolver.weld()
+        assert Path.expand(Keyword.fetch!(opts, :path)) == Path.expand("../weld", repo_root())
+    end
   end
 
   test "workspace isolation clears SSL key logging for monorepo verification tasks" do

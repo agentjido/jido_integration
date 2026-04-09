@@ -40,6 +40,13 @@ The release lifecycle is:
 
 `mix release.prepare` runs the welded-artifact verification lane, builds the
 exact package tarball, and writes the release bundle under `dist/`.
+The prepared project inside that bundle remains a real runnable Mix project, so
+dist validation can continue there with the normal package gates:
+`mix format --check-formatted`, `mix compile --warnings-as-errors`,
+`mix test`, `mix credo --strict`, `mix dialyzer`,
+`mix docs --warnings-as-errors`, plus `mix ecto.create` and
+`mix ecto.migrate` when the published slice includes database-backed
+packages.
 
 `mix release.publish` then runs `mix hex.publish` from the prepared bundle
 snapshot, not from the source repo root. That keeps the published artifact tied

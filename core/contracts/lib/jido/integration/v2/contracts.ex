@@ -57,7 +57,7 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec now() :: DateTime.t()
   def now do
-    DateTime.utc_now() |> DateTime.truncate(:second)
+    DateTime.utc_now() |> DateTime.truncate(:microsecond)
   end
 
   @spec dump_json_safe!(term()) :: term()

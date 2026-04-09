@@ -207,6 +207,12 @@ The release path is explicit:
 
 `mix release.prepare` generates the welded package, runs the artifact quality
 lane, builds the tarball, and writes a durable release bundle under `dist/`.
+That prepared bundle is intended to stay runnable on its own, including
+bundle-local `mix format --check-formatted`,
+`mix compile --warnings-as-errors`, `mix test`, `mix credo --strict`,
+`mix dialyzer`, `mix docs --warnings-as-errors`, `mix ecto.create`, and
+`mix ecto.migrate` when the published slice includes the Postgres durability
+tier.
 
 `mix release.publish` publishes from that prepared bundle snapshot rather than
 from the monorepo root. `mix release.archive` then preserves the prepared
