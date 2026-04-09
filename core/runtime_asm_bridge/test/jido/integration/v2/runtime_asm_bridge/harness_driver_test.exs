@@ -52,6 +52,52 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriverTest do
     assert :error = SessionStore.fetch(session.session_id)
   end
 
+  test "start_session/1 and session_status/1 carry wave-5 boundary metadata for session lanes" do
+    assert {:ok, session} =
+             HarnessDriver.start_session(
+               provider: :claude,
+               workspace_root: "/tmp/runtime-boundary",
+               target_id: "boundary-target-1",
+               surface_ref: "surface-1",
+               surface_kind: :ssh_exec,
+               lease_ref: "lease-1",
+               permission_mode: :plan,
+               allowed_tools: ["test.session.exec"],
+               context: %{route: %{route_id: "route-1"}, decision_id: "decision-1"}
+             )
+
+    on_exit(fn ->
+      _ = HarnessDriver.stop_session(session)
+    end)
+
+    assert session.metadata["boundary"]["descriptor"]["boundary_session_id"] == session.session_id
+    assert session.metadata["boundary"]["descriptor"]["decision_id"] == "decision-1"
+    assert session.metadata["boundary"]["descriptor"]["workspace_ref"] == "/tmp/runtime-boundary"
+    assert session.metadata["boundary"]["descriptor"]["lease_refs"] == ["lease-1"]
+    assert session.metadata["boundary"]["route"]["route_id"] == "route-1"
+
+    assert session.metadata["boundary"]["route"]["resolved_target"] == %{
+             "surface_kind" => "ssh_exec",
+             "surface_ref" => "surface-1",
+             "target_id" => "boundary-target-1"
+           }
+
+    assert session.metadata["boundary"]["attach_grant"] == %{
+             "attach_mode" => "read_only",
+             "attach_surface" => %{
+               "surface_kind" => "ssh_exec",
+               "surface_ref" => "surface-1",
+               "target_id" => "boundary-target-1"
+             },
+             "boundary_session_id" => session.session_id,
+             "granted_capabilities" => ["test.session.exec"],
+             "working_directory" => "/tmp/runtime-boundary"
+           }
+
+    assert {:ok, status} = HarnessDriver.session_status(session)
+    assert status.details["boundary"]["descriptor"]["session_status"] == "ready"
+  end
+
   test "stream_run/3 maps asm envelopes to harness execution events" do
     assert {:ok, session} = HarnessDriver.start_session(provider: :claude)
 

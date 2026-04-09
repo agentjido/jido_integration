@@ -139,10 +139,11 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
          runtime_id: :asm,
          provider: requested_provider,
          status: :ready,
-         metadata:
-           %{}
-           |> Map.put("asm_provider", Atom.to_string(provider.name))
-           |> Map.put("display_name", provider.display_name)
+          metadata:
+            %{}
+            |> Map.put("asm_provider", Atom.to_string(provider.name))
+            |> Map.put("display_name", provider.display_name)
+            |> Map.put("boundary", authored_boundary_metadata(session_id, opts))
        })}
     else
       {:error, _} = error ->
@@ -273,6 +274,7 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
        details:
          %{}
          |> maybe_put_map("provider", session.provider && Atom.to_string(session.provider))
+         |> maybe_put_map("boundary", session_boundary_status_metadata(session, status))
      })}
   end
 
@@ -352,6 +354,61 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)
     |> Map.new()
   end
+
+  defp authored_boundary_metadata(session_id, opts) when is_binary(session_id) and is_list(opts) do
+    context = Keyword.get(opts, :context, %{})
+    workspace_root = workspace_root_value(opts, context)
+    lease_ref = lease_ref_value(opts, context)
+    target_id = target_id_value(opts, context)
+    surface_kind = Keyword.get(opts, :surface_kind)
+
+    descriptor =
+      %{
+        "boundary_session_id" => session_id,
+        "session_status" => "ready",
+        "attach_state" => "attached"
+      }
+      |> maybe_put_map("decision_id", map_value(context, :decision_id))
+      |> maybe_put_map("workspace_ref", workspace_root)
+      |> maybe_put_map("lease_refs", optional_list(lease_ref))
+
+    route =
+      %{}
+      |> maybe_put_map("route_id", route_id_value(context))
+      |> maybe_put_map("resolved_target", resolved_target_metadata(target_id, surface_kind, opts))
+
+    attach_grant =
+      %{
+        "boundary_session_id" => session_id,
+        "attach_mode" => attach_mode_value(opts),
+        "granted_capabilities" => allowed_tools_value(opts, context)
+      }
+      |> maybe_put_map("working_directory", workspace_root)
+      |> maybe_put_map("attach_surface", attach_surface_metadata(surface_kind, opts))
+
+    %{
+      "descriptor" => descriptor,
+      "attach_grant" => attach_grant
+    }
+    |> maybe_put_map("route", empty_map_to_nil(route))
+  end
+
+  defp session_boundary_status_metadata(%SessionHandle{metadata: metadata}, status)
+       when is_map(metadata) do
+    case Map.get(metadata, "boundary") || Map.get(metadata, :boundary) do
+      %{} = boundary ->
+        Map.update(boundary, "descriptor", %{"session_status" => Atom.to_string(status)}, fn descriptor ->
+          descriptor
+          |> default_map()
+          |> Map.put("session_status", Atom.to_string(status))
+        end)
+
+      _other ->
+        nil
+    end
+  end
+
+  defp session_boundary_status_metadata(_session, _status), do: nil
 
   defp start_session_opts(opts, provider, requested_provider) do
     opts
@@ -547,8 +604,42 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
 
   defp runtime_option_value(_runtime_config, _key), do: nil
 
+  defp route_id_value(context) do
+    map_value(map_value(context, :route), :route_id)
+  end
+
+  defp resolved_target_metadata(target_id, surface_kind, opts) do
+    %{}
+    |> maybe_put_map("target_id", target_id)
+    |> maybe_put_map("surface_ref", Keyword.get(opts, :surface_ref))
+    |> maybe_put_map("surface_kind", surface_kind && Atom.to_string(surface_kind))
+    |> empty_map_to_nil()
+  end
+
+  defp attach_surface_metadata(surface_kind, opts) do
+    %{}
+    |> maybe_put_map("surface_kind", surface_kind && Atom.to_string(surface_kind))
+    |> maybe_put_map("surface_ref", Keyword.get(opts, :surface_ref))
+    |> maybe_put_map("target_id", Keyword.get(opts, :target_id))
+    |> empty_map_to_nil()
+  end
+
+  defp attach_mode_value(opts) do
+    case Keyword.get(opts, :permission_mode) do
+      :plan -> "read_only"
+      :bypass -> "read_write"
+      nil -> "read_write"
+      other -> to_string(other)
+    end
+  end
+
+  defp optional_list(nil), do: nil
+  defp optional_list(value), do: [value]
+
   defp empty_keyword_to_nil([]), do: nil
   defp empty_keyword_to_nil(keyword), do: keyword
+  defp empty_map_to_nil(map) when map == %{}, do: nil
+  defp empty_map_to_nil(map), do: map
 
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)

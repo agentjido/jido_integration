@@ -50,7 +50,10 @@ into `execution_environment.workspace_root`.
 
 This means future core-owned surfaces continue to flow through the same bridge
 shape. `runtime_asm_bridge` authors placement and environment separately but
-does not branch on transport-family internals.
+does not branch on transport-family internals. Session handles and status
+details now also carry the Wave 5 boundary packet groups under
+`metadata["boundary"]` / `details["boundary"]` so downstream session-bearing
+lanes receive attach and descriptor carriage without rebuilding it locally.
 
 ## Runtime Scope
 
