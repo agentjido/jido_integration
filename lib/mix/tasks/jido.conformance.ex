@@ -367,7 +367,7 @@ defmodule Mix.Tasks.Jido.Conformance do
 
   defp stable_project_slug(project_root) do
     digest =
-      :crypto.hash(:sha256, project_root)
+      :crypto.hash(:sha256, project_cache_fingerprint(project_root))
       |> Base.encode16(case: :lower)
       |> binary_part(0, 12)
 
@@ -378,6 +378,30 @@ defmodule Mix.Tasks.Jido.Conformance do
       |> String.trim("_")
 
     "#{project_name}_#{digest}"
+  end
+
+  defp project_cache_fingerprint(project_root) do
+    [
+      project_root,
+      project_file_fingerprint(project_root, "mix.exs"),
+      project_file_fingerprint(project_root, "mix.lock")
+    ]
+    |> Enum.join("\n")
+  end
+
+  defp project_file_fingerprint(project_root, relative_path) do
+    path = Path.join(project_root, relative_path)
+
+    case File.read(path) do
+      {:ok, contents} ->
+        contents
+
+      {:error, :enoent} ->
+        ""
+
+      {:error, reason} ->
+        Mix.raise("Could not read #{path} for conformance cache key: #{inspect(reason)}")
+    end
   end
 
   defp project_command_env(project_root, build_path, hex_home) do

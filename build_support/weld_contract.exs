@@ -60,7 +60,7 @@ defmodule Jido.Integration.Build.WeldContract do
   ]
 
   @dependencies [
-    agent_session_manager: [requirement: "~> 0.9.0"],
+    agent_session_manager: [requirement: "~> 0.9.1"],
     github_ex: [requirement: "~> 0.1.0"],
     jido_harness: [opts: [github: "nshkrdotcom/jido_harness", branch: "main"]],
     jido_shell: [opts: [github: "agentjido/jido_shell", branch: "main"]],

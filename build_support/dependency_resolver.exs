@@ -97,7 +97,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def agent_session_manager(opts \\ []) do
-    {:agent_session_manager, "~> 0.9.0", opts}
+    {:agent_session_manager, "~> 0.9.1", opts}
   end
 
   def cli_subprocess_core(opts \\ []) do
