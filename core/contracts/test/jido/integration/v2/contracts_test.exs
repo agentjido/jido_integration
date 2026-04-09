@@ -201,4 +201,27 @@ defmodule Jido.Integration.V2.ContractsTest do
                    })
                  end
   end
+
+  test "the execution-plane contract packet and boundary metadata vocabulary stay explicit" do
+    assert Contracts.execution_plane_contract_packet() == [
+             "AuthorityDecision.v1",
+             "BoundarySessionDescriptor.v1",
+             "ExecutionIntentEnvelope.v1",
+             "ExecutionRoute.v1",
+             "AttachGrant.v1",
+             "CredentialHandleRef.v1",
+             "ExecutionEvent.v1",
+             "ExecutionOutcome.v1"
+           ]
+
+    assert Contracts.boundary_metadata_contract_keys() == [
+             "descriptor",
+             "route",
+             "attach_grant",
+             "replay",
+             "approval",
+             "callback",
+             "identity"
+           ]
+  end
 end

@@ -59,6 +59,9 @@ in `apps/*/README.md`.
   `BoundarySessionDescriptor.v1`, `ExecutionIntentEnvelope.v1`,
   `ExecutionRoute.v1`, `AttachGrant.v1`, `CredentialHandleRef.v1`,
   `ExecutionEvent.v1`, and `ExecutionOutcome.v1`
+- boundary-backed session carriage now keeps the Wave 5 durable subcontracts
+  explicit under named metadata groups for descriptor, route, attach grant,
+  replay, approval, callback, and identity truth
 - connector packages publish authored capability contracts and may also expose
   curated generated `Jido.Action`, `Jido.Sensor`, and `Jido.Plugin` surfaces.
 - `core/dispatch_runtime` and `core/webhook_router` provide the hosted async

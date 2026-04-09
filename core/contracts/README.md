@@ -240,6 +240,23 @@ Wave 1 freezes their names, lineage rules, and ownership semantics only.
 
 `AuthSpec`
 
+## Wave 5 Durable Metadata Vocabulary
+
+When higher repos need boundary-backed session carriage without taking a raw
+Execution Plane dependency, this repo now keeps the named metadata groups
+explicit:
+
+- `descriptor`
+- `route`
+- `attach_grant`
+- `replay`
+- `approval`
+- `callback`
+- `identity`
+
+`Jido.Integration.V2.Contracts.boundary_metadata_contract_keys/0` publishes
+that list for the Spine-owned carrier vocabulary.
+
 - authors connector auth truth through explicit profile records rather than one
   flat auth mode
 - derives connector-wide `auth_type`, `management_modes`,

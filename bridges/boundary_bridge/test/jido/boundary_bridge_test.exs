@@ -208,6 +208,79 @@ defmodule Jido.BoundaryBridgeTest do
     assert {:ok, nil} = Jido.BoundaryBridge.project_attach_metadata(descriptor)
   end
 
+  test "project_boundary_metadata makes durable route replay approval callback and identity semantics explicit" do
+    descriptor =
+      BoundarySessionDescriptor.new!(%{
+        descriptor_version: 1,
+        boundary_session_id: "bnd-boundary-metadata-1",
+        backend_kind: :microvm,
+        boundary_class: :leased_cell,
+        status: :ready,
+        attach_ready?: true,
+        workspace: %{
+          workspace_root: "/workspace",
+          snapshot_ref: "snap-boundary-metadata-1",
+          artifact_namespace: "run-boundary-metadata-1"
+        },
+        attach: %{
+          mode: :attachable,
+          execution_surface: execution_surface("bnd-boundary-metadata-1"),
+          working_directory: "/workspace",
+          expires_at: "2026-04-10T12:10:00Z",
+          granted_capabilities: ["attach.read", "attach.write"]
+        },
+        checkpointing: %{
+          supported?: true,
+          last_checkpoint_id: "chk-boundary-metadata-1",
+          replayable?: true,
+          recovery_class: "session_resume"
+        },
+        policy_intent_echo:
+          policy_projection(:strict, :restricted, :manual, ["git"], "/workspace"),
+        callback: %{
+          callback_ref: "callback://boundary-metadata-1",
+          state: :completed,
+          last_received_at: "2026-04-10T12:03:00Z"
+        },
+        refs: %{
+          target_id: "target-bnd-boundary-metadata-1",
+          lease_ref: "lease-bnd-boundary-metadata-1",
+          surface_ref: "surface-bnd-boundary-metadata-1",
+          runtime_ref: "asm-bnd-boundary-metadata-1",
+          correlation_id: "corr-bnd-boundary-metadata-1",
+          request_id: "req-bnd-boundary-metadata-1",
+          decision_id: "decision-bnd-boundary-metadata-1",
+          route_id: "route-bnd-boundary-metadata-1",
+          idempotency_key: "idem-bnd-boundary-metadata-1",
+          lease_refs: ["lease-bnd-boundary-metadata-1"],
+          approval_refs: ["approval-bnd-boundary-metadata-1"],
+          artifact_refs: ["artifact-bnd-boundary-metadata-1"],
+          credential_handle_refs: ["credential-handle://tenant-1/workload/boundary-1"]
+        },
+        extensions: %{},
+        metadata: %{}
+      })
+
+    assert {:ok, metadata} = Jido.BoundaryBridge.project_boundary_metadata(descriptor)
+
+    assert metadata["descriptor"]["boundary_session_id"] == "bnd-boundary-metadata-1"
+    assert metadata["route"]["route_id"] == "route-bnd-boundary-metadata-1"
+    assert metadata["route"]["idempotency_key"] == "idem-bnd-boundary-metadata-1"
+    assert metadata["attach_grant"]["granted_capabilities"] == ["attach.read", "attach.write"]
+    assert metadata["replay"]["replayable?"] == true
+    assert metadata["replay"]["recovery_class"] == "session_resume"
+    assert metadata["approval"]["approval_refs"] == ["approval-bnd-boundary-metadata-1"]
+    assert metadata["callback"]["callback_ref"] == "callback://boundary-metadata-1"
+
+    assert metadata["identity"]["credential_handle_refs"] == [
+             "credential-handle://tenant-1/workload/boundary-1"
+           ]
+
+    assert {:ok, attach_projection} = Jido.BoundaryBridge.project_attach_metadata(descriptor)
+    assert attach_projection.attach_grant == metadata["attach_grant"]
+    assert attach_projection.boundary_metadata == metadata
+  end
+
   defp allocate_request(boundary_session_id) do
     AllocateBoundaryRequest.new!(%{
       boundary_session_id: boundary_session_id,

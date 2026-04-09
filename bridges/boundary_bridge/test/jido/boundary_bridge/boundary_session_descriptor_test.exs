@@ -97,6 +97,80 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptorTest do
     assert BoundarySessionDescriptor.tracing_extension(descriptor).traceparent =~ "4bf92f35"
   end
 
+  test "accepts explicit Wave 5 route replay callback approval and identity fields" do
+    descriptor =
+      BoundarySessionDescriptor.new!(%{
+        descriptor_version: 1,
+        boundary_session_id: "bnd-wave5-1",
+        backend_kind: :microvm,
+        boundary_class: :leased_cell,
+        status: :ready,
+        attach_ready?: true,
+        workspace: %{
+          workspace_root: "/workspace",
+          snapshot_ref: "snap-wave5-1",
+          artifact_namespace: "run-wave5-1"
+        },
+        attach: %{
+          mode: :attachable,
+          execution_surface: execution_surface("target-wave5-1"),
+          working_directory: "/workspace",
+          expires_at: "2026-04-10T12:10:00Z",
+          granted_capabilities: ["attach.read", "attach.write"]
+        },
+        checkpointing: %{
+          supported?: true,
+          last_checkpoint_id: "chk-wave5-1",
+          replayable?: true,
+          recovery_class: "session_resume"
+        },
+        policy_intent_echo: %{
+          sandbox_level: :strict,
+          egress: :restricted,
+          approvals: :manual,
+          allowed_tools: ["git"],
+          file_scope: "/workspace"
+        },
+        callback: %{
+          callback_ref: "callback://wave5-1",
+          state: :completed,
+          last_received_at: "2026-04-10T12:03:00Z"
+        },
+        refs: %{
+          target_id: "target-wave5-1",
+          lease_ref: "lease-wave5-1",
+          surface_ref: "surface-wave5-1",
+          runtime_ref: "asm-session-wave5-1",
+          correlation_id: "corr-wave5-1",
+          request_id: "req-wave5-1",
+          decision_id: "decision-wave5-1",
+          route_id: "route-wave5-1",
+          idempotency_key: "idem-wave5-1",
+          lease_refs: ["lease-wave5-1"],
+          approval_refs: ["approval-wave5-1"],
+          artifact_refs: ["artifact-wave5-1"],
+          credential_handle_refs: ["credential-handle://tenant-1/workload/session-1"]
+        },
+        extensions: %{},
+        metadata: %{}
+      })
+
+    assert Map.get(descriptor.attach, :expires_at) == "2026-04-10T12:10:00Z"
+    assert Map.get(descriptor.attach, :granted_capabilities) == ["attach.read", "attach.write"]
+    assert Map.get(descriptor.checkpointing, :replayable?) == true
+    assert Map.get(descriptor.checkpointing, :recovery_class) == "session_resume"
+    assert Map.get(descriptor.callback, :callback_ref) == "callback://wave5-1"
+    assert Map.get(descriptor.callback, :state) == :completed
+    assert Map.get(descriptor.refs, :decision_id) == "decision-wave5-1"
+    assert Map.get(descriptor.refs, :route_id) == "route-wave5-1"
+    assert Map.get(descriptor.refs, :idempotency_key) == "idem-wave5-1"
+    assert Map.get(descriptor.refs, :approval_refs) == ["approval-wave5-1"]
+
+    assert Map.get(descriptor.refs, :credential_handle_refs) == [
+             "credential-handle://tenant-1/workload/session-1"
+           ]
+  end
+
   test "fails closed on unsupported descriptor versions" do
     assert {:error, %ArgumentError{} = error} =
              BoundarySessionDescriptor.new(%{

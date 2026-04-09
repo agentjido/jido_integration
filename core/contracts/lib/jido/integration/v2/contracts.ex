@@ -15,6 +15,15 @@ defmodule Jido.Integration.V2.Contracts do
     "ExecutionEvent.v1",
     "ExecutionOutcome.v1"
   ]
+  @boundary_metadata_contract_keys [
+    "descriptor",
+    "route",
+    "attach_grant",
+    "replay",
+    "approval",
+    "callback",
+    "identity"
+  ]
   @provisional_minimal_lane_contracts [
     "HttpExecutionIntent.v1",
     "ProcessExecutionIntent.v1",
@@ -72,6 +81,9 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec execution_plane_contract_packet() :: [String.t(), ...]
   def execution_plane_contract_packet, do: @execution_plane_contract_packet
+
+  @spec boundary_metadata_contract_keys() :: [String.t(), ...]
+  def boundary_metadata_contract_keys, do: @boundary_metadata_contract_keys
 
   @spec provisional_minimal_lane_contracts() :: [String.t(), ...]
   def provisional_minimal_lane_contracts, do: @provisional_minimal_lane_contracts

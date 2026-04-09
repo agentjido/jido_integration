@@ -39,6 +39,7 @@ defmodule Jido.BoundaryBridge.MixProject do
 
   defp deps do
     [
+      DependencyResolver.jido_action(override: true),
       DependencyResolver.jido_os(),
       DependencyResolver.jido_shell(override: true),
       DependencyResolver.sprites(override: true),

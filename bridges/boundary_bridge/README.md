@@ -21,7 +21,7 @@ This package lives under `bridges/` intentionally:
   `Jido.BoundaryBridge.ReopenBoundaryRequest`, and
   `Jido.BoundaryBridge.BoundarySessionDescriptor`
 - the narrow public bridge API for allocate, reopen, readiness waiting, and
-  attach-metadata projection
+  attach-metadata plus durable boundary-metadata projection
 - request translation, descriptor normalization, typed extension accessors, and
   bridge-facing error normalization
 - package-local docs, tests, and quality gates for that bridge seam
@@ -45,6 +45,8 @@ Those stay in the existing `core/` and `apps/` packages.
   rollout
 - consumers fail closed on unsupported `descriptor_version` values rather than
   assuming future shapes
+- descriptors keep Wave 5 route, replay, callback, approval, attach-grant, and
+  identity carriage explicit instead of burying them in transport-local maps
 - `attach.mode == :not_applicable` is valid and keeps the bridge kernel-neutral
 - `policy_intent_echo` is a lossy bridge-local projection, not governance truth
 - readiness waiting currently polls by `boundary_session_id` through the lower
@@ -54,6 +56,9 @@ Those stay in the existing `core/` and `apps/` packages.
   `Task.await/2`
 - runtime claim and heartbeat stay explicit bridge operations so startup TTL
   handoff remains below the kernel seam
+- `project_boundary_metadata/1` publishes the named durable metadata groups
+  consumed above the bridge: `descriptor`, `route`, `attach_grant`, `replay`,
+  `approval`, `callback`, and `identity`
 
 ## Publication Boundary
 

@@ -25,6 +25,7 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptor do
               workspace: Contracts.any_map_schema(),
               attach: Contracts.any_map_schema(),
               checkpointing: Contracts.any_map_schema(),
+              callback: Contracts.any_map_schema() |> Zoi.default(%{}),
               policy_intent_echo: Contracts.any_map_schema() |> Zoi.default(%{}),
               refs: Contracts.any_map_schema(),
               extensions: Contracts.any_map_schema() |> Zoi.default(%{}),
@@ -74,6 +75,7 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptor do
     workspace = __MODULE__.Workspace.new!(descriptor.workspace)
     attach = __MODULE__.Attach.new!(descriptor.attach)
     checkpointing = __MODULE__.Checkpointing.new!(descriptor.checkpointing)
+    callback = __MODULE__.Callback.new!(descriptor.callback)
     policy_intent_echo = PolicyIntent.new!(descriptor.policy_intent_echo)
     refs = Refs.new!(descriptor.refs)
     extensions = Extensions.validate!(descriptor.extensions)
@@ -83,6 +85,7 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptor do
       | workspace: workspace,
         attach: attach,
         checkpointing: checkpointing,
+        callback: callback,
         policy_intent_echo: policy_intent_echo,
         refs: refs,
         extensions: extensions
@@ -102,6 +105,7 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptor do
     |> Map.update(:workspace, %{}, &normalize_nested_mapish/1)
     |> Map.update(:attach, %{}, &normalize_nested_mapish/1)
     |> Map.update(:checkpointing, %{}, &normalize_nested_mapish/1)
+    |> Map.update(:callback, %{}, &normalize_nested_mapish/1)
     |> Map.update(:policy_intent_echo, %{}, &normalize_nested_mapish/1)
     |> Map.update(:refs, %{}, &normalize_nested_mapish/1)
     |> Map.update(:extensions, %{}, &normalize_nested_mapish/1)
@@ -211,7 +215,14 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptor do
                 working_directory:
                   Contracts.non_empty_string_schema("attach.working_directory")
                   |> Zoi.nullish()
-                  |> Zoi.optional()
+                  |> Zoi.optional(),
+                expires_at:
+                  Contracts.non_empty_string_schema("attach.expires_at")
+                  |> Zoi.nullish()
+                  |> Zoi.optional(),
+                granted_capabilities:
+                  Contracts.string_list_schema("attach.granted_capabilities")
+                  |> Zoi.default([])
               },
               coerce: true
             )
@@ -295,6 +306,11 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptor do
                 last_checkpoint_id:
                   Contracts.non_empty_string_schema("checkpointing.last_checkpoint_id")
                   |> Zoi.nullish()
+                  |> Zoi.optional(),
+                replayable?: Zoi.boolean() |> Zoi.default(false),
+                recovery_class:
+                  Contracts.non_empty_string_schema("checkpointing.recovery_class")
+                  |> Zoi.nullish()
                   |> Zoi.optional()
               },
               coerce: true
@@ -311,6 +327,47 @@ defmodule Jido.BoundaryBridge.BoundarySessionDescriptor do
 
     @spec new!(map() | keyword() | t()) :: t()
     def new!(%__MODULE__{} = checkpointing), do: checkpointing
+    def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs)
+  end
+
+  defmodule Callback do
+    @moduledoc "Typed callback-truth projection for one boundary descriptor."
+
+    alias Jido.BoundaryBridge.Contracts
+    alias Jido.BoundaryBridge.Schema
+
+    @schema Zoi.struct(
+              __MODULE__,
+              %{
+                callback_ref:
+                  Contracts.non_empty_string_schema("callback.callback_ref")
+                  |> Zoi.nullish()
+                  |> Zoi.optional(),
+                state:
+                  Contracts.enumish_schema(
+                    [:not_applicable, :pending, :received, :completed, :failed],
+                    "callback.state"
+                  )
+                  |> Zoi.default(:not_applicable),
+                last_received_at:
+                  Contracts.non_empty_string_schema("callback.last_received_at")
+                  |> Zoi.nullish()
+                  |> Zoi.optional()
+              },
+              coerce: true
+            )
+
+    @type t :: unquote(Zoi.type_spec(@schema))
+
+    @enforce_keys Zoi.Struct.enforce_keys(@schema)
+    defstruct Zoi.Struct.struct_fields(@schema)
+
+    @spec new(map() | keyword() | t()) :: {:ok, t()} | {:error, Exception.t()}
+    def new(%__MODULE__{} = callback), do: {:ok, callback}
+    def new(attrs), do: Schema.new(__MODULE__, @schema, attrs)
+
+    @spec new!(map() | keyword() | t()) :: t()
+    def new!(%__MODULE__{} = callback), do: callback
     def new!(attrs), do: Schema.new!(__MODULE__, @schema, attrs)
   end
 end

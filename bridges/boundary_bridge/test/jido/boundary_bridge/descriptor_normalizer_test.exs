@@ -101,6 +101,65 @@ defmodule Jido.BoundaryBridge.DescriptorNormalizerTest do
     assert normalized.attach.execution_surface.target_id == "target-struct-shaped-1"
   end
 
+  test "normalizes explicit route replay callback and identity metadata from session payloads" do
+    assert {:ok, %BoundarySessionDescriptor{} = descriptor} =
+             DescriptorNormalizer.normalize(%{
+               session: %{
+                 session_id: "bnd-session-payload-1",
+                 status: :ready,
+                 last_checkpoint_id: "chk-session-payload-1",
+                 backend: %{backend_kind: :microvm},
+                 target: %{target_id: "target-session-payload-1"},
+                 metadata: %{
+                   attach_ready?: true,
+                   workspace_root: "/workspace",
+                   snapshot_ref: "snap-session-payload-1",
+                   artifact_namespace: "run-session-payload-1",
+                   attach: %{
+                     mode: :attachable,
+                     execution_surface: execution_surface("target-session-payload-1"),
+                     working_directory: "/workspace"
+                   },
+                   attach_grant: %{
+                     expires_at: "2026-04-10T12:10:00Z",
+                     granted_capabilities: ["attach.read"]
+                   },
+                   checkpoint_supported?: true,
+                   replay: %{replayable?: true, recovery_class: "checkpoint_resume"},
+                   callback: %{
+                     callback_ref: "callback://session-payload-1",
+                     state: :pending,
+                     last_received_at: "2026-04-10T12:01:00Z"
+                   },
+                   refs: %{
+                     route_id: "route-session-payload-1",
+                     decision_id: "decision-session-payload-1",
+                     idempotency_key: "idem-session-payload-1",
+                     approval_refs: ["approval-session-payload-1"],
+                     lease_refs: ["lease-session-payload-1"],
+                     artifact_refs: ["artifact-session-payload-1"],
+                     credential_handle_refs: [
+                       "credential-handle://tenant-1/workload/session-payload-1"
+                     ]
+                   },
+                   correlation_id: "corr-session-payload-1",
+                   request_id: "req-session-payload-1"
+                 }
+               }
+             })
+
+    assert Map.get(descriptor.refs, :route_id) == "route-session-payload-1"
+    assert Map.get(descriptor.refs, :decision_id) == "decision-session-payload-1"
+    assert Map.get(descriptor.refs, :idempotency_key) == "idem-session-payload-1"
+    assert Map.get(descriptor.refs, :approval_refs) == ["approval-session-payload-1"]
+    assert Map.get(descriptor.attach, :expires_at) == "2026-04-10T12:10:00Z"
+    assert Map.get(descriptor.attach, :granted_capabilities) == ["attach.read"]
+    assert Map.get(descriptor.checkpointing, :replayable?) == true
+    assert Map.get(descriptor.checkpointing, :recovery_class) == "checkpoint_resume"
+    assert Map.get(descriptor.callback, :callback_ref) == "callback://session-payload-1"
+    assert Map.get(descriptor.callback, :state) == :pending
+  end
+
   defp execution_surface(target_id) do
     {:ok, surface} =
       CliSubprocessCore.ExecutionSurface.new(

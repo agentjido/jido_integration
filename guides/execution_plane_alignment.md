@@ -1,8 +1,8 @@
 # Execution Plane Alignment
 
-This guide freezes the Wave 1 vocabulary between the Brain-side packet
-snapshot, the Spine, the Execution Plane workspace, and the facade/session
-layers.
+This guide freezes the lower-boundary packet vocabulary and the Wave 5 durable
+session-carriage vocabulary between the Brain-side packet snapshot, the Spine,
+the Execution Plane workspace, and the facade/session layers.
 
 ## Ownership
 
@@ -44,6 +44,9 @@ In this repo specifically:
   carriage remain Spine concerns
 - `ExecutionEvent.v1` and `ExecutionOutcome.v1` are consumed as raw lower
   facts, not as durable business meaning on their own
+- boundary-backed metadata now keeps those Wave 5 semantics explicit under:
+  `descriptor`, `route`, `attach_grant`, `replay`, `approval`, `callback`,
+  and `identity`
 
 ## Public-Surface Rule
 

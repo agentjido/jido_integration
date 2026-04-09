@@ -97,15 +97,24 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def agent_session_manager(opts \\ []) do
-    {:agent_session_manager, "~> 0.9.1", opts}
+    case local_root_path("AGENT_SESSION_MANAGER_PATH", "../agent_session_manager") do
+      nil -> {:agent_session_manager, "~> 0.9.1", opts}
+      path -> {:agent_session_manager, Keyword.merge([path: path], opts)}
+    end
   end
 
   def cli_subprocess_core(opts \\ []) do
-    {:cli_subprocess_core, "~> 0.1.0", opts}
+    case local_root_path("CLI_SUBPROCESS_CORE_PATH", "../cli_subprocess_core") do
+      nil -> {:cli_subprocess_core, "~> 0.1.0", opts}
+      path -> {:cli_subprocess_core, Keyword.merge([path: path, override: true], opts)}
+    end
   end
 
   def external_runtime_transport(opts \\ []) do
-    {:external_runtime_transport, "~> 0.1.0", opts}
+    case local_root_path("EXTERNAL_RUNTIME_TRANSPORT_PATH", "../external_runtime_transport") do
+      nil -> {:external_runtime_transport, "~> 0.1.0", opts}
+      path -> {:external_runtime_transport, Keyword.merge([path: path, override: true], opts)}
+    end
   end
 
   def jido_os(opts \\ []) do
@@ -124,6 +133,13 @@ defmodule Jido.Integration.Build.DependencyResolver do
       [github: "agentjido/jido_shell", branch: "main"],
       opts
     )
+  end
+
+  def jido_action(opts \\ []) do
+    case local_root_path("JIDO_ACTION_PATH", "../jido_action") do
+      nil -> {:jido_action, "~> 2.2", opts}
+      path -> {:jido_action, Keyword.merge([path: path], opts)}
+    end
   end
 
   def sprites(opts \\ []) do
