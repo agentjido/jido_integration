@@ -6,6 +6,9 @@ This package is the contract spine. It defines the canonical objects used by
 auth, control-plane durability, runtime invocation, and generated consumer
 surfaces.
 
+It now also documents the lower-boundary contract packet that the Spine is
+allowed to carry without re-exporting raw `execution_plane` package surfaces.
+
 ## Public Types
 
 - `ArtifactRef`
@@ -145,6 +148,29 @@ surfaces.
   meant for northbound consumers such as `jido_composer`
 
 ## Public Object Notes
+
+## Execution Plane Packet Alignment
+
+The Wave 1 lower-boundary packet now freezes these carried contract names
+around this repo:
+
+- `AuthorityDecision.v1`
+- `BoundarySessionDescriptor.v1`
+- `ExecutionIntentEnvelope.v1`
+- `ExecutionRoute.v1`
+- `AttachGrant.v1`
+- `CredentialHandleRef.v1`
+- `ExecutionEvent.v1`
+- `ExecutionOutcome.v1`
+
+This package does not replace those lower contracts and it does not flatten
+them into one mega-struct. It remains the stable Spine-side public seam above
+that packet.
+
+The family-specific lower intent payload interiors for
+`HttpExecutionIntent.v1`, `ProcessExecutionIntent.v1`, and
+`JsonRpcExecutionIntent.v1` are explicitly provisional until Wave 3 prove-out.
+Wave 1 freezes their names, lineage rules, and ownership semantics only.
 
 `ArtifactRef`
 

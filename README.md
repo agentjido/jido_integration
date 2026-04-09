@@ -19,6 +19,8 @@ trees for runtime dependency sourcing.
 
 - read [Architecture](guides/architecture.md) for the platform shape and
   package responsibilities
+- read [Execution Plane Alignment](guides/execution_plane_alignment.md) for
+  the frozen lower-boundary contract packet and carriage rules
 - read [Runtime Model](guides/runtime_model.md) to choose between direct,
   session, stream, and inference execution
 - read [Inference Baseline](guides/inference_baseline.md) for the first live
@@ -37,6 +39,7 @@ trees for runtime dependency sourcing.
 
 - [Guide Index](guides/index.md)
 - [Architecture](guides/architecture.md)
+- [Execution Plane Alignment](guides/execution_plane_alignment.md)
 - [Runtime Model](guides/runtime_model.md)
 - [Inference Baseline](guides/inference_baseline.md)
 - [Durability](guides/durability.md)
@@ -57,6 +60,11 @@ trees for runtime dependency sourcing.
 - `Jido.Integration.V2` is the stable public entrypoint for connector
   discovery, auth lifecycle calls, invocation, review lookups, and target
   lookup.
+- the repo now aligns its lower-boundary vocabulary with the frozen
+  Execution Plane packet: `AuthorityDecision.v1`,
+  `BoundarySessionDescriptor.v1`, `ExecutionIntentEnvelope.v1`,
+  `ExecutionRoute.v1`, `AttachGrant.v1`, `CredentialHandleRef.v1`,
+  `ExecutionEvent.v1`, and `ExecutionOutcome.v1`
 - connector packages publish authored capability contracts and may also expose
   curated generated `Jido.Action`, `Jido.Sensor`, and `Jido.Plugin` surfaces.
 - `core/dispatch_runtime` and `core/webhook_router` provide the hosted async
@@ -111,6 +119,12 @@ and may persist only derived state.
 Phase 9 provider-factory work builds on that already-correct ownership split
 instead of reopening control-plane, catalog, or review authority in those
 repos.
+
+The lower execution packet is carried, not re-exported, from this repo.
+`core/contracts` remains the stable Spine-side public seam, while the
+family-facing minimal-lane payload interiors for `HttpExecutionIntent.v1`,
+`ProcessExecutionIntent.v1`, and `JsonRpcExecutionIntent.v1` are explicitly
+provisional until Wave 3 closes prove-out.
 
 Hosted webhook routing and async replay are intentionally separate public
 package APIs:

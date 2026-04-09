@@ -10,6 +10,7 @@ contributor workflows, use the developer section.
 ### General
 
 - [Architecture](architecture.md)
+- [Execution Plane Alignment](execution_plane_alignment.md)
 - [Runtime Model](runtime_model.md)
 - [Inference Baseline](inference_baseline.md)
 - [Durability](durability.md)
@@ -27,15 +28,17 @@ contributor workflows, use the developer section.
 ## Suggested Reading Order
 
 1. read `architecture.md` to understand what the platform packages own
-2. read `runtime_model.md` to choose the right execution lane
-3. read `inference_baseline.md` for the live inference contracts,
+2. read `execution_plane_alignment.md` to understand the frozen lower-boundary
+   packet and what this repo may carry versus expose
+3. read `runtime_model.md` to choose the right execution lane
+4. read `inference_baseline.md` for the live inference contracts,
    durability model, and proof surface
-4. read `durability.md` before selecting a state tier
-5. read `connector_lifecycle.md` to understand connector publication and review
-6. read `async_and_webhooks.md` if you need hosted ingress or replay
-7. read `publishing.md` if you need the welded `mix release.prepare ->
+5. read `durability.md` before selecting a state tier
+6. read `connector_lifecycle.md` to understand connector publication and review
+7. read `async_and_webhooks.md` if you need hosted ingress or replay
+8. read `publishing.md` if you need the welded `mix release.prepare ->
    mix release.publish -> mix release.archive` workflow
-8. read `reference_apps.md` to see end-to-end proofs
-9. read `observability.md` for telemetry and pressure semantics
-10. read `conformance.md` if you are validating connector publication claims
-11. read `developer/index.md` only when you need the internal package map
+9. read `reference_apps.md` to see end-to-end proofs
+10. read `observability.md` for telemetry and pressure semantics
+11. read `conformance.md` if you are validating connector publication claims
+12. read `developer/index.md` only when you need the internal package map

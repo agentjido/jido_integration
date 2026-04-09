@@ -5,6 +5,21 @@ defmodule Jido.Integration.V2.Contracts do
 
   @schema_version "1.0"
   @inference_contract_version "inference.v1"
+  @execution_plane_contract_packet [
+    "AuthorityDecision.v1",
+    "BoundarySessionDescriptor.v1",
+    "ExecutionIntentEnvelope.v1",
+    "ExecutionRoute.v1",
+    "AttachGrant.v1",
+    "CredentialHandleRef.v1",
+    "ExecutionEvent.v1",
+    "ExecutionOutcome.v1"
+  ]
+  @provisional_minimal_lane_contracts [
+    "HttpExecutionIntent.v1",
+    "ProcessExecutionIntent.v1",
+    "JsonRpcExecutionIntent.v1"
+  ]
 
   @type runtime_class :: :direct | :session | :stream
   @type runtime_kind :: :client | :task | :service
@@ -54,6 +69,12 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec inference_contract_version() :: String.t()
   def inference_contract_version, do: @inference_contract_version
+
+  @spec execution_plane_contract_packet() :: [String.t(), ...]
+  def execution_plane_contract_packet, do: @execution_plane_contract_packet
+
+  @spec provisional_minimal_lane_contracts() :: [String.t(), ...]
+  def provisional_minimal_lane_contracts, do: @provisional_minimal_lane_contracts
 
   @spec now() :: DateTime.t()
   def now do

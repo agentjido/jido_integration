@@ -112,6 +112,7 @@ defmodule Jido.Integration.Workspace.MixProject do
         "AGENTS.md",
         {"guides/index.md", filename: "guides_index"},
         "guides/architecture.md",
+        "guides/execution_plane_alignment.md",
         "guides/runtime_model.md",
         "guides/inference_baseline.md",
         "guides/durability.md",
@@ -140,6 +141,7 @@ defmodule Jido.Integration.Workspace.MixProject do
         Overview: ["README.md", "guides/index.md"],
         Architecture: [
           "guides/architecture.md",
+          "guides/execution_plane_alignment.md",
           "docs/architecture_overview.md",
           "guides/runtime_model.md"
         ],

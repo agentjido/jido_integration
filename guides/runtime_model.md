@@ -83,3 +83,27 @@ If it needs session continuity, replay, or host-visible recovery, route it
 through Harness or the async packages explicitly.
 If it is an inference request, keep request execution in `req_llm` and keep
 runtime publication below the control plane.
+
+## Wave 1 Lower-Boundary Freeze
+
+Wave 1 also freezes the lower-boundary contract vocabulary used around these
+runtime families:
+
+- `ExecutionIntentEnvelope.v1`
+- `HttpExecutionIntent.v1`
+- `ProcessExecutionIntent.v1`
+- `JsonRpcExecutionIntent.v1`
+- `ExecutionRoute.v1`
+- `AttachGrant.v1`
+- `ExecutionEvent.v1`
+- `ExecutionOutcome.v1`
+
+In this repo, those contracts are carried and interpreted through durable
+Spine ownership. They are not exposed as raw lower-package APIs.
+
+The detailed family-facing minimal-lane payload interiors are still
+provisional until Wave 3 prove-out. The ownership split is already frozen:
+
+- Brain decides policy and topology direction
+- Spine persists durable meaning
+- Execution Plane emits raw execution facts
