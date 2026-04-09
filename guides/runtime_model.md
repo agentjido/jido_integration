@@ -65,6 +65,8 @@ Inference is now a first-class runtime family on the public facade.
 - `core/platform` exposes both `invoke_inference/2` and `review_packet/2`
 - CLI-backed inference endpoints are published by ASM and consumed here as
   inference targets, not as Harness session connectors
+- lower spawned-service mechanics sit on `execution_plane`, but lease lineage,
+  attachability, and service publication remain above that substrate
 
 For compatibility with the existing repo, `Run.runtime_class` and
 `Attempt.runtime_class` stay on `:direct | :session | :stream`.

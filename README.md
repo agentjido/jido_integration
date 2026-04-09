@@ -62,6 +62,9 @@ in `apps/*/README.md`.
 - boundary-backed session carriage now keeps the Wave 5 durable subcontracts
   explicit under named metadata groups for descriptor, route, attach grant,
   replay, approval, callback, and identity truth
+- Wave 7 keeps durable service descriptors, lease lineage, and attachability
+  above lower process state instead of leaking raw Execution Plane structs into
+  the public Spine surface
 - connector packages publish authored capability contracts and may also expose
   curated generated `Jido.Action`, `Jido.Sensor`, and `Jido.Plugin` surfaces.
 - `core/dispatch_runtime` and `core/webhook_router` provide the hosted async
@@ -95,6 +98,10 @@ surface:
   connector manifest
 - `apps/inference_ops` is the dedicated proof app for the cloud,
   CLI-endpoint, and self-hosted paths
+- spawned self-hosted service startup now resolves through
+  `self_hosted_inference_core` on top of `execution_plane`, while attached-local
+  `ollama` keeps service-runtime semantics in the same family kit instead of in
+  the control plane
 
 Phase 7 also lands the explicit cross-repo reference seam in
 `core/contracts`:

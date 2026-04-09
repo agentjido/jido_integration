@@ -40,6 +40,8 @@ In this repo specifically:
 
 - `BoundarySessionDescriptor.v1` is durable Spine truth
 - `ExecutionRoute.v1` is durable route choice, replay input, and reconciliation state
+- durable service descriptors, lease lineage, and attachability remain Spine or
+  family-kit truth above lower process state
 - attach grants, approval lineage, callback truth, and credential-handle
   carriage remain Spine concerns
 - `ExecutionEvent.v1` and `ExecutionOutcome.v1` are consumed as raw lower
@@ -57,6 +59,10 @@ The stable northbound surface remains:
 
 This repo may map or carry lower-boundary packet shapes, but it must not turn
 raw `execution_plane` package names into the public platform API.
+
+That rule also applies to self-hosted service runtime work: higher layers may
+carry durable service descriptors and attach grants, but they must not expose
+raw `ExecutionPlane.Process.Transport` state as the product boundary.
 
 ## Provisional Minimal-Lane Shapes
 

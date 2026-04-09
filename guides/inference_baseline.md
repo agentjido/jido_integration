@@ -47,6 +47,14 @@ The self-hosted lane now proves both ownership shapes:
 This keeps the client layer singular while keeping service-runtime ownership
 below the control plane.
 
+For Wave 7, that also means:
+
+- lower spawned-service mechanics run on `execution_plane`
+- service-runtime readiness, health, lease reuse, and attachability stay in
+  `self_hosted_inference_core`
+- durable descriptor and lease lineage stay in Spine-owned review and route
+  truth rather than in raw process state
+
 ## Durable Control-Plane Truth
 
 `core/control_plane` now records the minimum inference attempt truth:

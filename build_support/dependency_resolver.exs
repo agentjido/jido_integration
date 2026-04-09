@@ -117,6 +117,13 @@ defmodule Jido.Integration.Build.DependencyResolver do
     end
   end
 
+  def execution_plane(opts \\ []) do
+    case local_root_path("EXECUTION_PLANE_PATH", "../execution_plane") do
+      nil -> {:execution_plane, "~> 0.1.0", opts}
+      path -> {:execution_plane, Keyword.merge([path: path, override: true], opts)}
+    end
+  end
+
   def jido_os(opts \\ []) do
     resolve_external(
       :jido_os,
@@ -156,11 +163,17 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def self_hosted_inference_core(opts \\ []) do
-    {:self_hosted_inference_core, "~> 0.1.0", opts}
+    case local_root_path("SELF_HOSTED_INFERENCE_CORE_PATH", "../self_hosted_inference_core") do
+      nil -> {:self_hosted_inference_core, "~> 0.1.0", opts}
+      path -> {:self_hosted_inference_core, Keyword.merge([path: path, override: true], opts)}
+    end
   end
 
   def llama_cpp_sdk(opts \\ []) do
-    {:llama_cpp_sdk, "~> 0.1.0", opts}
+    case local_root_path("LLAMA_CPP_SDK_PATH", "../llama_cpp_sdk") do
+      nil -> {:llama_cpp_sdk, "~> 0.1.0", opts}
+      path -> {:llama_cpp_sdk, Keyword.merge([path: path, override: true], opts)}
+    end
   end
 
   def erlexec(opts \\ []) do

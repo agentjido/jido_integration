@@ -87,6 +87,8 @@ the broad runtime extraction is not yet complete.
 - it projects `ExecutionIntentEnvelope.v1` plus family-specific lower intents
 - it owns durable `ExecutionRoute.v1`, attach-grant issuance, replay,
   approvals, and outcome interpretation
+- it keeps durable service descriptor, lease lineage, and attachability truth
+  above lower process state for self-hosted runtime families
 - it consumes `ExecutionEvent.v1` and `ExecutionOutcome.v1` as raw execution
   facts rather than turning lower runtime state into durable truth
 

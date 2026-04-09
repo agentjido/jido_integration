@@ -139,11 +139,11 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
          runtime_id: :asm,
          provider: requested_provider,
          status: :ready,
-          metadata:
-            %{}
-            |> Map.put("asm_provider", Atom.to_string(provider.name))
-            |> Map.put("display_name", provider.display_name)
-            |> Map.put("boundary", authored_boundary_metadata(session_id, opts))
+         metadata:
+           %{}
+           |> Map.put("asm_provider", Atom.to_string(provider.name))
+           |> Map.put("display_name", provider.display_name)
+           |> Map.put("boundary", authored_boundary_metadata(session_id, opts))
        })}
     else
       {:error, _} = error ->
@@ -355,7 +355,8 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
     |> Map.new()
   end
 
-  defp authored_boundary_metadata(session_id, opts) when is_binary(session_id) and is_list(opts) do
+  defp authored_boundary_metadata(session_id, opts)
+       when is_binary(session_id) and is_list(opts) do
     context = Keyword.get(opts, :context, %{})
     workspace_root = workspace_root_value(opts, context)
     lease_ref = lease_ref_value(opts, context)
@@ -397,11 +398,16 @@ defmodule Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver do
        when is_map(metadata) do
     case Map.get(metadata, "boundary") || Map.get(metadata, :boundary) do
       %{} = boundary ->
-        Map.update(boundary, "descriptor", %{"session_status" => Atom.to_string(status)}, fn descriptor ->
-          descriptor
-          |> default_map()
-          |> Map.put("session_status", Atom.to_string(status))
-        end)
+        Map.update(
+          boundary,
+          "descriptor",
+          %{"session_status" => Atom.to_string(status)},
+          fn descriptor ->
+            descriptor
+            |> default_map()
+            |> Map.put("session_status", Atom.to_string(status))
+          end
+        )
 
       _other ->
         nil
