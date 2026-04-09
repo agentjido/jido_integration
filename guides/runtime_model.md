@@ -38,6 +38,14 @@ Use it when:
 The current harness-backed model stops at those two lanes. Lower-boundary
 experiments are intentionally outside the active core runtime path.
 
+Important distinction:
+
+- CLI-backed inference does not require `core/harness_runtime` or
+  `core/session_runtime`; it flows through `ASM.InferenceEndpoint` and then
+  through the ordinary inference endpoint path in the control plane.
+- `core/harness_runtime` and `core/session_runtime` matter when a capability is
+  honestly sessioned or streamed and must execute on the Harness seam.
+
 ## Hosted Async And Webhooks
 
 Hosted webhook registration and async replay are separate package surfaces.
@@ -55,6 +63,8 @@ Inference is now a first-class runtime family on the public facade.
 - both routes execute the data-plane call through `req_llm`
 - `core/control_plane` records the durable inference event minimum
 - `core/platform` exposes both `invoke_inference/2` and `review_packet/2`
+- CLI-backed inference endpoints are published by ASM and consumed here as
+  inference targets, not as Harness session connectors
 
 For compatibility with the existing repo, `Run.runtime_class` and
 `Attempt.runtime_class` stay on `:direct | :session | :stream`.

@@ -1,6 +1,8 @@
 defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
   use ExUnit.Case, async: true
 
+  alias Jido.Integration.Build.WorkspaceContract
+
   test "enumerates the tooling-root projects in stable order" do
     assert Blitz.MixWorkspace.project_paths() == [
              ".",
@@ -29,6 +31,11 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "apps/inference_ops",
              "apps/trading_ops"
            ]
+  end
+
+  test "keeps legacy source-only packages outside the default workspace graph" do
+    assert WorkspaceContract.legacy_project_roots() == ["bridges/boundary_bridge"]
+    refute "bridges/boundary_bridge" in Blitz.MixWorkspace.project_paths()
   end
 
   test "builds task args for each supported workspace task" do

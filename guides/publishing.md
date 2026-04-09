@@ -8,6 +8,11 @@ an ad hoc branch rewrite.
 The source-of-truth stays in the monorepo. Publishing happens from a prepared
 release bundle generated from `build_support/weld.exs`.
 
+`build_support/weld.exs` is intentionally thin and delegates the actual
+publication contract to `build_support/weld_contract.exs`, where the published
+roots, source-only exclusions, and source-only monolith test support projects
+are declared together.
+
 The default published artifact intentionally excludes the Harness-backed
 session and stream runtime slice for now:
 
@@ -21,6 +26,10 @@ session and stream runtime slice for now:
 Those packages still depend on unpublished external runtime packages such as
 `jido_harness`, so they remain source-repo packages until that publication
 boundary is resolved independently.
+
+The monolith test lane is allowed to use source-only support from that excluded
+slice, but the allowed support set is now explicit in the Weld manifest through
+`monolith_opts[:test_support_projects]`.
 
 The release lifecycle is:
 

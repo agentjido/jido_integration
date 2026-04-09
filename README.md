@@ -218,6 +218,11 @@ session and stream packages, plus lower-boundary bridge packages, stay
 source-repo packages until their external runtime dependencies become
 independently publishable.
 
+That source-only boundary is now explicit in the repo-local Weld contract. The
+published monolith can still run integrated tests that need source-only support
+packages, but those support packages must be declared explicitly in the
+monolith manifest rather than being pulled in by silent projector behavior.
+
 ## Repository Layout
 
 The repo root is a workspace and documentation layer. Runtime code lives in
@@ -249,7 +254,7 @@ jido_integration/
     store_local/             # restart-safe local durability tier
     store_postgres/          # database-backed durable tier
   bridges/
-    boundary_bridge/         # lower-boundary sandbox bridge package
+    boundary_bridge/         # legacy lower-boundary sandbox bridge reference package
   connectors/
     github/                  # direct GitHub connector + live acceptance runbook
     linear/                  # direct Linear connector + package-local docs
@@ -285,6 +290,11 @@ architecture.
 
 The current core runtime graph stops at those two Harness lanes. Lower-boundary
 work is not part of the active `asm` or `jido_session` dependency path.
+
+The default root workspace gate is explicit about that scope. `build_support/workspace_contract.exs`
+defines the active workspace package globs that run under `mix mr.*` and
+`mix ci`, while `bridges/boundary_bridge` remains a source-only legacy package
+until its external dependency boundary is stable enough to rejoin that gate.
 
 ## Developer Docs
 

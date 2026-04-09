@@ -1,6 +1,7 @@
 defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   use ExUnit.Case, async: true
 
+  alias Jido.Integration.Build.{DependencyResolver, WorkspaceContract}
   alias Jido.Integration.Workspace.{MixProject, MonorepoRunner}
 
   @required_package_paths [
@@ -90,6 +91,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            "workspace root must depend on weld through the shared dependency resolver"
 
     assert File.exists?(Path.join(repo_root(), "build_support/weld.exs"))
+    assert File.exists?(Path.join(repo_root(), "build_support/workspace_contract.exs"))
 
     assert File.exists?(
              Path.join(repo_root(), "packaging/weld/jido_integration/test/test_helper.exs")
@@ -103,6 +105,11 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            )
 
     assert File.exists?(Path.join(repo_root(), "packaging/weld/jido_integration/smoke.ex"))
+  end
+
+  test "shared dependency resolver prefers a sibling weld checkout when present" do
+    assert {:weld, opts} = DependencyResolver.weld()
+    assert Path.expand(Keyword.fetch!(opts, :path)) == Path.expand("../weld", repo_root())
   end
 
   test "workspace isolation clears SSL key logging for monorepo verification tasks" do
@@ -122,6 +129,11 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
     assert File.exists?(Path.join(repo_root(), "bin/mix")),
            "repo-local mix wrapper is missing from #{repo_root()}"
+  end
+
+  test "workspace scope is explicit about legacy source-only packages" do
+    assert WorkspaceContract.active_project_globs() == [".", "core/*", "connectors/*", "apps/*"]
+    assert WorkspaceContract.legacy_project_roots() == ["bridges/boundary_bridge"]
   end
 
   test "workspace runner resolves a real mix executable outside the repo wrapper" do
@@ -219,7 +231,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
   defp child_package_roots do
     repo_root()
-    |> Path.join("{core,connectors,apps}/*/mix.exs")
+    |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.map(&Path.dirname/1)
     |> Enum.sort()
@@ -227,7 +239,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
   defp child_package_mix_paths do
     repo_root()
-    |> Path.join("{core,connectors,apps}/*/mix.exs")
+    |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.sort()
   end

@@ -13,6 +13,10 @@ The current harness-backed runtime graph is intentionally simple: `asm` and
 `jido_session` are the two non-direct runtime lanes, and lower-boundary
 experiments are not part of this package's active dependency path.
 
+This package is not the path for CLI-backed inference endpoints. That route is
+published by ASM and consumed by the control plane as an inference target
+instead of a Harness session/stream capability.
+
 ## Publication Boundary
 
 This package remains source-repo runtime support for non-direct capabilities.

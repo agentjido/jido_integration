@@ -25,6 +25,8 @@ This package is intentionally narrow.
   durable store selection.
 - It does not replace `core/runtime_asm_bridge`; that package remains the
   separate projection for the authored `asm` driver.
+- It is not required for ASM-backed Codex CLI work; that path stays on
+  `core/runtime_asm_bridge -> agent_session_manager`.
 
 The richer internal state stays in `Jido.Session.Runtime.*`, while the shared
 projection surface lives in `Jido.Session.HarnessProjection`.
