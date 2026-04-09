@@ -7,8 +7,8 @@ Harness-backed runtimes, and reviewing durable execution state.
 This repository includes the public platform facade, bridge packages,
 connector packages, durability tiers, and app-level proofs for hosted webhook
 and async flows. If you are evaluating or using the platform, start here. If
-you are changing the internals of the monorepo itself, use the developer
-guides linked below.
+you are changing the internals of the monorepo itself, use `docs/`,
+package-local READMEs, and app-local runbooks in `apps/*/README.md`.
 
 Connector packages that depend on external SDK or runtime repos should prefer
 sibling-relative paths during active local development and fall back to pinned
@@ -28,10 +28,7 @@ trees for runtime dependency sourcing.
 - read [Durability](guides/durability.md) before selecting in-memory,
   local-file, or Postgres-backed state
 - read [Publishing](guides/publishing.md) for the welded package release flow
-- read [Reference Apps](guides/reference_apps.md) for end-to-end proof
-  surfaces
-- read [Developer Index](guides/developer/index.md) only if you are working on
-  repo internals
+- use `apps/*/README.md` for proof-app runbooks and host-level proof flows
 
 ## Documentation
 
@@ -47,13 +44,10 @@ trees for runtime dependency sourcing.
 - [Conformance](guides/conformance.md)
 - [Async And Webhooks](guides/async_and_webhooks.md)
 - [Publishing](guides/publishing.md)
-- [Reference Apps](guides/reference_apps.md)
 - [Observability](guides/observability.md)
-- [Examples](examples/README.md)
 
-### Developer
-
-- [Developer Index](guides/developer/index.md)
+Repo-internal developer notes stay in `docs/`. Host-level proof runbooks stay
+in `apps/*/README.md`.
 
 ## What The Platform Exposes
 
@@ -296,13 +290,13 @@ non-direct capability families.
 `Jido.Integration.V2 -> DirectRuntime -> connector -> provider SDK -> pristine`
 
 Only actual `:session` and `:stream` capabilities use
-`/home/home/p/g/n/jido_harness` via `Jido.Harness`.
+`jido_harness` via `Jido.Harness`.
 
 `Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
 
-`asm` routes through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
-and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
-through `core/session_runtime` via `Jido.Session.HarnessDriver`.
+`asm` routes through `core/runtime_asm_bridge` into `agent_session_manager`
+and `cli_subprocess_core`, while `jido_session` routes through
+`core/session_runtime` via `Jido.Session.HarnessDriver`.
 
 Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
 bridge packages. They are not part of the repo or the target runtime

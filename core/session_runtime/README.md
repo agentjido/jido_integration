@@ -85,7 +85,7 @@ request = Jido.Harness.RunRequest.new!(%{prompt: "through harness", metadata: %{
 Package-local loop:
 
 ```bash
-cd /home/home/p/g/n/jido_integration/core/session_runtime
+cd core/session_runtime
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix credo --strict
@@ -97,7 +97,6 @@ mix docs
 Canonical root gate:
 
 ```bash
-cd /home/home/p/g/n/jido_integration
 mix ci
 ```
 

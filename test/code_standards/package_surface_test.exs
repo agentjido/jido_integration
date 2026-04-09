@@ -111,7 +111,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     case System.get_env("WELD_PATH") do
       "disabled" ->
         assert {:weld, requirement, opts} = DependencyResolver.weld()
-        assert is_binary(requirement)
+        assert requirement == "~> 0.4.0"
         refute Keyword.has_key?(opts, :path)
 
       override when is_binary(override) ->
@@ -123,6 +123,29 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       nil ->
         assert {:weld, opts} = DependencyResolver.weld()
         assert Path.expand(Keyword.fetch!(opts, :path)) == Path.expand("../weld", repo_root())
+    end
+  end
+
+  test "weld contract keeps the published docs surface package-facing" do
+    [{contract_module, _binary}] =
+      Code.require_file("build_support/weld_contract.exs", repo_root())
+
+    docs =
+      contract_module.artifact()
+      |> Keyword.fetch!(:output)
+      |> Keyword.fetch!(:docs)
+
+    assert "README.md" in docs
+    assert "guides/execution_plane_alignment.md" in docs
+
+    for path <- [
+          "guides/reference_apps.md",
+          "guides/developer/index.md",
+          "guides/developer/core_packages.md",
+          "guides/developer/request_lifecycle.md",
+          "guides/developer/state_and_verification.md"
+        ] do
+      refute path in docs, "published docs should not ship #{path}"
     end
   end
 

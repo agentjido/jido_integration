@@ -138,7 +138,6 @@ From the workspace root, the connector should also pass the root acceptance
 surface:
 
 ```bash
-cd /home/home/p/g/n/jido_integration
 mix jido.conformance Jido.Integration.V2.Connectors.GitHub
 mix ci
 ```

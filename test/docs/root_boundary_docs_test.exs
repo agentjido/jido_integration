@@ -17,8 +17,11 @@ defmodule Jido.Integration.Docs.RootBoundaryDocsTest do
              "#{path} must reject runtime-kernel coupling for direct connectors"
 
       assert doc =~
-               "Only actual `:session` and `:stream` capabilities use `/home/home/p/g/n/jido_harness` via `Jido.Harness`.",
+               "Only actual `:session` and `:stream` capabilities use `jido_harness` via `Jido.Harness`.",
              "#{path} must keep Jido.Harness scoped to actual non-direct capabilities"
+
+      refute doc =~ "/home/home/p/g/n/",
+             "#{path} must not bake in a machine-local checkout path"
     end)
   end
 
@@ -37,7 +40,7 @@ defmodule Jido.Integration.Docs.RootBoundaryDocsTest do
       doc = path |> File.read!() |> normalize_whitespace()
 
       assert doc =~
-               "`asm` routes through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager` and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes through `core/session_runtime` via `Jido.Session.HarnessDriver`.",
+               "`asm` routes through `core/runtime_asm_bridge` into `agent_session_manager` and `cli_subprocess_core`, while `jido_session` routes through `core/session_runtime` via `Jido.Session.HarnessDriver`.",
              "#{path} must describe both supported non-direct runtime targets explicitly"
     end)
   end

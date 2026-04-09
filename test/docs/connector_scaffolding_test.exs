@@ -55,13 +55,15 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
     guide = @guide_path |> File.read!() |> normalize_whitespace()
 
     assert guide =~
-             "`runtime.driver: \"asm\"` selects `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` in `/home/home/p/g/n/jido_integration`."
+             "`runtime.driver: \"asm\"` selects `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` in the `jido_integration` source repo."
 
     assert guide =~
-             "`runtime.driver: \"jido_session\"` selects `Jido.Session.HarnessDriver` in `/home/home/p/g/n/jido_integration/core/session_runtime`."
+             "`runtime.driver: \"jido_session\"` selects `Jido.Session.HarnessDriver` in `core/session_runtime`."
 
     assert guide =~
-             "Only the `asm` branch projects further into provider-neutral `/home/home/p/g/n/agent_session_manager`, which itself uses `/home/home/p/g/n/cli_subprocess_core` for subprocess, event, and provider profile foundations."
+             "Only the `asm` branch projects further into provider-neutral `agent_session_manager`, which itself uses `cli_subprocess_core` for subprocess, event, and provider profile foundations."
+
+    refute guide =~ "/home/home/p/g/n/"
   end
 
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")

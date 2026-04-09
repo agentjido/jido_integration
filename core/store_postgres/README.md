@@ -59,7 +59,7 @@ Before calling the root acceptance surface blocked on Postgres reachability,
 run the root preflight task:
 
 ```bash
-cd /home/home/p/g/n/jido_integration && mix mr.pg.preflight
+mix mr.pg.preflight
 ```
 
 That check confirms the canonical `store_postgres` tier is reachable for the

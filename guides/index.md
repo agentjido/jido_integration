@@ -1,9 +1,9 @@
 # Jido Integration Guides
 
 This is the main documentation entry point for platform users and integrators.
-These guides explain the product surface, runtime choices, durability model,
-connector publication posture, and proof apps. For repo internals and
-contributor workflows, use the developer section.
+These guides explain the package surface, runtime choices, durability model,
+connector publication posture, and release flow. Repo-internal contributor
+notes stay in `docs/`, package-local READMEs, and app-local proof runbooks.
 
 ## Menu
 
@@ -18,12 +18,7 @@ contributor workflows, use the developer section.
 - [Conformance](conformance.md)
 - [Async And Webhooks](async_and_webhooks.md)
 - [Publishing](publishing.md)
-- [Reference Apps](reference_apps.md)
 - [Observability](observability.md)
-
-### Developer
-
-- [Developer Index](developer/index.md)
 
 ## Suggested Reading Order
 
@@ -38,7 +33,5 @@ contributor workflows, use the developer section.
 7. read `async_and_webhooks.md` if you need hosted ingress or replay
 8. read `publishing.md` if you need the welded `mix release.prepare ->
    mix release.publish -> mix release.archive` workflow
-9. read `reference_apps.md` to see end-to-end proofs
-10. read `observability.md` for telemetry and pressure semantics
-11. read `conformance.md` if you are validating connector publication claims
-12. read `developer/index.md` only when you need the internal package map
+9. read `observability.md` for telemetry and pressure semantics
+10. read `conformance.md` if you are validating connector publication claims

@@ -15,9 +15,9 @@ while `jido_integration` itself stays at the Harness seam.
 - preserve external-runtime session reuse without leaking kernel-private refs
 - author generic execution-surface input from runtime, target, policy, and
   lease context without exposing adapter-module identity
-- localize the `/home/home/p/g/n/agent_session_manager` dependency so
+- localize the `agent_session_manager` dependency so
   connector packages can keep their shared dependency surface at
-  `/home/home/p/g/n/jido_harness`
+  `jido_harness`
 
 ## Carriage
 
@@ -67,7 +67,7 @@ This package is now direct about its scope:
 
 This package does not own control-plane truth, provider SDK logic, durable
 artifact policy, or lower-boundary lifecycle truth. It only projects ASM into
-the shared Harness contract above `/home/home/p/g/n/cli_subprocess_core`.
+the shared Harness contract above `cli_subprocess_core`.
 
 ## Related Guides
 

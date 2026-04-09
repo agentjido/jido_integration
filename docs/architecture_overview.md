@@ -29,8 +29,8 @@ Core runtime graph:
 - `core/direct_runtime`
 - `core/runtime_asm_bridge`
   - integration-owned projection from the authored
-    `/home/home/p/g/n/jido_harness` (`Jido.Harness`) `asm` driver into
-    `/home/home/p/g/n/agent_session_manager`
+    `jido_harness` (`Jido.Harness`) `asm` driver into
+    `agent_session_manager`
 - `core/session_runtime`
   - integration-owned home for the authored `jido_session` Harness driver
 - `core/dispatch_runtime`
@@ -63,13 +63,13 @@ non-direct capability families.
 `Jido.Integration.V2 -> DirectRuntime -> connector -> provider SDK -> pristine`
 
 Only actual `:session` and `:stream` capabilities use
-`/home/home/p/g/n/jido_harness` via `Jido.Harness`.
+`jido_harness` via `Jido.Harness`.
 
 `Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
 
-`asm` routes through `core/runtime_asm_bridge` into `/home/home/p/g/n/agent_session_manager`
-and `/home/home/p/g/n/cli_subprocess_core`, while `jido_session` routes
-through `core/session_runtime` via `Jido.Session.HarnessDriver`.
+`asm` routes through `core/runtime_asm_bridge` into `agent_session_manager`
+and `cli_subprocess_core`, while `jido_session` routes through
+`core/session_runtime` via `Jido.Session.HarnessDriver`.
 
 Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
 bridge packages. They are not part of the repo or the target runtime
@@ -86,22 +86,22 @@ boundary-backed `asm` or boundary-backed `jido_session`.
 Only actual session and stream capabilities stay above a provider-neutral
 runtime lane:
 
-- `/home/home/p/g/n/jido_harness` exposes `Jido.Harness`, the stable
+- `jido_harness` exposes `Jido.Harness`, the stable
   runtime-driver contract consumed by `core/control_plane`
 - authored `runtime.driver` ids such as `asm` stay on connector capabilities
   and target requirements instead of being inferred from targets or apps
 - `core/runtime_asm_bridge` is the integration-owned projection for the `asm`
   driver; it adapts the Harness seam to
-  `/home/home/p/g/n/agent_session_manager`
+  `agent_session_manager`
 - `bridges/boundary_bridge` is the lower-boundary package reserved for sandbox
   bridge code, typed bridge IO, and descriptor normalization that do not belong
   in `core/` and are not an app-level proof
 - `core/session_runtime` is the integration-owned home for `jido_session` via
   `Jido.Session.HarnessDriver`; `jido_integration` still consumes it through
   authored `runtime.driver` metadata rather than a local compatibility shim
-- `/home/home/p/g/n/agent_session_manager` keeps provider-neutral session
+- `agent_session_manager` keeps provider-neutral session
   orchestration and lane selection below `jido_integration` ownership
-- `/home/home/p/g/n/cli_subprocess_core` remains the subprocess, event, and
+- `cli_subprocess_core` remains the subprocess, event, and
   provider-profile foundation below ASM
 - `metadata.runtime_family.runtime_ref` names the stable Harness handle shape,
   so a `:stream` capability may honestly publish `:session` when the selected
@@ -137,14 +137,13 @@ Proof apps:
   test-only deps there
 - apps declare every child package whose modules they reference directly
 - direct connector packages depend on `core/direct_runtime` plus provider SDKs;
-  they do not take `/home/home/p/g/n/jido_harness`,
-  `/home/home/p/g/n/agent_session_manager`,
-  `/home/home/p/g/n/cli_subprocess_core`, or `core/session_runtime`
+  they do not take `jido_harness`, `agent_session_manager`,
+  `cli_subprocess_core`, or `core/session_runtime`
   as package dependencies
 - session and stream connector packages depend on
-  `/home/home/p/g/n/jido_harness` for the shared seam rather than taking
-  direct `core/session_runtime`, `/home/home/p/g/n/agent_session_manager`, or
-  `/home/home/p/g/n/cli_subprocess_core` deps
+  `jido_harness` for the shared seam rather than taking direct
+  `core/session_runtime`, `agent_session_manager`, or
+  `cli_subprocess_core` deps
 
 ## Public Invocation And Discovery
 

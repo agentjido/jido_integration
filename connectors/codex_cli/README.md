@@ -9,22 +9,19 @@ shared common consumer-surface spine.
 ## Runtime And Auth Posture
 
 - runtime family: `:session`
-- stable runtime contract seam:
-  `/home/home/p/g/n/jido_harness` via `Jido.Harness`
+- stable runtime contract seam: `jido_harness` via `Jido.Harness`
 - public auth binding is `connection_id`
 - the authored session routing contract is explicit:
   `runtime.driver: "asm"`, `runtime.provider: :codex`, and
   `runtime.options: %{}`
 - the `asm` driver resolves through
   `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` into
-  `/home/home/p/g/n/agent_session_manager`, with
-  `/home/home/p/g/n/cli_subprocess_core` below that lane
+  `agent_session_manager`, with `cli_subprocess_core` below that lane
 - richer Codex-native APIs still live below this connector boundary in
-  `/home/home/p/g/n/agent_session_manager` and `/home/home/p/g/n/codex_sdk`
-- this connector package depends on `/home/home/p/g/n/jido_harness` for the
+  `agent_session_manager` and `codex_sdk`
+- this connector package depends on `jido_harness` for the
   shared seam; it does not take direct
-  `/home/home/p/g/n/agent_session_manager` or
-  `/home/home/p/g/n/cli_subprocess_core` package deps
+  `agent_session_manager` or `cli_subprocess_core` package deps
 - the package mints short-lived credential leases with `access_token` payloads
   for deterministic session execution
 - scope-gated admission is explicit through `session:execute`
@@ -80,7 +77,6 @@ mix docs
 From the workspace root:
 
 ```bash
-cd /home/home/p/g/n/jido_integration
 mix jido.conformance Jido.Integration.V2.Connectors.CodexCli
 mix ci
 ```
@@ -96,9 +92,8 @@ This package owns the authored session contract, generated common consumer
 surface, deterministic Harness conformance publication, and review events.
 
 It does not own the provider-neutral session lane in
-`/home/home/p/g/n/agent_session_manager`, the CLI subprocess foundation in
-`/home/home/p/g/n/cli_subprocess_core`, hosted routing, or app-level operator
-composition above the connector boundary.
+`agent_session_manager`, the CLI subprocess foundation in `cli_subprocess_core`,
+hosted routing, or app-level operator composition above the connector boundary.
 
 It is also not the same thing as CLI-backed inference endpoint publication.
 That inference path stays on `ASM.InferenceEndpoint` and the control-plane
