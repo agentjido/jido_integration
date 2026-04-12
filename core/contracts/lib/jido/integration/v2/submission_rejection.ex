@@ -126,41 +126,17 @@ defmodule Jido.Integration.V2.SubmissionRejection do
           "submission_rejection.contract_version must be #{@contract_version}, got: #{inspect(value)}"
   end
 
-  defp validate_rejection_family!(value) when value in @rejection_families, do: value
+  defp validate_rejection_family!(value),
+    do:
+      Contracts.validate_enum_atomish!(
+        value,
+        @rejection_families,
+        "submission_rejection.rejection_family"
+      )
 
-  defp validate_rejection_family!(value) when is_binary(value) do
-    case String.to_existing_atom(value) do
-      atom when atom in @rejection_families -> atom
-      _other -> raise ArgumentError
-    end
-  rescue
-    ArgumentError ->
-      raise ArgumentError,
-            "submission_rejection.rejection_family must be one of #{inspect(@rejection_families)}, got: #{inspect(value)}"
-  end
-
-  defp validate_rejection_family!(value) do
-    raise ArgumentError,
-          "submission_rejection.rejection_family must be one of #{inspect(@rejection_families)}, got: #{inspect(value)}"
-  end
-
-  defp validate_retry_class!(value) when value in @retry_classes, do: value
-
-  defp validate_retry_class!(value) when is_binary(value) do
-    case String.to_existing_atom(value) do
-      atom when atom in @retry_classes -> atom
-      _other -> raise ArgumentError
-    end
-  rescue
-    ArgumentError ->
-      raise ArgumentError,
-            "submission_rejection.retry_class must be one of #{inspect(@retry_classes)}, got: #{inspect(value)}"
-  end
-
-  defp validate_retry_class!(value) do
-    raise ArgumentError,
-          "submission_rejection.retry_class must be one of #{inspect(@retry_classes)}, got: #{inspect(value)}"
-  end
+  defp validate_retry_class!(value),
+    do:
+      Contracts.validate_enum_atomish!(value, @retry_classes, "submission_rejection.retry_class")
 
   defp validate_boolean!(value) when is_boolean(value), do: value
 
@@ -188,9 +164,5 @@ defmodule Jido.Integration.V2.SubmissionRejection do
           "submission_rejection.rejected_at must be a DateTime, got: #{inspect(value)}"
   end
 
-  defp fetch!(map, key, field_name) do
-    Contracts.fetch!(map, key)
-  rescue
-    KeyError -> raise ArgumentError, "#{field_name} is required"
-  end
+  defp fetch!(map, key, field_name), do: Contracts.fetch_required!(map, key, field_name)
 end

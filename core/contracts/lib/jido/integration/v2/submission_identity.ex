@@ -166,23 +166,13 @@ defmodule Jido.Integration.V2.SubmissionIdentity do
           "submission_identity.contract_version must be #{@contract_version}, got: #{inspect(value)}"
   end
 
-  defp validate_submission_family!(value) when value in @submission_families, do: value
-
-  defp validate_submission_family!(value) when is_binary(value) do
-    case String.to_existing_atom(value) do
-      atom when atom in @submission_families -> atom
-      _other -> raise ArgumentError
-    end
-  rescue
-    ArgumentError ->
-      raise ArgumentError,
-            "submission_identity.submission_family must be one of #{inspect(@submission_families)}, got: #{inspect(value)}"
-  end
-
-  defp validate_submission_family!(value) do
-    raise ArgumentError,
-          "submission_identity.submission_family must be one of #{inspect(@submission_families)}, got: #{inspect(value)}"
-  end
+  defp validate_submission_family!(value),
+    do:
+      Contracts.validate_enum_atomish!(
+        value,
+        @submission_families,
+        "submission_identity.submission_family"
+      )
 
   defp validate_string!(value, field_name),
     do: Contracts.validate_non_empty_string!(value, field_name)
@@ -197,9 +187,5 @@ defmodule Jido.Integration.V2.SubmissionIdentity do
     end
   end
 
-  defp fetch!(map, key, field_name) do
-    Contracts.fetch!(map, key)
-  rescue
-    KeyError -> raise ArgumentError, "#{field_name} is required"
-  end
+  defp fetch!(map, key, field_name), do: Contracts.fetch_required!(map, key, field_name)
 end

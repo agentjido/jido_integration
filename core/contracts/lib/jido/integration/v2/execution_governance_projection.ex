@@ -344,9 +344,5 @@ defmodule Jido.Integration.V2.ExecutionGovernanceProjection do
     raise ArgumentError, "#{field_name} must be a non-negative integer, got: #{inspect(value)}"
   end
 
-  defp fetch!(map, key, field_name) do
-    Contracts.fetch!(map, key)
-  rescue
-    KeyError -> raise ArgumentError, "#{field_name} is required"
-  end
+  defp fetch!(map, key, field_name), do: Contracts.fetch_required!(map, key, field_name)
 end

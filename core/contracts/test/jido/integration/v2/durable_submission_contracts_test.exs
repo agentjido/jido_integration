@@ -157,6 +157,46 @@ defmodule Jido.Integration.V2.DurableSubmissionContractsTest do
     assert rejection.redecision_required
   end
 
+  test "submission contracts accept canonical enum strings" do
+    acceptance =
+      SubmissionAcceptance.new!(%{
+        submission_key: "sha256:" <> String.duplicate("c", 64),
+        submission_receipt_ref: "receipt://submission/2",
+        status: "duplicate",
+        ledger_version: 2
+      })
+
+    identity =
+      SubmissionIdentity.new!(%{
+        submission_family: "boundary",
+        tenant_id: "tenant-1",
+        session_id: "session-1",
+        request_id: "request-1",
+        invocation_request_id: "invoke-1",
+        causal_group_id: "cg-1",
+        target_id: "target-1",
+        target_kind: "cli",
+        selected_step_id: "step-1",
+        authority_decision_id: "decision-1",
+        execution_governance_id: "governance-1",
+        execution_intent_family: "process"
+      })
+
+    rejection =
+      SubmissionRejection.new!(%{
+        submission_key: "sha256:" <> String.duplicate("d", 64),
+        rejection_family: "policy_denied",
+        reason_code: "approval_missing",
+        retry_class: "retryable",
+        details: %{"missing_approval" => true}
+      })
+
+    assert acceptance.status == :duplicate
+    assert identity.submission_family == :boundary
+    assert rejection.rejection_family == :policy_denied
+    assert rejection.retry_class == :retryable
+  end
+
   defp submission_identity_fixture do
     SubmissionIdentity.new!(%{
       submission_family: :invocation,

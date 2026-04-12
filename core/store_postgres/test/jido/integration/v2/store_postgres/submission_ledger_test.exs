@@ -5,8 +5,8 @@ defmodule Jido.Integration.V2.StorePostgres.SubmissionLedgerTest do
   alias Jido.Integration.V2.BrainInvocation
   alias Jido.Integration.V2.ExecutionGovernanceProjection
   alias Jido.Integration.V2.ExecutionGovernanceProjection.Compiler
-  alias Jido.Integration.V2.StorePostgres.SubmissionLedger
   alias Jido.Integration.V2.StorePostgres.Schemas.SubmissionRecord
+  alias Jido.Integration.V2.StorePostgres.SubmissionLedger
   alias Jido.Integration.V2.SubmissionIdentity
   alias Jido.Integration.V2.SubmissionRejection
 

@@ -269,9 +269,5 @@ defmodule Jido.Integration.V2.BrainInvocation do
   defp validate_string!(value, field_name),
     do: Contracts.validate_non_empty_string!(value, field_name)
 
-  defp fetch!(map, key, field_name) do
-    Contracts.fetch!(map, key)
-  rescue
-    KeyError -> raise ArgumentError, "#{field_name} is required"
-  end
+  defp fetch!(map, key, field_name), do: Contracts.fetch_required!(map, key, field_name)
 end

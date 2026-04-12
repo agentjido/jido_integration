@@ -99,23 +99,8 @@ defmodule Jido.Integration.V2.SubmissionAcceptance do
           "submission_acceptance.contract_version must be #{@contract_version}, got: #{inspect(value)}"
   end
 
-  defp validate_status!(value) when value in @statuses, do: value
-
-  defp validate_status!(value) when is_binary(value) do
-    case String.to_existing_atom(value) do
-      atom when atom in @statuses -> atom
-      _other -> raise ArgumentError
-    end
-  rescue
-    ArgumentError ->
-      raise ArgumentError,
-            "submission_acceptance.status must be one of #{inspect(@statuses)}, got: #{inspect(value)}"
-  end
-
-  defp validate_status!(value) do
-    raise ArgumentError,
-          "submission_acceptance.status must be one of #{inspect(@statuses)}, got: #{inspect(value)}"
-  end
+  defp validate_status!(value),
+    do: Contracts.validate_enum_atomish!(value, @statuses, "submission_acceptance.status")
 
   defp validate_datetime!(%DateTime{} = value), do: value
 
@@ -131,9 +116,5 @@ defmodule Jido.Integration.V2.SubmissionAcceptance do
     raise ArgumentError, "#{field_name} must be a non-negative integer, got: #{inspect(value)}"
   end
 
-  defp fetch!(map, key, field_name) do
-    Contracts.fetch!(map, key)
-  rescue
-    KeyError -> raise ArgumentError, "#{field_name} is required"
-  end
+  defp fetch!(map, key, field_name), do: Contracts.fetch_required!(map, key, field_name)
 end

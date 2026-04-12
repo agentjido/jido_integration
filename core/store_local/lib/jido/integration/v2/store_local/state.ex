@@ -6,8 +6,8 @@ defmodule Jido.Integration.V2.StoreLocal.State do
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Auth.LeaseRecord
-  alias Jido.Integration.V2.BrainInvocation
   alias Jido.Integration.V2.Auth.SecretEnvelope
+  alias Jido.Integration.V2.BrainInvocation
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.Event

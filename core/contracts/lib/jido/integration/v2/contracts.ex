@@ -254,6 +254,20 @@ defmodule Jido.Integration.V2.Contracts do
     end
   end
 
+  @spec fetch_required!(map(), atom(), String.t()) :: term()
+  def fetch_required!(map, key, field_name) when is_map(map) do
+    case Map.fetch(map, key) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        case Map.fetch(map, Atom.to_string(key)) do
+          {:ok, value} -> value
+          :error -> raise ArgumentError, "#{field_name} is required"
+        end
+    end
+  end
+
   @spec validate_non_empty_string!(term(), String.t()) :: String.t()
   def validate_non_empty_string!(value, field_name)
       when is_binary(value) do
@@ -889,6 +903,23 @@ defmodule Jido.Integration.V2.Contracts do
 
   def normalize_atomish!(value, field_name) do
     raise ArgumentError, "#{field_name} must be an atom or string, got: #{inspect(value)}"
+  end
+
+  @spec validate_enum_atomish!(term(), [atom()], String.t()) :: atom()
+  def validate_enum_atomish!(value, valid_values, field_name) when is_atom(value) do
+    if value in valid_values do
+      value
+    else
+      raise ArgumentError, "invalid #{field_name}: #{inspect(value)}"
+    end
+  end
+
+  def validate_enum_atomish!(value, valid_values, field_name) when is_binary(value) do
+    validate_enum_string!(value, valid_values, field_name)
+  end
+
+  def validate_enum_atomish!(value, _valid_values, field_name) do
+    raise ArgumentError, "invalid #{field_name}: #{inspect(value)}"
   end
 
   defp validate_enum_string!(value, valid_values, field_name) when is_binary(value) do
