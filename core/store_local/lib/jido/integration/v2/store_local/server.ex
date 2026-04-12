@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2.StoreLocal.Server do
   @moduledoc false
 
   use GenServer
+  require Logger
 
   alias Jido.Integration.V2.StoreLocal
   alias Jido.Integration.V2.StoreLocal.State
@@ -48,7 +49,14 @@ defmodule Jido.Integration.V2.StoreLocal.Server do
   def init(_opts) do
     path = StoreLocal.storage_path()
     File.mkdir_p!(Path.dirname(path))
-    {:ok, %{path: path, state: load_state(path)}}
+
+    {state, recovered?} = load_state(path)
+
+    if recovered? do
+      persist_state!(path, state)
+    end
+
+    {:ok, %{path: path, state: state}}
   end
 
   @impl true
@@ -86,14 +94,35 @@ defmodule Jido.Integration.V2.StoreLocal.Server do
   defp load_state(path) do
     case File.read(path) do
       {:ok, binary} ->
-        :erlang.binary_to_term(binary, [:safe])
+        decode_state(binary, path)
 
       {:error, :enoent} ->
-        State.new()
+        {State.new(), false}
 
       {:error, reason} ->
         raise "unable to load store_local state from #{path}: #{inspect(reason)}"
     end
+  end
+
+  defp decode_state(binary, path) do
+    case :erlang.binary_to_term(binary, [:safe]) do
+      %State{} = state ->
+        {state, false}
+
+      unexpected ->
+        recover_state(path, {:unexpected_state, unexpected})
+    end
+  rescue
+    error in [ArgumentError] ->
+      recover_state(path, error)
+  end
+
+  defp recover_state(path, reason) do
+    Logger.warning(
+      "recovering store_local state from #{path} due to incompatible persisted data: #{inspect(reason)}"
+    )
+
+    {State.new(), true}
   end
 
   defp persist_state!(path, %State{} = state) do

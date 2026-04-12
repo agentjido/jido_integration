@@ -124,6 +124,35 @@ defmodule Jido.Integration.V2.BrainIngressTest do
     assert rejection.retry_class == :after_redecision
   end
 
+  test "records a typed scope rejection even when the ledger module is not yet loaded", %{
+    agent: agent
+  } do
+    invocation = brain_invocation_fixture()
+    ledger = compile_lazy_ledger!()
+
+    try do
+      :code.purge(ledger)
+      :code.delete(ledger)
+
+      assert {:error, %SubmissionRejection{} = rejection} =
+               BrainIngress.accept_invocation(
+                 invocation,
+                 submission_ledger: ledger,
+                 submission_ledger_opts: [agent: agent],
+                 scope_resolver: Resolver,
+                 scope_resolver_opts: [mapping: %{}]
+               )
+
+      assert rejection.rejection_family == :scope_unresolvable
+
+      assert Agent.get(agent, &Map.fetch(&1, {:rejection, invocation.submission_key})) ==
+               {:ok, rejection}
+    after
+      :code.purge(ledger)
+      :code.delete(ledger)
+    end
+  end
+
   test "returns a typed projection mismatch rejection before scope or ledger work", %{
     agent: agent
   } do
@@ -265,5 +294,54 @@ defmodule Jido.Integration.V2.BrainIngressTest do
       execution_intent: %{"argv" => ["echo", "hello"]},
       extensions: %{}
     })
+  end
+
+  defp compile_lazy_ledger! do
+    module =
+      Module.concat(
+        __MODULE__,
+        :"LazyLedger#{unique_lazy_ledger_token()}"
+      )
+
+    root = Path.join(System.tmp_dir!(), "jido_integration_v2_brain_ingress_lazy_ledger")
+    File.mkdir_p!(root)
+    beam_dir = Path.join(root, Atom.to_string(module))
+    File.mkdir_p!(beam_dir)
+    source_path = Path.join(beam_dir, "lazy_ledger.ex")
+
+    File.write!(
+      source_path,
+      """
+      defmodule #{inspect(module)} do
+        @behaviour Jido.Integration.V2.BrainIngress.SubmissionLedger
+
+        def accept_submission(_invocation, _opts) do
+          raise "lazy ledger accept_submission/2 should not be called in rejection tests"
+        end
+
+        def fetch_acceptance(_submission_key, _opts), do: :error
+
+        def record_rejection(submission_key, rejection, opts) do
+          agent = Keyword.fetch!(opts, :agent)
+          Agent.update(agent, &Map.put(&1, {:rejection, submission_key}, rejection))
+          :ok
+        end
+      end
+      """
+    )
+
+    Code.prepend_path(beam_dir)
+
+    {:ok, [^module], %{compile_warnings: [], runtime_warnings: []}} =
+      Kernel.ParallelCompiler.compile_to_path([source_path], beam_dir, return_diagnostics: true)
+
+    module
+  end
+
+  defp unique_lazy_ledger_token do
+    :erlang.phash2(
+      {:os.getpid(), System.unique_integer([:positive]), System.monotonic_time(), make_ref()},
+      1_000_000_000
+    )
   end
 end

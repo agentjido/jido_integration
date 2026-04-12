@@ -159,7 +159,7 @@ defmodule Jido.Integration.V2.BrainIngress do
   defp normalize_reason_code(_reason), do: "invalid_submission"
 
   defp record_rejection(ledger, submission_key, rejection, ledger_opts) do
-    if function_exported?(ledger, :record_rejection, 3) do
+    if Code.ensure_loaded?(ledger) and function_exported?(ledger, :record_rejection, 3) do
       ledger.record_rejection(submission_key, rejection, ledger_opts)
     else
       :ok
