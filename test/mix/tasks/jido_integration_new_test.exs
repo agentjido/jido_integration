@@ -412,12 +412,20 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     mix_command = Toolchain.mix_executable()
     repo_root = Blitz.MixWorkspace.root_dir()
+    mix_env = mix_env_for(args)
+    build_path = scaffold_build_path(repo_root, mix_env)
+    hex_home = scaffold_hex_home(repo_root)
+
+    prime_scaffold_build_cache!(repo_root, mix_env)
+    ensure_scaffold_hex_home!(hex_home)
+    purge_scaffold_project_build!(build_path, project_root)
 
     env = [
       {"MIX_DEPS_PATH", Path.join(repo_root, "deps")},
-      {"MIX_BUILD_PATH", Path.join(workspace_root, "_build")},
+      {"MIX_BUILD_PATH", build_path},
       {"MIX_LOCKFILE", lockfile_path},
-      {"HEX_HOME", Path.join(workspace_root, ".hex")},
+      {"MIX_ENV", Atom.to_string(mix_env)},
+      {"HEX_HOME", hex_home},
       {"HEX_API_KEY", nil},
       {"MIX_OS_CONCURRENCY_LOCK", "0"},
       {"SSLKEYLOGFILE", nil},
@@ -468,6 +476,62 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     after
       finished_at = System.monotonic_time(:millisecond)
       IO.puts(:stderr, "[progress] finished #{label} in #{finished_at - started_at}ms")
+    end
+  end
+
+  defp mix_env_for(["test" | _rest]), do: :test
+  defp mix_env_for(_args), do: :dev
+
+  defp scaffold_build_path(repo_root, mix_env) do
+    Path.join([repo_root, "_build", "scaffold_validation_cache", Atom.to_string(mix_env)])
+  end
+
+  defp scaffold_hex_home(repo_root) do
+    Path.join([repo_root, "_build", "scaffold_validation_cache", "hex"])
+  end
+
+  defp prime_scaffold_build_cache!(repo_root, mix_env) do
+    source_root = Path.join([repo_root, "_build", Atom.to_string(mix_env), "lib"])
+    target_root = Path.join([scaffold_build_path(repo_root, mix_env), "lib"])
+
+    File.mkdir_p!(target_root)
+
+    if File.dir?(source_root),
+      do:
+        source_root
+        |> Path.join("*")
+        |> Path.wildcard()
+        |> Enum.each(&copy_build_dir_if_missing!(&1, target_root))
+  end
+
+  defp ensure_scaffold_hex_home!(hex_home) do
+    source_hex_home = Path.expand("~/.hex")
+
+    File.mkdir_p!(hex_home)
+
+    cache_path = Path.join(hex_home, "cache.ets")
+
+    if not File.exists?(cache_path) and File.exists?(Path.join(source_hex_home, "cache.ets")) do
+      File.cp!(Path.join(source_hex_home, "cache.ets"), cache_path)
+    end
+
+    packages_path = Path.join(hex_home, "packages")
+
+    if not File.exists?(packages_path) and File.exists?(Path.join(source_hex_home, "packages")) do
+      File.ln_s!(Path.join(source_hex_home, "packages"), packages_path)
+    end
+  end
+
+  defp purge_scaffold_project_build!(build_path, project_root) do
+    project_name = Path.basename(project_root)
+    File.rm_rf!(Path.join([build_path, "lib", project_name]))
+  end
+
+  defp copy_build_dir_if_missing!(source_dir, target_root) do
+    target_dir = Path.join(target_root, Path.basename(source_dir))
+
+    if not File.exists?(target_dir) do
+      File.cp_r!(source_dir, target_dir, dereference_symlinks: true)
     end
   end
 
