@@ -107,11 +107,11 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     assert File.exists?(Path.join(repo_root(), "packaging/weld/jido_integration/smoke.ex"))
   end
 
-  test "shared dependency resolver honors weld path overrides and sibling fallback" do
+  test "shared dependency resolver honors explicit weld path overrides and otherwise uses hex" do
     case System.get_env("WELD_PATH") do
       "disabled" ->
         assert {:weld, requirement, opts} = DependencyResolver.weld()
-        assert requirement == "~> 0.4.0"
+        assert requirement == "~> 0.5.0"
         refute Keyword.has_key?(opts, :path)
 
       override when is_binary(override) ->
@@ -121,8 +121,9 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
                  Path.expand(override, repo_root())
 
       nil ->
-        assert {:weld, opts} = DependencyResolver.weld()
-        assert Path.expand(Keyword.fetch!(opts, :path)) == Path.expand("../weld", repo_root())
+        assert {:weld, requirement, opts} = DependencyResolver.weld()
+        assert requirement == "~> 0.5.0"
+        refute Keyword.has_key?(opts, :path)
     end
   end
 
