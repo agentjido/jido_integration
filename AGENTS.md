@@ -26,6 +26,7 @@ jido_integration/
 Current core packages:
 
 - `core/platform`
+- `core/brain_ingress`
 - `core/conformance`
 - `core/consumer_surfaces`
 - `core/contracts`
@@ -79,6 +80,9 @@ Keep documentation aligned to the permanent V2 layout:
 - Keep package boundaries explicit. If a connector uses a library directly, declare that dependency in the connector package instead of relying on transitive deps.
 - Prefer adding new capabilities by adding or extending child packages, not by broadening the root project.
 - Treat `contracts` as the shared public model and keep downstream packages honest against it.
+- Treat `core/brain_ingress` as the durable Brain-to-Spine intake seam. Scope
+  resolution, submission acceptance, and typed rejection normalization belong
+  there rather than in the workspace root or connector packages.
 - Treat `platform` as the public facade package. The root workspace must not
   reclaim app identity `:jido_integration_v2`.
 - Treat connector packages as isolated deliverables. Each connector should compile, test, lint, type-check, and document cleanly on its own.

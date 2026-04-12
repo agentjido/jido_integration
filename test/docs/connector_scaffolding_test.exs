@@ -66,6 +66,15 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
     refute guide =~ "/home/home/p/g/n/"
   end
 
+  test "documents the current sibling-harness validation topology for non-direct scaffolds" do
+    guide = @guide_path |> File.read!() |> normalize_whitespace()
+
+    assert guide =~ "## Current Workspace Validation Topology"
+    assert guide =~ "sibling `../jido_harness` repo"
+    assert guide =~ "published Harness package carries the same Session Control surface"
+    refute guide =~ "/home/home/p/g/n/"
+  end
+
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
 
   defp removed_session_bridge_id, do: removed_bridge_id("session")

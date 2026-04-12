@@ -17,6 +17,7 @@ stabilized.
 | Package | Owns | Key Use |
 | --- | --- | --- |
 | `core/contracts` | public IR, behaviours, generated projections | read first when changing the public shape |
+| `core/brain_ingress` | durable Brain-to-Spine intake, submission acceptance, scope resolution | use for cross-repo handoff normalization |
 | `core/platform` | the stable `Jido.Integration.V2` facade | use when exposing the public API |
 | `core/auth` | installs, credentials, connection truth, leases | use for any auth lifecycle change |
 | `core/control_plane` | runs, attempts, events, triggers, artifacts, targets | use for execution truth and review data |
@@ -35,6 +36,9 @@ stabilized.
 ## Package Dependencies
 
 - `core/contracts` is the narrowest contract layer.
+- `core/brain_ingress` consumes `core/contracts` and turns durable Brain-owned
+  packets into Spine-owned operational inputs plus typed acceptance or
+  rejection results.
 - `core/platform` depends on the auth and control-plane surface, but not on
   runtime-specific implementation details.
 - `core/consumer_surfaces` projects authored common publication into generated

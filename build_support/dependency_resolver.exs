@@ -13,6 +13,9 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_auth(opts \\ []),
     do: resolve_internal(:jido_integration_v2_auth, "core/auth", opts)
 
+  def jido_integration_v2_brain_ingress(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_brain_ingress, "core/brain_ingress", opts)
+
   def jido_integration_v2_conformance(opts \\ []),
     do: resolve_internal(:jido_integration_v2_conformance, "core/conformance", opts)
 

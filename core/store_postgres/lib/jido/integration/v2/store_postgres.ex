@@ -20,9 +20,12 @@ defmodule Jido.Integration.V2.StorePostgres do
 
   @spec migrations_path() :: String.t()
   def migrations_path do
-    Repo.config()
-    |> Keyword.get(:priv, "priv/repo")
-    |> Path.join("migrations")
+    repo_priv =
+      Repo.config()
+      |> Keyword.get(:priv, "priv/repo")
+      |> Path.join("migrations")
+
+    Application.app_dir(:jido_integration_v2_store_postgres, repo_priv)
     |> Path.expand()
   end
 end

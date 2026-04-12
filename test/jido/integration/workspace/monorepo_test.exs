@@ -7,6 +7,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
     assert Blitz.MixWorkspace.project_paths() == [
              ".",
              "core/auth",
+             "core/brain_ingress",
              "core/conformance",
              "core/consumer_surfaces",
              "core/contracts",

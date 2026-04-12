@@ -13,6 +13,9 @@ Public facade and shared model:
   - exposes `Jido.Integration.V2`
 - `core/contracts`
   - shared public structs and behaviours
+- `core/brain_ingress`
+  - durable Brain-to-Spine submission intake, scope resolution, and typed
+    acceptance or rejection above the runtime path
 
 Core runtime graph:
 
@@ -51,8 +54,10 @@ Bridge packages:
 Durability tiers:
 
 - in-memory defaults in `core/auth` and `core/control_plane`
-- `core/store_local` for restart-safe local durability
-- `core/store_postgres` for the shared database-backed tier
+- `core/store_local` for restart-safe local durability, including local
+  submission-ledger backing
+- `core/store_postgres` for the shared database-backed tier, including the
+  canonical durable submission ledger
 
 ## Direct Versus Runtime Boundary
 
@@ -80,6 +85,14 @@ Stage 1 boundary readiness keeps both runtime lanes on this same seam.
 capability advertisement, and runtime code may build a runtime-merged live
 capability view when worker-local facts sharpen the lower-boundary result for
 boundary-backed `asm` or boundary-backed `jido_session`.
+
+Cross-repo Brain handoff also enters on an explicit seam:
+
+`Brain -> core/brain_ingress -> Gateway/runtime inputs -> {policy | runtime}`
+
+`core/brain_ingress` verifies Spine-owned governance projections, resolves
+logical file-scope references before `Gateway.new!/1`, and records durable
+submission acceptance or typed rejection through the selected store package.
 
 ## Runtime Basis Below Non-Direct Capabilities
 

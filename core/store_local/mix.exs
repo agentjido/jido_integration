@@ -33,6 +33,7 @@ defmodule Jido.Integration.V2.StoreLocal.MixProject do
     [
       DependencyResolver.jido_integration_v2_contracts(),
       DependencyResolver.jido_integration_v2_auth(),
+      DependencyResolver.jido_integration_v2_brain_ingress(),
       DependencyResolver.jido_integration_v2_control_plane(),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

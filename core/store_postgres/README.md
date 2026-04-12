@@ -11,6 +11,7 @@ Canonical Postgres durability surface for the platform.
 - durable tables for `ArtifactRef` and `TargetDescriptor`
 - encrypted durable credential rows plus safe connection/install/lease rows
   for auth lifecycle truth
+- the canonical durable submission ledger used by `core/brain_ingress`
 
 Repo ownership and migration ownership are explicit here by design. During the
 foundation phase, owner packages define behaviours while `store_postgres`
@@ -80,6 +81,10 @@ Default test settings:
 
 If you validate against a socket-mounted local Postgres instead of TCP, set
 `JIDO_INTEGRATION_V2_DB_SOCKET_DIR`.
+
+The same package now backs the canonical shared submission ledger for durable
+Brain-to-Spine intake. Hosts that adopt `core/brain_ingress` in shared
+environments should point that package at the Postgres-backed ledger adapter.
 
 ## Related Guides
 

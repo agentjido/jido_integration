@@ -206,6 +206,13 @@ The current surface also proves:
   just execution success
 - local durability, async queue state, and webhook route state are all
   explicit opt-in packages
+- durable Brain-to-Spine acceptance now stays on an explicit seam:
+  - `core/contracts` owns canonical JSON, submission identity, audit payload,
+    and governance-projection contracts
+  - `core/brain_ingress` owns verification, scope resolution, and durable
+    acceptance or typed rejection before runtime policy continues
+  - `core/store_local` and `core/store_postgres` provide the concrete
+    submission-ledger backends
 - the Postgres auth tier carries a forward-only expansion migration,
   `20260403000000_expand_phase_0_auth_truth_columns.exs`, so existing dev/test
   databases can adopt the richer auth lineage shape without rewriting prior
@@ -263,6 +270,7 @@ jido_integration/
   core/
     platform/                # public facade package (`:jido_integration_v2`)
     contracts/               # shared public structs and behaviours
+    brain_ingress/           # durable Brain-to-Spine intake and scope resolution
     auth/                    # install, connection, credential, and lease truth
     control_plane/           # durable run, trigger, and artifact truth
     harness_runtime/         # Harness-backed session/stream adapter package
@@ -328,6 +336,7 @@ User-facing guides live under `guides/`. Developer-focused repo notes remain in
 Primary package and app runbooks:
 
 - `core/platform/README.md`
+- `core/brain_ingress/README.md`
 - `core/consumer_surfaces/README.md`
 - `core/conformance/README.md`
 - `core/session_runtime/README.md`

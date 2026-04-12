@@ -6,12 +6,16 @@ defmodule Jido.Integration.V2.StoreLocal.State do
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Auth.LeaseRecord
+  alias Jido.Integration.V2.BrainInvocation
   alias Jido.Integration.V2.Auth.SecretEnvelope
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.Run
+  alias Jido.Integration.V2.SubmissionAcceptance
+  alias Jido.Integration.V2.SubmissionIdentity
+  alias Jido.Integration.V2.SubmissionRejection
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
@@ -48,7 +52,9 @@ defmodule Jido.Integration.V2.StoreLocal.State do
             targets: %{},
             triggers: %{},
             checkpoints: %{},
-            dedupe: %{}
+            dedupe: %{},
+            submissions: %{},
+            submission_rejections: %{}
 
   @type t :: %__MODULE__{
           credentials: %{optional(String.t()) => persisted_credential()},
@@ -66,7 +72,14 @@ defmodule Jido.Integration.V2.StoreLocal.State do
           checkpoints: %{
             optional({String.t(), String.t(), String.t(), String.t()}) => TriggerCheckpoint.t()
           },
-          dedupe: %{optional({String.t(), String.t(), String.t(), String.t()}) => DateTime.t()}
+          dedupe: %{optional({String.t(), String.t(), String.t(), String.t()}) => DateTime.t()},
+          submissions: %{
+            optional(String.t()) => %{
+              identity_checksum: String.t(),
+              acceptance: SubmissionAcceptance.t()
+            }
+          },
+          submission_rejections: %{optional(String.t()) => SubmissionRejection.t()}
         }
 
   @spec new() :: t()
@@ -106,6 +119,11 @@ defmodule Jido.Integration.V2.StoreLocal.State do
   @spec reset_ingress(t()) :: {:ok, t()}
   def reset_ingress(%__MODULE__{} = state) do
     {:ok, %{state | triggers: %{}, checkpoints: %{}, dedupe: %{}}}
+  end
+
+  @spec reset_submission_ledger(t()) :: {:ok, t()}
+  def reset_submission_ledger(%__MODULE__{} = state) do
+    {:ok, %{state | submissions: %{}, submission_rejections: %{}}}
   end
 
   @spec store_credential(t(), Credential.t()) :: {:ok, t()}
@@ -472,6 +490,60 @@ defmodule Jido.Integration.V2.StoreLocal.State do
       nil -> :error
       checkpoint -> {:ok, checkpoint}
     end
+  end
+
+  @spec accept_submission(t(), BrainInvocation.t()) ::
+          {{:ok, SubmissionAcceptance.t()} | {:error, :conflicting_submission}, t()}
+  def accept_submission(%__MODULE__{} = state, %BrainInvocation{} = invocation) do
+    identity_checksum = SubmissionIdentity.submission_key(invocation.submission_identity)
+
+    case Map.get(state.submissions, invocation.submission_key) do
+      nil ->
+        acceptance =
+          SubmissionAcceptance.new!(%{
+            submission_key: invocation.submission_key,
+            submission_receipt_ref: "submission://local/#{invocation.submission_key}",
+            status: :accepted,
+            ledger_version: map_size(state.submissions) + 1
+          })
+
+        {{:ok, acceptance},
+         put_in(state.submissions[invocation.submission_key], %{
+           identity_checksum: identity_checksum,
+           acceptance: acceptance
+         })}
+
+      %{identity_checksum: ^identity_checksum, acceptance: %SubmissionAcceptance{} = acceptance} ->
+        duplicate =
+          SubmissionAcceptance.new!(%{
+            SubmissionAcceptance.dump(acceptance)
+            | status: :duplicate
+          })
+
+        {{:ok, duplicate}, state}
+
+      _other ->
+        {{:error, :conflicting_submission}, state}
+    end
+  end
+
+  @spec fetch_submission_acceptance(t(), String.t()) ::
+          {:ok, SubmissionAcceptance.t()} | :error
+  def fetch_submission_acceptance(%__MODULE__{} = state, submission_key) do
+    case Map.get(state.submissions, submission_key) do
+      %{acceptance: %SubmissionAcceptance{} = acceptance} -> {:ok, acceptance}
+      _other -> :error
+    end
+  end
+
+  @spec record_submission_rejection(t(), String.t(), SubmissionRejection.t()) ::
+          {:ok, t()}
+  def record_submission_rejection(
+        %__MODULE__{} = state,
+        submission_key,
+        %SubmissionRejection{} = rejection
+      ) do
+    {:ok, put_in(state.submission_rejections[submission_key], rejection)}
   end
 
   defp validate_event_epoch(state, [%Event{attempt_id: nil}], _opts), do: {:ok, state}

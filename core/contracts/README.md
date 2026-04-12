@@ -45,6 +45,13 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `GeneratedSensor`
 - `GeneratedPlugin`
 - `ReviewProjection`
+- `CanonicalJson`
+- `SubmissionIdentity`
+- `AuthorityAuditEnvelope`
+- `ExecutionGovernanceProjection`
+- `SubmissionAcceptance`
+- `SubmissionRejection`
+- `BrainInvocation`
 
 ## Core Guarantees
 
@@ -141,6 +148,15 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
   cross-repo reference seam for higher-order repos
 - `core/contracts` is the only intended shared dependency seam for higher-order
   repos such as `jido_memory`, `jido_skill`, and `jido_eval`
+- durable Brain-to-Spine carriage also stays on this seam:
+  - `CanonicalJson` defines the Spine-owned canonicalization and hashing basis
+    for submission identity
+  - `SubmissionIdentity` defines the cross-repo idempotency anchor
+  - `AuthorityAuditEnvelope` and `ExecutionGovernanceProjection` keep audit
+    payload and operational shadow carriage machine-readable
+  - `BrainInvocation` binds those pieces into the durable intake packet
+  - `SubmissionAcceptance` and `SubmissionRejection` normalize typed ingress
+    results without leaking store implementation details
 - provider-factory work in Phase 9 scales on top of that seam instead of
   widening those repos into platform, control-plane, or store-postgres
   dependencies

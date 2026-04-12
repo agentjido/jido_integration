@@ -33,6 +33,7 @@ defmodule Jido.Integration.V2.StorePostgres.MixProject do
     [
       DependencyResolver.jido_integration_v2_contracts(),
       DependencyResolver.jido_integration_v2_auth(),
+      DependencyResolver.jido_integration_v2_brain_ingress(),
       DependencyResolver.jido_integration_v2_control_plane(),
       {:ecto, "~> 3.13.4"},
       {:ecto_sql, "~> 3.13.4"},

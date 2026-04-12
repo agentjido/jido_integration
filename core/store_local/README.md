@@ -62,6 +62,9 @@ can set the same application env values programmatically.
 
 `core/store_local` owns auth and control-plane truth only.
 
+It also provides the local durable submission-ledger backend for
+`core/brain_ingress`.
+
 For full local hosted-webhook recovery, pair it with:
 
 - `core/dispatch_runtime` storage for async transport state
@@ -92,6 +95,8 @@ Compared with `core/store_postgres`:
   sandbox helpers, and stronger operational posture
 - `store_local` does not try to replace Postgres for multi-writer, production,
   or SQL-queryable scenarios
+- both packages now also implement the `core/brain_ingress` submission-ledger
+  behaviour for durable Brain-to-Spine acceptance
 
 ## When To Use Which Tier
 

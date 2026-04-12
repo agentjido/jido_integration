@@ -18,6 +18,9 @@ runtime behavior lives.
 
 - `core/contracts` defines the public IR, behaviours, projection rules, and
   the shared inference contract seam.
+- `core/brain_ingress` owns the durable Brain-to-Spine intake seam, including
+  submission acceptance, governance-shadow verification, and logical scope
+  resolution before runtime execution.
 - `core/platform` exposes the stable public facade `Jido.Integration.V2`,
   including raw authored catalog summaries and the projected common consumer
   catalog export plus live inference invocation and review projection over
@@ -39,7 +42,8 @@ runtime behavior lives.
 - `core/webhook_router` owns hosted route registration and route resolution.
 - `core/policy` decides whether work is admitted, denied, or shed.
 - `core/store_local` and `core/store_postgres` implement the explicit
-  durability tiers.
+  durability tiers, including submission-ledger adapters for
+  `core/brain_ingress`.
 
 Connector packages stay isolated and package-owned. Proof apps compose those
 packages without reclaiming platform ownership.
@@ -95,6 +99,16 @@ the broad runtime extraction is not yet complete.
 The public product surface here remains `Jido.Integration.V2` plus the current
 `core/contracts` seam. This repo may carry Execution Plane contracts, but it
 must not re-export raw `execution_plane/*` packages as the platform API.
+
+Durable Brain-to-Spine carriage also stays on that same ownership split:
+
+- `core/contracts` owns the canonical JSON, audit envelope, submission
+  identity, and governance projection contracts
+- `core/brain_ingress` verifies those contracts, resolves logical scope refs,
+  and records durable acceptance or typed rejection before runtime policy
+  evaluation continues
+- storage packages own the concrete durable ledger backends, not the workspace
+  root
 
 The minimal-lane interiors for `HttpExecutionIntent.v1`,
 `ProcessExecutionIntent.v1`, and `JsonRpcExecutionIntent.v1` remain

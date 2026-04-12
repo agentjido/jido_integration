@@ -17,6 +17,8 @@ Use it when:
 - you want restart recovery without provisioning Postgres
 - you are proving end-to-end behavior locally
 - you want a simple local file-backed durability story
+- you want the first durable submission-ledger backend for local
+  Brain-to-Spine intake proofs
 
 ## Postgres Durability
 
@@ -28,6 +30,8 @@ Use it when:
 - you want Ecto-backed migrations and SQL tooling
 - you need the operational model that the reference apps and root validation
   expect
+- you need the canonical durable submission-ledger backend for shared
+  Brain-to-Spine intake
 
 ## Inference Baseline
 
@@ -48,3 +52,7 @@ See `inference_baseline.md` for the exact contract and event minimum.
 Do not promote durability into the facade by default.
 Choose the tier explicitly from the host application and keep the contract
 surface stable.
+
+That same rule now applies to durable Brain-to-Spine intake. Submission
+acceptance is owned by `core/brain_ingress`, while `core/store_local` and
+`core/store_postgres` provide the concrete ledger backends.

@@ -24,6 +24,7 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
     :refresh_handler,
     :external_secret_resolver
   ]
+  @brain_ingress_keys [:submission_ledger]
   @store_postgres_keys [:ecto_repos, Repo]
 
   using do
@@ -70,6 +71,7 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
     %{
       control_plane: snapshot_keys(:jido_integration_v2_control_plane, @control_plane_keys),
       auth: snapshot_keys(:jido_integration_v2_auth, @auth_keys),
+      brain_ingress: snapshot_keys(:jido_integration_v2_brain_ingress, @brain_ingress_keys),
       store_postgres: snapshot_keys(:jido_integration_v2_store_postgres, @store_postgres_keys)
     }
   end
@@ -77,6 +79,7 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
   defp restore_env(previous_env) do
     restore_keys(:jido_integration_v2_control_plane, previous_env.control_plane)
     restore_keys(:jido_integration_v2_auth, previous_env.auth)
+    restore_keys(:jido_integration_v2_brain_ingress, previous_env.brain_ingress)
     restore_keys(:jido_integration_v2_store_postgres, previous_env.store_postgres)
     :ok
   end

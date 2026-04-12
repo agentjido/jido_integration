@@ -430,9 +430,9 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       {"MIX_OS_CONCURRENCY_LOCK", "0"},
       {"SSLKEYLOGFILE", nil},
       {"JIDO_INTEGRATION_PATH", repo_root},
-      {"JIDO_HARNESS_PATH", "disabled"},
+      {"JIDO_HARNESS_PATH", sibling_repo_path(repo_root, "../jido_harness")},
       {"JIDO_OS_PATH", "disabled"},
-      {"JIDO_SHELL_PATH", "disabled"},
+      {"JIDO_SHELL_PATH", sibling_repo_path(repo_root, "../jido_shell")},
       {"JIDO_VFS_PATH", Path.expand("../jido_vfs", repo_root)},
       {"REQ_LLM_PATH", "disabled"},
       {"AGENT_SESSION_MANAGER_PATH", Path.expand("../agent_session_manager", repo_root)},
@@ -519,6 +519,16 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     if not File.exists?(packages_path) and File.exists?(Path.join(source_hex_home, "packages")) do
       File.ln_s!(Path.join(source_hex_home, "packages"), packages_path)
+    end
+  end
+
+  defp sibling_repo_path(repo_root, relative_path) do
+    resolved_path = Path.expand(relative_path, repo_root)
+
+    if File.dir?(resolved_path) do
+      resolved_path
+    else
+      "disabled"
     end
   end
 

@@ -88,6 +88,24 @@ not the runtime class itself. A `:stream` capability may still publish
 `runtime_ref: :session` when the selected Harness driver exposes session-scoped
 handles.
 
+## Current Workspace Validation Topology
+
+The authored non-direct runtime-driver surface in this repo currently depends
+on the newer Session Control family in the sibling `jido_harness` checkout.
+
+That means local scaffold validation for `session` and `stream` connectors
+must use the sibling `../jido_harness` repo when it is present rather than the
+older published fallback package. Direct connector scaffolds are unaffected.
+
+Treat that as the supported contributor topology for now:
+
+- keep `jido_integration` and `jido_harness` checked out side by side when
+  validating non-direct scaffold output
+- do not interpret the fallback published `jido_harness` package as the
+  authoritative surface for `runtime.driver` review in this repo
+- once the published Harness package carries the same Session Control surface,
+  the scaffold validation gate can tighten back to the published-only path
+
 ## Generated Package Contract
 
 The emitted package lands under `connectors/<name>/` by default and uses
