@@ -2,14 +2,22 @@ defmodule Jido.Integration.V2.ContractsTest do
   use ExUnit.Case
 
   alias Jido.Integration.V2.ArtifactRef
+  alias Jido.Integration.V2.AttachGrant
   alias Jido.Integration.V2.Attempt
+  alias Jido.Integration.V2.BoundarySession
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
+  alias Jido.Integration.V2.ExecutionRoute
+  alias Jido.Integration.V2.Receipt
+  alias Jido.Integration.V2.RecoveryTask
+  alias Jido.Integration.V2.ReviewBundle
+  alias Jido.Integration.V2.ReviewProjection
   alias Jido.Integration.V2.Run
+  alias Jido.Integration.V2.SubjectRef
   alias Jido.Integration.V2.TargetDescriptor
 
   test "run and attempt identities stay canonical as contracts broaden" do
@@ -223,5 +231,151 @@ defmodule Jido.Integration.V2.ContractsTest do
              "callback",
              "identity"
            ]
+
+    assert Contracts.lower_restart_authority_contracts() == [
+             "BoundarySession.v1",
+             "ExecutionRoute.v1",
+             "AttachGrant.v1",
+             "Receipt.v1",
+             "RecoveryTask.v1"
+           ]
+
+    assert Contracts.operator_read_contracts() == [
+             "ReviewProjection.v1",
+             "ReviewBundle.v1"
+           ]
+  end
+
+  test "lower restart-authority structs normalize stable ids and operator read bundles" do
+    run =
+      Run.new!(%{
+        capability_id: "github.issue.create",
+        runtime_class: :direct,
+        input: %{},
+        credential_ref:
+          CredentialRef.new!(%{
+            id: "cred-ref-1",
+            connection_id: "conn-1",
+            profile_id: "manual_token",
+            subject: "operator",
+            current_credential_id: "cred-ref-1:v2",
+            scopes: ["issues:write"],
+            lease_fields: ["access_token"]
+          })
+      })
+
+    attempt =
+      Attempt.new!(%{
+        run_id: run.run_id,
+        attempt: 1,
+        runtime_class: :direct
+      })
+
+    boundary_session =
+      BoundarySession.new!(%{
+        session_id: "semantic-1",
+        tenant_id: "tenant-1",
+        target_id: "target-1",
+        status: :attached
+      })
+
+    route =
+      ExecutionRoute.new!(%{
+        run_id: run.run_id,
+        attempt_id: attempt.attempt_id,
+        boundary_session_id: boundary_session.boundary_session_id,
+        target_id: "target-1",
+        route_kind: :process,
+        status: :accepted_downstream,
+        handoff_ref: "handoff-1"
+      })
+
+    attach_grant =
+      AttachGrant.new!(%{
+        boundary_session_id: boundary_session.boundary_session_id,
+        route_id: route.route_id,
+        subject_id: "operator-1",
+        status: :issued
+      })
+
+    receipt =
+      Receipt.new!(%{
+        run_id: run.run_id,
+        attempt_id: attempt.attempt_id,
+        route_id: route.route_id,
+        receipt_kind: :handoff,
+        status: :ambiguous
+      })
+
+    recovery_task =
+      RecoveryTask.new!(%{
+        subject_ref: "route:#{route.route_id}",
+        run_id: run.run_id,
+        attempt_id: attempt.attempt_id,
+        route_id: route.route_id,
+        receipt_id: receipt.receipt_id,
+        reason: "ambiguous_ack",
+        status: :pending
+      })
+
+    review_projection =
+      ReviewProjection.new!(%{
+        schema_version: "review_projection.v1",
+        projection: "citadel.runtime_observation",
+        packet_ref: Contracts.review_packet_ref(run.run_id, attempt.attempt_id),
+        subject: SubjectRef.new!(%{kind: :run, id: run.run_id}),
+        selected_attempt: SubjectRef.new!(%{kind: :attempt, id: attempt.attempt_id})
+      })
+
+    review_bundle =
+      ReviewBundle.new!(%{
+        review_projection: review_projection,
+        run: run,
+        attempt: attempt,
+        receipts: [receipt],
+        recovery_tasks: [recovery_task],
+        metadata: %{"boundary_session_id" => boundary_session.boundary_session_id}
+      })
+
+    assert String.starts_with?(boundary_session.boundary_session_id, "boundary_session-")
+    assert String.starts_with?(route.route_id, "route-")
+    assert String.starts_with?(attach_grant.attach_grant_id, "attach_grant-")
+    assert receipt.receipt_id == Contracts.receipt_id(run.run_id, attempt.attempt_id, "handoff")
+    assert recovery_task.task_id == "route:#{route.route_id}:ambiguous_ack"
+    assert review_bundle.review_projection.packet_ref =~ run.run_id
+    assert review_bundle.receipts == [receipt]
+    assert review_bundle.recovery_tasks == [recovery_task]
+  end
+
+  test "ambiguous acknowledgement contracts keep replay and reconciliation explicit" do
+    receipt =
+      Receipt.new!(%{
+        run_id: "run-ack-1",
+        attempt_id: "run-ack-1:2",
+        route_id: "route-ack-1",
+        receipt_kind: :handoff,
+        status: :ambiguous,
+        metadata: %{"replay_posture" => "hold_until_reconciled"}
+      })
+
+    recovery_task =
+      RecoveryTask.new!(%{
+        subject_ref: "route:route-ack-1",
+        run_id: "run-ack-1",
+        attempt_id: "run-ack-1:2",
+        route_id: "route-ack-1",
+        receipt_id: receipt.receipt_id,
+        reason: "ambiguous_ack",
+        metadata: %{"next_action" => "query_downstream_truth"}
+      })
+
+    assert receipt.receipt_id == "run-ack-1:run-ack-1:2:handoff"
+    assert receipt.status == :ambiguous
+    assert receipt.metadata["replay_posture"] == "hold_until_reconciled"
+
+    assert recovery_task.task_id == "route:route-ack-1:ambiguous_ack"
+    assert recovery_task.status == :pending
+    assert recovery_task.receipt_id == receipt.receipt_id
+    assert recovery_task.metadata["next_action"] == "query_downstream_truth"
   end
 end

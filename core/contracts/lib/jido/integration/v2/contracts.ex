@@ -29,6 +29,17 @@ defmodule Jido.Integration.V2.Contracts do
     "ProcessExecutionIntent.v1",
     "JsonRpcExecutionIntent.v1"
   ]
+  @lower_restart_authority_contracts [
+    "BoundarySession.v1",
+    "ExecutionRoute.v1",
+    "AttachGrant.v1",
+    "Receipt.v1",
+    "RecoveryTask.v1"
+  ]
+  @operator_read_contracts [
+    "ReviewProjection.v1",
+    "ReviewBundle.v1"
+  ]
 
   @type runtime_class :: :direct | :session | :stream
   @type runtime_kind :: :client | :task | :service
@@ -87,6 +98,12 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec provisional_minimal_lane_contracts() :: [String.t(), ...]
   def provisional_minimal_lane_contracts, do: @provisional_minimal_lane_contracts
+
+  @spec lower_restart_authority_contracts() :: [String.t(), ...]
+  def lower_restart_authority_contracts, do: @lower_restart_authority_contracts
+
+  @spec operator_read_contracts() :: [String.t(), ...]
+  def operator_read_contracts, do: @operator_read_contracts
 
   @spec now() :: DateTime.t()
   def now do
@@ -179,6 +196,17 @@ defmodule Jido.Integration.V2.Contracts do
   def attempt_id(run_id, attempt)
       when is_binary(run_id) and is_integer(attempt) and attempt > 0 do
     "#{run_id}:#{attempt}"
+  end
+
+  @spec receipt_id(String.t(), String.t(), String.t()) :: String.t()
+  def receipt_id(run_id, attempt_id, receipt_kind)
+      when is_binary(run_id) and is_binary(attempt_id) and is_binary(receipt_kind) do
+    "#{run_id}:#{attempt_id}:#{receipt_kind}"
+  end
+
+  @spec recovery_task_id(String.t(), String.t()) :: String.t()
+  def recovery_task_id(subject_ref, reason) when is_binary(subject_ref) and is_binary(reason) do
+    "#{subject_ref}:#{reason}"
   end
 
   @spec attempt_from_id!(String.t(), String.t()) :: pos_integer()
