@@ -195,10 +195,9 @@ bundle-local <code class="inline">mix format --check-formatted</code>,
 <a href="https://hexdocs.pm/ecto_sql/3.13.5/Mix.Tasks.Ecto.Migrate.html"><code class="inline">mix ecto.migrate</code></a> when the published slice includes the Postgres durability
 tier.</p><p><code class="inline">mix release.track</code> updates the default orphan-backed
 <code class="inline">projection/jido_integration</code> branch from that prepared bundle so unreleased and
-pre-release welded snapshots can be pinned and exercised before Hex release.</p><p>During local implementation and debugging, point the repo at a sibling Weld
-checkout with <code class="inline">WELD_PATH=../weld</code>. For shared pre-release validation, use
-<code class="inline">WELD_GIT_REF=&lt;commit_sha&gt;</code> and an optional <code class="inline">WELD_GIT_URL=&lt;repo_url&gt;</code>. The
-committed steady state should return to the released Hex dependency line.</p><p><code class="inline">mix release.publish</code> publishes from that prepared bundle snapshot rather than
+pre-release welded snapshots can be pinned and exercised before Hex release.</p><p>The committed workspace dependency stays on the released Hex Weld line. When
+coordinating pre-release Weld validation across repos, use a normal prerelease
+version bump instead of embedding repo-local path or git override logic.</p><p><code class="inline">mix release.publish</code> publishes from that prepared bundle snapshot rather than
 from the monorepo root. <code class="inline">mix release.archive</code> then preserves the prepared
 bundle in the archive tree so the exact released artifact remains inspectable.</p><p>The first published welded artifact intentionally ships the direct-runtime,
 webhook, async, durability, auth, and public-facade surface. The runtime-control-backed

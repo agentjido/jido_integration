@@ -425,8 +425,8 @@
       "priv",
       "projection.lock.json"
     ],
-    "git_revision": "11b07ba672e4663edef774ac7816be63e0c65dc4",
-    "tree_digest": "7ec4c702c2d2bdc35178348cb31e3c1095aafc137864c3740f33aee3587bb826"
+    "git_revision": "dd89e7d1a2456a72ba86fd9cce49873e952a9ca9",
+    "tree_digest": "22a2a9fbdac01eb9452dc4cf589c98deeb69bbdde80f83f527b4f93408c74a34"
   },
   "manifest": {
     "path": "/home/home/p/g/n/jido_integration/build_support/weld.exs",
