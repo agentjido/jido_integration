@@ -1,7 +1,7 @@
 defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   use ExUnit.Case, async: false
 
-  alias Jido.Integration.Build.{DependencyResolver, WorkspaceContract}
+  alias Jido.Integration.Build.WorkspaceContract
   alias Jido.Integration.Workspace.{MixProject, MonorepoRunner}
 
   @required_package_paths [
@@ -74,23 +74,11 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     end
   end
 
-  test "workspace root includes weld and the repo-local publication contract" do
+  test "workspace root uses released Weld 0.7.0 and the repo-local publication contract" do
     deps = MixProject.project()[:deps]
 
-    assert Enum.any?(deps, fn
-             {:weld, opts} when is_list(opts) ->
-               Keyword.has_key?(opts, :path) or Keyword.has_key?(opts, :github)
-
-             {:weld, requirement, opts} when is_binary(requirement) and is_list(opts) ->
-               true
-
-             {:weld, _requirement, opts} when is_list(opts) ->
-               Keyword.has_key?(opts, :path) or Keyword.has_key?(opts, :github)
-
-             _ ->
-               false
-           end),
-           "workspace root must depend on weld through the shared dependency resolver"
+    assert {:weld, "~> 0.7.0", runtime: false} in deps,
+           "workspace root must depend directly on the released Weld 0.7.0 line"
 
     assert File.exists?(Path.join(repo_root(), "build_support/weld.exs"))
     assert File.exists?(Path.join(repo_root(), "build_support/workspace_contract.exs"))
@@ -107,74 +95,6 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            )
 
     assert File.exists?(Path.join(repo_root(), "packaging/weld/jido_integration/smoke.ex"))
-  end
-
-  test "shared dependency resolver prefers WELD_PATH over git and hex" do
-    with_env(
-      %{
-        "WELD_PATH" => "../weld",
-        "WELD_GIT_REF" => "deadbeef",
-        "WELD_GIT_URL" => "https://example.test/ignored/weld.git"
-      },
-      fn ->
-        assert {:weld, opts} = DependencyResolver.weld()
-
-        assert Keyword.fetch!(opts, :path) == Path.expand("../weld", repo_root())
-        refute Keyword.has_key?(opts, :git)
-        refute Keyword.has_key?(opts, :ref)
-      end
-    )
-  end
-
-  test "shared dependency resolver uses the canonical weld git URL when only a ref is set" do
-    with_env(
-      %{
-        "WELD_PATH" => "disabled",
-        "WELD_GIT_REF" => "773ba79",
-        "WELD_GIT_URL" => nil
-      },
-      fn ->
-        assert {:weld, opts} = DependencyResolver.weld()
-
-        assert Keyword.fetch!(opts, :git) == "https://github.com/nshkrdotcom/weld.git"
-        assert Keyword.fetch!(opts, :ref) == "773ba79"
-        refute Keyword.has_key?(opts, :path)
-      end
-    )
-  end
-
-  test "shared dependency resolver supports explicit weld git URLs" do
-    with_env(
-      %{
-        "WELD_PATH" => "disabled",
-        "WELD_GIT_REF" => "feedface",
-        "WELD_GIT_URL" => "https://example.test/custom/weld.git"
-      },
-      fn ->
-        assert {:weld, opts} = DependencyResolver.weld()
-
-        assert Keyword.fetch!(opts, :git) == "https://example.test/custom/weld.git"
-        assert Keyword.fetch!(opts, :ref) == "feedface"
-        refute Keyword.has_key?(opts, :path)
-      end
-    )
-  end
-
-  test "shared dependency resolver falls back to Hex when weld overrides are disabled" do
-    with_env(
-      %{
-        "WELD_PATH" => "disabled",
-        "WELD_GIT_REF" => "disabled",
-        "WELD_GIT_URL" => "disabled"
-      },
-      fn ->
-        assert {:weld, requirement, opts} = DependencyResolver.weld()
-        assert requirement == "~> 0.6.0"
-        refute Keyword.has_key?(opts, :path)
-        refute Keyword.has_key?(opts, :git)
-        refute Keyword.has_key?(opts, :ref)
-      end
-    )
   end
 
   test "weld contract keeps the published docs surface package-facing" do
@@ -343,27 +263,6 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.sort()
-  end
-
-  defp with_env(overrides, fun) do
-    previous =
-      overrides
-      |> Map.keys()
-      |> Map.new(fn key -> {key, System.get_env(key)} end)
-
-    Enum.each(overrides, fn
-      {key, nil} -> System.delete_env(key)
-      {key, value} -> System.put_env(key, value)
-    end)
-
-    try do
-      fun.()
-    after
-      Enum.each(previous, fn
-        {key, nil} -> System.delete_env(key)
-        {key, value} -> System.put_env(key, value)
-      end)
-    end
   end
 
   defp repo_root, do: Path.expand("../..", __DIR__)

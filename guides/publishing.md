@@ -55,11 +55,9 @@ durable generated-source surface for unreleased and pre-release welded
 artifacts, and it gives downstream repos a real Git ref to pin before a Hex
 release exists.
 
-While implementing or debugging this release flow locally, point the repo at a
-sibling Weld checkout with `WELD_PATH=../weld`. For shared pre-release
-validation, use `WELD_GIT_REF=<commit_sha>` and optionally
-`WELD_GIT_URL=<repo_url>`. The committed steady state should return to the
-released Hex dependency line after the release is live.
+The committed workspace dependency stays on the released Hex Weld line. If a
+coordinated prerelease Weld validation run is needed, do it with an ordinary
+prerelease version bump rather than with repo-local path or git override logic.
 
 `mix release.publish` then runs `mix hex.publish` from the prepared bundle
 snapshot, not from the source repo root. That keeps the published artifact tied

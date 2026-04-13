@@ -244,10 +244,9 @@ tier.
 `projection/jido_integration` branch from that prepared bundle so unreleased and
 pre-release welded snapshots can be pinned and exercised before Hex release.
 
-During local implementation and debugging, point the repo at a sibling Weld
-checkout with `WELD_PATH=../weld`. For shared pre-release validation, use
-`WELD_GIT_REF=<commit_sha>` and an optional `WELD_GIT_URL=<repo_url>`. The
-committed steady state should return to the released Hex dependency line.
+The committed workspace dependency stays on the released Hex Weld line. When
+coordinating pre-release Weld validation across repos, use a normal prerelease
+version bump instead of embedding repo-local path or git override logic.
 
 `mix release.publish` publishes from that prepared bundle snapshot rather than
 from the monorepo root. `mix release.archive` then preserves the prepared

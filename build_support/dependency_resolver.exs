@@ -2,7 +2,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
   @moduledoc false
 
   @repo_root Path.expand("..", __DIR__)
-  @weld_git_url "https://github.com/nshkrdotcom/weld.git"
   @repo_fallback [
     github: "agentjido/jido_integration",
     branch: "main"
@@ -181,23 +180,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
     {:erlexec, "~> 2.2", opts}
   end
 
-  def weld(opts \\ []) do
-    case local_root_path("WELD_PATH", nil) do
-      nil ->
-        resolve_git_or_hex(
-          :weld,
-          "~> 0.6.0",
-          "WELD_GIT_REF",
-          "WELD_GIT_URL",
-          @weld_git_url,
-          opts
-        )
-
-      path ->
-        {:weld, Keyword.merge([path: path], opts)}
-    end
-  end
-
   def repo_root, do: @repo_root
 
   defp resolve_internal(app, subdir, opts) do
@@ -213,13 +195,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
     case existing_path(path) do
       nil -> {app, Keyword.merge(fallback_opts, opts)}
       resolved_path -> {app, Keyword.merge([path: resolved_path], opts)}
-    end
-  end
-
-  defp resolve_git_or_hex(app, requirement, ref_env_var, url_env_var, default_git_url, opts) do
-    case git_ref_override(ref_env_var, url_env_var, default_git_url) do
-      nil -> {app, requirement, opts}
-      git_opts -> {app, Keyword.merge(git_opts, opts)}
     end
   end
 
@@ -263,24 +238,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
     case System.get_env(env_var) do
       nil -> nil
       value -> value |> Path.expand(@repo_root) |> existing_path()
-    end
-  end
-
-  defp git_ref_override(ref_env_var, url_env_var, default_git_url) do
-    case env_value(ref_env_var) do
-      nil ->
-        nil
-
-      ref ->
-        [git: env_value(url_env_var) || default_git_url, ref: ref]
-    end
-  end
-
-  defp env_value(env_var) do
-    case System.get_env(env_var) do
-      nil -> nil
-      value when value in ["", "0", "false", "disabled"] -> nil
-      value -> value
     end
   end
 

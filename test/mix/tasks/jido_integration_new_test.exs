@@ -437,8 +437,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       {"CLI_SUBPROCESS_CORE_PATH", Path.expand("../cli_subprocess_core", repo_root)},
       {"SELF_HOSTED_INFERENCE_CORE_PATH",
        Path.expand("../self_hosted_inference_core", repo_root)},
-      {"LLAMA_CPP_SDK_PATH", Path.expand("../llama_cpp_sdk", repo_root)},
-      {"WELD_PATH", Path.expand("../weld", repo_root)}
+      {"LLAMA_CPP_SDK_PATH", Path.expand("../llama_cpp_sdk", repo_root)}
     ]
 
     label = "mix #{Enum.join(args, " ")} in #{Path.relative_to(project_root, workspace_root)}"

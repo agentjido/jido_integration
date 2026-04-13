@@ -43,7 +43,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       DependencyResolver.cli_subprocess_core(runtime: false),
       DependencyResolver.sprites(override: true, runtime: false),
       DependencyResolver.req_llm(runtime: false),
-      DependencyResolver.weld(runtime: false),
+      {:weld, "~> 0.7.0", runtime: false},
       {:jason, "~> 1.4", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

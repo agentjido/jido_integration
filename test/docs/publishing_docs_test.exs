@@ -22,6 +22,12 @@ defmodule Jido.Integration.Docs.PublishingDocsTest do
 
       assert doc =~ "mix release.archive",
              "#{path} must describe archive-after-publish explicitly"
+
+      refute doc =~ "WELD_PATH",
+             "#{path} must not describe committed Weld path overrides anymore"
+
+      refute doc =~ "WELD_GIT_REF",
+             "#{path} must not describe committed Weld git-ref overrides anymore"
     end)
   end
 
