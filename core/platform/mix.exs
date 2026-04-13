@@ -39,6 +39,7 @@ defmodule Jido.Integration.V2.Platform.MixProject do
       DependencyResolver.jido_integration_v2_codex_cli(only: :test),
       DependencyResolver.jido_integration_v2_market_data(only: :test),
       DependencyResolver.req_llm(),
+      DependencyResolver.splode(),
       {:plug, "~> 1.19", only: [:dev, :test]},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

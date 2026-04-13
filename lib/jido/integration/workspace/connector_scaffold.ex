@@ -58,7 +58,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     connector_name = normalize_connector_name!(connector_name)
 
     workspace_root =
-      opts |> Keyword.get(:workspace_root, Blitz.MixWorkspace.root_dir()) |> Path.expand()
+      opts |> Keyword.get(:workspace_root, repo_root()) |> Path.expand()
 
     runtime_class =
       resolve_runtime_class!(Keyword.get(opts, :runtime_class, @default_runtime_class))
@@ -920,10 +920,14 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
   defp resolve_workspace_lockfile_path(workspace_root) do
     candidates = [
       Path.join(workspace_root, "mix.lock"),
-      Path.join(Blitz.MixWorkspace.root_dir(), "mix.lock")
+      Path.join(repo_root(), "mix.lock")
     ]
 
     Enum.find(candidates, &File.exists?/1)
+  end
+
+  defp repo_root do
+    Path.expand("../../../..", __DIR__)
   end
 
   defp runtime_families(:direct), do: [:direct]

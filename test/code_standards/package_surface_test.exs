@@ -1,5 +1,5 @@
 defmodule Jido.Integration.Workspace.PackageSurfaceTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Jido.Integration.Build.{DependencyResolver, WorkspaceContract}
   alias Jido.Integration.Workspace.{MixProject, MonorepoRunner}
@@ -60,8 +60,10 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
           :"weld.project",
           :"weld.verify",
           :"weld.release.prepare",
+          :"weld.release.track",
           :"weld.release.archive",
           :"release.prepare",
+          :"release.track",
           :"release.publish.dry_run",
           :"release.publish",
           :"release.archive",
@@ -107,24 +109,72 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     assert File.exists?(Path.join(repo_root(), "packaging/weld/jido_integration/smoke.ex"))
   end
 
-  test "shared dependency resolver honors explicit weld path overrides and otherwise uses hex" do
-    case System.get_env("WELD_PATH") do
-      "disabled" ->
-        assert {:weld, requirement, opts} = DependencyResolver.weld()
-        assert requirement == "~> 0.5.0"
-        refute Keyword.has_key?(opts, :path)
-
-      override when is_binary(override) ->
+  test "shared dependency resolver prefers WELD_PATH over git and hex" do
+    with_env(
+      %{
+        "WELD_PATH" => "../weld",
+        "WELD_GIT_REF" => "deadbeef",
+        "WELD_GIT_URL" => "https://example.test/ignored/weld.git"
+      },
+      fn ->
         assert {:weld, opts} = DependencyResolver.weld()
 
-        assert Path.expand(Keyword.fetch!(opts, :path), repo_root()) ==
-                 Path.expand(override, repo_root())
+        assert Keyword.fetch!(opts, :path) == Path.expand("../weld", repo_root())
+        refute Keyword.has_key?(opts, :git)
+        refute Keyword.has_key?(opts, :ref)
+      end
+    )
+  end
 
-      nil ->
-        assert {:weld, requirement, opts} = DependencyResolver.weld()
-        assert requirement == "~> 0.5.0"
+  test "shared dependency resolver uses the canonical weld git URL when only a ref is set" do
+    with_env(
+      %{
+        "WELD_PATH" => "disabled",
+        "WELD_GIT_REF" => "773ba79",
+        "WELD_GIT_URL" => nil
+      },
+      fn ->
+        assert {:weld, opts} = DependencyResolver.weld()
+
+        assert Keyword.fetch!(opts, :git) == "https://github.com/nshkrdotcom/weld.git"
+        assert Keyword.fetch!(opts, :ref) == "773ba79"
         refute Keyword.has_key?(opts, :path)
-    end
+      end
+    )
+  end
+
+  test "shared dependency resolver supports explicit weld git URLs" do
+    with_env(
+      %{
+        "WELD_PATH" => "disabled",
+        "WELD_GIT_REF" => "feedface",
+        "WELD_GIT_URL" => "https://example.test/custom/weld.git"
+      },
+      fn ->
+        assert {:weld, opts} = DependencyResolver.weld()
+
+        assert Keyword.fetch!(opts, :git) == "https://example.test/custom/weld.git"
+        assert Keyword.fetch!(opts, :ref) == "feedface"
+        refute Keyword.has_key?(opts, :path)
+      end
+    )
+  end
+
+  test "shared dependency resolver falls back to Hex when weld overrides are disabled" do
+    with_env(
+      %{
+        "WELD_PATH" => "disabled",
+        "WELD_GIT_REF" => "disabled",
+        "WELD_GIT_URL" => "disabled"
+      },
+      fn ->
+        assert {:weld, requirement, opts} = DependencyResolver.weld()
+        assert requirement == "~> 0.6.0"
+        refute Keyword.has_key?(opts, :path)
+        refute Keyword.has_key?(opts, :git)
+        refute Keyword.has_key?(opts, :ref)
+      end
+    )
   end
 
   test "weld contract keeps the published docs surface package-facing" do
@@ -148,6 +198,19 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
         ] do
       refute path in docs, "published docs should not ship #{path}"
     end
+  end
+
+  test "platform carries splode directly so monolith test support does not force a conflicting test-only dep" do
+    [{platform_mix_project, _binary}] = Code.require_file("core/platform/mix.exs", repo_root())
+
+    deps = platform_mix_project.project()[:deps]
+
+    assert Enum.any?(deps, fn
+             {:splode, "~> 0.3.0"} -> true
+             {:splode, "~> 0.3.0", opts} when is_list(opts) -> opts[:only] in [nil, []]
+             _ -> false
+           end),
+           "core/platform must carry a non-test-only splode dep so release.prepare keeps the monolith dependency graph coherent"
   end
 
   test "workspace isolation clears SSL key logging for monorepo verification tasks" do
@@ -280,6 +343,27 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.sort()
+  end
+
+  defp with_env(overrides, fun) do
+    previous =
+      overrides
+      |> Map.keys()
+      |> Map.new(fn key -> {key, System.get_env(key)} end)
+
+    Enum.each(overrides, fn
+      {key, nil} -> System.delete_env(key)
+      {key, value} -> System.put_env(key, value)
+    end)
+
+    try do
+      fun.()
+    after
+      Enum.each(previous, fn
+        {key, nil} -> System.delete_env(key)
+        {key, value} -> System.put_env(key, value)
+      end)
+    end
   end
 
   defp repo_root, do: Path.expand("../..", __DIR__)

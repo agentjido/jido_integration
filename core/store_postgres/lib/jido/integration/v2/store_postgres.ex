@@ -20,12 +20,37 @@ defmodule Jido.Integration.V2.StorePostgres do
 
   @spec migrations_path() :: String.t()
   def migrations_path do
+    otp_app = Repo.config()[:otp_app] || :jido_integration_v2_store_postgres
+
     repo_priv =
       Repo.config()
       |> Keyword.get(:priv, "priv/repo")
       |> Path.join("migrations")
 
-    Application.app_dir(:jido_integration_v2_store_postgres, repo_priv)
+    case safe_app_dir(otp_app, repo_priv) do
+      {:ok, path} ->
+        path
+
+      :error ->
+        repo_priv
+        |> app_root_from_code_path(__MODULE__)
+        |> Path.expand()
+    end
+  end
+
+  defp safe_app_dir(otp_app, repo_priv) do
+    {:ok, Application.app_dir(otp_app, repo_priv) |> Path.expand()}
+  rescue
+    ArgumentError -> :error
+  end
+
+  defp app_root_from_code_path(repo_priv, module) do
+    module
+    |> :code.which()
+    |> to_string()
+    |> Path.dirname()
+    |> Path.join("..")
     |> Path.expand()
+    |> Path.join(repo_priv)
   end
 end

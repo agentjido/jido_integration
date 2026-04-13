@@ -34,6 +34,7 @@ defmodule Mix.Tasks.Jido.Conformance do
   @profile_atoms %{@default_profile => :connector_foundation}
   @profile_names [@default_profile]
   @loader_project :jido_conformance_loader
+  @active_project_globs [".", "core/*", "connectors/*", "apps/*"]
 
   @impl Mix.Task
   def run(args) do
@@ -141,7 +142,7 @@ defmodule Mix.Tasks.Jido.Conformance do
   end
 
   defp run_in_project!(project_path, module_string, normalized_module_name, profile) do
-    project_root = Path.expand(project_path, Blitz.MixWorkspace.root_dir())
+    project_root = Path.expand(project_path, repo_root())
     runtime_root = conformance_runtime_root(project_root)
     build_path = project_build_path(runtime_root)
     hex_home = project_hex_home(runtime_root)
@@ -357,7 +358,7 @@ defmodule Mix.Tasks.Jido.Conformance do
 
   defp conformance_runtime_root(project_root) do
     Path.join([
-      Blitz.MixWorkspace.root_dir(),
+      repo_root(),
       "_build",
       "jido_conformance",
       Atom.to_string(Mix.env()),
@@ -373,7 +374,7 @@ defmodule Mix.Tasks.Jido.Conformance do
 
     project_name =
       project_root
-      |> Path.relative_to(Blitz.MixWorkspace.root_dir())
+      |> Path.relative_to(repo_root())
       |> String.replace(~r/[^a-zA-Z0-9]+/, "_")
       |> String.trim("_")
 
@@ -436,14 +437,14 @@ defmodule Mix.Tasks.Jido.Conformance do
   defp resolve_project_path(module_string) do
     declaration = "defmodule " <> normalize_module_name(module_string)
 
-    case Enum.find(Blitz.MixWorkspace.package_paths(), &project_defines_module?(&1, declaration)) do
+    case Enum.find(active_project_paths(), &project_defines_module?(&1, declaration)) do
       nil -> :error
       project_path -> {:ok, project_path}
     end
   end
 
   defp project_defines_module?(project_path, declaration) do
-    root = Blitz.MixWorkspace.root_dir()
+    root = repo_root()
     pattern = Path.join(root, project_path <> "/lib/**/*.ex")
 
     pattern
@@ -453,6 +454,27 @@ defmodule Mix.Tasks.Jido.Conformance do
       |> File.read!()
       |> String.contains?(declaration)
     end)
+  end
+
+  defp active_project_paths do
+    root = repo_root()
+
+    @active_project_globs
+    |> Enum.flat_map(fn
+      "." ->
+        ["."]
+
+      glob ->
+        root
+        |> Path.join(glob)
+        |> Path.wildcard()
+        |> Enum.filter(&File.dir?/1)
+        |> Enum.map(&Path.relative_to(&1, root))
+    end)
+  end
+
+  defp repo_root do
+    Path.expand("../../..", __DIR__)
   end
 
   defp normalize_module_name(module_string) do

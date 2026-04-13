@@ -85,10 +85,14 @@ defmodule Jido.Integration.Workspace.MixProject do
       "weld.release.prepare": [
         "weld.release.prepare build_support/weld.exs --artifact jido_integration"
       ],
+      "weld.release.track": [
+        "weld.release.track build_support/weld.exs --artifact jido_integration"
+      ],
       "weld.release.archive": [
         "weld.release.archive build_support/weld.exs --artifact jido_integration"
       ],
       "release.prepare": ["weld.release.prepare"],
+      "release.track": ["weld.release.track"],
       "release.publish.dry_run": ["jido_integration.release.publish --dry-run"],
       "release.publish": ["jido_integration.release.publish"],
       "release.archive": ["weld.release.archive"],

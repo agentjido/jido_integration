@@ -226,9 +226,10 @@ is generated from this repo through `weld`.
 The release path is explicit:
 
 1. `mix release.prepare`
-2. `mix release.publish.dry_run`
-3. `mix release.publish`
-4. `mix release.archive`
+2. `mix release.track`
+3. `mix release.publish.dry_run`
+4. `mix release.publish`
+5. `mix release.archive`
 
 `mix release.prepare` generates the welded package, runs the artifact quality
 lane, builds the tarball, and writes a durable release bundle under `dist/`.
@@ -239,6 +240,15 @@ bundle-local `mix format --check-formatted`,
 `mix ecto.migrate` when the published slice includes the Postgres durability
 tier.
 
+`mix release.track` updates the default orphan-backed
+`projection/jido_integration` branch from that prepared bundle so unreleased and
+pre-release welded snapshots can be pinned and exercised before Hex release.
+
+During local implementation and debugging, point the repo at a sibling Weld
+checkout with `WELD_PATH=../weld`. For shared pre-release validation, use
+`WELD_GIT_REF=<commit_sha>` and an optional `WELD_GIT_URL=<repo_url>`. The
+committed steady state should return to the released Hex dependency line.
+
 `mix release.publish` publishes from that prepared bundle snapshot rather than
 from the monorepo root. `mix release.archive` then preserves the prepared
 bundle in the archive tree so the exact released artifact remains inspectable.
@@ -246,8 +256,8 @@ bundle in the archive tree so the exact released artifact remains inspectable.
 The first published welded artifact intentionally ships the direct-runtime,
 webhook, async, durability, auth, and public-facade surface. The runtime-control-backed
 session and stream packages, plus lower-boundary bridge packages, stay
-source-repo packages until their external runtime dependencies become
-independently publishable.
+source-repo packages for now because they are intentionally excluded by the
+repo-local Weld contract rather than by an unresolved external package split.
 
 That source-only boundary is now explicit in the repo-local Weld contract. The
 published monolith can still run integrated tests that need source-only support

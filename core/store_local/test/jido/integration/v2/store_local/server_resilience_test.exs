@@ -9,10 +9,10 @@ defmodule Jido.Integration.V2.StoreLocal.ServerResilienceTest do
   test "startup recovers from an unsafe persisted state file" do
     path = StoreLocal.storage_path()
 
-    assert :ok == Application.stop(:jido_integration_v2_store_local)
+    assert :ok == Supervisor.terminate_child(StoreLocalApplication, Server)
     File.write!(path, <<131, 80, 0, 0, 0, 0>>)
 
-    assert {:ok, _pid} = StoreLocalApplication.start(:normal, [])
+    assert {:ok, _pid} = Supervisor.restart_child(StoreLocalApplication, Server)
     assert Server.snapshot() == State.new()
     assert :erlang.binary_to_term(File.read!(path), [:safe]) == State.new()
   end

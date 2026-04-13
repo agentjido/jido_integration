@@ -14,6 +14,9 @@ defmodule Jido.Integration.Docs.PublishingDocsTest do
       assert doc =~ "mix release.prepare",
              "#{path} must describe bundle preparation explicitly"
 
+      assert doc =~ "mix release.track",
+             "#{path} must describe projection tracking explicitly"
+
       assert doc =~ "mix release.publish",
              "#{path} must describe publish-from-bundle explicitly"
 

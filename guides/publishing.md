@@ -23,9 +23,9 @@ session and stream runtime slice for now:
 - `connectors/codex_cli`
 - `connectors/market_data`
 
-Those packages still depend on unpublished external runtime packages such as
-`jido_runtime_control`, so they remain source-repo packages until that publication
-boundary is resolved independently.
+Those packages remain source-only by explicit monorepo publication policy. They
+still participate in the source workspace and monolith test lane, but they are
+not part of the published unified artifact.
 
 The monolith test lane is allowed to use source-only support from that excluded
 slice, but the allowed support set is now explicit in the Weld manifest through
@@ -34,9 +34,10 @@ slice, but the allowed support set is now explicit in the Weld manifest through
 The release lifecycle is:
 
 1. `mix release.prepare`
-2. `mix release.publish.dry_run`
-3. `mix release.publish`
-4. `mix release.archive`
+2. `mix release.track`
+3. `mix release.publish.dry_run`
+4. `mix release.publish`
+5. `mix release.archive`
 
 `mix release.prepare` runs the welded-artifact verification lane, builds the
 exact package tarball, and writes the release bundle under `dist/`.
@@ -47,6 +48,18 @@ dist validation can continue there with the normal package gates:
 `mix docs --warnings-as-errors`, plus `mix ecto.create` and
 `mix ecto.migrate` when the published slice includes database-backed
 packages.
+
+`mix release.track` updates the default orphan-backed
+`projection/jido_integration` branch from the prepared bundle. That is the
+durable generated-source surface for unreleased and pre-release welded
+artifacts, and it gives downstream repos a real Git ref to pin before a Hex
+release exists.
+
+While implementing or debugging this release flow locally, point the repo at a
+sibling Weld checkout with `WELD_PATH=../weld`. For shared pre-release
+validation, use `WELD_GIT_REF=<commit_sha>` and optionally
+`WELD_GIT_URL=<repo_url>`. The committed steady state should return to the
+released Hex dependency line after the release is live.
 
 `mix release.publish` then runs `mix hex.publish` from the prepared bundle
 snapshot, not from the source repo root. That keeps the published artifact tied
@@ -76,8 +89,10 @@ tests.
 - `mix weld.project`
 - `mix weld.verify`
 - `mix weld.release.prepare`
+- `mix weld.release.track`
 - `mix weld.release.archive`
 - `mix release.prepare`
+- `mix release.track`
 - `mix release.publish.dry_run`
 - `mix release.publish`
 - `mix release.archive`

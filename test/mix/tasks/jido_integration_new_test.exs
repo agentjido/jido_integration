@@ -374,19 +374,16 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
   defp temp_workspace!(label) do
     root = TestTmpDir.create!("jido_integration_new_#{label}")
+    repo_root = repo_root()
     source_hex_home = Path.expand("~/.hex")
     hex_home = Path.join(root, ".hex")
 
     on_exit(fn -> TestTmpDir.cleanup!(root) end)
     File.mkdir_p!(Path.join(root, "connectors"))
 
-    File.ln_s!(
-      Path.join(Blitz.MixWorkspace.root_dir(), "build_support"),
-      Path.join(root, "build_support")
-    )
-
-    File.ln_s!(Path.join(Blitz.MixWorkspace.root_dir(), "core"), Path.join(root, "core"))
-    File.ln_s!(Path.join(Blitz.MixWorkspace.root_dir(), "mix.lock"), Path.join(root, "mix.lock"))
+    File.ln_s!(Path.join(repo_root, "build_support"), Path.join(root, "build_support"))
+    File.ln_s!(Path.join(repo_root, "core"), Path.join(root, "core"))
+    File.ln_s!(Path.join(repo_root, "mix.lock"), Path.join(root, "mix.lock"))
     File.mkdir_p!(hex_home)
 
     if File.exists?(Path.join(source_hex_home, "cache.ets")) do
@@ -411,7 +408,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       end
 
     mix_command = Toolchain.mix_executable()
-    repo_root = Blitz.MixWorkspace.root_dir()
+    repo_root = repo_root()
     mix_env = mix_env_for(args)
     build_path = scaffold_build_path(repo_root, mix_env)
     hex_home = scaffold_hex_home(repo_root)
@@ -547,6 +544,10 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
   defp removed_session_bridge_id, do: removed_bridge_id("session")
   defp removed_stream_bridge_id, do: removed_bridge_id("stream")
+
+  defp repo_root do
+    Path.expand("../../..", __DIR__)
+  end
 
   defp removed_bridge_id(kind) do
     ["integration", kind, "bridge"]
