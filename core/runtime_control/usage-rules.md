@@ -1,20 +1,25 @@
 # Jido.RuntimeControl Usage Rules
 
 ## Scope
-- `jido_runtime_control` is a normalization layer for CLI coding-agent adapters.
-- Keep it transport-agnostic and provider-neutral.
-- Do not add provider-specific execution logic here.
+
+- `jido_runtime_control` is the shared Session Control seam for runtime drivers.
+- Keep it runtime-driver-focused and transport-agnostic.
+- Do not add platform orchestration or connector-specific logic here.
 
 ## Public API
+
 - Keep the facade in `Jido.RuntimeControl` small and stable.
-- Validate external inputs through schema modules.
-- Return normalized `%Jido.RuntimeControl.Event{}` streams.
+- Validate external inputs through the public IR schema modules.
+- Return `ExecutionEvent`, `ExecutionResult`, `ExecutionStatus`, and related
+  Session Control structs rather than package-private shapes.
 
 ## Error Handling
+
 - Use `Jido.RuntimeControl.Error` helpers for external-facing failures.
-- Preserve provider errors in `details` where possible.
+- Prefer structured runtime-driver errors over broad fallback tuples.
 
 ## Testing
-- Prefer deterministic adapter stubs for unit tests.
-- Keep coverage above the configured threshold.
-- Run `mix quality` before release.
+
+- Prefer deterministic runtime-driver stubs for unit tests.
+- Keep the contract surface covered through `RuntimeDriverContract`.
+- Finish with the root `mix ci` gate.

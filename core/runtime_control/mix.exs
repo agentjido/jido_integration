@@ -5,8 +5,6 @@ end
 defmodule Jido.RuntimeControl.MixProject do
   use Mix.Project
 
-  alias Jido.Integration.Build.DependencyResolver
-
   @version "0.1.0"
 
   def project do
@@ -42,8 +40,6 @@ defmodule Jido.RuntimeControl.MixProject do
       {:jido, "~> 2.2"},
       {:jido_action, "~> 2.2"},
       {:jido_signal, "~> 2.1"},
-      DependencyResolver.jido_shell(override: true),
-      DependencyResolver.sprites(override: true),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
@@ -60,7 +56,6 @@ defmodule Jido.RuntimeControl.MixProject do
       extras: [
         "README.md",
         "docs/execution_plane_alignment.md",
-        "docs/telemetry.md",
         "docs/dependency_policy.md",
         "../../guides/runtime_model.md",
         "../../guides/architecture.md"
@@ -73,7 +68,6 @@ defmodule Jido.RuntimeControl.MixProject do
         ],
         Internals: [
           "docs/execution_plane_alignment.md",
-          "docs/telemetry.md",
           "docs/dependency_policy.md"
         ]
       ]

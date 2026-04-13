@@ -50,15 +50,6 @@ defmodule Jido.RuntimeControl.Error do
     defexception [:message, :field, :value, :details]
   end
 
-  defmodule ProviderNotFoundError do
-    @moduledoc "Error when a provider is not registered."
-    @type t :: %__MODULE__{
-            message: String.t() | nil,
-            provider: atom() | nil
-          }
-    defexception [:message, :provider]
-  end
-
   defmodule RuntimeDriverNotFoundError do
     @moduledoc "Error when a runtime driver is not registered."
     @type t :: %__MODULE__{

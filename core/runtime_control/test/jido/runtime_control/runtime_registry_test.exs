@@ -2,7 +2,7 @@ defmodule Jido.RuntimeControl.RuntimeRegistryTest do
   use ExUnit.Case, async: false
 
   alias Jido.RuntimeControl.RuntimeRegistry
-  alias Jido.RuntimeControl.Test.RuntimeDriverStub
+  alias Jido.RuntimeControl.Test.{InvalidRuntimeDriverStub, RuntimeDriverStub}
 
   setup do
     old_runtime_drivers = Application.get_env(:jido_runtime_control, :runtime_drivers)
@@ -35,7 +35,7 @@ defmodule Jido.RuntimeControl.RuntimeRegistryTest do
   test "diagnostics/0 reports accepted and rejected configured runtime drivers" do
     Application.put_env(:jido_runtime_control, :runtime_drivers, %{
       stub_runtime: RuntimeDriverStub,
-      broken: Jido.RuntimeControl.Test.AdapterStub
+      broken: InvalidRuntimeDriverStub
     })
 
     diagnostics = RuntimeRegistry.diagnostics()
@@ -44,17 +44,13 @@ defmodule Jido.RuntimeControl.RuntimeRegistryTest do
     assert diagnostics.configured.stub_runtime.status == :accepted
     assert diagnostics.configured.broken.status == :rejected
 
-    assert diagnostics.configured.broken.reason ==
-             {:missing_callbacks,
-              [
-                runtime_id: 0,
-                runtime_descriptor: 1,
-                start_session: 1,
-                stop_session: 1,
-                stream_run: 3,
-                cancel_run: 2,
-                session_status: 1
-              ]}
+    assert {:missing_callbacks, missing} = diagnostics.configured.broken.reason
+    assert {:runtime_descriptor, 1} in missing
+    assert {:start_session, 1} in missing
+    assert {:stop_session, 1} in missing
+    assert {:stream_run, 3} in missing
+    assert {:cancel_run, 2} in missing
+    assert {:session_status, 1} in missing
   end
 
   test "lookup/1 returns runtime-driver not found errors for missing runtime drivers" do

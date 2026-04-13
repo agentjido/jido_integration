@@ -5,7 +5,6 @@ defmodule Jido.RuntimeControl.Runtime do
 
   alias Jido.RuntimeControl.{
     Error,
-    Event,
     ExecutionEvent,
     ExecutionResult,
     ExecutionStatus,
@@ -127,33 +126,6 @@ defmodule Jido.RuntimeControl.Runtime do
          module: inspect(module),
          error: Exception.message(error)
        })}
-  end
-
-  @doc "Runs a streaming runtime driver and maps runtime events back to legacy event structs."
-  @spec stream_legacy_events(module(), RunRequest.t(), keyword()) ::
-          {:ok, Enumerable.t(Event.t())} | {:error, term()}
-  def stream_legacy_events(module, %RunRequest{} = request, opts \\ []) when is_atom(module) do
-    with {:ok, %SessionHandle{} = session} <- start_runtime_session(module, request, opts) do
-      case stream_run(module, session, request, opts) do
-        {:ok, _run, stream} ->
-          {:ok,
-           Stream.transform(
-             stream,
-             fn -> session end,
-             fn %ExecutionEvent{} = event, session_handle ->
-               {[to_legacy_event!(event)], session_handle}
-             end,
-             fn session_handle ->
-               _ = safe_stop_session(module, session_handle)
-               []
-             end
-           )}
-
-        {:error, _} = error ->
-          _ = safe_stop_session(module, session)
-          error
-      end
-    end
   end
 
   @doc "Runs a runtime driver to completion against an existing session."
@@ -333,17 +305,6 @@ defmodule Jido.RuntimeControl.Runtime do
   defp ensure_execution_event!(other) do
     raise ArgumentError,
           "Runtime driver stream must emit %Jido.RuntimeControl.ExecutionEvent{} values, got: #{inspect(other)}"
-  end
-
-  defp to_legacy_event!(%ExecutionEvent{} = event) do
-    Event.new!(%{
-      type: event.type,
-      provider: event.provider || :unknown,
-      session_id: event.session_id,
-      timestamp: event.timestamp,
-      payload: event.payload,
-      raw: event.raw
-    })
   end
 
   defp safe_stop_session(module, %SessionHandle{} = session) do

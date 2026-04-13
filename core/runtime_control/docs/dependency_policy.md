@@ -1,7 +1,6 @@
-# Jido Ecosystem Dependency Policy
+# Jido Runtime Control Dependency Policy
 
-This policy governs `jido_runtime_control` in `core/runtime_control` and its
-external provider/runtime dependencies during consolidation.
+This policy governs `jido_runtime_control` in `core/runtime_control`.
 
 ## Boundary Direction
 
@@ -9,13 +8,14 @@ For the Session Control surface, the dependency direction is:
 
 - integration/composition packages may depend on `jido_runtime_control`
 - runtime kernels may implement `Jido.RuntimeControl.RuntimeDriver`
-- external kernels must not own permanent Runtime Control projection code
+- bridge packages may project lower-boundary systems into that driver contract
 
 In practice that means:
 
-- provider adapters remain a legacy compatibility surface under `:providers`
-- Session Control runtime drivers register under `:runtime_drivers`
-- kernel-private refs such as pids and monitor refs must stay out of the public IR
+- `core/runtime_control` owns the shared IR and runtime-driver behaviour
+- concrete runtime packages register under `:runtime_drivers`
+- kernel-private refs such as pids and monitor refs must stay out of the public
+  IR
 
 ## Baseline Versions
 
@@ -24,50 +24,31 @@ In practice that means:
 - Zoi: `~> 0.17`
 - Splode: `~> 0.3.0`
 
-## Local Path And Git Fallbacks
+## Monorepo Posture
 
-Default dependency resolution is:
+Inside `jido_integration`, keep `core/runtime_control` aligned with the root
+monorepo workflow:
 
-- keep `core/runtime_control` workspace-local inside `jido_integration`
-- for external Jido repos, prefer sibling-relative `path:` dependencies during
-  active local development
-- otherwise fall back to exact pinned git `ref:` dependencies
+- validate from the repo root
+- prefer internal child-package dependencies over ad hoc local path workflows
+- keep package boundaries explicit for runtime drivers and runtime bridges
 
-This keeps local development convenient without making builds depend on live
-branches or committed vendored `deps/` trees.
+## External Dependencies
 
-## Git/Branch Dependencies
+Use direct external dependencies only when they materially support the retained
+runtime-driver seam.
 
-Use a git/branch dependency only when one of the following is true:
+When temporary git or override dependencies are required:
 
-- a required upstream fix is not yet published to Hex
-- coordinated multi-repo migration requires same-day, unreleased changes
-- temporary lockstep development is required for release-train validation
-
-When using git/branch dependencies:
-
-- document why in the PR/commit message
+- document why in the commit or PR
 - prefer the narrowest affected package set
-- remove as soon as a compatible Hex release exists
-- do not use a floating branch as the default fallback when an exact `ref:`
-  will do
-
-## `override: true` Usage
-
-`override: true` is allowed only for conflict resolution when:
-
-- multiple transitive versions break compile/runtime contracts, or
-- local path/git lockstep is required during migration.
-
-For each override, keep a removal condition:
-
-- specific package/version to upgrade to, and
-- verification target (`mix deps.tree`, compile, test, quality).
+- remove them as soon as a compatible Hex release exists
+- verify removal with compile, test, and the root quality gates
 
 ## Removal Criteria
 
-A temporary git/branch/override dependency should be removed once:
+A temporary dependency exception should be removed once:
 
 1. A compatible Hex release is available.
 2. All dependent repos compile and test against the released version.
-3. No contract regressions are observed in adapter contract tests and bot E2E smoke tests.
+3. No regressions appear in runtime-driver contract tests or root `mix ci`.

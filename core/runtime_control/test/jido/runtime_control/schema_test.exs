@@ -1,7 +1,7 @@
 defmodule Jido.RuntimeControl.SchemaTest do
   use ExUnit.Case, async: true
 
-  alias Jido.RuntimeControl.{Error, Event, Provider, RunRequest, RuntimeContract}
+  alias Jido.RuntimeControl.{Error, RunRequest}
 
   test "run_request schema constructors validate inputs" do
     assert is_struct(RunRequest.schema())
@@ -11,58 +11,11 @@ defmodule Jido.RuntimeControl.SchemaTest do
     assert_raise ArgumentError, ~r/Invalid Jido.RuntimeControl.RunRequest/, fn -> RunRequest.new!(%{}) end
   end
 
-  test "event schema constructors validate inputs" do
-    assert is_struct(Event.schema())
-
-    assert {:ok, %Event{type: :session_started}} =
-             Event.new(%{
-               type: :session_started,
-               provider: :codex,
-               timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
-             })
-
-    assert %Event{type: :session_started} =
-             Event.new!(%{
-               type: :session_started,
-               provider: :codex,
-               timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
-             })
-
-    assert {:error, _} = Event.new(%{})
-    assert_raise ArgumentError, ~r/Invalid Jido.RuntimeControl.Event/, fn -> Event.new!(%{}) end
-  end
-
-  test "provider schema constructors validate inputs" do
-    assert is_struct(Provider.schema())
-    assert {:ok, %Provider{id: :codex}} = Provider.new(%{id: :codex, name: "Codex"})
-    assert %Provider{id: :codex} = Provider.new!(%{id: :codex, name: "Codex"})
-    assert {:error, _} = Provider.new(%{name: "Missing ID"})
-    assert_raise ArgumentError, ~r/Invalid Jido.RuntimeControl.Provider/, fn -> Provider.new!(%{name: "Missing ID"}) end
-  end
-
-  test "runtime_contract schema constructors validate inputs" do
-    assert is_struct(RuntimeContract.schema())
-
-    assert {:ok, %RuntimeContract{provider: :claude}} =
-             RuntimeContract.new(%{provider: :claude})
-
-    assert %RuntimeContract{provider: :codex} =
-             RuntimeContract.new!(%{
-               provider: :codex,
-               runtime_tools_required: ["codex"]
-             })
-
-    assert {:error, _} = RuntimeContract.new(%{})
-
-    assert_raise ArgumentError, ~r/Invalid Jido.RuntimeControl.RuntimeContract/, fn ->
-      RuntimeContract.new!(%{})
-    end
-  end
-
   test "error helper constructors build typed exceptions" do
-    assert %Error.InvalidInputError{field: :provider} = Error.validation_error("bad provider", %{field: :provider})
+    assert %Error.InvalidInputError{field: :runtime_id} =
+             Error.validation_error("bad runtime id", %{field: :runtime_id})
 
-    assert %Error.ExecutionFailureError{details: %{provider: :codex}} =
-             Error.execution_error("boom", %{provider: :codex})
+    assert %Error.ExecutionFailureError{details: %{runtime_id: :asm}} =
+             Error.execution_error("boom", %{runtime_id: :asm})
   end
 end
