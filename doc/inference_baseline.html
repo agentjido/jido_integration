@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="jido_integration v0.1.0">
+
+
+    <title>Inference Baseline — jido_integration v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ECCB626C.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+jido_integration
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of jido_integration</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>Inference Baseline</h1>
+
+<a href="inference_baseline.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+  </div>
+
+
+<p>Phase 1 turns the inference baseline into the first live <code class="inline">:inference</code> runtime
+family.</p><h2 id="what-landed" class="section-heading"><a href="#what-landed" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">What Landed</span></h2><p>Shared contracts now live in <code class="inline">core/contracts</code>:</p><ul><li><code class="inline">InferenceRequest</code></li><li><code class="inline">InferenceExecutionContext</code></li><li><code class="inline">EndpointDescriptor</code></li><li><code class="inline">BackendManifest</code></li><li><code class="inline">ConsumerManifest</code></li><li><code class="inline">CompatibilityResult</code></li><li><code class="inline">InferenceResult</code></li><li><code class="inline">LeaseRef</code></li></ul><p><code class="inline">TargetDescriptor</code> remains the shared durable target advertisement contract.
+Inference reuses it directly instead of introducing a parallel durable target
+shape.</p><p>Each inference contract <code class="inline">dump/1</code> now emits a string-keyed JSON-safe map so the
+cross-repo durable form is explicit instead of inferred from Elixir structs.</p><h2 id="live-execution-path" class="section-heading"><a href="#live-execution-path" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Live Execution Path</span></h2><p><code class="inline">core/control_plane</code> now owns the first end-to-end inference adapter.</p><p>It:</p><ul><li>builds <code class="inline">InferenceExecutionContext</code> and <code class="inline">ConsumerManifest</code></li><li>builds a local <code class="inline">ReqLLMCallSpec</code> from <code class="inline">InferenceRequest</code>,
+<code class="inline">InferenceExecutionContext</code>, and either cloud route data or an
+<code class="inline">EndpointDescriptor</code></li><li>executes cloud provider calls through <code class="inline">req_llm</code></li><li>resolves CLI endpoint descriptors through <a href="https://hexdocs.pm/agent_session_manager/0.9.2/ASM.InferenceEndpoint.html"><code class="inline">ASM.InferenceEndpoint</code></a></li><li>executes those CLI endpoint routes through <code class="inline">req_llm</code></li><li>resolves self-hosted endpoints through <code class="inline">self_hosted_inference_core</code></li><li>executes those self-hosted OpenAI-compatible endpoints through <code class="inline">req_llm</code></li></ul><p>The self-hosted lane now proves both ownership shapes:</p><ul><li>spawned: <code class="inline">llama_cpp_sdk</code></li><li>attached existing service: built-in <code class="inline">ollama</code></li></ul><p>This keeps the client layer singular while keeping service-runtime ownership
+below the control plane.</p><p>For Wave 7, that also means:</p><ul><li>lower spawned-service mechanics run on <code class="inline">execution_plane</code></li><li>service-runtime readiness, health, lease reuse, and attachability stay in
+<code class="inline">self_hosted_inference_core</code></li><li>durable descriptor and lease lineage stay in Spine-owned review and route
+truth rather than in raw process state</li></ul><h2 id="durable-control-plane-truth" class="section-heading"><a href="#durable-control-plane-truth" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Durable Control-Plane Truth</span></h2><p><code class="inline">core/control_plane</code> now records the minimum inference attempt truth:</p><ul><li>admitted request identity</li><li>compatibility outcome</li><li>resolved endpoint summary</li><li>optional stream lifecycle summaries</li><li>terminal result</li><li>usage and finish metadata when available</li></ul><p>The minimum durable event set is:</p><ul><li><code class="inline">inference.request_admitted</code></li><li><code class="inline">inference.attempt_started</code></li><li><code class="inline">inference.compatibility_evaluated</code></li><li><code class="inline">inference.target_resolved</code></li><li><code class="inline">inference.stream_opened</code></li><li><code class="inline">inference.stream_checkpoint</code></li><li><code class="inline">inference.stream_closed</code></li><li>one of <code class="inline">inference.attempt_completed</code>, <code class="inline">inference.attempt_failed</code>, or
+<code class="inline">inference.attempt_cancelled</code></li></ul><p>For streaming attempts, <code class="inline">checkpoint_policy</code> is admitted through
+<code class="inline">InferenceExecutionContext.streaming_policy</code> and enforced when the durable
+stream lifecycle summary is recorded.</p><h2 id="review-behavior" class="section-heading"><a href="#review-behavior" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Review Behavior</span></h2><p><code class="inline">core/platform</code> now projects live inference runs through <code class="inline">review_packet/2</code> even
+when no connector manifest has been registered for the inference surface.
+The projection synthesizes an inference connector and capability summary from
+durable run and attempt truth.</p><p>The repo still keeps <code class="inline">Run.runtime_class</code> and <code class="inline">Attempt.runtime_class</code> on the
+existing
+<code class="inline">[:direct, :session, :stream]</code> contract spine for compatibility with the rest
+of the repo. The inference-specific classification is exposed through the
+projected review metadata as <code class="inline">runtime.family: :inference</code>.</p><h2 id="proof-surface" class="section-heading"><a href="#proof-surface" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Proof Surface</span></h2><p>The landed proof surface is now split between package-local examples and an
+app-level proof app:</p><ul><li><code class="inline">core/contracts/test/jido/integration/v2/inference_contracts_test.exs</code></li><li><code class="inline">core/contracts/examples/inference_contract_round_trip.exs</code></li><li><code class="inline">core/control_plane/test/jido/integration/v2/control_plane_inference_test.exs</code></li><li><code class="inline">core/control_plane/test/jido/integration/v2/control_plane_inference_execution_test.exs</code></li><li><code class="inline">core/control_plane/examples/inference_event_baseline.exs</code></li><li><code class="inline">core/control_plane/examples/inference_cli_endpoint_baseline.exs</code></li><li><code class="inline">core/platform/test/jido/integration/v2_inference_review_packet_test.exs</code></li><li><code class="inline">core/platform/test/jido/integration/v2_inference_invoke_test.exs</code></li><li><code class="inline">core/platform/examples/inference_review_packet.exs</code></li><li><code class="inline">apps/inference_ops</code></li></ul><p>The cloud lane stays offline with <a href="https://hexdocs.pm/req/0.5.17/Req.Test.html"><code class="inline">Req.Test</code></a> fixtures. The CLI lane stays
+offline with a fake ASM backend under the real endpoint-publication seam, with
+Gemini as the preferred first common-surface proof provider. The spawned
+self-hosted lane uses <code class="inline">llama_cpp_sdk</code> and the shared fake <code class="inline">llama-server</code>
+fixture so the northbound endpoint contract remains honest without requiring a
+real model download. The attached-local lane proves the same northbound route
+through the built-in <code class="inline">ollama</code> adapter, with offline stubs in tests and a real
+Ollama-backed example in <code class="inline">apps/inference_ops/examples/ollama_attach_proof.exs</code>.</p><h2 id="deliberate-non-goals" class="section-heading"><a href="#deliberate-non-goals" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Deliberate Non-Goals</span></h2><p>This phase still does not require:</p><ul><li>a live <code class="inline">jido_os</code> dependency</li><li>a separate shared <code class="inline">ReqLLMCallSpec</code> contract repo</li><li>turning <code class="inline">req_llm</code> into a runtime manager or policy engine</li></ul><p><code class="inline">ReqLLMCallSpec</code> stays local to <code class="inline">jido_integration</code> adapter code. It is not a
+durable shared cross-repo contract.</p>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="index.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+Jido Integration Guides
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="observability.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+Observability
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/jido_integration/0.1.0">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/jido_integration/0.1.0">Hex Preview</a>
+
+                (<a href="https://preview.hex.pm/preview/jido_integration/0.1.0/show/guides/inference_baseline.md">current file</a>)
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="jido_integration.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

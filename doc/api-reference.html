@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="jido_integration v0.1.0">
+
+
+    <title>API Reference — jido_integration v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ECCB626C.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+jido_integration
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of jido_integration</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>API Reference <small class="app-vsn">jido_integration v#0.1.0</small></h1>
+<a href="api-reference.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+  </div>
+
+    <section class="details-list">
+      <h2 id="modules" class="section-heading">Modules</h2>
+      <div class="summary">
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.html" translate="no">Jido.<wbr>Integration.<wbr>V2</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Public facade package for the greenfield <code class="inline">jido_integration_v2</code> platform.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ArtifactRef.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ArtifactRef</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Stable public reference to a run artifact.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.AttachGrant.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>AttachGrant</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable lower-truth grant allowing a route or consumer to attach to a boundary session.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Attempt.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Attempt</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>One concrete execution attempt of a run.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Auth.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Auth</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable connection/install truth plus short-lived credential leases.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Auth.Connection.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Auth.<wbr>Connection</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable connection truth owned by <code class="inline">auth</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Auth.ConnectionStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Auth.<wbr>ConnectionStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable connection-truth behaviour owned by <code class="inline">auth</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Auth.CredentialStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Auth.<wbr>CredentialStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable credential-truth behaviour owned by <code class="inline">auth</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Auth.Install.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Auth.<wbr>Install</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable install-session truth owned by <code class="inline">auth</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Auth.InstallStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Auth.<wbr>InstallStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable install-session behaviour owned by <code class="inline">auth</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Auth.LeaseRecord.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Auth.<wbr>LeaseRecord</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable lease metadata. Secret payload is reconstructed from credential truth.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Auth.LeaseStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Auth.<wbr>LeaseStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable credential-lease behaviour owned by <code class="inline">auth</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.AuthSpec.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>AuthSpec</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Authored auth contract for a connector manifest.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.AuthorityAuditEnvelope.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>AuthorityAuditEnvelope</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Spine-owned machine-readable authority audit payload derived from the Brain packet.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.BackendManifest.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>BackendManifest</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Declares what a runtime backend can expose to the inference control plane.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.BoundaryCapability.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>BoundaryCapability</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Typed boundary capability advertisement for target descriptors.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.BoundarySession.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>BoundarySession</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable lower-truth record for one boundary session lineage.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.BrainIngress.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>BrainIngress</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable Brain-to-Spine invocation intake.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.BrainIngress.ScopeResolver.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>BrainIngress.<wbr>ScopeResolver</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Resolves logical workspace references into concrete runtime paths.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.BrainIngress.StaticScopeResolver.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>BrainIngress.<wbr>StaticScopeResolver</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Minimal same-node resolver for logical workspace references.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.BrainIngress.SubmissionLedger.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>BrainIngress.<wbr>SubmissionLedger</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable acceptance ledger for Brain submissions.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.BrainInvocation.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>BrainInvocation</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable Brain-to-Spine invocation handoff packet.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.CanonicalJson.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>CanonicalJson</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Spine-owned canonical JSON normalization and RFC 8785 / JCS encoding helpers.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Capability.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Capability</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Derived executable projection used by the control plane.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.CatalogSpec.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>CatalogSpec</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Authored catalog metadata for a connector manifest.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.CompatibilityResult.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>CompatibilityResult</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Typed compatibility outcome for an admitted inference route.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Connector.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Connector</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Behaviour for connector packages that publish manifests.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Connectors.GitHub.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Connectors.<wbr>GitHub</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Thin direct GitHub connector package backed by <code class="inline">github_ex</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Connectors.Linear.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Connectors.<wbr>Linear</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Thin direct Linear connector package backed by <code class="inline">linear_sdk</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Connectors.Notion.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Connectors.<wbr>Notion</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Thin direct Notion connector package backed by <code class="inline">notion_sdk</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ConsumerManifest.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ConsumerManifest</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Declares what an inference consumer can accept from a runtime route.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ConsumerProjection.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ConsumerProjection</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Shared projection rules for generated consumer surfaces built from authored
+manifests.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ConsumerProjection.ActionProjection.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ConsumerProjection.<wbr>ActionProjection</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Projected metadata for a generated <a href="https://hexdocs.pm/jido_action/2.2.1/Jido.Action.html"><code class="inline">Jido.Action</code></a> surface.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ConsumerProjection.PluginProjection.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ConsumerProjection.<wbr>PluginProjection</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Projected metadata for a generated <a href="https://hexdocs.pm/jido/2.2.0/Jido.Plugin.html"><code class="inline">Jido.Plugin</code></a> bundle.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ConsumerProjection.SensorProjection.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ConsumerProjection.<wbr>SensorProjection</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Projected metadata for a generated <a href="https://hexdocs.pm/jido/2.2.0/Jido.Sensor.html"><code class="inline">Jido.Sensor</code></a> surface.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Contracts.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Contracts</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Shared public types and validation helpers for the greenfield integration platform.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ControlPlane.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ControlPlane</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Connector registry plus canonical run/attempt/event ledger.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ControlPlane.ArtifactStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ControlPlane.<wbr>ArtifactStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable artifact-reference truth owned by <code class="inline">control_plane</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ControlPlane.AttemptStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ControlPlane.<wbr>AttemptStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable attempt-truth behaviour owned by <code class="inline">control_plane</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ControlPlane.EventStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ControlPlane.<wbr>EventStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable append-only event-ledger behaviour owned by <code class="inline">control_plane</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ControlPlane.IngressStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ControlPlane.<wbr>IngressStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable ingress-truth behaviour owned by <code class="inline">control_plane</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ControlPlane.RunStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ControlPlane.<wbr>RunStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable run-truth behaviour owned by <code class="inline">control_plane</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ControlPlane.TargetStore.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ControlPlane.<wbr>TargetStore</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable target-descriptor truth owned by <code class="inline">control_plane</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Credential.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Credential</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Resolved credential owned by the control plane.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.CredentialLease.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>CredentialLease</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Short-lived execution material derived from a durable <code class="inline">CredentialRef</code>.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.CredentialRef.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>CredentialRef</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Opaque control-plane-owned credential handle.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.DerivedStateAttachment.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>DerivedStateAttachment</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Canonical attachment contract for higher-order derived state.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.DirectRuntime.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>DirectRuntime</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Executes direct capabilities through <a href="https://hexdocs.pm/jido_action/2.2.1/Jido.Action.html"><code class="inline">Jido.Action</code></a> modules.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.DispatchRuntime.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>DispatchRuntime</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Async trigger dispatch runtime with durable transport-state recovery.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.DispatchRuntime.Dispatch.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>DispatchRuntime.<wbr>Dispatch</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable transport-state record for async trigger execution.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.DispatchRuntime.Handler.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>DispatchRuntime.<wbr>Handler</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Host-controlled trigger handler registration for async dispatch execution.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.DispatchRuntime.Telemetry.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>DispatchRuntime.<wbr>Telemetry</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Package-owned <code class="inline">:telemetry</code> surface for async dispatch lifecycle observation.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.EndpointDescriptor.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>EndpointDescriptor</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Execution-ready resolved inference endpoint for one attempt or lease.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Event.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Event</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Canonical append-only event for run and attempt observation.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.EvidenceRef.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>EvidenceRef</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Stable reference to a source record backing a packet, decision, or interpretation.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ExecutionGovernanceProjection.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ExecutionGovernanceProjection</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Spine-owned machine-readable governance projection carried in Brain submissions.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ExecutionGovernanceProjection.Compiler.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ExecutionGovernanceProjection.<wbr>Compiler</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Compiles Spine-owned governance projections into operational shadow sections.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ExecutionGovernanceProjection.Verifier.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ExecutionGovernanceProjection.<wbr>Verifier</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Verifies that supplied operational shadow sections still match the Spine compiler.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ExecutionRoute.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ExecutionRoute</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable lower-truth record for a committed execution route.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ExecutionRouter.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ExecutionRouter</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Stable runtime-family routing seam for the control plane.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Gateway.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Gateway</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Canonical gateway input for pre-dispatch admission and in-run execution policy.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Gateway.Policy.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Gateway.<wbr>Policy</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Normalized capability policy contract for gateway admission and execution.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.GeneratedAction.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>GeneratedAction</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Macro for generating a <a href="https://hexdocs.pm/jido_action/2.2.1/Jido.Action.html"><code class="inline">Jido.Action</code></a> from an authored operation spec.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.GeneratedPlugin.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>GeneratedPlugin</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Macro for generating a connector-level <a href="https://hexdocs.pm/jido/2.2.0/Jido.Plugin.html"><code class="inline">Jido.Plugin</code></a> bundle from authored
+manifest truth.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.GeneratedSensor.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>GeneratedSensor</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Macro for generating a <a href="https://hexdocs.pm/jido/2.2.0/Jido.Sensor.html"><code class="inline">Jido.Sensor</code></a> from an authored trigger spec.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.GovernanceRef.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>GovernanceRef</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Stable reference to governance lineage such as approval, denial, override, rollback, or policy decisions.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.InferenceExecutionContext.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>InferenceExecutionContext</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Control-plane context attached to an admitted inference attempt.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.InferenceRequest.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>InferenceRequest</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Normalized admitted inference intent before target resolution.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.InferenceResult.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>InferenceResult</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Canonical terminal inference outcome projected by the control plane.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Ingress.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Ingress</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Normalizes webhook and polling triggers into durable control-plane truth.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Ingress.Definition.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Ingress.<wbr>Definition</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Ingress-side trigger definition used to normalize webhook and polling inputs.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.InvocationRequest.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>InvocationRequest</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Typed public request for capability invocation through the v2 facade.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.LeaseRef.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>LeaseRef</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable reference to a reusable runtime lease or endpoint instance.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Manifest.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Manifest</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Connector-level authored contract plus derived executable projection.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.OperationSpec.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>OperationSpec</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Authored operation contract for a connector manifest.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Operator.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Operator</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Shared read-only operator surface over durable auth and control-plane truth.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Policy.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Policy</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Admission and execution governor for capability invocation.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Policy.RespectPressure.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Policy.<wbr>RespectPressure</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Translates host-supplied pressure snapshots into a shed-only admission verdict.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Policy.Rule.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Policy.<wbr>Rule</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Behaviour for admission rules.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.PolicyDecision.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>PolicyDecision</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Captures the control-plane admission decision for a run.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Receipt.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Receipt</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable lower-truth acknowledgement or completion receipt.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.RecoveryTask.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>RecoveryTask</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable lower-truth recovery or reconciliation task.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Redaction.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Redaction</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Recursive redaction for audit-visible durable truth.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ReviewBundle.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ReviewBundle</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Operator-facing lower-truth review bundle usable by northbound surfaces.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.ReviewProjection.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>ReviewProjection</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Contracts-only northbound review projection carried in review packet metadata.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.Run.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Run</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable record of requested work.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.RuntimeResult.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>RuntimeResult</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Shared runtime emission envelope for direct, session, and stream execution.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.StoreLocal.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>StoreLocal</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Local durable adapter package for auth and control-plane store behaviours.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.StorePostgres.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>StorePostgres</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Postgres durability package owning the Repo, migrations, and SQL sandbox posture.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.StorePostgres.Repo.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>StorePostgres.<wbr>Repo</a>
+
+  </div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.SubjectRef.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>SubjectRef</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Stable reference to the primary node-local subject a higher-order record is about.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.SubmissionAcceptance.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>SubmissionAcceptance</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable Spine acceptance receipt for a Brain submission.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.SubmissionIdentity.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>SubmissionIdentity</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Spine-owned stable identity for a durable Brain submission.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.SubmissionRejection.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>SubmissionRejection</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Typed Spine rejection for a Brain submission.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.TargetDescriptor.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>TargetDescriptor</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Stable public descriptor for an execution target.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.TriggerCheckpoint.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>TriggerCheckpoint</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable checkpoint for polling-style trigger progression.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.TriggerRecord.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>TriggerRecord</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable trigger admission or rejection record owned by the control plane.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.TriggerSpec.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>TriggerSpec</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Authored trigger contract for a connector manifest.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.WebhookRouter.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>WebhookRouter</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Hosted webhook route registry plus ingress and dispatch bridging.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.WebhookRouter.Route.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>WebhookRouter.<wbr>Route</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Durable hosted-webhook route metadata.</p></div>
+
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="Jido.Integration.V2.WebhookRouter.Telemetry.html" translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>WebhookRouter.<wbr>Telemetry</a>
+
+  </div>
+
+    <div class="summary-synopsis"><p>Package-owned <code class="inline">:telemetry</code> surface for hosted webhook route resolution.</p></div>
+
+</div>
+
+      </div>
+    </section>
+
+
+</div>
+    <footer class="footer">
+
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/jido_integration/0.1.0">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/jido_integration/0.1.0">Hex Preview</a>
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="jido_integration.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

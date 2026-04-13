@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="jido_integration v0.1.0">
+
+
+    <title>Jido Integration — jido_integration v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ECCB626C.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+jido_integration
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of jido_integration</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>Jido Integration</h1>
+
+<a href="readme.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+  </div>
+
+
+<p>Jido Integration is an Elixir integration platform for publishing connector
+capabilities, managing auth lifecycle, invoking work across direct and
+runtime-control-backed runtimes, and reviewing durable execution state.</p><p>This repository includes the public platform facade, bridge packages,
+connector packages, durability tiers, and app-level proofs for hosted webhook
+and async flows. If you are evaluating or using the platform, start here. If
+you are changing the internals of the monorepo itself, use <code class="inline">docs/</code>,
+package-local READMEs, and app-local runbooks in <code class="inline">apps/*/README.md</code>.</p><p>Connector packages that depend on external SDK or runtime repos should prefer
+sibling-relative paths during active local development and fall back to pinned
+git refs otherwise. They should not rely on connector-local vendored <code class="inline">deps/</code>
+trees for runtime dependency sourcing.</p><h2 id="start-here" class="section-heading"><a href="#start-here" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Start Here</span></h2><ul><li>read <a href="architecture.html">Architecture</a> for the platform shape and
+package responsibilities</li><li>read <a href="execution_plane_alignment.html">Execution Plane Alignment</a> for
+the frozen lower-boundary contract packet and carriage rules</li><li>read <a href="runtime_model.html">Runtime Model</a> to choose between direct,
+session, stream, and inference execution</li><li>read <a href="inference_baseline.html">Inference Baseline</a> for the first live
+inference runtime family, durable event set, and proof flow</li><li>read <a href="durability.html">Durability</a> before selecting in-memory,
+local-file, or Postgres-backed state</li><li>read <a href="publishing.html">Publishing</a> for the welded package release flow</li><li>use <code class="inline">apps/*/README.md</code> for proof-app runbooks and host-level proof flows</li></ul><h2 id="documentation" class="section-heading"><a href="#documentation" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Documentation</span></h2><h3 id="general" class="section-heading"><a href="#general" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">General</span></h3><ul><li><a href="index.html">Guide Index</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="execution_plane_alignment.html">Execution Plane Alignment</a></li><li><a href="runtime_model.html">Runtime Model</a></li><li><a href="inference_baseline.html">Inference Baseline</a></li><li><a href="durability.html">Durability</a></li><li><a href="connector_lifecycle.html">Connector Lifecycle</a></li><li><a href="conformance.html">Conformance</a></li><li><a href="async_and_webhooks.html">Async And Webhooks</a></li><li><a href="publishing.html">Publishing</a></li><li><a href="observability.html">Observability</a></li></ul><p>Repo-internal developer notes stay in <code class="inline">docs/</code>. Host-level proof runbooks stay
+in <code class="inline">apps/*/README.md</code>.</p><h2 id="what-the-platform-exposes" class="section-heading"><a href="#what-the-platform-exposes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">What The Platform Exposes</span></h2><ul><li><a href="Jido.Integration.V2.html"><code class="inline">Jido.Integration.V2</code></a> is the stable public entrypoint for connector
+discovery, auth lifecycle calls, invocation, review lookups, and target
+lookup.</li><li>the repo now aligns its lower-boundary vocabulary with the frozen
+Execution Plane packet: <code class="inline">AuthorityDecision.v1</code>,
+<code class="inline">BoundarySessionDescriptor.v1</code>, <code class="inline">ExecutionIntentEnvelope.v1</code>,
+<code class="inline">ExecutionRoute.v1</code>, <code class="inline">AttachGrant.v1</code>, <code class="inline">CredentialHandleRef.v1</code>,
+<code class="inline">ExecutionEvent.v1</code>, and <code class="inline">ExecutionOutcome.v1</code></li><li>boundary-backed session carriage now keeps the Wave 5 durable subcontracts
+explicit under named metadata groups for descriptor, route, attach grant,
+replay, approval, callback, and identity truth</li><li>Wave 7 keeps durable service descriptors, lease lineage, and attachability
+above lower process state instead of leaking raw Execution Plane structs into
+the public Spine surface</li><li>connector packages publish authored capability contracts and may also expose
+curated generated <a href="https://hexdocs.pm/jido_action/2.2.1/Jido.Action.html"><code class="inline">Jido.Action</code></a>, <a href="https://hexdocs.pm/jido/2.2.0/Jido.Sensor.html"><code class="inline">Jido.Sensor</code></a>, and <a href="https://hexdocs.pm/jido/2.2.0/Jido.Plugin.html"><code class="inline">Jido.Plugin</code></a> surfaces.</li><li><code class="inline">core/dispatch_runtime</code> and <code class="inline">core/webhook_router</code> provide the hosted async
+and webhook APIs above the main facade.</li></ul><p>Key public capabilities today include:</p><ul><li>connector discovery through <code class="inline">connectors/0</code>, <code class="inline">capabilities/0</code>,
+<code class="inline">fetch_connector/1</code>, <code class="inline">fetch_capability/1</code>, and
+<code class="inline">projected_catalog_entries/0</code></li><li>auth lifecycle through <code class="inline">start_install/3</code>, <code class="inline">complete_install/2</code>,
+<code class="inline">fetch_install/1</code>, <code class="inline">connection_status/1</code>, <code class="inline">request_lease/2</code>,
+<code class="inline">rotate_connection/2</code>, and <code class="inline">revoke_connection/2</code></li><li>invocation through <code class="inline">InvocationRequest.new!/1</code>, <code class="inline">invoke/1</code>, and <code class="inline">invoke/3</code></li><li>inference execution through <code class="inline">invoke_inference/2</code></li><li>review and targeting through <code class="inline">fetch_run/1</code>, <code class="inline">fetch_attempt/1</code>, <code class="inline">events/1</code>,
+<code class="inline">run_artifacts/1</code>, <code class="inline">fetch_artifact/1</code>, <code class="inline">announce_target/1</code>, <code class="inline">fetch_target/1</code>,
+<code class="inline">compatible_targets/1</code>, and <code class="inline">review_packet/2</code></li></ul><p>Phase 1 also lands the first live inference runtime family on that same
+surface:</p><ul><li>shared inference contracts now live in <code class="inline">core/contracts</code></li><li><code class="inline">core/control_plane</code> now builds the local <code class="inline">ReqLLMCallSpec</code>, executes both
+cloud, CLI-endpoint, and self-hosted requests through <code class="inline">req_llm</code>, and records
+the durable event minimum</li><li><code class="inline">agent_session_manager</code> now publishes CLI-backed endpoint descriptors through
+<a href="https://hexdocs.pm/agent_session_manager/0.9.2/ASM.InferenceEndpoint.html"><code class="inline">ASM.InferenceEndpoint</code></a>, with Gemini as the first preferred common-surface
+proof provider</li><li><code class="inline">review_packet/2</code> reconstructs inference runs without requiring a registered
+connector manifest</li><li><code class="inline">apps/inference_ops</code> is the dedicated proof app for the cloud,
+CLI-endpoint, and self-hosted paths</li><li>spawned self-hosted service startup now resolves through
+<code class="inline">self_hosted_inference_core</code> on top of <code class="inline">execution_plane</code>, while attached-local
+<code class="inline">ollama</code> keeps service-runtime semantics in the same family kit instead of in
+the control plane</li></ul><p>Phase 7 also lands the explicit cross-repo reference seam in
+<code class="inline">core/contracts</code>:</p><ul><li><code class="inline">SubjectRef</code> names the primary source subject for a higher-order record</li><li><code class="inline">EvidenceRef</code> names exact source records plus the review-packet lineage they
+were read through</li><li><code class="inline">GovernanceRef</code> names approval, denial, override, rollback, or
+policy-decision lineage without creating duplicate control-plane ownership or
+a separate persisted review record family</li><li><code class="inline">ReviewProjection</code> is the contracts-only <code class="inline">packet.metadata</code> shape for
+northbound consumers that need review packet lineage without depending on
+<code class="inline">core/platform</code></li></ul><p>Phase 8 also freezes the higher-order seam: higher-order sidecars such as
+<code class="inline">jido_memory</code>, <code class="inline">jido_skill</code>, and <code class="inline">jido_eval</code> stay on the <code class="inline">core/contracts</code> seam
+and may persist only derived state.</p><p>Phase 9 provider-factory work builds on that already-correct ownership split
+instead of reopening control-plane, catalog, or review authority in those
+repos.</p><p>The lower execution packet is carried, not re-exported, from this repo.
+<code class="inline">core/contracts</code> remains the stable Spine-side public seam, while the
+family-facing minimal-lane payload interiors for <code class="inline">HttpExecutionIntent.v1</code>,
+<code class="inline">ProcessExecutionIntent.v1</code>, and <code class="inline">JsonRpcExecutionIntent.v1</code> are explicitly
+provisional until Wave 3 closes prove-out.</p><p>Hosted webhook routing and async replay are intentionally separate public
+package APIs:</p><ul><li><a href="Jido.Integration.V2.DispatchRuntime.html"><code class="inline">Jido.Integration.V2.DispatchRuntime</code></a></li><li><a href="Jido.Integration.V2.WebhookRouter.html"><code class="inline">Jido.Integration.V2.WebhookRouter</code></a></li></ul><h2 id="current-proof-surface" class="section-heading"><a href="#current-proof-surface" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Current Proof Surface</span></h2><p>Runtime families proved in-tree:</p><ul><li><code class="inline">:direct</code><ul><li>GitHub issue and comment operations</li><li>Linear user, issue, and comment operations</li><li>Notion user, search, page, block, data-source, and comment operations</li></ul></li><li><code class="inline">:session</code><ul><li><code class="inline">codex.exec.session</code></li></ul></li><li><code class="inline">:stream</code><ul><li><code class="inline">market.ticks.pull</code></li></ul></li><li><code class="inline">:inference</code><ul><li>cloud provider execution through <code class="inline">req_llm</code></li><li>CLI endpoint execution through <a href="https://hexdocs.pm/agent_session_manager/0.9.2/ASM.InferenceEndpoint.html"><code class="inline">ASM.InferenceEndpoint</code></a> plus <code class="inline">req_llm</code></li><li>self-hosted <code class="inline">llama_cpp_sdk</code> endpoint execution through <code class="inline">req_llm</code></li><li>attached local <code class="inline">ollama</code> endpoint execution through <code class="inline">req_llm</code></li></ul></li></ul><p>Inference phase-1 proofs:</p><ul><li><code class="inline">core/contracts/test/jido/integration/v2/inference_contracts_test.exs</code></li><li><code class="inline">core/control_plane/test/jido/integration/v2/control_plane_inference_test.exs</code></li><li><code class="inline">core/control_plane/test/jido/integration/v2/control_plane_inference_execution_test.exs</code></li><li><code class="inline">core/platform/test/jido/integration/v2_inference_review_packet_test.exs</code></li><li><code class="inline">core/platform/test/jido/integration/v2_inference_invoke_test.exs</code></li><li>package-local examples under <code class="inline">core/contracts/examples/</code>,
+<code class="inline">core/control_plane/examples/</code>, and <code class="inline">core/platform/examples/</code></li><li><code class="inline">apps/inference_ops</code></li></ul><p>Reference apps:</p><ul><li><code class="inline">apps/trading_ops</code><ul><li>proves one operator-visible workflow across stream, session, and direct
+runtimes</li><li>keeps trigger admission in <code class="inline">core/ingress</code></li><li>keeps durable review truth in <code class="inline">core/control_plane</code></li></ul></li><li><code class="inline">apps/devops_incident_response</code><ul><li>proves hosted webhook registration, async dispatch, dead-letter, replay,
+and restart recovery</li><li>keeps webhook behavior app-local instead of widening <code class="inline">connectors/github</code></li></ul></li><li><code class="inline">apps/inference_ops</code><ul><li>proves cloud, CLI endpoint, spawned self-hosted, and attached-local
+inference execution through the public facade</li><li>keeps durable review truth in <code class="inline">core/control_plane</code></li><li>keeps client execution in <code class="inline">req_llm</code> and self-hosted service ownership in
+<code class="inline">self_hosted_inference_core</code>, the built-in <code class="inline">ollama</code> adapter, and
+<code class="inline">llama_cpp_sdk</code></li></ul></li></ul><p>The current surface also proves:</p><ul><li>authored <code class="inline">AuthSpec</code> is now profile-driven, with explicit
+<code class="inline">supported_profiles</code>, <code class="inline">default_profile</code>, connector-level <code class="inline">install</code> and
+<code class="inline">reauth</code> posture, and honest per-profile scope, lease, and management-mode
+publication</li><li>durable auth truth now spans <code class="inline">Install</code>, <code class="inline">Connection</code>, <code class="inline">CredentialRef</code>,
+versioned <code class="inline">Credential</code>, and short-lived <code class="inline">CredentialLease</code>/lease metadata,
+with <code class="inline">profile_id</code>, credential lineage, and secret-source posture staying
+inside <code class="inline">core/auth</code></li><li>connectors execute through short-lived auth leases, not durable credential
+truth</li><li>public invocation binds auth through <code class="inline">connection_id</code>; <code class="inline">credential_ref</code>
+remains internal execution plumbing</li><li>GitHub, Linear, and Notion all publish generated common consumer surfaces from
+authored contracts, and conformance keeps those curated common ids unique
+within each connector</li><li>conformance runs from the root while connector evidence stays package-local</li><li>conformance fixtures now prove lease projection and redaction posture, not
+just execution success</li><li>local durability, async queue state, and webhook route state are all
+explicit opt-in packages</li><li>durable Brain-to-Spine acceptance now stays on an explicit seam:<ul><li><code class="inline">core/contracts</code> owns canonical JSON, submission identity, audit payload,
+and governance-projection contracts</li><li><code class="inline">core/brain_ingress</code> owns verification, scope resolution, and durable
+acceptance or typed rejection before runtime policy continues</li><li><code class="inline">core/store_local</code> and <code class="inline">core/store_postgres</code> provide the concrete
+submission-ledger backends</li></ul></li><li>the Postgres auth tier carries a forward-only expansion migration,
+<code class="inline">20260403000000_expand_phase_0_auth_truth_columns.exs</code>, so existing dev/test
+databases can adopt the richer auth lineage shape without rewriting prior
+migration history</li></ul><h2 id="publishing-the-unified-package" class="section-heading"><a href="#publishing-the-unified-package" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Publishing The Unified Package</span></h2><p>The source monorepo remains the system of record. The publishable Hex package
+is generated from this repo through <code class="inline">weld</code>.</p><p>The release path is explicit:</p><ol><li><code class="inline">mix release.prepare</code></li><li><code class="inline">mix release.track</code></li><li><code class="inline">mix release.publish.dry_run</code></li><li><code class="inline">mix release.publish</code></li><li><code class="inline">mix release.archive</code></li></ol><p><code class="inline">mix release.prepare</code> generates the welded package, runs the artifact quality
+lane, builds the tarball, and writes a durable release bundle under <code class="inline">dist/</code>.
+That prepared bundle is intended to stay runnable on its own, including
+bundle-local <code class="inline">mix format --check-formatted</code>,
+<code class="inline">mix compile --warnings-as-errors</code>, <a href="https://hexdocs.pm/mix/Mix.Tasks.Test.html"><code class="inline">mix test</code></a>, <code class="inline">mix credo --strict</code>,
+<a href="https://hexdocs.pm/dialyxir/1.4.7/Mix.Tasks.Dialyzer.html"><code class="inline">mix dialyzer</code></a>, <code class="inline">mix docs --warnings-as-errors</code>, <a href="https://hexdocs.pm/ecto/3.13.5/Mix.Tasks.Ecto.Create.html"><code class="inline">mix ecto.create</code></a>, and
+<a href="https://hexdocs.pm/ecto_sql/3.13.5/Mix.Tasks.Ecto.Migrate.html"><code class="inline">mix ecto.migrate</code></a> when the published slice includes the Postgres durability
+tier.</p><p><code class="inline">mix release.track</code> updates the default orphan-backed
+<code class="inline">projection/jido_integration</code> branch from that prepared bundle so unreleased and
+pre-release welded snapshots can be pinned and exercised before Hex release.</p><p>During local implementation and debugging, point the repo at a sibling Weld
+checkout with <code class="inline">WELD_PATH=../weld</code>. For shared pre-release validation, use
+<code class="inline">WELD_GIT_REF=&lt;commit_sha&gt;</code> and an optional <code class="inline">WELD_GIT_URL=&lt;repo_url&gt;</code>. The
+committed steady state should return to the released Hex dependency line.</p><p><code class="inline">mix release.publish</code> publishes from that prepared bundle snapshot rather than
+from the monorepo root. <code class="inline">mix release.archive</code> then preserves the prepared
+bundle in the archive tree so the exact released artifact remains inspectable.</p><p>The first published welded artifact intentionally ships the direct-runtime,
+webhook, async, durability, auth, and public-facade surface. The runtime-control-backed
+session and stream packages, plus lower-boundary bridge packages, stay
+source-repo packages for now because they are intentionally excluded by the
+repo-local Weld contract rather than by an unresolved external package split.</p><p>That source-only boundary is now explicit in the repo-local Weld contract. The
+published monolith can still run integrated tests that need source-only support
+packages, but those support packages must be declared explicitly in the
+monolith manifest rather than being pulled in by silent projector behavior.</p><h2 id="repository-layout" class="section-heading"><a href="#repository-layout" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Repository Layout</span></h2><p>The repo root is a workspace and documentation layer. Runtime code lives in
+child packages and top-level apps.</p><pre><code class="text">jido_integration/
+  mix.exs                    # workspace root only
+  README.md                  # user-facing repo entry point
+  guides/                    # user-facing and developer guide entry points
+  docs/                      # repo-level developer notes and workflows
+  lib/                       # root Mix tasks and workspace helpers only
+  test/                      # root tooling tests only
+  core/
+    platform/                # public facade package (`:jido_integration_v2`)
+    contracts/               # shared public structs and behaviours
+    brain_ingress/           # durable Brain-to-Spine intake and scope resolution
+    auth/                    # install, connection, credential, and lease truth
+    control_plane/           # durable run, trigger, and artifact truth
+    runtime_router/         # runtime-control-backed session/stream adapter package
+    consumer_surfaces/       # generated common Jido surface runtime support
+    direct_runtime/          # direct capability execution
+    asm_runtime_bridge/      # integration-owned `asm` Runtime Control driver projection
+    session_runtime/         # integration-owned `jido_session` Runtime Control driver
+    ingress/                 # trigger normalization and durable admission
+    policy/                  # pre-attempt policy and shed decisions
+    dispatch_runtime/        # async queue, retry, replay, recovery
+    webhook_router/          # hosted route lifecycle and ingress bridge
+    conformance/             # reusable connector conformance engine
+    store_local/             # restart-safe local durability tier
+    store_postgres/          # database-backed durable tier
+  bridges/
+    boundary_bridge/         # legacy lower-boundary sandbox bridge reference package
+  connectors/
+    github/                  # direct GitHub connector + live acceptance runbook
+    linear/                  # direct Linear connector + package-local docs
+    notion/                  # direct Notion connector + package-local live proofs
+    codex_cli/               # runtime-control-routed session connector via `asm`
+    market_data/             # runtime-control-routed stream connector via `asm`
+  apps/
+    trading_ops/             # cross-runtime operator proof
+    devops_incident_response # hosted webhook + async recovery proof
+    inference_ops/           # cloud + self-hosted inference proof</code></pre><h2 id="direct-versus-runtime-boundary" class="section-heading"><a href="#direct-versus-runtime-boundary" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Direct Versus Runtime Boundary</span></h2><p>GitHub, Linear, and Notion stay on the direct provider-SDK path and do not inherit
+session or stream runtime-kernel coupling merely because the repo also ships
+non-direct capability families.</p><p><code class="inline">Jido.Integration.V2 -&gt; DirectRuntime -&gt; connector -&gt; provider SDK -&gt; pristine</code></p><p>Only actual <code class="inline">:session</code> and <code class="inline">:stream</code> capabilities use
+<code class="inline">jido_runtime_control</code> via <code class="inline">Jido.RuntimeControl</code>.</p><p><code class="inline">Jido.Integration.V2 -&gt; RuntimeRouter -&gt; Jido.RuntimeControl -&gt; {asm | jido_session}</code></p><p><code class="inline">asm</code> routes through <code class="inline">core/asm_runtime_bridge</code> into <code class="inline">agent_session_manager</code>
+and <code class="inline">cli_subprocess_core</code>, while <code class="inline">jido_session</code> routes through
+<code class="inline">core/session_runtime</code> via <code class="inline">Jido.Session.RuntimeControlDriver</code>.</p><p>Phase 6A removed the old <code class="inline">core/session_kernel</code> and <code class="inline">core/stream_runtime</code>
+bridge packages. They are not part of the repo or the target runtime
+architecture.</p><p>The current core runtime graph stops at those two runtime-control lanes. Lower-boundary
+work is not part of the active <code class="inline">asm</code> or <code class="inline">jido_session</code> dependency path.</p><p>The default root workspace gate is explicit about that scope. <code class="inline">build_support/workspace_contract.exs</code>
+defines the active workspace package globs that run under <code class="inline">mix mr.*</code> and
+<code class="inline">mix ci</code>, while <code class="inline">bridges/boundary_bridge</code> remains a source-only legacy package
+until its external dependency boundary is stable enough to rejoin that gate.</p><h2 id="developer-docs" class="section-heading"><a href="#developer-docs" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Developer Docs</span></h2><p>User-facing guides live under <code class="inline">guides/</code>. Developer-focused repo notes remain in
+<code class="inline">docs/</code>, and package-specific workflows remain in package-local READMEs.</p><p>Primary package and app runbooks:</p><ul><li><code class="inline">core/platform/README.md</code></li><li><code class="inline">core/brain_ingress/README.md</code></li><li><code class="inline">core/consumer_surfaces/README.md</code></li><li><code class="inline">core/conformance/README.md</code></li><li><code class="inline">core/session_runtime/README.md</code></li><li><code class="inline">core/store_local/README.md</code></li><li><code class="inline">core/dispatch_runtime/README.md</code></li><li><code class="inline">core/webhook_router/README.md</code></li><li><code class="inline">bridges/boundary_bridge/README.md</code></li><li><code class="inline">connectors/github/README.md</code></li><li><code class="inline">connectors/github/docs/live_acceptance.md</code></li><li><code class="inline">connectors/linear/README.md</code></li><li><code class="inline">connectors/notion/README.md</code></li><li><code class="inline">connectors/notion/docs/live_acceptance.md</code></li><li><code class="inline">apps/trading_ops/README.md</code></li><li><code class="inline">apps/devops_incident_response/README.md</code></li></ul><h2 id="validation-prerequisites" class="section-heading"><a href="#validation-prerequisites" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Validation Prerequisites</span></h2><p>The monorepo test and CI surface now includes packages that wire
+<code class="inline">core/store_postgres</code> in <code class="inline">:test</code>.</p><p><code class="inline">mix mr.test</code> and <code class="inline">mix ci</code> therefore expect a reachable Postgres test store.
+Before calling the repo blocked on Postgres reachability, run:</p><pre><code class="makeup bash" translate="no"><span class="">mix mr.pg.preflight
+</span></code></pre><p>That check validates the canonical <code class="inline">core/store_postgres</code> test tier only. The
+repo still supports the other two durability tiers in parallel:</p><ul><li>in-memory defaults in <code class="inline">core/auth</code> and <code class="inline">core/control_plane</code></li><li><code class="inline">core/store_local</code> for restart-safe local durability</li><li><code class="inline">core/store_postgres</code> for the shared database-backed tier</li></ul>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="architecture.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+Architecture
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/jido_integration/0.1.0">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/jido_integration/0.1.0">Hex Preview</a>
+
+                (<a href="https://preview.hex.pm/preview/jido_integration/0.1.0/show/README.md">current file</a>)
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="jido_integration.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

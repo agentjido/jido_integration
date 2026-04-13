@@ -1,0 +1,1299 @@
+{
+  "projection": {
+    "build_path": "/home/home/p/g/n/jido_integration/dist/monolith/jido_integration",
+    "copied_files": [
+      ".formatter.exs",
+      "LICENSE",
+      "README.md",
+      "config/config.exs",
+      "config/dev.exs",
+      "config/prod.exs",
+      "config/runtime_sources/core_ingress/config.exs",
+      "config/runtime_sources/core_platform/config.exs",
+      "config/runtime_sources/core_platform/dev.exs",
+      "config/runtime_sources/core_platform/prod.exs",
+      "config/runtime_sources/core_platform/test.exs",
+      "config/runtime_sources/core_runtime_control/config.exs",
+      "config/runtime_sources/core_runtime_control/dev.exs",
+      "config/runtime_sources/core_runtime_control/test.exs",
+      "config/runtime_sources/core_store_postgres/config.exs",
+      "config/sources/core_ingress/config.exs",
+      "config/sources/core_platform/config.exs",
+      "config/sources/core_platform/dev.exs",
+      "config/sources/core_platform/prod.exs",
+      "config/sources/core_platform/test.exs",
+      "config/sources/core_runtime_control/config.exs",
+      "config/sources/core_runtime_control/dev.exs",
+      "config/sources/core_runtime_control/test.exs",
+      "config/sources/core_store_postgres/config.exs",
+      "config/test.exs",
+      "guides/architecture.md",
+      "guides/async_and_webhooks.md",
+      "guides/conformance.md",
+      "guides/connector_lifecycle.md",
+      "guides/durability.md",
+      "guides/execution_plane_alignment.md",
+      "guides/index.md",
+      "guides/inference_baseline.md",
+      "guides/observability.md",
+      "guides/publishing.md",
+      "guides/runtime_model.md",
+      "lib/jido/integration/test_tmp_dir.ex",
+      "lib/jido/integration/v2.ex",
+      "lib/jido/integration/v2/artifact_builder.ex",
+      "lib/jido/integration/v2/artifact_ref.ex",
+      "lib/jido/integration/v2/attach_grant.ex",
+      "lib/jido/integration/v2/attempt.ex",
+      "lib/jido/integration/v2/auth.ex",
+      "lib/jido/integration/v2/auth/application.ex",
+      "lib/jido/integration/v2/auth/connection.ex",
+      "lib/jido/integration/v2/auth/connection_store.ex",
+      "lib/jido/integration/v2/auth/credential_store.ex",
+      "lib/jido/integration/v2/auth/install.ex",
+      "lib/jido/integration/v2/auth/install_store.ex",
+      "lib/jido/integration/v2/auth/lease_record.ex",
+      "lib/jido/integration/v2/auth/lease_store.ex",
+      "lib/jido/integration/v2/auth/secret_envelope.ex",
+      "lib/jido/integration/v2/auth/store.ex",
+      "lib/jido/integration/v2/auth/stores.ex",
+      "lib/jido/integration/v2/auth_spec.ex",
+      "lib/jido/integration/v2/authority_audit_envelope.ex",
+      "lib/jido/integration/v2/backend_manifest.ex",
+      "lib/jido/integration/v2/boundary_capability.ex",
+      "lib/jido/integration/v2/boundary_session.ex",
+      "lib/jido/integration/v2/brain_ingress.ex",
+      "lib/jido/integration/v2/brain_ingress/scope_resolver.ex",
+      "lib/jido/integration/v2/brain_ingress/static_scope_resolver.ex",
+      "lib/jido/integration/v2/brain_ingress/submission_ledger.ex",
+      "lib/jido/integration/v2/brain_invocation.ex",
+      "lib/jido/integration/v2/canonical_json.ex",
+      "lib/jido/integration/v2/capability.ex",
+      "lib/jido/integration/v2/catalog_spec.ex",
+      "lib/jido/integration/v2/compatibility_result.ex",
+      "lib/jido/integration/v2/connector.ex",
+      "lib/jido/integration/v2/connectors/git_hub.ex",
+      "lib/jido/integration/v2/connectors/git_hub/client_factory.ex",
+      "lib/jido/integration/v2/connectors/git_hub/conformance.ex",
+      "lib/jido/integration/v2/connectors/git_hub/error_mapper.ex",
+      "lib/jido/integration/v2/connectors/git_hub/fixture_transport.ex",
+      "lib/jido/integration/v2/connectors/git_hub/fixtures.ex",
+      "lib/jido/integration/v2/connectors/git_hub/generated/actions.ex",
+      "lib/jido/integration/v2/connectors/git_hub/generated/plugin.ex",
+      "lib/jido/integration/v2/connectors/git_hub/install_binding.ex",
+      "lib/jido/integration/v2/connectors/git_hub/live_env.ex",
+      "lib/jido/integration/v2/connectors/git_hub/live_plan.ex",
+      "lib/jido/integration/v2/connectors/git_hub/operation.ex",
+      "lib/jido/integration/v2/connectors/git_hub/operation_catalog.ex",
+      "lib/jido/integration/v2/connectors/linear.ex",
+      "lib/jido/integration/v2/connectors/linear/client_factory.ex",
+      "lib/jido/integration/v2/connectors/linear/conformance.ex",
+      "lib/jido/integration/v2/connectors/linear/error_mapper.ex",
+      "lib/jido/integration/v2/connectors/linear/fixture_transport.ex",
+      "lib/jido/integration/v2/connectors/linear/fixtures.ex",
+      "lib/jido/integration/v2/connectors/linear/generated/actions.ex",
+      "lib/jido/integration/v2/connectors/linear/generated/plugin.ex",
+      "lib/jido/integration/v2/connectors/linear/install_binding.ex",
+      "lib/jido/integration/v2/connectors/linear/operation.ex",
+      "lib/jido/integration/v2/connectors/linear/operation_catalog.ex",
+      "lib/jido/integration/v2/connectors/linear/published_surface.ex",
+      "lib/jido/integration/v2/connectors/notion.ex",
+      "lib/jido/integration/v2/connectors/notion/client_factory.ex",
+      "lib/jido/integration/v2/connectors/notion/conformance.ex",
+      "lib/jido/integration/v2/connectors/notion/error_mapper.ex",
+      "lib/jido/integration/v2/connectors/notion/fixture_transport.ex",
+      "lib/jido/integration/v2/connectors/notion/fixtures.ex",
+      "lib/jido/integration/v2/connectors/notion/generated/actions.ex",
+      "lib/jido/integration/v2/connectors/notion/generated/plugin.ex",
+      "lib/jido/integration/v2/connectors/notion/generated/sensors.ex",
+      "lib/jido/integration/v2/connectors/notion/install_binding.ex",
+      "lib/jido/integration/v2/connectors/notion/live_env.ex",
+      "lib/jido/integration/v2/connectors/notion/operation.ex",
+      "lib/jido/integration/v2/connectors/notion/operation_catalog.ex",
+      "lib/jido/integration/v2/connectors/notion/permission_profile.ex",
+      "lib/jido/integration/v2/connectors/notion/published_surface.ex",
+      "lib/jido/integration/v2/connectors/notion/recent_page_edits_trigger.ex",
+      "lib/jido/integration/v2/connectors/notion/schema_context.ex",
+      "lib/jido/integration/v2/connectors/notion/schema_contract.ex",
+      "lib/jido/integration/v2/connectors/notion/schema_resolver.ex",
+      "lib/jido/integration/v2/connectors/notion/schema_validator.ex",
+      "lib/jido/integration/v2/connectors/notion/trigger_catalog.ex",
+      "lib/jido/integration/v2/consumer_manifest.ex",
+      "lib/jido/integration/v2/consumer_projection.ex",
+      "lib/jido/integration/v2/consumer_surface_runtime.ex",
+      "lib/jido/integration/v2/contracts.ex",
+      "lib/jido/integration/v2/control_plane.ex",
+      "lib/jido/integration/v2/control_plane/application.ex",
+      "lib/jido/integration/v2/control_plane/artifact_store.ex",
+      "lib/jido/integration/v2/control_plane/attempt_store.ex",
+      "lib/jido/integration/v2/control_plane/event_store.ex",
+      "lib/jido/integration/v2/control_plane/inference.ex",
+      "lib/jido/integration/v2/control_plane/inference/req_llm_call_spec.ex",
+      "lib/jido/integration/v2/control_plane/inference_recorder.ex",
+      "lib/jido/integration/v2/control_plane/ingress_store.ex",
+      "lib/jido/integration/v2/control_plane/registry.ex",
+      "lib/jido/integration/v2/control_plane/run_ledger.ex",
+      "lib/jido/integration/v2/control_plane/run_store.ex",
+      "lib/jido/integration/v2/control_plane/stores.ex",
+      "lib/jido/integration/v2/control_plane/target_store.ex",
+      "lib/jido/integration/v2/credential.ex",
+      "lib/jido/integration/v2/credential_lease.ex",
+      "lib/jido/integration/v2/credential_ref.ex",
+      "lib/jido/integration/v2/derived_state_attachment.ex",
+      "lib/jido/integration/v2/direct_runtime.ex",
+      "lib/jido/integration/v2/dispatch_runtime.ex",
+      "lib/jido/integration/v2/dispatch_runtime/dispatch.ex",
+      "lib/jido/integration/v2/dispatch_runtime/handler.ex",
+      "lib/jido/integration/v2/dispatch_runtime/telemetry.ex",
+      "lib/jido/integration/v2/endpoint_descriptor.ex",
+      "lib/jido/integration/v2/event.ex",
+      "lib/jido/integration/v2/evidence_ref.ex",
+      "lib/jido/integration/v2/execution_governance_projection.ex",
+      "lib/jido/integration/v2/execution_governance_projection/compiler.ex",
+      "lib/jido/integration/v2/execution_governance_projection/verifier.ex",
+      "lib/jido/integration/v2/execution_route.ex",
+      "lib/jido/integration/v2/execution_router.ex",
+      "lib/jido/integration/v2/gateway.ex",
+      "lib/jido/integration/v2/gateway/policy.ex",
+      "lib/jido/integration/v2/generated_action.ex",
+      "lib/jido/integration/v2/generated_plugin.ex",
+      "lib/jido/integration/v2/generated_sensor.ex",
+      "lib/jido/integration/v2/governance_ref.ex",
+      "lib/jido/integration/v2/inference_execution_context.ex",
+      "lib/jido/integration/v2/inference_request.ex",
+      "lib/jido/integration/v2/inference_result.ex",
+      "lib/jido/integration/v2/ingress.ex",
+      "lib/jido/integration/v2/ingress/definition.ex",
+      "lib/jido/integration/v2/invocation_request.ex",
+      "lib/jido/integration/v2/lease_ref.ex",
+      "lib/jido/integration/v2/manifest.ex",
+      "lib/jido/integration/v2/operation_spec.ex",
+      "lib/jido/integration/v2/operator.ex",
+      "lib/jido/integration/v2/policy.ex",
+      "lib/jido/integration/v2/policy/application.ex",
+      "lib/jido/integration/v2/policy/enforce_sandbox.ex",
+      "lib/jido/integration/v2/policy/require_actor.ex",
+      "lib/jido/integration/v2/policy/require_environment.ex",
+      "lib/jido/integration/v2/policy/require_operation.ex",
+      "lib/jido/integration/v2/policy/require_runtime_class.ex",
+      "lib/jido/integration/v2/policy/require_scopes.ex",
+      "lib/jido/integration/v2/policy/require_tenant.ex",
+      "lib/jido/integration/v2/policy/respect_pressure.ex",
+      "lib/jido/integration/v2/policy/rule.ex",
+      "lib/jido/integration/v2/policy_decision.ex",
+      "lib/jido/integration/v2/projected_catalog.ex",
+      "lib/jido/integration/v2/receipt.ex",
+      "lib/jido/integration/v2/recovery_task.ex",
+      "lib/jido/integration/v2/redaction.ex",
+      "lib/jido/integration/v2/review_bundle.ex",
+      "lib/jido/integration/v2/review_projection.ex",
+      "lib/jido/integration/v2/run.ex",
+      "lib/jido/integration/v2/runtime_result.ex",
+      "lib/jido/integration/v2/schema.ex",
+      "lib/jido/integration/v2/store_local.ex",
+      "lib/jido/integration/v2/store_local/application.ex",
+      "lib/jido/integration/v2/store_local/artifact_store.ex",
+      "lib/jido/integration/v2/store_local/attempt_store.ex",
+      "lib/jido/integration/v2/store_local/connection_store.ex",
+      "lib/jido/integration/v2/store_local/credential_store.ex",
+      "lib/jido/integration/v2/store_local/event_store.ex",
+      "lib/jido/integration/v2/store_local/ingress_store.ex",
+      "lib/jido/integration/v2/store_local/install_store.ex",
+      "lib/jido/integration/v2/store_local/lease_store.ex",
+      "lib/jido/integration/v2/store_local/run_store.ex",
+      "lib/jido/integration/v2/store_local/server.ex",
+      "lib/jido/integration/v2/store_local/state.ex",
+      "lib/jido/integration/v2/store_local/storage.ex",
+      "lib/jido/integration/v2/store_local/submission_ledger.ex",
+      "lib/jido/integration/v2/store_local/target_store.ex",
+      "lib/jido/integration/v2/store_local/test_support.ex",
+      "lib/jido/integration/v2/store_postgres.ex",
+      "lib/jido/integration/v2/store_postgres/application.ex",
+      "lib/jido/integration/v2/store_postgres/artifact_store.ex",
+      "lib/jido/integration/v2/store_postgres/attempt_store.ex",
+      "lib/jido/integration/v2/store_postgres/connection_store.ex",
+      "lib/jido/integration/v2/store_postgres/credential_store.ex",
+      "lib/jido/integration/v2/store_postgres/event_store.ex",
+      "lib/jido/integration/v2/store_postgres/ingress_store.ex",
+      "lib/jido/integration/v2/store_postgres/install_store.ex",
+      "lib/jido/integration/v2/store_postgres/lease_store.ex",
+      "lib/jido/integration/v2/store_postgres/repo.ex",
+      "lib/jido/integration/v2/store_postgres/run_store.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/artifact_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/attempt_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/connection_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/credential_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/dedupe_key_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/event_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/install_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/lease_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/run_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/submission_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/target_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/trigger_checkpoint_record.ex",
+      "lib/jido/integration/v2/store_postgres/schemas/trigger_record.ex",
+      "lib/jido/integration/v2/store_postgres/serialization.ex",
+      "lib/jido/integration/v2/store_postgres/submission_ledger.ex",
+      "lib/jido/integration/v2/store_postgres/target_store.ex",
+      "lib/jido/integration/v2/store_postgres/test_support.ex",
+      "lib/jido/integration/v2/subject_ref.ex",
+      "lib/jido/integration/v2/submission_acceptance.ex",
+      "lib/jido/integration/v2/submission_identity.ex",
+      "lib/jido/integration/v2/submission_rejection.ex",
+      "lib/jido/integration/v2/target_descriptor.ex",
+      "lib/jido/integration/v2/trigger_checkpoint.ex",
+      "lib/jido/integration/v2/trigger_record.ex",
+      "lib/jido/integration/v2/trigger_spec.ex",
+      "lib/jido/integration/v2/unsupported_non_direct_runtime.ex",
+      "lib/jido/integration/v2/webhook_router.ex",
+      "lib/jido/integration/v2/webhook_router/route.ex",
+      "lib/jido/integration/v2/webhook_router/telemetry.ex",
+      "lib/jido_integration/application.ex",
+      "mix.exs",
+      "priv/repo/migrations/20260309120000_create_foundation_tables.exs",
+      "priv/repo/migrations/20260309130000_create_artifact_refs_and_target_descriptors.exs",
+      "priv/repo/migrations/20260309143000_create_ingress_truth_tables.exs",
+      "priv/repo/migrations/20260310120000_rework_auth_lifecycle_tables.exs",
+      "priv/repo/migrations/20260403000000_expand_phase_0_auth_truth_columns.exs",
+      "priv/repo/migrations/20260411120000_create_submission_records.exs",
+      "priv/upstream/parity_inventory.json",
+      "test/connectors_github/jido/integration/v2/connectors/git_hub/client_factory_test.exs",
+      "test/connectors_github/jido/integration/v2/connectors/git_hub/conformance_test.exs",
+      "test/connectors_github/jido/integration/v2/connectors/git_hub/error_mapper_test.exs",
+      "test/connectors_github/jido/integration/v2/connectors/git_hub/generated_consumer_surface_test.exs",
+      "test/connectors_github/jido/integration/v2/connectors/git_hub/install_binding_test.exs",
+      "test/connectors_github/jido/integration/v2/connectors/git_hub/live_env_test.exs",
+      "test/connectors_github/jido/integration/v2/connectors/git_hub/live_plan_test.exs",
+      "test/connectors_github/jido/integration/v2/connectors/git_hub/operation_test.exs",
+      "test/connectors_github/jido/integration/v2/connectors/git_hub_test.exs",
+      "test/connectors_linear/jido/integration/v2/connectors/linear/client_factory_test.exs",
+      "test/connectors_linear/jido/integration/v2/connectors/linear/conformance_test.exs",
+      "test/connectors_linear/jido/integration/v2/connectors/linear/error_mapper_test.exs",
+      "test/connectors_linear/jido/integration/v2/connectors/linear/generated_consumer_surface_test.exs",
+      "test/connectors_linear/jido/integration/v2/connectors/linear/install_binding_test.exs",
+      "test/connectors_linear/jido/integration/v2/connectors/linear/operation_test.exs",
+      "test/connectors_linear/jido/integration/v2/connectors/linear_test.exs",
+      "test/connectors_notion/jido/integration/v2/connectors/notion/client_factory_test.exs",
+      "test/connectors_notion/jido/integration/v2/connectors/notion/conformance_test.exs",
+      "test/connectors_notion/jido/integration/v2/connectors/notion/error_mapper_test.exs",
+      "test/connectors_notion/jido/integration/v2/connectors/notion/generated_consumer_surface_test.exs",
+      "test/connectors_notion/jido/integration/v2/connectors/notion/install_binding_test.exs",
+      "test/connectors_notion/jido/integration/v2/connectors/notion/live_env_test.exs",
+      "test/connectors_notion/jido/integration/v2/connectors/notion/operation_test.exs",
+      "test/connectors_notion/jido/integration/v2/connectors/notion_conformance_test.exs",
+      "test/connectors_notion/jido/integration/v2/connectors/notion_test.exs",
+      "test/core_auth/jido/integration/v2/auth_test.exs",
+      "test/core_brain_ingress/jido/integration/v2/brain_ingress_test.exs",
+      "test/core_consumer_surfaces/jido/integration/v2/consumer_surface_runtime_test.exs",
+      "test/core_contracts/jido/integration/test_tmp_dir_test.exs",
+      "test/core_contracts/jido/integration/v2/artifact_ref_test.exs",
+      "test/core_contracts/jido/integration/v2/auth_spec_test.exs",
+      "test/core_contracts/jido/integration/v2/boundary_capability_test.exs",
+      "test/core_contracts/jido/integration/v2/canonical_json_test.exs",
+      "test/core_contracts/jido/integration/v2/consumer_projection_test.exs",
+      "test/core_contracts/jido/integration/v2/contracts_test.exs",
+      "test/core_contracts/jido/integration/v2/derived_state_attachment_test.exs",
+      "test/core_contracts/jido/integration/v2/durable_submission_contracts_test.exs",
+      "test/core_contracts/jido/integration/v2/generated_sensor_test.exs",
+      "test/core_contracts/jido/integration/v2/inference_contracts_test.exs",
+      "test/core_contracts/jido/integration/v2/invocation_request_test.exs",
+      "test/core_contracts/jido/integration/v2/manifest_catalog_contract_test.exs",
+      "test/core_contracts/jido/integration/v2/operation_spec_test.exs",
+      "test/core_contracts/jido/integration/v2/redaction_test.exs",
+      "test/core_contracts/jido/integration/v2/reference_contracts_test.exs",
+      "test/core_contracts/jido/integration/v2/review_projection_test.exs",
+      "test/core_contracts/jido/integration/v2/runtime_result_test.exs",
+      "test/core_contracts/jido/integration/v2/target_descriptor_test.exs",
+      "test/core_contracts/jido/integration/v2/trigger_spec_test.exs",
+      "test/core_contracts/jido/integration/v2/zoi_standard_test.exs",
+      "test/core_control_plane/jido/integration/v2/control_plane_inference_execution_test.exs",
+      "test/core_control_plane/jido/integration/v2/control_plane_inference_test.exs",
+      "test/core_control_plane/jido/integration/v2/control_plane_test.exs",
+      "test/core_direct_runtime/jido/integration/v2/direct_runtime_test.exs",
+      "test/core_dispatch_runtime/jido/integration/v2/dispatch_runtime_test.exs",
+      "test/core_ingress/jido/integration/v2/ingress_test.exs",
+      "test/core_platform/jido/integration/v2_execute_run_test.exs",
+      "test/core_platform/jido/integration/v2_inference_invoke_test.exs",
+      "test/core_platform/jido/integration/v2_inference_review_packet_test.exs",
+      "test/core_platform/jido/integration/v2_review_packet_refs_test.exs",
+      "test/core_platform/jido/integration/v2_test.exs",
+      "test/core_policy/jido/integration/v2/policy_test.exs",
+      "test/core_store_local/jido/integration/v2/store_local/auth_store_contract_test.exs",
+      "test/core_store_local/jido/integration/v2/store_local/control_plane_store_contract_test.exs",
+      "test/core_store_local/jido/integration/v2/store_local/ingress_store_contract_test.exs",
+      "test/core_store_local/jido/integration/v2/store_local/server_resilience_test.exs",
+      "test/core_store_local/jido/integration/v2/store_local/submission_ledger_contract_test.exs",
+      "test/core_store_postgres/jido/integration/v2/store_postgres/auth_store_test.exs",
+      "test/core_store_postgres/jido/integration/v2/store_postgres/control_plane_store_test.exs",
+      "test/core_store_postgres/jido/integration/v2/store_postgres/ingress_store_test.exs",
+      "test/core_store_postgres/jido/integration/v2/store_postgres/ownership_test.exs",
+      "test/core_store_postgres/jido/integration/v2/store_postgres/serialization_test.exs",
+      "test/core_store_postgres/jido/integration/v2/store_postgres/submission_ledger_test.exs",
+      "test/core_webhook_router/jido/integration/v2/webhook_router_bridge_test.exs",
+      "test/core_webhook_router/jido/integration/v2/webhook_router_route_store_test.exs",
+      "test/support/core_control_plane/fake_llama_server.py",
+      "test/support/core_control_plane/fake_llama_server_fixture.ex",
+      "test/support/core_platform/connector_contract_case_helper.exs",
+      "test/support/core_platform/durable_case_helper.exs",
+      "test/support/core_store_local/case_helper.exs",
+      "test/support/core_store_local/fixtures_helper.exs",
+      "test/support/core_store_postgres/data_case_helper.exs",
+      "test/support/core_store_postgres/fixtures_helper.exs",
+      "test/support/weld_helpers/connectors_github_test_helper.exs",
+      "test/support/weld_helpers/connectors_linear_test_helper.exs",
+      "test/support/weld_helpers/connectors_notion_test_helper.exs",
+      "test/support/weld_helpers/core_auth_test_helper.exs",
+      "test/support/weld_helpers/core_brain_ingress_test_helper.exs",
+      "test/support/weld_helpers/core_consumer_surfaces_test_helper.exs",
+      "test/support/weld_helpers/core_contracts_test_helper.exs",
+      "test/support/weld_helpers/core_control_plane_test_helper.exs",
+      "test/support/weld_helpers/core_direct_runtime_test_helper.exs",
+      "test/support/weld_helpers/core_dispatch_runtime_test_helper.exs",
+      "test/support/weld_helpers/core_ingress_test_helper.exs",
+      "test/support/weld_helpers/core_platform_test_helper.exs",
+      "test/support/weld_helpers/core_policy_test_helper.exs",
+      "test/support/weld_helpers/core_store_local_test_helper.exs",
+      "test/support/weld_helpers/core_store_postgres_test_helper.exs",
+      "test/support/weld_helpers/core_webhook_router_test_helper.exs",
+      "test/support/weld_projects/connectors_codex_cli/lib/jido/integration/v2/connectors/codex_cli.ex",
+      "test/support/weld_projects/connectors_codex_cli/lib/jido/integration/v2/connectors/codex_cli/conformance.ex",
+      "test/support/weld_projects/connectors_codex_cli/lib/jido/integration/v2/connectors/codex_cli/conformance_runtime_control_driver.ex",
+      "test/support/weld_projects/connectors_codex_cli/lib/jido/integration/v2/connectors/codex_cli/generated/actions.ex",
+      "test/support/weld_projects/connectors_codex_cli/lib/jido/integration/v2/connectors/codex_cli/generated/plugin.ex",
+      "test/support/weld_projects/connectors_codex_cli/lib/jido/integration/v2/connectors/codex_cli/handler.ex",
+      "test/support/weld_projects/connectors_market_data/lib/jido/integration/v2/connectors/market_data.ex",
+      "test/support/weld_projects/connectors_market_data/lib/jido/integration/v2/connectors/market_data/alert_trigger_handler.ex",
+      "test/support/weld_projects/connectors_market_data/lib/jido/integration/v2/connectors/market_data/conformance.ex",
+      "test/support/weld_projects/connectors_market_data/lib/jido/integration/v2/connectors/market_data/conformance_runtime_control_driver.ex",
+      "test/support/weld_projects/connectors_market_data/lib/jido/integration/v2/connectors/market_data/generated/actions.ex",
+      "test/support/weld_projects/connectors_market_data/lib/jido/integration/v2/connectors/market_data/generated/plugin.ex",
+      "test/support/weld_projects/connectors_market_data/lib/jido/integration/v2/connectors/market_data/generated/sensors.ex",
+      "test/support/weld_projects/connectors_market_data/lib/jido/integration/v2/connectors/market_data/handler.ex",
+      "test/support/weld_projects/core_asm_runtime_bridge/lib/jido/integration/v2/asm_runtime_bridge.ex",
+      "test/support/weld_projects/core_asm_runtime_bridge/lib/jido/integration/v2/asm_runtime_bridge/application.ex",
+      "test/support/weld_projects/core_asm_runtime_bridge/lib/jido/integration/v2/asm_runtime_bridge/normalizer.ex",
+      "test/support/weld_projects/core_asm_runtime_bridge/lib/jido/integration/v2/asm_runtime_bridge/runtime_control_driver.ex",
+      "test/support/weld_projects/core_asm_runtime_bridge/lib/jido/integration/v2/asm_runtime_bridge/session_store.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/check_result.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/profile.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/renderer.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/report.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/suite_result.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/suite_support.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/suites/capability_contracts.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/suites/consumer_surface_projection.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/suites/deterministic_fixtures.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/suites/ingress_definition_discipline.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/suites/manifest_contract.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/suites/policy_contract.ex",
+      "test/support/weld_projects/core_conformance/lib/jido/integration/v2/conformance/suites/runtime_class_fit.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/error.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/execution_event.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/execution_result.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/execution_status.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/run_handle.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/run_request.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/runtime.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/runtime_descriptor.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/runtime_driver.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/runtime_driver_contract.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/runtime_registry.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/session_control.ex",
+      "test/support/weld_projects/core_runtime_control/lib/jido/runtime_control/session_handle.ex",
+      "test/support/weld_projects/core_runtime_router/lib/jido/integration/v2/runtime_router.ex",
+      "test/support/weld_projects/core_runtime_router/lib/jido/integration/v2/runtime_router/application.ex",
+      "test/support/weld_projects/core_runtime_router/lib/jido/integration/v2/runtime_router/session_store.ex",
+      "test/support/weld_projects/core_session_runtime/lib/jido/session.ex",
+      "test/support/weld_projects/core_session_runtime/lib/jido/session/application.ex",
+      "test/support/weld_projects/core_session_runtime/lib/jido/session/runtime/local_echo.ex",
+      "test/support/weld_projects/core_session_runtime/lib/jido/session/runtime/run.ex",
+      "test/support/weld_projects/core_session_runtime/lib/jido/session/runtime/session.ex",
+      "test/support/weld_projects/core_session_runtime/lib/jido/session/runtime_control_driver.ex",
+      "test/support/weld_projects/core_session_runtime/lib/jido/session/runtime_control_projection.ex",
+      "test/support/weld_projects/core_session_runtime/lib/jido/session/store.ex",
+      "test/test_helper.exs"
+    ],
+    "package_files": [
+      ".formatter.exs",
+      "LICENSE",
+      "README.md",
+      "config",
+      "guides",
+      "lib",
+      "mix.exs",
+      "priv",
+      "projection.lock.json"
+    ],
+    "git_revision": "11b07ba672e4663edef774ac7816be63e0c65dc4",
+    "tree_digest": "7ec4c702c2d2bdc35178348cb31e3c1095aafc137864c3740f33aee3587bb826"
+  },
+  "manifest": {
+    "path": "/home/home/p/g/n/jido_integration/build_support/weld.exs",
+    "digest": "15b5cacdb914ead82ce568963cf218e9823f2ef931fa16c41a5fd30741b68894"
+  },
+  "verification": [
+    {
+      "env": "test",
+      "status": "ok",
+      "task": "selected_tests_baseline",
+      "test_count": 329,
+      "project_test_counts": [
+        {
+          "app": "jido_integration_v2_store_postgres",
+          "test_count": 22,
+          "project_id": "core/store_postgres"
+        },
+        {
+          "app": "jido_integration_v2_notion",
+          "test_count": 39,
+          "project_id": "connectors/notion"
+        },
+        {
+          "app": "jido_integration_v2_linear",
+          "test_count": 25,
+          "project_id": "connectors/linear"
+        },
+        {
+          "app": "jido_integration_v2_github",
+          "test_count": 33,
+          "project_id": "connectors/github"
+        },
+        {
+          "app": "jido_integration_v2_webhook_router",
+          "test_count": 6,
+          "project_id": "core/webhook_router"
+        },
+        {
+          "app": "jido_integration_v2_store_local",
+          "test_count": 19,
+          "project_id": "core/store_local"
+        },
+        {
+          "app": "jido_integration_v2_brain_ingress",
+          "test_count": 4,
+          "project_id": "core/brain_ingress"
+        },
+        {
+          "app": "jido_integration_v2",
+          "test_count": 26,
+          "project_id": "core/platform"
+        },
+        {
+          "app": "jido_integration_v2_dispatch_runtime",
+          "test_count": 10,
+          "project_id": "core/dispatch_runtime"
+        },
+        {
+          "app": "jido_integration_v2_consumer_surfaces",
+          "test_count": 4,
+          "project_id": "core/consumer_surfaces"
+        },
+        {
+          "app": "jido_integration_v2_ingress",
+          "test_count": 6,
+          "project_id": "core/ingress"
+        },
+        {
+          "app": "jido_integration_v2_control_plane",
+          "test_count": 33,
+          "project_id": "core/control_plane"
+        },
+        {
+          "app": "jido_integration_v2_policy",
+          "test_count": 7,
+          "project_id": "core/policy"
+        },
+        {
+          "app": "jido_integration_v2_direct_runtime",
+          "test_count": 1,
+          "project_id": "core/direct_runtime"
+        },
+        {
+          "app": "jido_integration_v2_auth",
+          "test_count": 13,
+          "project_id": "core/auth"
+        },
+        {
+          "app": "jido_integration_v2_contracts",
+          "test_count": 81,
+          "project_id": "core/contracts"
+        }
+      ]
+    },
+    {
+      "env": "dev",
+      "status": "ok",
+      "task": "deps.get"
+    },
+    {
+      "env": "dev",
+      "status": "ok",
+      "task": "compile --warnings-as-errors"
+    },
+    {
+      "env": "test",
+      "status": "ok",
+      "task": "test",
+      "failure_count": 0,
+      "test_count": 329
+    },
+    {
+      "env": "dev",
+      "status": "ok",
+      "task": "docs --warnings-as-errors"
+    },
+    {
+      "env": "dev",
+      "status": "ok",
+      "task": "hex.build"
+    }
+  ],
+  "artifact": {
+    "id": "jido_integration",
+    "package": {
+      "name": "jido_integration",
+      "version": "0.1.0",
+      "otp_app": "jido_integration"
+    }
+  },
+  "workspace": {
+    "root": "/home/home/p/g/n/jido_integration",
+    "discovery": {
+      "source": "blitz_workspace",
+      "project_ids": [
+        ".",
+        "apps/devops_incident_response",
+        "apps/inference_ops",
+        "apps/trading_ops",
+        "connectors/codex_cli",
+        "connectors/github",
+        "connectors/linear",
+        "connectors/market_data",
+        "connectors/notion",
+        "core/asm_runtime_bridge",
+        "core/auth",
+        "core/brain_ingress",
+        "core/conformance",
+        "core/consumer_surfaces",
+        "core/contracts",
+        "core/control_plane",
+        "core/direct_runtime",
+        "core/dispatch_runtime",
+        "core/ingress",
+        "core/platform",
+        "core/policy",
+        "core/runtime_control",
+        "core/runtime_router",
+        "core/session_runtime",
+        "core/store_local",
+        "core/store_postgres",
+        "core/webhook_router"
+      ],
+      "adapter": "blitz_workspace",
+      "globs": [
+        ".",
+        "apps/*",
+        "connectors/*",
+        "core/*"
+      ],
+      "root_project?": true
+    },
+    "project_count": 27
+  },
+  "graph": {
+    "edges": [
+      {
+        "kind": "tooling",
+        "app": "jido_integration_v2_conformance",
+        "to": "core/conformance",
+        "requirement": null,
+        "from": "."
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "."
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_auth",
+        "to": "core/auth",
+        "requirement": null,
+        "from": "apps/devops_incident_response"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_consumer_surfaces",
+        "to": "core/consumer_surfaces",
+        "requirement": null,
+        "from": "apps/devops_incident_response"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "apps/devops_incident_response"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_dispatch_runtime",
+        "to": "core/dispatch_runtime",
+        "requirement": null,
+        "from": "apps/devops_incident_response"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_ingress",
+        "to": "core/ingress",
+        "requirement": null,
+        "from": "apps/devops_incident_response"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2",
+        "to": "core/platform",
+        "requirement": null,
+        "from": "apps/devops_incident_response"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_store_local",
+        "to": "core/store_local",
+        "requirement": null,
+        "from": "apps/devops_incident_response"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_webhook_router",
+        "to": "core/webhook_router",
+        "requirement": null,
+        "from": "apps/devops_incident_response"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "apps/inference_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_control_plane",
+        "to": "core/control_plane",
+        "requirement": null,
+        "from": "apps/inference_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2",
+        "to": "core/platform",
+        "requirement": null,
+        "from": "apps/inference_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_codex_cli",
+        "to": "connectors/codex_cli",
+        "requirement": null,
+        "from": "apps/trading_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_github",
+        "to": "connectors/github",
+        "requirement": null,
+        "from": "apps/trading_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_market_data",
+        "to": "connectors/market_data",
+        "requirement": null,
+        "from": "apps/trading_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_auth",
+        "to": "core/auth",
+        "requirement": null,
+        "from": "apps/trading_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "apps/trading_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_ingress",
+        "to": "core/ingress",
+        "requirement": null,
+        "from": "apps/trading_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2",
+        "to": "core/platform",
+        "requirement": null,
+        "from": "apps/trading_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_runtime_router",
+        "to": "core/runtime_router",
+        "requirement": null,
+        "from": "apps/trading_ops"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_store_postgres",
+        "to": "core/store_postgres",
+        "requirement": null,
+        "from": "apps/trading_ops"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_consumer_surfaces",
+        "to": "core/consumer_surfaces",
+        "requirement": null,
+        "from": "connectors/codex_cli"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "connectors/codex_cli"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_runtime_control",
+        "to": "core/runtime_control",
+        "requirement": null,
+        "from": "connectors/codex_cli"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_conformance",
+        "to": "core/conformance",
+        "requirement": null,
+        "from": "connectors/github"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_consumer_surfaces",
+        "to": "core/consumer_surfaces",
+        "requirement": null,
+        "from": "connectors/github"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "connectors/github"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_direct_runtime",
+        "to": "core/direct_runtime",
+        "requirement": null,
+        "from": "connectors/github"
+      },
+      {
+        "kind": "dev_only",
+        "app": "jido_integration_v2",
+        "to": "core/platform",
+        "requirement": null,
+        "from": "connectors/github"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_conformance",
+        "to": "core/conformance",
+        "requirement": null,
+        "from": "connectors/linear"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_consumer_surfaces",
+        "to": "core/consumer_surfaces",
+        "requirement": null,
+        "from": "connectors/linear"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "connectors/linear"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_direct_runtime",
+        "to": "core/direct_runtime",
+        "requirement": null,
+        "from": "connectors/linear"
+      },
+      {
+        "kind": "dev_only",
+        "app": "jido_integration_v2",
+        "to": "core/platform",
+        "requirement": null,
+        "from": "connectors/linear"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_consumer_surfaces",
+        "to": "core/consumer_surfaces",
+        "requirement": null,
+        "from": "connectors/market_data"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "connectors/market_data"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_ingress",
+        "to": "core/ingress",
+        "requirement": null,
+        "from": "connectors/market_data"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_runtime_control",
+        "to": "core/runtime_control",
+        "requirement": null,
+        "from": "connectors/market_data"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_conformance",
+        "to": "core/conformance",
+        "requirement": null,
+        "from": "connectors/notion"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_consumer_surfaces",
+        "to": "core/consumer_surfaces",
+        "requirement": null,
+        "from": "connectors/notion"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "connectors/notion"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_direct_runtime",
+        "to": "core/direct_runtime",
+        "requirement": null,
+        "from": "connectors/notion"
+      },
+      {
+        "kind": "dev_only",
+        "app": "jido_integration_v2",
+        "to": "core/platform",
+        "requirement": null,
+        "from": "connectors/notion"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_runtime_control",
+        "to": "core/runtime_control",
+        "requirement": null,
+        "from": "core/asm_runtime_bridge"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/auth"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/brain_ingress"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_github",
+        "to": "connectors/github",
+        "requirement": null,
+        "from": "core/conformance"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/conformance"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_control_plane",
+        "to": "core/control_plane",
+        "requirement": null,
+        "from": "core/conformance"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_direct_runtime",
+        "to": "core/direct_runtime",
+        "requirement": null,
+        "from": "core/conformance"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_ingress",
+        "to": "core/ingress",
+        "requirement": null,
+        "from": "core/conformance"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2",
+        "to": "core/platform",
+        "requirement": null,
+        "from": "core/conformance"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_runtime_router",
+        "to": "core/runtime_router",
+        "requirement": null,
+        "from": "core/conformance"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/consumer_surfaces"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_control_plane",
+        "to": "core/control_plane",
+        "requirement": null,
+        "from": "core/consumer_surfaces"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_ingress",
+        "to": "core/ingress",
+        "requirement": null,
+        "from": "core/consumer_surfaces"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_auth",
+        "to": "core/auth",
+        "requirement": null,
+        "from": "core/control_plane"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/control_plane"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_direct_runtime",
+        "to": "core/direct_runtime",
+        "requirement": null,
+        "from": "core/control_plane"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_policy",
+        "to": "core/policy",
+        "requirement": null,
+        "from": "core/control_plane"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_runtime_router",
+        "to": "core/runtime_router",
+        "requirement": null,
+        "from": "core/control_plane"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/direct_runtime"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/dispatch_runtime"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_control_plane",
+        "to": "core/control_plane",
+        "requirement": null,
+        "from": "core/dispatch_runtime"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/ingress"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_control_plane",
+        "to": "core/control_plane",
+        "requirement": null,
+        "from": "core/ingress"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_store_postgres",
+        "to": "core/store_postgres",
+        "requirement": null,
+        "from": "core/ingress"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_codex_cli",
+        "to": "connectors/codex_cli",
+        "requirement": null,
+        "from": "core/platform"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_github",
+        "to": "connectors/github",
+        "requirement": null,
+        "from": "core/platform"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_market_data",
+        "to": "connectors/market_data",
+        "requirement": null,
+        "from": "core/platform"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_auth",
+        "to": "core/auth",
+        "requirement": null,
+        "from": "core/platform"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/platform"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_control_plane",
+        "to": "core/control_plane",
+        "requirement": null,
+        "from": "core/platform"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_runtime_router",
+        "to": "core/runtime_router",
+        "requirement": null,
+        "from": "core/platform"
+      },
+      {
+        "kind": "test",
+        "app": "jido_integration_v2_store_postgres",
+        "to": "core/store_postgres",
+        "requirement": null,
+        "from": "core/platform"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/policy"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_asm_runtime_bridge",
+        "to": "core/asm_runtime_bridge",
+        "requirement": null,
+        "from": "core/runtime_router"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/runtime_router"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_runtime_control",
+        "to": "core/runtime_control",
+        "requirement": null,
+        "from": "core/runtime_router"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_session",
+        "to": "core/session_runtime",
+        "requirement": null,
+        "from": "core/runtime_router"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_runtime_control",
+        "to": "core/runtime_control",
+        "requirement": null,
+        "from": "core/session_runtime"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_auth",
+        "to": "core/auth",
+        "requirement": null,
+        "from": "core/store_local"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_brain_ingress",
+        "to": "core/brain_ingress",
+        "requirement": null,
+        "from": "core/store_local"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/store_local"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_control_plane",
+        "to": "core/control_plane",
+        "requirement": null,
+        "from": "core/store_local"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_auth",
+        "to": "core/auth",
+        "requirement": null,
+        "from": "core/store_postgres"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_brain_ingress",
+        "to": "core/brain_ingress",
+        "requirement": null,
+        "from": "core/store_postgres"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/store_postgres"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_control_plane",
+        "to": "core/control_plane",
+        "requirement": null,
+        "from": "core/store_postgres"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_auth",
+        "to": "core/auth",
+        "requirement": null,
+        "from": "core/webhook_router"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_contracts",
+        "to": "core/contracts",
+        "requirement": null,
+        "from": "core/webhook_router"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_dispatch_runtime",
+        "to": "core/dispatch_runtime",
+        "requirement": null,
+        "from": "core/webhook_router"
+      },
+      {
+        "kind": "runtime",
+        "app": "jido_integration_v2_ingress",
+        "to": "core/ingress",
+        "requirement": null,
+        "from": "core/webhook_router"
+      }
+    ],
+    "digest": "6ea5939f6f827b92c0ef3756151febd3c08d6bbbca8fd2820d89e932cb82c99e",
+    "excluded_projects": [
+      ".",
+      "apps/devops_incident_response",
+      "apps/inference_ops",
+      "apps/trading_ops",
+      "connectors/codex_cli",
+      "connectors/market_data",
+      "core/asm_runtime_bridge",
+      "core/conformance",
+      "core/runtime_control",
+      "core/runtime_router",
+      "core/session_runtime"
+    ],
+    "selected_projects": [
+      "connectors/github",
+      "connectors/linear",
+      "connectors/notion",
+      "core/auth",
+      "core/brain_ingress",
+      "core/consumer_surfaces",
+      "core/contracts",
+      "core/control_plane",
+      "core/direct_runtime",
+      "core/dispatch_runtime",
+      "core/ingress",
+      "core/platform",
+      "core/policy",
+      "core/store_local",
+      "core/store_postgres",
+      "core/webhook_router"
+    ],
+    "violations": []
+  }
+}

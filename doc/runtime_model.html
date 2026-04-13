@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="jido_integration v0.1.0">
+
+
+    <title>Runtime Model — jido_integration v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ECCB626C.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+jido_integration
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of jido_integration</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>Runtime Model</h1>
+
+<a href="runtime_model.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+  </div>
+
+
+<p>Jido Integration now proves four execution runtime families: direct, session,
+stream, and inference.</p><h2 id="direct-runtime" class="section-heading"><a href="#direct-runtime" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Direct Runtime</span></h2><p>Direct capabilities execute through <code class="inline">core/direct_runtime</code> and a connector's
+provider SDK. This path is for request/response work that does not need a
+runtime-control-managed session or streaming state.</p><p>Use it when:</p><ul><li>one request maps to one bounded execution</li><li>the connector can finish cleanly without preserving runtime state</li><li>you want the simplest dependency and review story</li></ul><h2 id="runtime-control-backed-runtime" class="section-heading"><a href="#runtime-control-backed-runtime" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Runtime-Control-Backed Runtime</span></h2><p>Sessioned and streamed capabilities go through <code class="inline">Jido.RuntimeControl</code>.</p><ul><li><code class="inline">core/runtime_router</code> is the authored adapter layer used by the control
+plane for all non-direct capability execution.</li><li><code class="inline">asm</code> is projected by <code class="inline">core/asm_runtime_bridge</code> into the
+<code class="inline">agent_session_manager</code> and <code class="inline">cli_subprocess_core</code> lane.</li><li><code class="inline">jido_session</code> is projected by <code class="inline">core/session_runtime</code> via
+<code class="inline">Jido.Session.RuntimeControlDriver</code>.</li></ul><p>This is the stable non-direct seam for long-running or stateful execution.</p><p>Use it when:</p><ul><li>work must reuse a runtime-managed session</li><li>a target needs explicit runtime-driver compatibility</li><li>the capability publishes session or stream behavior honestly rather than
+pretending to be direct</li></ul><p>The current runtime-control-backed model stops at those two lanes. Lower-boundary
+experiments are intentionally outside the active core runtime path.</p><p>Important distinction:</p><ul><li>CLI-backed inference does not require <code class="inline">core/runtime_router</code> or
+<code class="inline">core/session_runtime</code>; it flows through <a href="https://hexdocs.pm/agent_session_manager/0.9.2/ASM.InferenceEndpoint.html"><code class="inline">ASM.InferenceEndpoint</code></a> and then
+through the ordinary inference endpoint path in the control plane.</li><li><code class="inline">core/runtime_router</code> and <code class="inline">core/session_runtime</code> matter when a capability is
+honestly sessioned or streamed and must execute on the Runtime Control seam.</li></ul><h2 id="hosted-async-and-webhooks" class="section-heading"><a href="#hosted-async-and-webhooks" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Hosted Async And Webhooks</span></h2><p>Hosted webhook registration and async replay are separate package surfaces.
+They live in <code class="inline">core/webhook_router</code> and <code class="inline">core/dispatch_runtime</code>, not in the
+facade package and not in the direct runtime path.</p><h2 id="inference-runtime" class="section-heading"><a href="#inference-runtime" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Inference Runtime</span></h2><p>Inference is now a first-class runtime family on the public facade.</p><ul><li>cloud routes execute as <code class="inline">runtime_kind: :client</code> against provider-managed
+endpoints</li><li>self-hosted routes execute as <code class="inline">runtime_kind: :service</code> after endpoint
+resolution through <code class="inline">self_hosted_inference_core</code></li><li>both routes execute the data-plane call through <code class="inline">req_llm</code></li><li><code class="inline">core/control_plane</code> records the durable inference event minimum</li><li><code class="inline">core/platform</code> exposes both <code class="inline">invoke_inference/2</code> and <code class="inline">review_packet/2</code></li><li>CLI-backed inference endpoints are published by ASM and consumed here as
+inference targets, not as Runtime Control session connectors</li><li>lower spawned-service mechanics sit on <code class="inline">execution_plane</code>, but lease lineage,
+attachability, and service publication remain above that substrate</li></ul><p>For compatibility with the existing repo, <code class="inline">Run.runtime_class</code> and
+<code class="inline">Attempt.runtime_class</code> stay on <code class="inline">:direct | :session | :stream</code>.
+Inference-specific route truth is exposed separately through:</p><ul><li><code class="inline">runtime.family</code></li><li><code class="inline">runtime_kind</code></li><li><code class="inline">management_mode</code></li><li><code class="inline">target_class</code></li></ul><h2 id="design-rule" class="section-heading"><a href="#design-rule" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Design Rule</span></h2><p>If a capability can finish cleanly without preserving runtime state, keep it
+direct.
+If it needs session continuity, replay, or host-visible recovery, route it
+through Runtime Control or the async packages explicitly.
+If it is an inference request, keep request execution in <code class="inline">req_llm</code> and keep
+runtime publication below the control plane.</p><h2 id="wave-1-lower-boundary-freeze" class="section-heading"><a href="#wave-1-lower-boundary-freeze" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Wave 1 Lower-Boundary Freeze</span></h2><p>Wave 1 also freezes the lower-boundary contract vocabulary used around these
+runtime families:</p><ul><li><code class="inline">ExecutionIntentEnvelope.v1</code></li><li><code class="inline">HttpExecutionIntent.v1</code></li><li><code class="inline">ProcessExecutionIntent.v1</code></li><li><code class="inline">JsonRpcExecutionIntent.v1</code></li><li><code class="inline">ExecutionRoute.v1</code></li><li><code class="inline">AttachGrant.v1</code></li><li><code class="inline">ExecutionEvent.v1</code></li><li><code class="inline">ExecutionOutcome.v1</code></li></ul><p>In this repo, those contracts are carried and interpreted through durable
+Spine ownership. They are not exposed as raw lower-package APIs.</p><p>The detailed family-facing minimal-lane payload interiors are still
+provisional until Wave 3 prove-out. The ownership split is already frozen:</p><ul><li>Brain decides policy and topology direction</li><li>Spine persists durable meaning</li><li>Execution Plane emits raw execution facts</li></ul>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="publishing.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+Publishing
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/jido_integration/0.1.0">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/jido_integration/0.1.0">Hex Preview</a>
+
+                (<a href="https://preview.hex.pm/preview/jido_integration/0.1.0/show/guides/runtime_model.md">current file</a>)
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="jido_integration.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

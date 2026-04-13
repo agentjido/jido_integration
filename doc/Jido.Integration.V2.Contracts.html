@@ -1,0 +1,3640 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="jido_integration v0.1.0">
+
+
+    <title>Jido.Integration.V2.Contracts — jido_integration v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ECCB626C.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+jido_integration
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-module" id="main" data-type="modules">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of jido_integration</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>
+      <span translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Contracts</span> 
+      <small class="app-vsn" translate="no">(jido_integration v0.1.0)</small>
+
+    </h1>
+
+<a href="Jido.Integration.V2.Contracts.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+
+  </div>
+
+
+    <section id="moduledoc">
+<p>Shared public types and validation helpers for the greenfield integration platform.</p>
+    </section>
+
+</div>
+
+  <section id="summary" class="details-list">
+    <h2 class="section-heading">
+      <a class="hover-link" href="#summary">
+        <i class="ri-link-m" aria-hidden="true"></i>
+      </a>
+      <span class="text">Summary</span>
+    </h2>
+<div class="summary-types summary">
+  <h3>
+    <a href="#types">Types</a>
+  </h3>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:access_control/0" data-no-tooltip="" translate="no">access_control()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:approvals/0" data-no-tooltip="" translate="no">approvals()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:artifact_type/0" data-no-tooltip="" translate="no">artifact_type()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:attempt_status/0" data-no-tooltip="" translate="no">attempt_status()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:authority_source/0" data-no-tooltip="" translate="no">authority_source()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:checksum/0" data-no-tooltip="" translate="no">checksum()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:egress_policy/0" data-no-tooltip="" translate="no">egress_policy()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:event_level/0" data-no-tooltip="" translate="no">event_level()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:event_stream/0" data-no-tooltip="" translate="no">event_stream()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:inference_checkpoint_policy/0" data-no-tooltip="" translate="no">inference_checkpoint_policy()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:inference_operation/0" data-no-tooltip="" translate="no">inference_operation()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:inference_protocol/0" data-no-tooltip="" translate="no">inference_protocol()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:inference_status/0" data-no-tooltip="" translate="no">inference_status()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:inference_target_class/0" data-no-tooltip="" translate="no">inference_target_class()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:management_mode/0" data-no-tooltip="" translate="no">management_mode()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:payload_ref/0" data-no-tooltip="" translate="no">payload_ref()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:run_status/0" data-no-tooltip="" translate="no">run_status()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:runtime_class/0" data-no-tooltip="" translate="no">runtime_class()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:runtime_kind/0" data-no-tooltip="" translate="no">runtime_kind()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:sandbox_level/0" data-no-tooltip="" translate="no">sandbox_level()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:target_health/0" data-no-tooltip="" translate="no">target_health()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:target_mode/0" data-no-tooltip="" translate="no">target_mode()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:trace_context/0" data-no-tooltip="" translate="no">trace_context()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:transport_mode/0" data-no-tooltip="" translate="no">transport_mode()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:trigger_source/0" data-no-tooltip="" translate="no">trigger_source()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:trigger_status/0" data-no-tooltip="" translate="no">trigger_status()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:zoi_schema/0" data-no-tooltip="" translate="no">zoi_schema()</a>
+
+      </div>
+
+    </div>
+
+</div>
+<div class="summary-functions summary">
+  <h3>
+    <a href="#functions">Functions</a>
+  </h3>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#any_map_schema/0" data-no-tooltip="" translate="no">any_map_schema()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#atomish_schema/1" data-no-tooltip="" translate="no">atomish_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#attempt_from_id!/2" data-no-tooltip="" translate="no">attempt_from_id!(run_id, attempt_id)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#attempt_id/2" data-no-tooltip="" translate="no">attempt_id(run_id, attempt)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#boundary_metadata_contract_keys/0" data-no-tooltip="" translate="no">boundary_metadata_contract_keys()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#datetime_schema/1" data-no-tooltip="" translate="no">datetime_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#dump_json_safe!/1" data-no-tooltip="" translate="no">dump_json_safe!(value)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#enumish_schema/2" data-no-tooltip="" translate="no">enumish_schema(values, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#event_id/3" data-no-tooltip="" translate="no">event_id(run_id, attempt_id, seq)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#execution_plane_contract_packet/0" data-no-tooltip="" translate="no">execution_plane_contract_packet()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#fetch!/2" data-no-tooltip="" translate="no">fetch!(map, key)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#fetch_required!/3" data-no-tooltip="" translate="no">fetch_required!(map, key, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#get/3" data-no-tooltip="" translate="no">get(map, key, default \\ nil)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#inference_contract_version/0" data-no-tooltip="" translate="no">inference_contract_version()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#keyword_list_schema/1" data-no-tooltip="" translate="no">keyword_list_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#lower_restart_authority_contracts/0" data-no-tooltip="" translate="no">lower_restart_authority_contracts()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#map_schema/1" data-no-tooltip="" translate="no">map_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#module_schema/1" data-no-tooltip="" translate="no">module_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#next_id/1" data-no-tooltip="" translate="no">next_id(prefix)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#non_empty_string_schema/1" data-no-tooltip="" translate="no">non_empty_string_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#normalize_atomish!/2" data-no-tooltip="" translate="no">normalize_atomish!(value, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#normalize_atomish_list!/2" data-no-tooltip="" translate="no">normalize_atomish_list!(values, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#normalize_payload_ref!/1" data-no-tooltip="" translate="no">normalize_payload_ref!(payload_ref)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#normalize_string_list!/2" data-no-tooltip="" translate="no">normalize_string_list!(values, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#normalize_trace/1" data-no-tooltip="" translate="no">normalize_trace(trace)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#normalize_version_list!/2" data-no-tooltip="" translate="no">normalize_version_list!(versions, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#now/0" data-no-tooltip="" translate="no">now()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#operator_read_contracts/0" data-no-tooltip="" translate="no">operator_read_contracts()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#ordered_object!/2" data-no-tooltip="" translate="no">ordered_object!(fields, opts \\ [])</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Builds a <a href="https://hexdocs.pm/zoi/0.17.4/Zoi.html#object/2"><code class="inline">Zoi.object/2</code></a> schema from an ordered keyword list.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#payload_ref_schema/1" data-no-tooltip="" translate="no">payload_ref_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#placeholder_zoi_schema?/1" data-no-tooltip="" translate="no">placeholder_zoi_schema?(arg1)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#positive_integer_schema/1" data-no-tooltip="" translate="no">positive_integer_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#provisional_minimal_lane_contracts/0" data-no-tooltip="" translate="no">provisional_minimal_lane_contracts()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#receipt_id/3" data-no-tooltip="" translate="no">receipt_id(run_id, attempt_id, receipt_kind)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#recovery_task_id/2" data-no-tooltip="" translate="no">recovery_task_id(subject_ref, reason)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#reference_uri/3" data-no-tooltip="" translate="no">reference_uri(namespace, kind, id)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#review_packet_ref/2" data-no-tooltip="" translate="no">review_packet_ref(run_id, attempt_id \\ nil)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#schema_version/0" data-no-tooltip="" translate="no">schema_version()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#strict_object!/2" data-no-tooltip="" translate="no">strict_object!(fields, opts \\ [])</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Builds a strict <a href="https://hexdocs.pm/zoi/0.17.4/Zoi.html#object/2"><code class="inline">Zoi.object/2</code></a> schema from an ordered keyword list.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#string_list_schema/1" data-no-tooltip="" translate="no">string_list_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#struct_schema/2" data-no-tooltip="" translate="no">struct_schema(module, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_access_control!/1" data-no-tooltip="" translate="no">validate_access_control!(access_control)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_aggregator_epoch!/1" data-no-tooltip="" translate="no">validate_aggregator_epoch!(epoch)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_approvals!/1" data-no-tooltip="" translate="no">validate_approvals!(approvals)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_artifact_type!/1" data-no-tooltip="" translate="no">validate_artifact_type!(artifact_type)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_attempt!/1" data-no-tooltip="" translate="no">validate_attempt!(attempt)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_attempt_status!/1" data-no-tooltip="" translate="no">validate_attempt_status!(status)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_authority_source!/1" data-no-tooltip="" translate="no">validate_authority_source!(authority_source)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_checksum!/1" data-no-tooltip="" translate="no">validate_checksum!(checksum)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_egress_policy!/1" data-no-tooltip="" translate="no">validate_egress_policy!(egress_policy)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_enum_atomish!/3" data-no-tooltip="" translate="no">validate_enum_atomish!(value, valid_values, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_event_level!/1" data-no-tooltip="" translate="no">validate_event_level!(level)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_event_seq!/1" data-no-tooltip="" translate="no">validate_event_seq!(seq)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_event_stream!/1" data-no-tooltip="" translate="no">validate_event_stream!(stream)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_inference_checkpoint_policy!/1" data-no-tooltip="" translate="no">validate_inference_checkpoint_policy!(policy)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_inference_contract_version!/1" data-no-tooltip="" translate="no">validate_inference_contract_version!(version)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_inference_operation!/1" data-no-tooltip="" translate="no">validate_inference_operation!(operation)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_inference_protocol!/1" data-no-tooltip="" translate="no">validate_inference_protocol!(protocol)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_inference_status!/1" data-no-tooltip="" translate="no">validate_inference_status!(status)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_inference_target_class!/1" data-no-tooltip="" translate="no">validate_inference_target_class!(target_class)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_management_mode!/1" data-no-tooltip="" translate="no">validate_management_mode!(management_mode)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_map!/2" data-no-tooltip="" translate="no">validate_map!(value, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_module!/2" data-no-tooltip="" translate="no">validate_module!(value, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_non_empty_string!/2" data-no-tooltip="" translate="no">validate_non_empty_string!(value, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_positive_integer!/2" data-no-tooltip="" translate="no">validate_positive_integer!(value, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_run_status!/1" data-no-tooltip="" translate="no">validate_run_status!(status)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_runtime_class!/1" data-no-tooltip="" translate="no">validate_runtime_class!(runtime_class)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_runtime_kind!/1" data-no-tooltip="" translate="no">validate_runtime_kind!(runtime_kind)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_sandbox_level!/1" data-no-tooltip="" translate="no">validate_sandbox_level!(sandbox_level)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_semver!/2" data-no-tooltip="" translate="no">validate_semver!(version, field_name \\ &quot;version&quot;)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_target_health!/1" data-no-tooltip="" translate="no">validate_target_health!(health)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_target_mode!/1" data-no-tooltip="" translate="no">validate_target_mode!(mode)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_transport_mode!/1" data-no-tooltip="" translate="no">validate_transport_mode!(transport_mode)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_trigger_source!/1" data-no-tooltip="" translate="no">validate_trigger_source!(source)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_trigger_status!/1" data-no-tooltip="" translate="no">validate_trigger_status!(status)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_version_requirement!/1" data-no-tooltip="" translate="no">validate_version_requirement!(requirement)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#validate_zoi_schema!/2" data-no-tooltip="" translate="no">validate_zoi_schema!(value, field_name)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#zoi_schema?/1" data-no-tooltip="" translate="no">zoi_schema?(value)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#zoi_schema_schema/1" data-no-tooltip="" translate="no">zoi_schema_schema(field_name)</a>
+
+      </div>
+
+    </div>
+
+</div>
+
+  </section>
+
+
+  <section id="types" class="details-list">
+    <h2 class="section-heading">
+      <a class="hover-link" href="#types">
+        <i class="ri-link-m" aria-hidden="true"></i>
+      </a>
+      <span class="text">Types</span>
+    </h2>
+
+    <div class="types-list">
+<section class="detail" id="t:access_control/0">
+
+  <div class="detail-header">
+    <a href="#t:access_control/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">access_control()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> access_control() :: :run_scoped | :tenant_scoped | :public_read</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:approvals/0">
+
+  <div class="detail-header">
+    <a href="#t:approvals/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">approvals()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> approvals() :: :none | :manual | :auto</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:artifact_type/0">
+
+  <div class="detail-header">
+    <a href="#t:artifact_type/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">artifact_type()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> artifact_type() ::
+  :event_log
+  | :stdout
+  | :stderr
+  | :diff
+  | :tarball
+  | :tool_output
+  | :log
+  | :custom</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:attempt_status/0">
+
+  <div class="detail-header">
+    <a href="#t:attempt_status/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">attempt_status()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> attempt_status() :: :accepted | :running | :completed | :failed</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:authority_source/0">
+
+  <div class="detail-header">
+    <a href="#t:authority_source/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">authority_source()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> authority_source() :: :jido_integration | :jido_os | :external</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:checksum/0">
+
+  <div class="detail-header">
+    <a href="#t:checksum/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">checksum()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> checksum() :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:egress_policy/0">
+
+  <div class="detail-header">
+    <a href="#t:egress_policy/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">egress_policy()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> egress_policy() :: :blocked | :restricted | :open</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:event_level/0">
+
+  <div class="detail-header">
+    <a href="#t:event_level/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">event_level()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> event_level() :: :debug | :info | :warn | :error</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:event_stream/0">
+
+  <div class="detail-header">
+    <a href="#t:event_stream/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">event_stream()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> event_stream() :: :assistant | :stdout | :stderr | :system | :control</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:inference_checkpoint_policy/0">
+
+  <div class="detail-header">
+    <a href="#t:inference_checkpoint_policy/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">inference_checkpoint_policy()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> inference_checkpoint_policy() :: :summary | :artifact | :disabled</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:inference_operation/0">
+
+  <div class="detail-header">
+    <a href="#t:inference_operation/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">inference_operation()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> inference_operation() :: :generate_text | :stream_text</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:inference_protocol/0">
+
+  <div class="detail-header">
+    <a href="#t:inference_protocol/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">inference_protocol()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> inference_protocol() :: :openai_chat_completions</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:inference_status/0">
+
+  <div class="detail-header">
+    <a href="#t:inference_status/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">inference_status()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> inference_status() :: :ok | :error | :cancelled</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:inference_target_class/0">
+
+  <div class="detail-header">
+    <a href="#t:inference_target_class/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">inference_target_class()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> inference_target_class() ::
+  :cloud_provider | :cli_endpoint | :self_hosted_endpoint</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:management_mode/0">
+
+  <div class="detail-header">
+    <a href="#t:management_mode/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">management_mode()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> management_mode() :: :provider_managed | :jido_managed | :externally_managed</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:payload_ref/0">
+
+  <div class="detail-header">
+    <a href="#t:payload_ref/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">payload_ref()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> payload_ref() :: %{
+  store: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  key: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  ttl_s: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pos_integer</a>(),
+  access_control: <a href="#t:access_control/0">access_control</a>(),
+  checksum: <a href="#t:checksum/0">checksum</a>(),
+  size_bytes: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">non_neg_integer</a>()
+}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:run_status/0">
+
+  <div class="detail-header">
+    <a href="#t:run_status/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">run_status()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> run_status() :: :accepted | :running | :completed | :failed | :denied | :shed</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:runtime_class/0">
+
+  <div class="detail-header">
+    <a href="#t:runtime_class/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">runtime_class()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> runtime_class() :: :direct | :session | :stream</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:runtime_kind/0">
+
+  <div class="detail-header">
+    <a href="#t:runtime_kind/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">runtime_kind()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> runtime_kind() :: :client | :task | :service</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:sandbox_level/0">
+
+  <div class="detail-header">
+    <a href="#t:sandbox_level/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">sandbox_level()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> sandbox_level() :: :strict | :standard | :none</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:target_health/0">
+
+  <div class="detail-header">
+    <a href="#t:target_health/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">target_health()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> target_health() :: :healthy | :degraded | :unavailable</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:target_mode/0">
+
+  <div class="detail-header">
+    <a href="#t:target_mode/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">target_mode()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> target_mode() :: :local | :ssh | :beam | :bus | :http</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:trace_context/0">
+
+  <div class="detail-header">
+    <a href="#t:trace_context/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">trace_context()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> trace_context() :: %{
+  trace_id: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil,
+  span_id: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil,
+  correlation_id: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil,
+  causation_id: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil
+}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:transport_mode/0">
+
+  <div class="detail-header">
+    <a href="#t:transport_mode/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">transport_mode()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> transport_mode() :: :inline | :chunked | :object_store</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:trigger_source/0">
+
+  <div class="detail-header">
+    <a href="#t:trigger_source/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">trigger_source()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> trigger_source() :: :webhook | :poll</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:trigger_status/0">
+
+  <div class="detail-header">
+    <a href="#t:trigger_status/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">trigger_status()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> trigger_status() :: :accepted | :rejected</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:zoi_schema/0">
+
+  <div class="detail-header">
+    <a href="#t:zoi_schema/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">zoi_schema()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> zoi_schema() :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
+
+  <section id="functions" class="details-list">
+    <h2 class="section-heading">
+      <a class="hover-link" href="#functions">
+        <i class="ri-link-m" aria-hidden="true"></i>
+      </a>
+      <span class="text">Functions</span>
+    </h2>
+
+    <div class="functions-list">
+<section class="detail" id="any_map_schema/0">
+
+  <div class="detail-header">
+    <a href="#any_map_schema/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">any_map_schema()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> any_map_schema() :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="atomish_schema/1">
+
+  <div class="detail-header">
+    <a href="#atomish_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">atomish_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> atomish_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="attempt_from_id!/2">
+
+  <div class="detail-header">
+    <a href="#attempt_from_id!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">attempt_from_id!(run_id, attempt_id)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> attempt_from_id!(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pos_integer</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="attempt_id/2">
+
+  <div class="detail-header">
+    <a href="#attempt_id/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">attempt_id(run_id, attempt)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> attempt_id(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pos_integer</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="boundary_metadata_contract_keys/0">
+
+  <div class="detail-header">
+    <a href="#boundary_metadata_contract_keys/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">boundary_metadata_contract_keys()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> boundary_metadata_contract_keys() :: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), ...]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="datetime_schema/1">
+
+  <div class="detail-header">
+    <a href="#datetime_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">datetime_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> datetime_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="dump_json_safe!/1">
+
+  <div class="detail-header">
+    <a href="#dump_json_safe!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">dump_json_safe!(value)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> dump_json_safe!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="enumish_schema/2">
+
+  <div class="detail-header">
+    <a href="#enumish_schema/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">enumish_schema(values, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> enumish_schema([<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>()], <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="event_id/3">
+
+  <div class="detail-header">
+    <a href="#event_id/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">event_id(run_id, attempt_id, seq)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> event_id(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">non_neg_integer</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="execution_plane_contract_packet/0">
+
+  <div class="detail-header">
+    <a href="#execution_plane_contract_packet/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">execution_plane_contract_packet()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> execution_plane_contract_packet() :: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), ...]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="fetch!/2">
+
+  <div class="detail-header">
+    <a href="#fetch!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">fetch!(map, key)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> fetch!(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="fetch_required!/3">
+
+  <div class="detail-header">
+    <a href="#fetch_required!/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">fetch_required!(map, key, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> fetch_required!(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="get/3">
+
+    <span id="get/2"></span>
+
+  <div class="detail-header">
+    <a href="#get/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">get(map, key, default \\ nil)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> get(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="inference_contract_version/0">
+
+  <div class="detail-header">
+    <a href="#inference_contract_version/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">inference_contract_version()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> inference_contract_version() :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="keyword_list_schema/1">
+
+  <div class="detail-header">
+    <a href="#keyword_list_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">keyword_list_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> keyword_list_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="lower_restart_authority_contracts/0">
+
+  <div class="detail-header">
+    <a href="#lower_restart_authority_contracts/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">lower_restart_authority_contracts()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> lower_restart_authority_contracts() :: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), ...]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="map_schema/1">
+
+  <div class="detail-header">
+    <a href="#map_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">map_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> map_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="module_schema/1">
+
+  <div class="detail-header">
+    <a href="#module_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">module_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> module_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="next_id/1">
+
+  <div class="detail-header">
+    <a href="#next_id/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">next_id(prefix)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> next_id(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="non_empty_string_schema/1">
+
+  <div class="detail-header">
+    <a href="#non_empty_string_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">non_empty_string_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> non_empty_string_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="normalize_atomish!/2">
+
+  <div class="detail-header">
+    <a href="#normalize_atomish!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">normalize_atomish!(value, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> normalize_atomish!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="normalize_atomish_list!/2">
+
+  <div class="detail-header">
+    <a href="#normalize_atomish_list!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">normalize_atomish_list!(values, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> normalize_atomish_list!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: [<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>()]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="normalize_payload_ref!/1">
+
+  <div class="detail-header">
+    <a href="#normalize_payload_ref!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">normalize_payload_ref!(payload_ref)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> normalize_payload_ref!(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) :: <a href="#t:payload_ref/0">payload_ref</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="normalize_string_list!/2">
+
+  <div class="detail-header">
+    <a href="#normalize_string_list!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">normalize_string_list!(values, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> normalize_string_list!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="normalize_trace/1">
+
+  <div class="detail-header">
+    <a href="#normalize_trace/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">normalize_trace(trace)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> normalize_trace(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) :: <a href="#t:trace_context/0">trace_context</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="normalize_version_list!/2">
+
+  <div class="detail-header">
+    <a href="#normalize_version_list!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">normalize_version_list!(versions, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> normalize_version_list!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="now/0">
+
+  <div class="detail-header">
+    <a href="#now/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">now()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> now() :: <a href="https://hexdocs.pm/elixir/DateTime.html#t:t/0">DateTime.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="operator_read_contracts/0">
+
+  <div class="detail-header">
+    <a href="#operator_read_contracts/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">operator_read_contracts()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> operator_read_contracts() :: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), ...]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="ordered_object!/2">
+
+    <span id="ordered_object!/1"></span>
+
+  <div class="detail-header">
+    <a href="#ordered_object!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">ordered_object!(fields, opts \\ [])</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> ordered_object!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+<p>Builds a <a href="https://hexdocs.pm/zoi/0.17.4/Zoi.html#object/2"><code class="inline">Zoi.object/2</code></a> schema from an ordered keyword list.</p><p><a href="https://hexdocs.pm/zoi/0.17.4/Zoi.html"><code class="inline">Zoi</code></a> preserves object field order. Using maps here makes the resulting schema
+order depend on map enumeration, which can diverge between compile-time
+generated modules and runtime manifest construction.</p>
+  </section>
+</section>
+<section class="detail" id="payload_ref_schema/1">
+
+  <div class="detail-header">
+    <a href="#payload_ref_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">payload_ref_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> payload_ref_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="placeholder_zoi_schema?/1">
+
+  <div class="detail-header">
+    <a href="#placeholder_zoi_schema?/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">placeholder_zoi_schema?(arg1)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> placeholder_zoi_schema?(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="positive_integer_schema/1">
+
+  <div class="detail-header">
+    <a href="#positive_integer_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">positive_integer_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> positive_integer_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="provisional_minimal_lane_contracts/0">
+
+  <div class="detail-header">
+    <a href="#provisional_minimal_lane_contracts/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">provisional_minimal_lane_contracts()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> provisional_minimal_lane_contracts() :: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), ...]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="receipt_id/3">
+
+  <div class="detail-header">
+    <a href="#receipt_id/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">receipt_id(run_id, attempt_id, receipt_kind)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> receipt_id(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="recovery_task_id/2">
+
+  <div class="detail-header">
+    <a href="#recovery_task_id/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">recovery_task_id(subject_ref, reason)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> recovery_task_id(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="reference_uri/3">
+
+  <div class="detail-header">
+    <a href="#reference_uri/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">reference_uri(namespace, kind, id)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> reference_uri(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="review_packet_ref/2">
+
+    <span id="review_packet_ref/1"></span>
+
+  <div class="detail-header">
+    <a href="#review_packet_ref/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">review_packet_ref(run_id, attempt_id \\ nil)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> review_packet_ref(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="schema_version/0">
+
+  <div class="detail-header">
+    <a href="#schema_version/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">schema_version()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> schema_version() :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="strict_object!/2">
+
+    <span id="strict_object!/1"></span>
+
+  <div class="detail-header">
+    <a href="#strict_object!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">strict_object!(fields, opts \\ [])</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> strict_object!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+<p>Builds a strict <a href="https://hexdocs.pm/zoi/0.17.4/Zoi.html#object/2"><code class="inline">Zoi.object/2</code></a> schema from an ordered keyword list.</p>
+  </section>
+</section>
+<section class="detail" id="string_list_schema/1">
+
+  <div class="detail-header">
+    <a href="#string_list_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">string_list_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> string_list_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="struct_schema/2">
+
+  <div class="detail-header">
+    <a href="#struct_schema/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">struct_schema(module, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> struct_schema(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">module</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_access_control!/1">
+
+  <div class="detail-header">
+    <a href="#validate_access_control!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_access_control!(access_control)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_access_control!(<a href="#t:access_control/0">access_control</a>()) :: <a href="#t:access_control/0">access_control</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_aggregator_epoch!/1">
+
+  <div class="detail-header">
+    <a href="#validate_aggregator_epoch!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_aggregator_epoch!(epoch)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_aggregator_epoch!(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pos_integer</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pos_integer</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_approvals!/1">
+
+  <div class="detail-header">
+    <a href="#validate_approvals!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_approvals!(approvals)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_approvals!(<a href="#t:approvals/0">approvals</a>()) :: <a href="#t:approvals/0">approvals</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_artifact_type!/1">
+
+  <div class="detail-header">
+    <a href="#validate_artifact_type!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_artifact_type!(artifact_type)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_artifact_type!(<a href="#t:artifact_type/0">artifact_type</a>()) :: <a href="#t:artifact_type/0">artifact_type</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_attempt!/1">
+
+  <div class="detail-header">
+    <a href="#validate_attempt!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_attempt!(attempt)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_attempt!(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pos_integer</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pos_integer</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_attempt_status!/1">
+
+  <div class="detail-header">
+    <a href="#validate_attempt_status!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_attempt_status!(status)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_attempt_status!(<a href="#t:attempt_status/0">attempt_status</a>()) :: <a href="#t:attempt_status/0">attempt_status</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_authority_source!/1">
+
+  <div class="detail-header">
+    <a href="#validate_authority_source!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_authority_source!(authority_source)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_authority_source!(<a href="#t:authority_source/0">authority_source</a>()) :: <a href="#t:authority_source/0">authority_source</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_checksum!/1">
+
+  <div class="detail-header">
+    <a href="#validate_checksum!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_checksum!(checksum)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_checksum!(<a href="#t:checksum/0">checksum</a>()) :: <a href="#t:checksum/0">checksum</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_egress_policy!/1">
+
+  <div class="detail-header">
+    <a href="#validate_egress_policy!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_egress_policy!(egress_policy)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_egress_policy!(<a href="#t:egress_policy/0">egress_policy</a>()) :: <a href="#t:egress_policy/0">egress_policy</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_enum_atomish!/3">
+
+  <div class="detail-header">
+    <a href="#validate_enum_atomish!/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_enum_atomish!(value, valid_values, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_enum_atomish!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(), [<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>()], <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_event_level!/1">
+
+  <div class="detail-header">
+    <a href="#validate_event_level!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_event_level!(level)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_event_level!(<a href="#t:event_level/0">event_level</a>()) :: <a href="#t:event_level/0">event_level</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_event_seq!/1">
+
+  <div class="detail-header">
+    <a href="#validate_event_seq!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_event_seq!(seq)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_event_seq!(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">non_neg_integer</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">non_neg_integer</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_event_stream!/1">
+
+  <div class="detail-header">
+    <a href="#validate_event_stream!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_event_stream!(stream)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_event_stream!(<a href="#t:event_stream/0">event_stream</a>()) :: <a href="#t:event_stream/0">event_stream</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_inference_checkpoint_policy!/1">
+
+  <div class="detail-header">
+    <a href="#validate_inference_checkpoint_policy!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_inference_checkpoint_policy!(policy)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_inference_checkpoint_policy!(<a href="#t:inference_checkpoint_policy/0">inference_checkpoint_policy</a>()) ::
+  <a href="#t:inference_checkpoint_policy/0">inference_checkpoint_policy</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_inference_contract_version!/1">
+
+  <div class="detail-header">
+    <a href="#validate_inference_contract_version!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_inference_contract_version!(version)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_inference_contract_version!(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_inference_operation!/1">
+
+  <div class="detail-header">
+    <a href="#validate_inference_operation!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_inference_operation!(operation)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_inference_operation!(<a href="#t:inference_operation/0">inference_operation</a>()) :: <a href="#t:inference_operation/0">inference_operation</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_inference_protocol!/1">
+
+  <div class="detail-header">
+    <a href="#validate_inference_protocol!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_inference_protocol!(protocol)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_inference_protocol!(<a href="#t:inference_protocol/0">inference_protocol</a>()) :: <a href="#t:inference_protocol/0">inference_protocol</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_inference_status!/1">
+
+  <div class="detail-header">
+    <a href="#validate_inference_status!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_inference_status!(status)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_inference_status!(<a href="#t:inference_status/0">inference_status</a>()) :: <a href="#t:inference_status/0">inference_status</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_inference_target_class!/1">
+
+  <div class="detail-header">
+    <a href="#validate_inference_target_class!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_inference_target_class!(target_class)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_inference_target_class!(<a href="#t:inference_target_class/0">inference_target_class</a>()) ::
+  <a href="#t:inference_target_class/0">inference_target_class</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_management_mode!/1">
+
+  <div class="detail-header">
+    <a href="#validate_management_mode!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_management_mode!(management_mode)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_management_mode!(<a href="#t:management_mode/0">management_mode</a>()) :: <a href="#t:management_mode/0">management_mode</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_map!/2">
+
+  <div class="detail-header">
+    <a href="#validate_map!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_map!(value, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_map!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_module!/2">
+
+  <div class="detail-header">
+    <a href="#validate_module!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_module!(value, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_module!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">module</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_non_empty_string!/2">
+
+  <div class="detail-header">
+    <a href="#validate_non_empty_string!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_non_empty_string!(value, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_non_empty_string!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_positive_integer!/2">
+
+  <div class="detail-header">
+    <a href="#validate_positive_integer!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_positive_integer!(value, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_positive_integer!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pos_integer</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_run_status!/1">
+
+  <div class="detail-header">
+    <a href="#validate_run_status!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_run_status!(status)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_run_status!(<a href="#t:run_status/0">run_status</a>()) :: <a href="#t:run_status/0">run_status</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_runtime_class!/1">
+
+  <div class="detail-header">
+    <a href="#validate_runtime_class!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_runtime_class!(runtime_class)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_runtime_class!(<a href="#t:runtime_class/0">runtime_class</a>()) :: <a href="#t:runtime_class/0">runtime_class</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_runtime_kind!/1">
+
+  <div class="detail-header">
+    <a href="#validate_runtime_kind!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_runtime_kind!(runtime_kind)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_runtime_kind!(<a href="#t:runtime_kind/0">runtime_kind</a>()) :: <a href="#t:runtime_kind/0">runtime_kind</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_sandbox_level!/1">
+
+  <div class="detail-header">
+    <a href="#validate_sandbox_level!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_sandbox_level!(sandbox_level)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_sandbox_level!(<a href="#t:sandbox_level/0">sandbox_level</a>()) :: <a href="#t:sandbox_level/0">sandbox_level</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_semver!/2">
+
+    <span id="validate_semver!/1"></span>
+
+  <div class="detail-header">
+    <a href="#validate_semver!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_semver!(version, field_name \\ &quot;version&quot;)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_semver!(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_target_health!/1">
+
+  <div class="detail-header">
+    <a href="#validate_target_health!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_target_health!(health)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_target_health!(<a href="#t:target_health/0">target_health</a>()) :: <a href="#t:target_health/0">target_health</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_target_mode!/1">
+
+  <div class="detail-header">
+    <a href="#validate_target_mode!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_target_mode!(mode)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_target_mode!(<a href="#t:target_mode/0">target_mode</a>()) :: <a href="#t:target_mode/0">target_mode</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_transport_mode!/1">
+
+  <div class="detail-header">
+    <a href="#validate_transport_mode!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_transport_mode!(transport_mode)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_transport_mode!(<a href="#t:transport_mode/0">transport_mode</a>()) :: <a href="#t:transport_mode/0">transport_mode</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_trigger_source!/1">
+
+  <div class="detail-header">
+    <a href="#validate_trigger_source!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_trigger_source!(source)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_trigger_source!(<a href="#t:trigger_source/0">trigger_source</a>()) :: <a href="#t:trigger_source/0">trigger_source</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_trigger_status!/1">
+
+  <div class="detail-header">
+    <a href="#validate_trigger_status!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_trigger_status!(status)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_trigger_status!(<a href="#t:trigger_status/0">trigger_status</a>()) :: <a href="#t:trigger_status/0">trigger_status</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_version_requirement!/1">
+
+  <div class="detail-header">
+    <a href="#validate_version_requirement!/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_version_requirement!(requirement)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_version_requirement!(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="validate_zoi_schema!/2">
+
+  <div class="detail-header">
+    <a href="#validate_zoi_schema!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">validate_zoi_schema!(value, field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> validate_zoi_schema!(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="zoi_schema?/1">
+
+  <div class="detail-header">
+    <a href="#zoi_schema?/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">zoi_schema?(value)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> zoi_schema?(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="zoi_schema_schema/1">
+
+  <div class="detail-header">
+    <a href="#zoi_schema_schema/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">zoi_schema_schema(field_name)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> zoi_schema_schema(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="#t:zoi_schema/0">zoi_schema</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
+
+    <footer class="footer">
+
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/jido_integration/0.1.0">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/jido_integration/0.1.0">Hex Preview</a>
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="jido_integration.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="jido_integration v0.1.0">
+
+
+    <title>Architecture — jido_integration v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ECCB626C.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+jido_integration
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of jido_integration</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>Architecture</h1>
+
+<a href="architecture.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+  </div>
+
+
+<p>Jido Integration is organized as a set of explicit packages with one public
+facade, several runtime and durability layers, dedicated bridge packages,
+isolated connector packages, and top-level proof apps.</p><p>If you are consuming the platform, the main idea is simple:</p><ul><li>use <code class="inline">core/platform</code> through <a href="Jido.Integration.V2.html"><code class="inline">Jido.Integration.V2</code></a></li><li>choose connector packages for the capabilities you want to publish</li><li>add durability and hosted webhook or async packages only when your host needs
+them</li></ul><p>The workspace root coordinates docs, tests, and scaffolding. It is not where
+runtime behavior lives.</p><h2 id="package-boundaries" class="section-heading"><a href="#package-boundaries" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Package Boundaries</span></h2><ul><li><code class="inline">core/contracts</code> defines the public IR, behaviours, projection rules, and
+the shared inference contract seam.</li><li><code class="inline">core/brain_ingress</code> owns the durable Brain-to-Spine intake seam, including
+submission acceptance, governance-shadow verification, and logical scope
+resolution before runtime execution.</li><li><code class="inline">core/platform</code> exposes the stable public facade <a href="Jido.Integration.V2.html"><code class="inline">Jido.Integration.V2</code></a>,
+including raw authored catalog summaries and the projected common consumer
+catalog export plus live inference invocation and review projection over
+durable truth.</li><li><code class="inline">core/auth</code> owns installs, credentials, connection truth, and leases.</li><li><code class="inline">core/control_plane</code> owns runs, attempts, events, triggers, artifacts,
+target truth, the local <code class="inline">ReqLLMCallSpec</code>, live inference execution, and the
+durable inference event minimum.</li><li><code class="inline">core/consumer_surfaces</code> owns generated common action, sensor, and plugin
+runtime support.</li><li><code class="inline">core/direct_runtime</code> handles direct provider-SDK execution.</li><li><code class="inline">core/runtime_router</code> owns the authored non-direct adapter and session
+reuse boundary above Runtime Control.</li><li><code class="inline">core/asm_runtime_bridge</code> projects the authored <code class="inline">asm</code> driver into Runtime Control.</li><li><code class="inline">core/session_runtime</code> owns the integration-managed <code class="inline">jido_session</code> driver
+implementation consumed by the runtime router.</li><li><code class="inline">core/dispatch_runtime</code> handles async transport, retry, replay, and recovery.</li><li><code class="inline">core/ingress</code> normalizes triggers and admits them into the control plane.</li><li><code class="inline">core/webhook_router</code> owns hosted route registration and route resolution.</li><li><code class="inline">core/policy</code> decides whether work is admitted, denied, or shed.</li><li><code class="inline">core/store_local</code> and <code class="inline">core/store_postgres</code> implement the explicit
+durability tiers, including submission-ledger adapters for
+<code class="inline">core/brain_ingress</code>.</li></ul><p>Connector packages stay isolated and package-owned. Proof apps compose those
+packages without reclaiming platform ownership.</p><p><code class="inline">apps/inference_ops</code> is the permanent app-level proof home for the first live
+inference runtime family.</p><h2 id="runtime-boundary" class="section-heading"><a href="#runtime-boundary" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Runtime Boundary</span></h2><p>The repo keeps a hard split between direct SDK execution and runtime-control-backed
+execution.</p><p><code class="inline">Jido.Integration.V2 -&gt; DirectRuntime -&gt; connector -&gt; provider SDK -&gt; pristine</code></p><p><code class="inline">Jido.Integration.V2 -&gt; RuntimeRouter -&gt; Jido.RuntimeControl -&gt; {asm | jido_session}</code></p><p>Direct connectors stay on the provider SDK path. Only actual <code class="inline">:session</code> and
+<code class="inline">:stream</code> capabilities use <code class="inline">Jido.RuntimeControl</code>.</p><p><code class="inline">core/runtime_router</code> is the package boundary that translates authored runtime
+metadata into Runtime Control execution. <code class="inline">asm</code> stays behind <code class="inline">core/asm_runtime_bridge</code>.
+<code class="inline">jido_session</code> stays behind <code class="inline">core/session_runtime</code>.</p><p>The active core runtime graph stops there. Legacy lower-boundary bridge code is
+not part of the default workspace CI or the active dependency path for those
+two runtime packages.</p><p>Inference stays on a separate seam:</p><p><code class="inline">Jido.Integration.V2 -&gt; ControlPlane.Inference -&gt; req_llm -&gt; {cloud provider | self-hosted OpenAI-compatible endpoint}</code></p><p>For self-hosted execution, endpoint publication remains below the control plane:</p><p><code class="inline">Jido.Integration.V2 -&gt; ControlPlane.Inference -&gt; self_hosted_inference_core -&gt; llama_cpp_sdk</code></p><h2 id="execution-plane-contract-carriage" class="section-heading"><a href="#execution-plane-contract-carriage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Execution Plane Contract Carriage</span></h2><p>The lower-boundary contract packet is now frozen above this repo even though
+the broad runtime extraction is not yet complete.</p><p><code class="inline">jido_integration</code> stays the Spine:</p><ul><li>it carries <code class="inline">AuthorityDecision.v1</code> as Brain-authored direction</li><li>it owns durable <code class="inline">BoundarySessionDescriptor.v1</code></li><li>it projects <code class="inline">ExecutionIntentEnvelope.v1</code> plus family-specific lower intents</li><li>it owns durable <code class="inline">ExecutionRoute.v1</code>, attach-grant issuance, replay,
+approvals, and outcome interpretation</li><li>it keeps durable service descriptor, lease lineage, and attachability truth
+above lower process state for self-hosted runtime families</li><li>it consumes <code class="inline">ExecutionEvent.v1</code> and <code class="inline">ExecutionOutcome.v1</code> as raw execution
+facts rather than turning lower runtime state into durable truth</li></ul><p>The public product surface here remains <a href="Jido.Integration.V2.html"><code class="inline">Jido.Integration.V2</code></a> plus the current
+<code class="inline">core/contracts</code> seam. This repo may carry Execution Plane contracts, but it
+must not re-export raw <code class="inline">execution_plane/*</code> packages as the platform API.</p><p>Durable Brain-to-Spine carriage also stays on that same ownership split:</p><ul><li><code class="inline">core/contracts</code> owns the canonical JSON, audit envelope, submission
+identity, and governance projection contracts</li><li><code class="inline">core/brain_ingress</code> verifies those contracts, resolves logical scope refs,
+and records durable acceptance or typed rejection before runtime policy
+evaluation continues</li><li>storage packages own the concrete durable ledger backends, not the workspace
+root</li></ul><p>The minimal-lane interiors for <code class="inline">HttpExecutionIntent.v1</code>,
+<code class="inline">ProcessExecutionIntent.v1</code>, and <code class="inline">JsonRpcExecutionIntent.v1</code> remain
+provisional until Wave 3 prove-out. Wave 1 freezes the carrier names, lineage,
+ownership, and surface rules only.</p><h2 id="consumer-surface-boundary" class="section-heading"><a href="#consumer-surface-boundary" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Consumer Surface Boundary</span></h2><p>The authored connector catalog and the published generated consumer surface are
+not the same thing.</p><ul><li>connector-local inventory may stay authored and callable without becoming a
+shared generated surface</li><li>only explicit <code class="inline">consumer_surface.mode: :common</code> operations and triggers
+project into generated actions, sensors, and plugins</li><li><code class="inline">core/platform</code> exposes that projected view through
+<code class="inline">projected_catalog_entries/0</code></li><li><code class="inline">core/consumer_surfaces</code> owns the generated runtime support for those common
+surfaces</li><li>hosted webhook proofs may stay app-local while still converging on the same
+generated sensor contract family as common poll-backed triggers</li></ul><h2 id="durability-boundary" class="section-heading"><a href="#durability-boundary" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Durability Boundary</span></h2><p>Durability is explicit and opt-in.</p><ul><li><code class="inline">core/auth</code> and <code class="inline">core/control_plane</code> can run in-memory by default.</li><li><code class="inline">core/store_local</code> gives restart-safe single-node durability.</li><li><code class="inline">core/store_postgres</code> gives the canonical shared durable tier.</li></ul><p>The root never owns the store implementation itself; it only wires the package
+that the host wants.</p><h2 id="inference-runtime" class="section-heading"><a href="#inference-runtime" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Inference Runtime</span></h2><p>The live inference runtime stays inside the existing package boundaries:</p><ul><li><code class="inline">core/contracts</code> owns the shared contract seam</li><li><code class="inline">core/control_plane</code> owns route resolution, <code class="inline">req_llm</code> execution, and durable
+inference attempt truth</li><li><code class="inline">core/platform</code> owns the public <code class="inline">invoke_inference/2</code> and operator-facing
+review projection</li><li><code class="inline">apps/inference_ops</code> owns the hosted proof app</li></ul><p>No new root runtime lane or separate contracts repo is introduced.</p>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="readme.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+Jido Integration
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="async_and_webhooks.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+Async And Webhooks
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/jido_integration/0.1.0">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/jido_integration/0.1.0">Hex Preview</a>
+
+                (<a href="https://preview.hex.pm/preview/jido_integration/0.1.0/show/guides/architecture.md">current file</a>)
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="jido_integration.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

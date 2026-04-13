@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="jido_integration v0.1.0">
+
+
+    <title>Jido.Integration.V2.Auth — jido_integration v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ECCB626C.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+jido_integration
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-module" id="main" data-type="modules">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of jido_integration</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>
+      <span translate="no">Jido.<wbr>Integration.<wbr>V2.<wbr>Auth</span> 
+      <small class="app-vsn" translate="no">(jido_integration v0.1.0)</small>
+
+    </h1>
+
+<a href="Jido.Integration.V2.Auth.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+
+  </div>
+
+
+    <section id="moduledoc">
+<p>Durable connection/install truth plus short-lived credential leases.</p>
+    </section>
+
+</div>
+
+  <section id="summary" class="details-list">
+    <h2 class="section-heading">
+      <a class="hover-link" href="#summary">
+        <i class="ri-link-m" aria-hidden="true"></i>
+      </a>
+      <span class="text">Summary</span>
+    </h2>
+<div class="summary-types summary">
+  <h3>
+    <a href="#types">Types</a>
+  </h3>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:connection_binding/0" data-no-tooltip="" translate="no">connection_binding()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:external_secret_opts/0" data-no-tooltip="" translate="no">external_secret_opts()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:external_secret_resolver/0" data-no-tooltip="" translate="no">external_secret_resolver()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:external_secret_stage/0" data-no-tooltip="" translate="no">external_secret_stage()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:refresh_handler/0" data-no-tooltip="" translate="no">refresh_handler()</a>
+
+      </div>
+
+    </div>
+
+</div>
+<div class="summary-functions summary">
+  <h3>
+    <a href="#functions">Functions</a>
+  </h3>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#cancel_install/2" data-no-tooltip="" translate="no">cancel_install(install_id, attrs \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#complete_install/2" data-no-tooltip="" translate="no">complete_install(install_id, attrs)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#connection_status/1" data-no-tooltip="" translate="no">connection_status(connection_id)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#connections/1" data-no-tooltip="" translate="no">connections(filters \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#expire_install/2" data-no-tooltip="" translate="no">expire_install(install_id, attrs \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#fail_install/2" data-no-tooltip="" translate="no">fail_install(install_id, attrs \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#fetch_install/1" data-no-tooltip="" translate="no">fetch_install(install_id)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#fetch_lease/2" data-no-tooltip="" translate="no">fetch_lease(lease_id, context \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#installs/1" data-no-tooltip="" translate="no">installs(filters \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#issue_lease/2" data-no-tooltip="" translate="no">issue_lease(credential_ref, context \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#reauthorize_connection/2" data-no-tooltip="" translate="no">reauthorize_connection(connection_id, opts \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#request_lease/2" data-no-tooltip="" translate="no">request_lease(connection_id, context \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#reset!/0" data-no-tooltip="" translate="no">reset!()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#resolve/2" data-no-tooltip="" translate="no">resolve(credential_ref, context \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#resolve_connection_binding/2" data-no-tooltip="" translate="no">resolve_connection_binding(connection_id, context \\ %{})</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#resolve_install_callback/1" data-no-tooltip="" translate="no">resolve_install_callback(attrs)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#resolve_secret/2" data-no-tooltip="" translate="no">resolve_secret(credential_ref, secret_key)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#revoke_connection/2" data-no-tooltip="" translate="no">revoke_connection(connection_id, attrs)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#rotate_connection/2" data-no-tooltip="" translate="no">rotate_connection(connection_id, attrs)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#set_external_secret_resolver/1" data-no-tooltip="" translate="no">set_external_secret_resolver(handler)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#set_refresh_handler/1" data-no-tooltip="" translate="no">set_refresh_handler(handler)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#start_install/3" data-no-tooltip="" translate="no">start_install(connector_id, tenant_id, opts \\ %{})</a>
+
+      </div>
+
+    </div>
+
+</div>
+
+  </section>
+
+
+  <section id="types" class="details-list">
+    <h2 class="section-heading">
+      <a class="hover-link" href="#types">
+        <i class="ri-link-m" aria-hidden="true"></i>
+      </a>
+      <span class="text">Types</span>
+    </h2>
+
+    <div class="types-list">
+<section class="detail" id="t:connection_binding/0">
+
+  <div class="detail-header">
+    <a href="#t:connection_binding/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">connection_binding()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> connection_binding() :: %{
+  connection: <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>(),
+  credential_ref: <a href="Jido.Integration.V2.CredentialRef.html#t:t/0">Jido.Integration.V2.CredentialRef.t</a>(),
+  credential: <a href="Jido.Integration.V2.Credential.html#t:t/0">Jido.Integration.V2.Credential.t</a>()
+}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:external_secret_opts/0">
+
+  <div class="detail-header">
+    <a href="#t:external_secret_opts/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">external_secret_opts()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> external_secret_opts() :: %{
+  stage: <a href="#t:external_secret_stage/0">external_secret_stage</a>(),
+  requested_fields: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()],
+  missing_fields: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()],
+  now: <a href="https://hexdocs.pm/elixir/DateTime.html#t:t/0">DateTime.t</a>()
+}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:external_secret_resolver/0">
+
+  <div class="detail-header">
+    <a href="#t:external_secret_resolver/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">external_secret_resolver()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> external_secret_resolver() :: (<a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>(),
+                               <a href="Jido.Integration.V2.Credential.html#t:t/0">Jido.Integration.V2.Credential.t</a>(),
+                               <a href="#t:external_secret_opts/0">external_secret_opts</a>() -&gt;
+                                 {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()})</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:external_secret_stage/0">
+
+  <div class="detail-header">
+    <a href="#t:external_secret_stage/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">external_secret_stage()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> external_secret_stage() :: :lease | :fetch_lease | :refresh</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:refresh_handler/0">
+
+  <div class="detail-header">
+    <a href="#t:refresh_handler/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">refresh_handler()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> refresh_handler() :: (<a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>(),
+                      <a href="Jido.Integration.V2.Credential.html#t:t/0">Jido.Integration.V2.Credential.t</a>() -&gt;
+                        {:ok,
+                         %{
+                           optional(:secret) =&gt; <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(),
+                           optional(:expires_at) =&gt; <a href="https://hexdocs.pm/elixir/DateTime.html#t:t/0">DateTime.t</a>() | nil,
+                           optional(:refresh_token_expires_at) =&gt;
+                             <a href="https://hexdocs.pm/elixir/DateTime.html#t:t/0">DateTime.t</a>() | nil,
+                           optional(:lease_fields) =&gt; [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()],
+                           optional(:metadata) =&gt; <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(),
+                           optional(:source_ref) =&gt; <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()
+                         }}
+                        | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()})</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
+
+  <section id="functions" class="details-list">
+    <h2 class="section-heading">
+      <a class="hover-link" href="#functions">
+        <i class="ri-link-m" aria-hidden="true"></i>
+      </a>
+      <span class="text">Functions</span>
+    </h2>
+
+    <div class="functions-list">
+<section class="detail" id="cancel_install/2">
+
+    <span id="cancel_install/1"></span>
+
+  <div class="detail-header">
+    <a href="#cancel_install/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">cancel_install(install_id, attrs \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> cancel_install(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok,
+   %{
+     install: <a href="Jido.Integration.V2.Auth.Install.html#t:t/0">Jido.Integration.V2.Auth.Install.t</a>(),
+     connection: <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>()
+   }}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="complete_install/2">
+
+  <div class="detail-header">
+    <a href="#complete_install/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">complete_install(install_id, attrs)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> complete_install(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok,
+   %{
+     install: <a href="Jido.Integration.V2.Auth.Install.html#t:t/0">Jido.Integration.V2.Auth.Install.t</a>(),
+     connection: <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>(),
+     credential_ref: <a href="Jido.Integration.V2.CredentialRef.html#t:t/0">Jido.Integration.V2.CredentialRef.t</a>()
+   }}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="connection_status/1">
+
+  <div class="detail-header">
+    <a href="#connection_status/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">connection_status(connection_id)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> connection_status(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) ::
+  {:ok, <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>()} | {:error, :unknown_connection}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="connections/1">
+
+    <span id="connections/0"></span>
+
+  <div class="detail-header">
+    <a href="#connections/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">connections(filters \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> connections(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) :: [<a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>()]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="expire_install/2">
+
+    <span id="expire_install/1"></span>
+
+  <div class="detail-header">
+    <a href="#expire_install/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">expire_install(install_id, attrs \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> expire_install(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok,
+   %{
+     install: <a href="Jido.Integration.V2.Auth.Install.html#t:t/0">Jido.Integration.V2.Auth.Install.t</a>(),
+     connection: <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>()
+   }}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="fail_install/2">
+
+    <span id="fail_install/1"></span>
+
+  <div class="detail-header">
+    <a href="#fail_install/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">fail_install(install_id, attrs \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> fail_install(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok,
+   %{
+     install: <a href="Jido.Integration.V2.Auth.Install.html#t:t/0">Jido.Integration.V2.Auth.Install.t</a>(),
+     connection: <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>()
+   }}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="fetch_install/1">
+
+  <div class="detail-header">
+    <a href="#fetch_install/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">fetch_install(install_id)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> fetch_install(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) ::
+  {:ok, <a href="Jido.Integration.V2.Auth.Install.html#t:t/0">Jido.Integration.V2.Auth.Install.t</a>()} | {:error, :unknown_install}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="fetch_lease/2">
+
+    <span id="fetch_lease/1"></span>
+
+  <div class="detail-header">
+    <a href="#fetch_lease/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">fetch_lease(lease_id, context \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> fetch_lease(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok, <a href="Jido.Integration.V2.CredentialLease.html#t:t/0">Jido.Integration.V2.CredentialLease.t</a>()}
+  | {:error,
+     :unknown_lease
+     | :expired_lease
+     | :unknown_credential
+     | :connection_revoked
+     | :reauth_required
+     | :external_secret_unavailable
+     | {:missing_lease_fields, [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()]}}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="installs/1">
+
+    <span id="installs/0"></span>
+
+  <div class="detail-header">
+    <a href="#installs/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">installs(filters \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> installs(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) :: [<a href="Jido.Integration.V2.Auth.Install.html#t:t/0">Jido.Integration.V2.Auth.Install.t</a>()]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="issue_lease/2">
+
+    <span id="issue_lease/1"></span>
+
+  <div class="detail-header">
+    <a href="#issue_lease/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">issue_lease(credential_ref, context \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> issue_lease(<a href="Jido.Integration.V2.CredentialRef.html#t:t/0">Jido.Integration.V2.CredentialRef.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok, <a href="Jido.Integration.V2.CredentialLease.html#t:t/0">Jido.Integration.V2.CredentialLease.t</a>()}
+  | {:error,
+     :unknown_connection
+     | :unknown_credential
+     | :credential_subject_mismatch
+     | :credential_expired
+     | :connection_installing
+     | :connection_disabled
+     | :connection_revoked
+     | :reauth_required
+     | :external_secret_unavailable
+     | {:missing_connection_scopes, [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()]}
+     | {:missing_lease_fields, [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()]}}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="reauthorize_connection/2">
+
+    <span id="reauthorize_connection/1"></span>
+
+  <div class="detail-header">
+    <a href="#reauthorize_connection/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">reauthorize_connection(connection_id, opts \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> reauthorize_connection(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok,
+   %{
+     install: <a href="Jido.Integration.V2.Auth.Install.html#t:t/0">Jido.Integration.V2.Auth.Install.t</a>(),
+     connection: <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>(),
+     session_state: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()
+   }}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="request_lease/2">
+
+    <span id="request_lease/1"></span>
+
+  <div class="detail-header">
+    <a href="#request_lease/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">request_lease(connection_id, context \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> request_lease(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok, <a href="Jido.Integration.V2.CredentialLease.html#t:t/0">Jido.Integration.V2.CredentialLease.t</a>()}
+  | {:error,
+     :unknown_connection
+     | :unknown_credential
+     | :credential_expired
+     | :connection_installing
+     | :connection_disabled
+     | :connection_revoked
+     | :reauth_required
+     | :external_secret_unavailable
+     | :expired_lease
+     | {:missing_connection_scopes, [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()]}
+     | {:missing_lease_fields, [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()]}}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="reset!/0">
+
+  <div class="detail-header">
+    <a href="#reset!/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">reset!()</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> reset!() :: :ok</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="resolve/2">
+
+    <span id="resolve/1"></span>
+
+  <div class="detail-header">
+    <a href="#resolve/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">resolve(credential_ref, context \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> resolve(<a href="Jido.Integration.V2.CredentialRef.html#t:t/0">Jido.Integration.V2.CredentialRef.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok, <a href="Jido.Integration.V2.Credential.html#t:t/0">Jido.Integration.V2.Credential.t</a>()}
+  | {:error, :unknown_credential | :credential_subject_mismatch}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="resolve_connection_binding/2">
+
+    <span id="resolve_connection_binding/1"></span>
+
+  <div class="detail-header">
+    <a href="#resolve_connection_binding/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">resolve_connection_binding(connection_id, context \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> resolve_connection_binding(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok, <a href="#t:connection_binding/0">connection_binding</a>()}
+  | {:error,
+     :unknown_connection
+     | :unknown_credential
+     | :credential_subject_mismatch
+     | :credential_expired
+     | :connection_installing
+     | :connection_disabled
+     | :connection_revoked
+     | :reauth_required}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="resolve_install_callback/1">
+
+  <div class="detail-header">
+    <a href="#resolve_install_callback/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">resolve_install_callback(attrs)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> resolve_install_callback(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok,
+   %{
+     install: <a href="Jido.Integration.V2.Auth.Install.html#t:t/0">Jido.Integration.V2.Auth.Install.t</a>(),
+     connection: <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>()
+   }}
+  | {:error,
+     :callback_locator_required
+     | :unknown_install
+     | :ambiguous_install
+     | :install_expired
+     | :callback_already_consumed
+     | :invalid_callback_state
+     | :invalid_callback_token
+     | :pkce_verifier_required
+     | :invalid_pkce_verifier
+     | {:callback_error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}
+     | <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="resolve_secret/2">
+
+  <div class="detail-header">
+    <a href="#resolve_secret/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">resolve_secret(credential_ref, secret_key)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> resolve_secret(<a href="Jido.Integration.V2.CredentialRef.html#t:t/0">Jido.Integration.V2.CredentialRef.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}
+  | {:error,
+     :unknown_credential | :credential_subject_mismatch | :unknown_secret}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="revoke_connection/2">
+
+  <div class="detail-header">
+    <a href="#revoke_connection/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">revoke_connection(connection_id, attrs)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> revoke_connection(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok, <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="rotate_connection/2">
+
+  <div class="detail-header">
+    <a href="#rotate_connection/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">rotate_connection(connection_id, attrs)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> rotate_connection(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok,
+   %{
+     connection: <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>(),
+     credential_ref: <a href="Jido.Integration.V2.CredentialRef.html#t:t/0">Jido.Integration.V2.CredentialRef.t</a>()
+   }}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="set_external_secret_resolver/1">
+
+  <div class="detail-header">
+    <a href="#set_external_secret_resolver/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">set_external_secret_resolver(handler)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> set_external_secret_resolver(<a href="#t:external_secret_resolver/0">external_secret_resolver</a>() | nil) :: :ok</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="set_refresh_handler/1">
+
+  <div class="detail-header">
+    <a href="#set_refresh_handler/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">set_refresh_handler(handler)</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> set_refresh_handler(<a href="#t:refresh_handler/0">refresh_handler</a>() | nil) :: :ok</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="start_install/3">
+
+    <span id="start_install/2"></span>
+
+  <div class="detail-header">
+    <a href="#start_install/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">start_install(connector_id, tenant_id, opts \\ %{})</h1>
+
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> start_install(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) ::
+  {:ok,
+   %{
+     install: <a href="Jido.Integration.V2.Auth.Install.html#t:t/0">Jido.Integration.V2.Auth.Install.t</a>(),
+     connection: <a href="Jido.Integration.V2.Auth.Connection.html#t:t/0">Jido.Integration.V2.Auth.Connection.t</a>(),
+     session_state: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()
+   }}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
+
+    <footer class="footer">
+
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/jido_integration/0.1.0">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/jido_integration/0.1.0">Hex Preview</a>
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="jido_integration.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>
