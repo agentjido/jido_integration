@@ -3,7 +3,7 @@ defmodule Jido.Integration.V2.Connectors.MarketData.Conformance do
 
   alias Jido.Integration.V2.ArtifactBuilder
   alias Jido.Integration.V2.Connectors.MarketData
-  alias Jido.Integration.V2.Connectors.MarketData.ConformanceHarnessDriver
+  alias Jido.Integration.V2.Connectors.MarketData.ConformanceRuntimeControlDriver
 
   @run_id "run-market-data-conformance"
   @attempt_id "#{@run_id}:1"
@@ -43,7 +43,7 @@ defmodule Jido.Integration.V2.Connectors.MarketData.Conformance do
 
   @spec runtime_drivers() :: map()
   def runtime_drivers do
-    %{asm: ConformanceHarnessDriver}
+    %{asm: ConformanceRuntimeControlDriver}
   end
 
   @spec ingress_definitions() :: list()

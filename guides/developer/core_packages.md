@@ -24,8 +24,8 @@ stabilized.
 | `core/consumer_surfaces` | generated common action, sensor, and plugin runtime support | use when changing published generated consumer behavior |
 | `core/policy` | admission, deny, and shed decisions | use for pre-attempt gating logic |
 | `core/direct_runtime` | direct provider-SDK execution | use for stateless capabilities |
-| `core/runtime_asm_bridge` | authored `asm` Harness projection | use only for the ASM seam |
-| `core/session_runtime` | internal `jido_session` Harness runtime | use for the in-repo session seam |
+| `core/asm_runtime_bridge` | authored `asm` Runtime Control projection | use only for the ASM seam |
+| `core/session_runtime` | internal `jido_session` Runtime Router | use for the in-repo session seam |
 | `core/ingress` | trigger normalization and durable admission | use for webhook and polling admission |
 | `core/dispatch_runtime` | async dispatch, retry, replay, recovery | use for host-controlled background execution |
 | `core/webhook_router` | hosted route records and callback topology | use for persisted hosted ingress routing |
@@ -49,7 +49,7 @@ stabilized.
   without becoming public facades.
 - `core/direct_runtime`, `core/ingress`, `core/policy`, `core/dispatch_runtime`,
   and `core/webhook_router` are the execution and transport layers.
-- `core/runtime_asm_bridge` and `core/session_runtime` are intentionally
+- `core/asm_runtime_bridge` and `core/session_runtime` are intentionally
   narrow runtime seams and should stay that way.
 
 The workspace root should remain orchestration only. If a change feels like it

@@ -3,7 +3,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
   Example external session connector package.
 
   This connector publishes the canonical session-family authored shape on the
-  shared common consumer-surface spine through the `Jido.Harness` `asm`
+  shared common consumer-surface spine through the `Jido.RuntimeControl` `asm`
   driver.
   """
 

@@ -9,7 +9,7 @@ and keeps the direct provider-SDK lane clean.
 ## Responsibilities
 
 - execute non-sessioned capabilities through `Jido.Action`
-- keep direct connector execution off the Harness seam
+- keep direct connector execution off the Runtime Control seam
 - preserve the provider-SDK path for direct connectors
 - avoid introducing session, stream, or async ownership here
 

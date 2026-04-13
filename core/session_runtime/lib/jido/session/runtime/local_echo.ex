@@ -7,7 +7,7 @@ defmodule Jido.Session.Runtime.LocalEcho do
   external provider loop.
   """
 
-  alias Jido.Harness.RunRequest
+  alias Jido.RuntimeControl.RunRequest
   alias Jido.Session.Runtime.{Run, Session}
 
   @spec start_run(Session.t(), RunRequest.t(), keyword()) :: {:ok, Run.t()}

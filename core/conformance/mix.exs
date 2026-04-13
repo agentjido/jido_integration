@@ -32,7 +32,7 @@ defmodule Jido.Integration.V2.Conformance.MixProject do
     [
       DependencyResolver.jido_integration_v2_contracts(),
       DependencyResolver.jido_integration_v2_control_plane(),
-      DependencyResolver.jido_integration_v2_harness_runtime(),
+      DependencyResolver.jido_integration_v2_runtime_router(),
       DependencyResolver.jido_integration_v2_direct_runtime(),
       DependencyResolver.jido_integration_v2_ingress(),
       DependencyResolver.jido_integration_v2(only: :test, runtime: false),

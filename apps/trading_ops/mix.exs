@@ -33,7 +33,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps.MixProject do
       DependencyResolver.jido_integration_v2(),
       DependencyResolver.jido_integration_v2_auth(),
       DependencyResolver.jido_integration_v2_contracts(),
-      DependencyResolver.jido_integration_v2_harness_runtime(),
+      DependencyResolver.jido_integration_v2_runtime_router(),
       DependencyResolver.jido_integration_v2_ingress(),
       DependencyResolver.jido_integration_v2_store_postgres(only: :test),
       DependencyResolver.jido_integration_v2_github(),

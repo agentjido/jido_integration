@@ -19,8 +19,8 @@ defmodule Jido.Integration.V2.Conformance do
   alias Jido.Integration.V2.Conformance.Suites.ManifestContract
   alias Jido.Integration.V2.Conformance.Suites.PolicyContract
   alias Jido.Integration.V2.Conformance.Suites.RuntimeClassFit
-  alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.RuntimeRouter
 
   @suite_modules %{
     manifest_contract: ManifestContract,
@@ -141,13 +141,13 @@ defmodule Jido.Integration.V2.Conformance do
   defp with_runtime_drivers(runtime_drivers, fun) when runtime_drivers in [%{}, []], do: fun.()
 
   defp with_runtime_drivers(runtime_drivers, fun) when is_map(runtime_drivers) do
-    HarnessRuntime.start!()
+    RuntimeRouter.start!()
 
     previous_runtime_drivers =
       Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
 
     Application.put_env(:jido_integration_v2_control_plane, :runtime_drivers, runtime_drivers)
-    HarnessRuntime.reset!()
+    RuntimeRouter.reset!()
 
     try do
       fun.()
@@ -160,7 +160,7 @@ defmodule Jido.Integration.V2.Conformance do
           Application.put_env(:jido_integration_v2_control_plane, :runtime_drivers, value)
       end
 
-      HarnessRuntime.reset!()
+      RuntimeRouter.reset!()
     end
   end
 

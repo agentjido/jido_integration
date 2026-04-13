@@ -2,15 +2,15 @@ defmodule Jido.Integration.V2Test do
   use Jido.Integration.V2.ConnectorContractCase, async: false
 
   alias Jido.Integration.V2.Connectors.CodexCli
-  alias Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver
+  alias Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDriver
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures, as: GitHubFixtures
   alias Jido.Integration.V2.Connectors.MarketData
   alias Jido.Integration.V2.ConsumerProjection
-  alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Redaction
+  alias Jido.Integration.V2.RuntimeRouter
   alias Jido.Integration.V2.TargetDescriptor
 
   @github %{
@@ -152,13 +152,13 @@ defmodule Jido.Integration.V2Test do
       GitHubFixtures.client_opts(nil)
     )
 
-    HarnessRuntime.reset!()
-    ConformanceHarnessDriver.reset!()
+    RuntimeRouter.reset!()
+    ConformanceRuntimeControlDriver.reset!()
 
     Application.put_env(
       :jido_integration_v2_control_plane,
       :runtime_drivers,
-      Map.put(previous_runtime_drivers || %{}, :asm, ConformanceHarnessDriver)
+      Map.put(previous_runtime_drivers || %{}, :asm, ConformanceRuntimeControlDriver)
     )
 
     on_exit(fn ->
@@ -180,8 +180,8 @@ defmodule Jido.Integration.V2Test do
           )
       end
 
-      HarnessRuntime.reset!()
-      ConformanceHarnessDriver.reset!()
+      RuntimeRouter.reset!()
+      ConformanceRuntimeControlDriver.reset!()
     end)
 
     :ok
@@ -543,7 +543,7 @@ defmodule Jido.Integration.V2Test do
     assert Enum.any?(packet.events, &(&1.type == "run.completed"))
   end
 
-  test "session connector publishes Harness driver metadata on the shared common surface" do
+  test "session connector publishes Runtime Control driver metadata on the shared common surface" do
     register_connector!(@codex_cli.connector)
 
     assert {:ok, capability} = V2.fetch_capability(@codex_cli.capability_id)
@@ -554,7 +554,7 @@ defmodule Jido.Integration.V2Test do
              options: %{}
            }
 
-    assert capability.metadata.runtime.driver in HarnessRuntime.target_driver_ids()
+    assert capability.metadata.runtime.driver in RuntimeRouter.target_driver_ids()
 
     assert capability.metadata.consumer_surface == %{
              mode: :common,
@@ -572,7 +572,7 @@ defmodule Jido.Integration.V2Test do
            }
   end
 
-  test "stream connector publishes Harness driver metadata with a session-scoped runtime ref" do
+  test "stream connector publishes Runtime Control driver metadata with a session-scoped runtime ref" do
     register_connector!(@market_data.connector)
 
     assert {:ok, capability} = V2.fetch_capability(@market_data.capability_id)
@@ -583,7 +583,7 @@ defmodule Jido.Integration.V2Test do
              options: %{}
            }
 
-    assert capability.metadata.runtime.driver in HarnessRuntime.target_driver_ids()
+    assert capability.metadata.runtime.driver in RuntimeRouter.target_driver_ids()
 
     assert capability.metadata.consumer_surface == %{
              mode: :common,

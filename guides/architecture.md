@@ -32,11 +32,11 @@ runtime behavior lives.
 - `core/consumer_surfaces` owns generated common action, sensor, and plugin
   runtime support.
 - `core/direct_runtime` handles direct provider-SDK execution.
-- `core/harness_runtime` owns the authored non-direct adapter and session
-  reuse boundary above Harness.
-- `core/runtime_asm_bridge` projects the authored `asm` driver into Harness.
+- `core/runtime_router` owns the authored non-direct adapter and session
+  reuse boundary above Runtime Control.
+- `core/asm_runtime_bridge` projects the authored `asm` driver into Runtime Control.
 - `core/session_runtime` owns the integration-managed `jido_session` driver
-  implementation consumed by the harness adapter.
+  implementation consumed by the runtime router.
 - `core/dispatch_runtime` handles async transport, retry, replay, and recovery.
 - `core/ingress` normalizes triggers and admits them into the control plane.
 - `core/webhook_router` owns hosted route registration and route resolution.
@@ -53,18 +53,18 @@ inference runtime family.
 
 ## Runtime Boundary
 
-The repo keeps a hard split between direct SDK execution and Harness-backed
+The repo keeps a hard split between direct SDK execution and runtime-control-backed
 execution.
 
 `Jido.Integration.V2 -> DirectRuntime -> connector -> provider SDK -> pristine`
 
-`Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
+`Jido.Integration.V2 -> RuntimeRouter -> Jido.RuntimeControl -> {asm | jido_session}`
 
 Direct connectors stay on the provider SDK path. Only actual `:session` and
-`:stream` capabilities use `Jido.Harness`.
+`:stream` capabilities use `Jido.RuntimeControl`.
 
-`core/harness_runtime` is the package boundary that translates authored runtime
-metadata into Harness execution. `asm` stays behind `core/runtime_asm_bridge`.
+`core/runtime_router` is the package boundary that translates authored runtime
+metadata into Runtime Control execution. `asm` stays behind `core/asm_runtime_bridge`.
 `jido_session` stays behind `core/session_runtime`.
 
 The active core runtime graph stops there. Legacy lower-boundary bridge code is
@@ -151,6 +151,6 @@ The live inference runtime stays inside the existing package boundaries:
   inference attempt truth
 - `core/platform` owns the public `invoke_inference/2` and operator-facing
   review projection
-- `apps/inference_ops` owns the hosted proof harness
+- `apps/inference_ops` owns the hosted proof app
 
 No new root runtime lane or separate contracts repo is introduced.

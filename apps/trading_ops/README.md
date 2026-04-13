@@ -7,7 +7,7 @@ This app proves one reviewable workflow across the public facade plus the three
 runtime families.
 
 Its session proof now tracks the accepted Phase 4 session seam: the analyst
-target announces the authored Harness driver `asm`, the common consumer
+target announces the authored Runtime Control driver `asm`, the common consumer
 surface stays `codex.exec.session`, and runtime session state remains below the
 durable integration layer.
 
@@ -61,10 +61,10 @@ It covers:
 - explicit downstream `market.ticks.pull` invocation after trigger admission
 - durable target ids on runs, attempts, and events
 - durable review artifacts for each runtime family
-- market target descriptors that advertise the authored Harness `asm` driver
+- market target descriptors that advertise the authored Runtime Control `asm` driver
   and refuse same-capability descriptors that do not publish the required
   authored `asm` feature
-- analyst target descriptors that advertise the authored Harness `asm` driver
+- analyst target descriptors that advertise the authored Runtime Control `asm` driver
   and refuse mismatched `jido_session` descriptors for the same capability
 - non-direct target lookup that requires the authored `asm` feature so a
   mismatched `jido_session` or mismatched-driver descriptor is not selected by

@@ -37,7 +37,7 @@ Pick the runtime class based on the connector contract you intend to publish:
   - execution should reuse a provider-managed stream reference or cursor
 
 The workspace scaffold supports all three runtime classes, but non-direct
-packages require an explicit Harness runtime-driver selection. The scaffold
+packages require an explicit runtime-control driver selection. The scaffold
 only emits the intended non-direct driver ids and does not invent a legacy
 bridge default.
 
@@ -66,12 +66,13 @@ or package above the connector rather than forcing it into the scaffold.
 When documenting or reviewing a non-direct connector, describe the stack in
 this order:
 
-1. `jido_harness` exposes `Jido.Harness`, the stable
-   runtime-driver contract referenced by `runtime.driver`
+1. `core/runtime_control` exposes `Jido.RuntimeControl` and ships as the
+   `jido_runtime_control` OTP app, the stable runtime-driver contract
+   referenced by `runtime.driver`
 2. `runtime.driver: "asm"` selects
-   `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` in
+   `Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver` in
    the `jido_integration` source repo.
-3. `runtime.driver: "jido_session"` selects `Jido.Session.HarnessDriver` in
+3. `runtime.driver: "jido_session"` selects `Jido.Session.RuntimeControlDriver` in
    `core/session_runtime`.
 4. Only the `asm` branch projects further into provider-neutral
    `agent_session_manager`, which itself uses
@@ -79,32 +80,32 @@ this order:
    profile foundations.
 
 Connector packages should usually stop their direct dependencies at
-`jido_harness`. Do not add `core/session_runtime`,
+`core/runtime_control`. Do not add `core/session_runtime`,
 `agent_session_manager`, or `cli_subprocess_core` directly to session or stream connector
 packages just to restate the shared runtime basis.
 
-`metadata.runtime_family.runtime_ref` names the stable public Harness handle,
+`metadata.runtime_family.runtime_ref` names the stable public Runtime Control handle,
 not the runtime class itself. A `:stream` capability may still publish
-`runtime_ref: :session` when the selected Harness driver exposes session-scoped
+`runtime_ref: :session` when the selected Runtime Control driver exposes session-scoped
 handles.
 
 ## Current Workspace Validation Topology
 
-The authored non-direct runtime-driver surface in this repo currently depends
-on the newer Session Control family in the sibling `jido_harness` checkout.
+The authored non-direct runtime-driver surface now lives in this monorepo
+under `core/runtime_control`.
 
 That means local scaffold validation for `session` and `stream` connectors
-must use the sibling `../jido_harness` repo when it is present rather than the
-older published fallback package. Direct connector scaffolds are unaffected.
+should follow the standard monorepo workflow. Direct connector scaffolds are
+unaffected.
 
-Treat that as the supported contributor topology for now:
+Treat that as the supported contributor topology:
 
-- keep `jido_integration` and `jido_harness` checked out side by side when
-  validating non-direct scaffold output
-- do not interpret the fallback published `jido_harness` package as the
-  authoritative surface for `runtime.driver` review in this repo
-- once the published Harness package carries the same Session Control surface,
-  the scaffold validation gate can tighten back to the published-only path
+- use the in-repo `core/runtime_control` package as the authoritative
+  `runtime.driver` surface for scaffold review
+- rely on the root monorepo commands and `mix ci` as the primary validation
+  gate
+- do not require a sibling `../jido_runtime_control` checkout for scaffold
+  generation or validation
 
 ## Generated Package Contract
 
@@ -129,7 +130,7 @@ Generated files include:
 - a runtime-class-appropriate handler skeleton
 - a `<ConnectorModule>.Conformance` companion module with deterministic fixtures
 - for non-direct scaffolds, a package-local `runtime_drivers/0` proof hook and
-  deterministic Harness driver under `lib/` so downstream package tests can
+  deterministic Runtime Control driver under `lib/` so downstream package tests can
   load the same conformance surface
 - package-local tests, including a baseline conformance test
 - a package README suitable for `mix docs`
@@ -231,7 +232,7 @@ instead of re-inventing the merge at each call site.
 For non-direct target lookup, require the authored `runtime.driver` as a target
 feature as well. That keeps a `:session` or `:stream` capability from matching
 another target that happens to share the same `capability_id` and
-`runtime_class` but advertises the wrong Harness seam.
+`runtime_class` but advertises the wrong Runtime Control seam.
 
 If a `:session` or `:stream` operation is published as
 `consumer_surface.mode: :common`, it must also carry the canonical
@@ -248,7 +249,7 @@ Connector-local non-direct operations may omit `metadata.runtime_family`, but
 that is an explicit authored exception, not the default posture for those
 runtime families.
 
-Keep those keys provider-neutral. They should describe the public Harness seam
+Keep those keys provider-neutral. They should describe the public Runtime Control seam
 and lifecycle posture, not ASM lane internals, provider-profile modules, or
 CLI subprocess implementation details.
 

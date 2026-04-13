@@ -89,16 +89,16 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       app_name: "jido_integration_v2_#{connector_name}",
       module_file: module_file,
       conformance_module: connector_module <> ".Conformance",
-      conformance_harness_driver_module:
+      conformance_runtime_control_driver_module:
         if(runtime_class in [:session, :stream],
-          do: connector_module <> ".ConformanceHarnessDriver",
+          do: connector_module <> ".ConformanceRuntimeControlDriver",
           else: nil
         ),
-      conformance_harness_driver_alias:
+      conformance_runtime_control_driver_alias:
         if(runtime_class in [:session, :stream],
           do:
             connector_module
-            |> Kernel.<>(".ConformanceHarnessDriver")
+            |> Kernel.<>(".ConformanceRuntimeControlDriver")
             |> String.split(".")
             |> List.last(),
           else: nil
@@ -120,8 +120,8 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
         relative_dep_path(package_root, Path.join(workspace_root, "core/direct_runtime")),
       conformance_dep_path:
         relative_dep_path(package_root, Path.join(workspace_root, "core/conformance")),
-      jido_harness_dep_path:
-        relative_dep_path(package_root, external_repo_path(workspace_root, "jido_harness")),
+      jido_runtime_control_dep_path:
+        relative_dep_path(package_root, Path.join(workspace_root, "core/runtime_control")),
       runtime_class: runtime_class,
       runtime_class_literal: inspect(runtime_class),
       runtime_families_literal: inspect(runtime_families(runtime_class)),
@@ -338,7 +338,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       runtime_options_literal: "%{}",
       auth_lease_field: "api_token",
       auth_lease_field_literal: ":api_token",
-      conformance_harness_driver_file: nil,
+      conformance_runtime_control_driver_file: nil,
       publish_ingress_definitions: true,
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
@@ -403,7 +403,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
         |> String.trim_trailing(),
       generated_action_name: "#{connector_name}_sample_session",
       manifest_test_name:
-        "publishes projection-ready session operation and poll trigger contracts with explicit Harness runtime metadata",
+        "publishes projection-ready session operation and poll trigger contracts with explicit runtime-control metadata",
       direct_runtime: false,
       session_runtime: true,
       stream_runtime: false,
@@ -485,7 +485,8 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       runtime_options_literal: "%{}",
       auth_lease_field: "access_token",
       auth_lease_field_literal: ":access_token",
-      conformance_harness_driver_file: Path.join(module_root, "conformance_harness_driver.ex"),
+      conformance_runtime_control_driver_file:
+        Path.join(module_root, "conformance_runtime_control_driver.ex"),
       publish_ingress_definitions: true,
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
@@ -559,7 +560,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
         |> String.trim_trailing(),
       generated_action_name: "#{connector_name}_sample_stream",
       manifest_test_name:
-        "publishes projection-ready stream operation and poll trigger contracts with explicit Harness runtime metadata",
+        "publishes projection-ready stream operation and poll trigger contracts with explicit runtime-control metadata",
       direct_runtime: false,
       session_runtime: false,
       stream_runtime: true,
@@ -648,7 +649,8 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       runtime_options_literal: "%{}",
       auth_lease_field: "api_key",
       auth_lease_field_literal: ":api_key",
-      conformance_harness_driver_file: Path.join(module_root, "conformance_harness_driver.ex"),
+      conformance_runtime_control_driver_file:
+        Path.join(module_root, "conformance_runtime_control_driver.ex"),
       publish_ingress_definitions: true,
       fixture_run_id: run_id,
       fixture_attempt_id: attempt_id
@@ -734,7 +736,10 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
     base_files =
       if context.include_test_support do
         base_files ++
-          [{"conformance_harness_driver.ex.eex", context.conformance_harness_driver_file}]
+          [
+            {"conformance_runtime_control_driver.ex.eex",
+             context.conformance_runtime_control_driver_file}
+          ]
       else
         base_files
       end
@@ -906,13 +911,6 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
 
   defp template_root do
     Path.expand("../../../../priv/templates/jido.integration.new", __DIR__)
-  end
-
-  defp external_repo_path(workspace_root, repo_name) do
-    workspace_candidate = Path.expand(Path.join("..", repo_name), workspace_root)
-    repo_candidate = Path.expand(Path.join("..", repo_name), Blitz.MixWorkspace.root_dir())
-
-    Enum.find([workspace_candidate, repo_candidate], &File.exists?/1) || workspace_candidate
   end
 
   defp fixture_digest(value) do

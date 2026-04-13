@@ -6,7 +6,7 @@ defmodule Jido.Integration.Docs.ReferenceAppReadmesTest do
   test "trading_ops README describes the cleaned asm target boundary without bridge-era wording" do
     readme = @trading_ops_readme |> File.read!() |> normalize_whitespace()
 
-    assert readme =~ "target descriptors that advertise the authored Harness `asm` driver",
+    assert readme =~ "target descriptors that advertise the authored Runtime Control `asm` driver",
            "#{@trading_ops_readme} must keep the authored asm proof explicit"
 
     assert readme =~ "mismatched `jido_session` or mismatched-driver descriptor",

@@ -29,9 +29,9 @@ defmodule Jido.Integration.V2 do
   becoming a second store, policy engine, or runtime owner.
 
   Session and stream execution stay above the provider-neutral runtime basis.
-  Published `runtime.driver` values name the `jido_harness`
-  `Jido.Harness` driver ids such as `asm`; that path resolves through
-  `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` into
+  Published `runtime.driver` values name the `jido_runtime_control`
+  `Jido.RuntimeControl` driver ids such as `asm`; that path resolves through
+  `Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver` into
   `agent_session_manager`, with `cli_subprocess_core` below ASM. Durable auth,
   control-plane, and operator truth still remain owned by `jido_integration`.
   """

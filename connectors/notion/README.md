@@ -323,7 +323,7 @@ above the connector boundary.
 
 ## Files
 
-- live support harness: `examples/support/live_support.exs`
+- live support script: `examples/support/live_support.exs`
 - auth proof: `examples/notion_auth_lifecycle.exs`
 - read proof: `examples/notion_live_read_acceptance.exs`
 - write proof: `examples/notion_live_write_acceptance.exs`

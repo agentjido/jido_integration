@@ -1,9 +1,9 @@
 defmodule Jido.Session.Runtime.Run do
   @moduledoc """
-  Internal run state tracked by `jido_session` before projection into Harness IR.
+  Internal run state tracked by `jido_session` before projection into Runtime Control IR.
   """
 
-  alias Jido.Harness.RunRequest
+  alias Jido.RuntimeControl.RunRequest
   alias Jido.Session.Runtime.Session
 
   @enforce_keys [

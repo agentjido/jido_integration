@@ -2,7 +2,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.Conformance do
   @moduledoc false
 
   alias Jido.Integration.V2.ArtifactBuilder
-  alias Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver
+  alias Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDriver
 
   @run_id "run-codex-cli-conformance"
   @attempt_id "#{@run_id}:1"
@@ -43,7 +43,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.Conformance do
 
   @spec runtime_drivers() :: map()
   def runtime_drivers do
-    %{asm: ConformanceHarnessDriver}
+    %{asm: ConformanceRuntimeControlDriver}
   end
 
   defp credential_ref do

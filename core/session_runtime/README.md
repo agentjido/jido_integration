@@ -6,30 +6,30 @@ runtime.
 It keeps the public module surface as `Jido.Session` and the runtime id as
 `jido_session`, but the ownership now lives inside `jido_integration` rather
 than a sibling repo. The package owns the in-memory session kernel, the
-deterministic first session type, and the `Jido.Harness.RuntimeDriver`
-projection used by `core/harness_runtime`.
+deterministic first session type, and the `Jido.RuntimeControl.RuntimeDriver`
+projection used by `core/runtime_router`.
 
 ## Responsibilities
 
 - own the internal `jido_session` session and run lifecycle
-- project session state into `Jido.Harness` Session Control IR structs
+- project session state into `Jido.RuntimeControl` Session Control IR structs
 - provide the authored `runtime.driver: "jido_session"` basis for session work
-- keep richer runtime-local state behind the shared Harness handle floor
+- keep richer runtime-local state behind the shared Runtime Control handle floor
 
 ## Boundary
 
 This package is intentionally narrow.
 
-- It does own the internal session kernel and the Harness driver.
+- It does own the internal session kernel and the Runtime Control driver.
 - It does not own control-plane run truth, policy, auth lease issuance, or
   durable store selection.
-- It does not replace `core/runtime_asm_bridge`; that package remains the
+- It does not replace `core/asm_runtime_bridge`; that package remains the
   separate projection for the authored `asm` driver.
 - It is not required for ASM-backed Codex CLI work; that path stays on
-  `core/runtime_asm_bridge -> agent_session_manager`.
+  `core/asm_runtime_bridge -> agent_session_manager`.
 
 The richer internal state stays in `Jido.Session.Runtime.*`, while the shared
-projection surface lives in `Jido.Session.HarnessProjection`.
+projection surface lives in `Jido.Session.RuntimeControlProjection`.
 
 ## Usage
 
@@ -37,7 +37,7 @@ Direct runtime use:
 
 ```elixir
 request =
-  Jido.Harness.RunRequest.new!(%{
+  Jido.RuntimeControl.RunRequest.new!(%{
     prompt: "fix login bug",
     cwd: "/tmp/project",
     metadata: %{"ticket" => "AUTH-12"}
@@ -60,22 +60,22 @@ result.text
 #=> "handled: fix login bug"
 ```
 
-Via Harness:
+Via Runtime Control:
 
 ```elixir
-Application.put_env(:jido_harness, :runtime_drivers, %{jido_session: Jido.Session.HarnessDriver})
-Application.put_env(:jido_harness, :default_runtime_driver, :jido_session)
+Application.put_env(:jido_runtime_control, :runtime_drivers, %{jido_session: Jido.Session.RuntimeControlDriver})
+Application.put_env(:jido_runtime_control, :default_runtime_driver, :jido_session)
 
-request = Jido.Harness.RunRequest.new!(%{prompt: "through harness", metadata: %{}})
-{:ok, session} = Jido.Harness.start_session(session_id: "session-1", provider: :jido_session)
-{:ok, _run, events} = Jido.Harness.stream_run(session, request)
+request = Jido.RuntimeControl.RunRequest.new!(%{prompt: "through runtime_control", metadata: %{}})
+{:ok, session} = Jido.RuntimeControl.start_session(session_id: "session-1", provider: :jido_session)
+{:ok, _run, events} = Jido.RuntimeControl.stream_run(session, request)
 ```
 
 ## Public Modules
 
 - `Jido.Session`
-- `Jido.Session.HarnessDriver`
-- `Jido.Session.HarnessProjection`
+- `Jido.Session.RuntimeControlDriver`
+- `Jido.Session.RuntimeControlProjection`
 - `Jido.Session.Runtime.Session`
 - `Jido.Session.Runtime.Run`
 - `Jido.Session.Runtime.LocalEcho`

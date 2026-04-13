@@ -223,7 +223,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     refute File.exists?(Path.join(stream_workspace_root, "connectors/price_feed"))
   end
 
-  test "generates non-direct connector packages only when an explicit Harness runtime-driver is selected" do
+  test "generates non-direct connector packages only when an explicit runtime-control driver is selected" do
     workspace_root = temp_workspace!("non_direct")
 
     run_task([
@@ -282,21 +282,21 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert File.exists?(
              Path.join(
                session_package_root,
-               "lib/jido/integration/v2/connectors/assistant_cli/conformance_harness_driver.ex"
+               "lib/jido/integration/v2/connectors/assistant_cli/conformance_runtime_control_driver.ex"
              )
            )
 
     assert File.exists?(
              Path.join(
                stream_package_root,
-               "lib/jido/integration/v2/connectors/price_feed/conformance_harness_driver.ex"
+               "lib/jido/integration/v2/connectors/price_feed/conformance_runtime_control_driver.ex"
              )
            )
 
     refute session_mix =~ ~s(["lib", "test_support"])
     refute stream_mix =~ ~s(["lib", "test_support"])
-    assert session_mix =~ "DependencyResolver.jido_harness(override: true)"
-    assert stream_mix =~ "DependencyResolver.jido_harness(override: true)"
+    assert session_mix =~ "DependencyResolver.jido_runtime_control(override: true)"
+    assert stream_mix =~ "DependencyResolver.jido_runtime_control(override: true)"
     assert session_mix =~ "override: true"
     assert stream_mix =~ "override: true"
     refute session_readme =~ removed_session_bridge_id()
@@ -430,7 +430,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       {"MIX_OS_CONCURRENCY_LOCK", "0"},
       {"SSLKEYLOGFILE", nil},
       {"JIDO_INTEGRATION_PATH", repo_root},
-      {"JIDO_HARNESS_PATH", sibling_repo_path(repo_root, "../jido_harness")},
+      {"JIDO_HARNESS_PATH", sibling_repo_path(repo_root, "../jido_runtime_control")},
       {"JIDO_OS_PATH", "disabled"},
       {"JIDO_SHELL_PATH", sibling_repo_path(repo_root, "../jido_shell")},
       {"JIDO_VFS_PATH", Path.expand("../jido_vfs", repo_root)},

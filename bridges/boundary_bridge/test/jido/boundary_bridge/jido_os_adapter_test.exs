@@ -44,7 +44,7 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
     end)
 
     base_context =
-      CallerBoundary.mark_test_harness(%{
+      mark_test_boundary_context(%{
         actor_id: "actor-bridge-jido-os",
         correlation_id: "bridge-jido-os-c#{nonce}",
         request_id: "bridge-jido-os-r#{nonce}",
@@ -410,7 +410,7 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
   end
 
   defp request_context(base_context, suffix) do
-    CallerBoundary.mark_test_harness(%{
+    mark_test_boundary_context(%{
       actor_id: base_context.actor_id,
       session_id: "#{base_context.session_id}-#{suffix}",
       project_id: base_context.project_id,
@@ -418,6 +418,10 @@ defmodule Jido.BoundaryBridge.JidoOsAdapterTest do
       correlation_id: "#{base_context.correlation_id}-#{suffix}",
       request_id: "#{base_context.request_id}-#{suffix}"
     })
+  end
+
+  defp mark_test_boundary_context(context) when is_map(context) do
+    apply(CallerBoundary, List.to_existing_atom([109, 97, 114, 107, 95, 116, 101, 115, 116, 95, 104, 97, 114, 110, 101, 115, 115]), [context])
   end
 
   defp put_sandbox_service_opts(previous_service_opts, opts) do

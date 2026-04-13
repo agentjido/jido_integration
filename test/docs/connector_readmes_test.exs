@@ -75,7 +75,9 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
              "#{path} must reject non-direct runtime coupling explicitly"
 
       assert readme =~ sdk_dep, "#{path} must name its provider SDK boundary"
-      refute readme =~ "Jido.Harness", "#{path} must not describe a Harness-routed path"
+
+      refute readme =~ "Jido.RuntimeControl",
+             "#{path} must not describe a runtime-control-routed path"
 
       refute Regex.match?(~r/\bbridge(?:d|s)?\b/i, readme),
              "#{path} must not preserve removed bridge wording"

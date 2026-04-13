@@ -8,8 +8,9 @@ defmodule Jido.Integration.Build.WeldContract do
     "bridges/boundary_bridge",
     "connectors/codex_cli",
     "connectors/market_data",
-    "core/harness_runtime",
-    "core/runtime_asm_bridge",
+    "core/runtime_control",
+    "core/runtime_router",
+    "core/asm_runtime_bridge",
     "core/session_runtime"
   ]
 
@@ -17,8 +18,9 @@ defmodule Jido.Integration.Build.WeldContract do
     "connectors/codex_cli",
     "connectors/market_data",
     "core/conformance",
-    "core/harness_runtime",
-    "core/runtime_asm_bridge",
+    "core/runtime_control",
+    "core/runtime_router",
+    "core/asm_runtime_bridge",
     "core/session_runtime"
   ]
 
@@ -58,7 +60,6 @@ defmodule Jido.Integration.Build.WeldContract do
   @dependencies [
     agent_session_manager: [requirement: "~> 0.9.1"],
     github_ex: [requirement: "~> 0.1.0"],
-    jido_harness: [opts: [github: "nshkrdotcom/jido_harness", branch: "main"]],
     jido_shell: [opts: [github: "agentjido/jido_shell", branch: "main"]],
     linear_sdk: [requirement: "~> 0.2.0"],
     notion_sdk: [requirement: "~> 0.2.0"],

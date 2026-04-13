@@ -13,18 +13,18 @@ publication contract to `build_support/weld_contract.exs`, where the published
 roots, source-only exclusions, and source-only monolith test support projects
 are declared together.
 
-The default published artifact intentionally excludes the Harness-backed
+The default published artifact intentionally excludes the runtime-control-backed
 session and stream runtime slice for now:
 
-- `core/harness_runtime`
-- `core/runtime_asm_bridge`
+- `core/runtime_router`
+- `core/asm_runtime_bridge`
 - `core/session_runtime`
 - `bridges/boundary_bridge`
 - `connectors/codex_cli`
 - `connectors/market_data`
 
 Those packages still depend on unpublished external runtime packages such as
-`jido_harness`, so they remain source-repo packages until that publication
+`jido_runtime_control`, so they remain source-repo packages until that publication
 boundary is resolved independently.
 
 The monolith test lane is allowed to use source-only support from that excluded

@@ -40,8 +40,11 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_policy(opts \\ []),
     do: resolve_internal(:jido_integration_v2_policy, "core/policy", opts)
 
-  def jido_integration_v2_runtime_asm_bridge(opts \\ []),
-    do: resolve_internal(:jido_integration_v2_runtime_asm_bridge, "core/runtime_asm_bridge", opts)
+  def jido_integration_v2_asm_runtime_bridge(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_asm_runtime_bridge, "core/asm_runtime_bridge", opts)
+
+  def jido_runtime_control(opts \\ []),
+    do: resolve_internal(:jido_runtime_control, "core/runtime_control", opts)
 
   def jido_integration_v2_store_local(opts \\ []),
     do: resolve_internal(:jido_integration_v2_store_local, "core/store_local", opts)
@@ -67,8 +70,8 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_linear(opts \\ []),
     do: resolve_internal(:jido_integration_v2_linear, "connectors/linear", opts)
 
-  def jido_integration_v2_harness_runtime(opts \\ []),
-    do: resolve_internal(:jido_integration_v2_harness_runtime, "core/harness_runtime", opts)
+  def jido_integration_v2_runtime_router(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_runtime_router, "core/runtime_router", opts)
 
   def jido_integration_v2_market_data(opts \\ []),
     do: resolve_internal(:jido_integration_v2_market_data, "connectors/market_data", opts)
@@ -89,15 +92,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
 
   def jido_integration_v2_trading_ops(opts \\ []),
     do: resolve_internal(:jido_integration_v2_trading_ops, "apps/trading_ops", opts)
-
-  def jido_harness(opts \\ []) do
-    resolve_external(
-      :jido_harness,
-      local_root_path("JIDO_HARNESS_PATH", "../jido_harness"),
-      [github: "nshkrdotcom/jido_harness", branch: "main"],
-      opts
-    )
-  end
 
   def agent_session_manager(opts \\ []) do
     case local_root_path("AGENT_SESSION_MANAGER_PATH", "../agent_session_manager") do

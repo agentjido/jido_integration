@@ -2,7 +2,7 @@ defmodule <%= @handler_module %> do
   @moduledoc """
   Marker module for the scaffolded <%= Atom.to_string(@runtime_class) %> capability.
 
-  Runtime execution is owned by the selected Harness driver rather than
+  Runtime execution is owned by the selected Runtime Control driver rather than
   connector-local session or stream callbacks.
   """
 end

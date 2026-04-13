@@ -1,6 +1,6 @@
 defmodule Jido.Session.Runtime.Session do
   @moduledoc """
-  Richer internal session model kept above the shared Harness IR floor.
+  Richer internal session model kept above the shared Runtime Control IR floor.
   """
 
   @enforce_keys [

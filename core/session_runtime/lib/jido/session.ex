@@ -3,11 +3,11 @@ defmodule Jido.Session do
   Internal Jido-native session runtime with a small deterministic first session type.
 
   `Jido.Session` owns the internal session kernel for app-controlled execution and
-  projects its state through the Harness Session Control IR via
-  `Jido.Session.HarnessDriver`.
+  projects its state through the Runtime Control IR via
+  `Jido.Session.RuntimeControlDriver`.
   """
 
-  alias Jido.Harness.{
+  alias Jido.RuntimeControl.{
     ExecutionResult,
     ExecutionStatus,
     RunHandle,
@@ -15,21 +15,21 @@ defmodule Jido.Session do
     SessionHandle
   }
 
-  alias Jido.Session.{HarnessProjection, Store}
   alias Jido.Session.Runtime.{LocalEcho, Run, Session}
+  alias Jido.Session.{RuntimeControlProjection, Store}
 
   @runtime_id :jido_session
 
   @type session_record :: Session.t()
   @type run_record :: Run.t()
 
-  @doc "Returns the runtime id published to Harness."
+  @doc "Returns the runtime id published to Runtime Control."
   @spec runtime_id() :: atom()
   def runtime_id, do: @runtime_id
 
-  @doc "Returns the Harness runtime descriptor for this runtime."
-  @spec runtime_descriptor(keyword()) :: Jido.Harness.RuntimeDescriptor.t()
-  def runtime_descriptor(opts \\ []), do: HarnessProjection.runtime_descriptor(opts)
+  @doc "Returns the Runtime Control descriptor for this runtime."
+  @spec runtime_descriptor(keyword()) :: Jido.RuntimeControl.RuntimeDescriptor.t()
+  def runtime_descriptor(opts \\ []), do: RuntimeControlProjection.runtime_descriptor(opts)
 
   @doc "Starts a new internal session and returns its Session Control handle."
   @spec start_session(keyword()) :: {:ok, SessionHandle.t()} | {:error, term()}
@@ -38,7 +38,7 @@ defmodule Jido.Session do
 
     with session <- Session.new(opts),
          :ok <- Store.put_session(session) do
-      {:ok, HarnessProjection.session_handle(session)}
+      {:ok, RuntimeControlProjection.session_handle(session)}
     end
   end
 
@@ -67,27 +67,28 @@ defmodule Jido.Session do
     Store.fetch_run(run_id)
   end
 
-  @doc "Projects session status through the Harness Session Control IR."
+  @doc "Projects session status through the Runtime Control IR."
   @spec session_status(SessionHandle.t()) :: {:ok, ExecutionStatus.t()} | {:error, term()}
   def session_status(%SessionHandle{session_id: session_id}) do
     assert_started!()
 
     with {:ok, %Session{} = session} <- Store.fetch_session(session_id) do
-      {:ok, HarnessProjection.session_status(session)}
+      {:ok, RuntimeControlProjection.session_status(session)}
     end
   end
 
   @doc "Runs a deterministic streaming execution and returns projected IR events."
   @spec stream_run(SessionHandle.t(), RunRequest.t(), keyword()) ::
-          {:ok, RunHandle.t(), Enumerable.t(Jido.Harness.ExecutionEvent.t())} | {:error, term()}
+          {:ok, RunHandle.t(), Enumerable.t(Jido.RuntimeControl.ExecutionEvent.t())}
+          | {:error, term()}
   def stream_run(%SessionHandle{session_id: session_id}, %RunRequest{} = request, opts \\ []) do
     assert_started!()
 
     with {:ok, %Session{} = session} <- Store.fetch_session(session_id),
          {:ok, started_run, completed_run} <- execute_run(session, request, opts),
          :ok <- persist_run(session, completed_run) do
-      {:ok, HarnessProjection.run_handle(started_run),
-       HarnessProjection.events(session, completed_run)}
+      {:ok, RuntimeControlProjection.run_handle(started_run),
+       RuntimeControlProjection.events(session, completed_run)}
     end
   end
 
@@ -100,7 +101,7 @@ defmodule Jido.Session do
     with {:ok, %Session{} = session} <- Store.fetch_session(session_id),
          {:ok, _started_run, completed_run} <- execute_run(session, request, opts),
          :ok <- persist_run(session, completed_run) do
-      {:ok, HarnessProjection.result(session, completed_run)}
+      {:ok, RuntimeControlProjection.result(session, completed_run)}
     end
   end
 

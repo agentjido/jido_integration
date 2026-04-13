@@ -31,9 +31,9 @@ Phase 9 questions without guessing. The minimum package sections are:
   published profile
 - for direct provider-SDK connectors, the authored auth-control and lease-build
   boundary below the SDK seam
-- for session and stream packages, the authored `Jido.Harness` driver id plus
+- for session and stream packages, the authored `Jido.RuntimeControl` driver id plus
   the runtime basis beneath that seam:
-  `jido_harness` ->
+  `jido_runtime_control` ->
   `agent_session_manager` ->
   `cli_subprocess_core`
 - authored-vs-generated boundary, including which inventory stays
@@ -76,13 +76,13 @@ Phase 9 questions without guessing. The minimum package sections are:
   `TargetDescriptor.authored_requirements/2`; target descriptors only
   advertise compatibility and location
 - the session example connector publishes the shared `codex.exec.session`
-  common surface on the accepted `jido_harness`
-  `Jido.Harness` seam using authored `runtime.driver: "asm"` instead of
+  common surface on the accepted `jido_runtime_control`
+  `Jido.RuntimeControl` seam using authored `runtime.driver: "asm"` instead of
   staying connector-local
 - the reusable session lane for that connector remains in
   `agent_session_manager` above `cli_subprocess_core`
 - the stream example connector publishes `market.ticks.pull` on the same
-  Harness `asm` seam and honestly keeps `runtime_ref: :session` because the
+  Runtime Control `asm` seam and honestly keeps `runtime_ref: :session` because the
   selected driver returns a session-scoped handle
 - runtime execution uses short-lived credential leases, not durable credential
   secrets, and conformance fixtures prove the published lease projection

@@ -3,8 +3,8 @@ defmodule Jido.Integration.V2.Conformance.Suites.RuntimeClassFit do
 
   alias Jido.Integration.V2.Conformance.SuiteResult
   alias Jido.Integration.V2.Conformance.SuiteSupport
-  alias Jido.Integration.V2.HarnessRuntime
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.RuntimeRouter
 
   @spec run(map()) :: SuiteResult.t()
   def run(%{manifest: manifest}) do
@@ -45,7 +45,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.RuntimeClassFit do
 
   defp runtime_handler_valid?(%{runtime_class: runtime_class} = capability, _handler)
        when runtime_class in [:session, :stream] do
-    target_harness_driver?(capability)
+    target_runtime_control_driver?(capability)
   end
 
   defp runtime_handler_valid?(%{runtime_class: :session}, handler) do
@@ -80,16 +80,16 @@ defmodule Jido.Integration.V2.Conformance.Suites.RuntimeClassFit do
   end
 
   defp runtime_contract_error(%{runtime_class: :session} = capability, handler) do
-    if target_harness_driver?(capability) do
-      "session connectors targeting accepted Harness drivers only need a loadable marker handler; #{inspect(handler)} could not be used"
+    if target_runtime_control_driver?(capability) do
+      "session connectors targeting accepted Runtime Control drivers only need a loadable marker handler; #{inspect(handler)} could not be used"
     else
       "session providers must export reuse_key/2, open_session/2, and execute/4; #{inspect(handler)} does not"
     end
   end
 
   defp runtime_contract_error(%{runtime_class: :stream} = capability, handler) do
-    if target_harness_driver?(capability) do
-      "stream connectors targeting accepted Harness drivers only need a loadable marker handler; #{inspect(handler)} could not be used"
+    if target_runtime_control_driver?(capability) do
+      "stream connectors targeting accepted Runtime Control drivers only need a loadable marker handler; #{inspect(handler)} could not be used"
     else
       "stream providers must export reuse_key/3, open_stream/3, and pull/4; #{inspect(handler)} does not"
     end
@@ -99,10 +99,10 @@ defmodule Jido.Integration.V2.Conformance.Suites.RuntimeClassFit do
     "#{capability_id} declares #{runtime_class} work but does not expose metadata.runtime.driver"
   end
 
-  defp target_harness_driver?(capability) do
+  defp target_runtime_control_driver?(capability) do
     case runtime_driver_id(capability) do
       driver_id when is_binary(driver_id) ->
-        driver_id in HarnessRuntime.target_driver_ids()
+        driver_id in RuntimeRouter.target_driver_ids()
 
       _other ->
         false

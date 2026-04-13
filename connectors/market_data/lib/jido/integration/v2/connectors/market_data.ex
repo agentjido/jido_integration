@@ -3,7 +3,7 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
   Example stream connector package.
 
   This connector publishes the canonical stream-family authored shape on the
-  shared common consumer-surface spine through the `Jido.Harness` `asm`
+  shared common consumer-surface spine through the `Jido.RuntimeControl` `asm`
   driver.
   """
 
@@ -42,7 +42,7 @@ defmodule Jido.Integration.V2.Connectors.MarketData do
           install: %{required: true},
           reauth: %{supported: false},
           requested_scopes: ["market:read"],
-          lease_fields: ["access_token"],
+          lease_fields: ["api_key"],
           secret_names: []
         }),
       catalog:

@@ -3,9 +3,9 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
 
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Apps.TradingOps
-  alias Jido.Integration.V2.Connectors.CodexCli.ConformanceHarnessDriver
+  alias Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDriver
   alias Jido.Integration.V2.Connectors.MarketData
-  alias Jido.Integration.V2.HarnessRuntime
+  alias Jido.Integration.V2.RuntimeRouter
   alias Jido.Integration.V2.TargetDescriptor
 
   setup do
@@ -16,7 +16,7 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
       [
         Jido.Integration.V2.ControlPlane.Registry,
         Jido.Integration.V2.ControlPlane.RunLedger,
-        Jido.Integration.V2.HarnessRuntime.SessionStore
+        Jido.Integration.V2.RuntimeRouter.SessionStore
       ],
       Jido.Integration.V2.ControlPlane.Supervisor,
       Jido.Integration.V2.ControlPlane.Application
@@ -30,13 +30,13 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
 
     V2.reset!()
 
-    HarnessRuntime.reset!()
-    ConformanceHarnessDriver.reset!()
+    RuntimeRouter.reset!()
+    ConformanceRuntimeControlDriver.reset!()
 
     Application.put_env(
       :jido_integration_v2_control_plane,
       :runtime_drivers,
-      Map.put(previous_runtime_drivers || %{}, :asm, ConformanceHarnessDriver)
+      Map.put(previous_runtime_drivers || %{}, :asm, ConformanceRuntimeControlDriver)
     )
 
     on_exit(fn ->
@@ -52,8 +52,8 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
           )
       end
 
-      HarnessRuntime.reset!()
-      ConformanceHarnessDriver.reset!()
+      RuntimeRouter.reset!()
+      ConformanceRuntimeControlDriver.reset!()
     end)
 
     :ok

@@ -23,16 +23,16 @@ defmodule Jido.Integration.V2.ConformanceTest do
     def run(_input, _context), do: {:ok, %{unexpected: true}}
   end
 
-  defmodule HarnessBackedStreamHandler do
+  defmodule RuntimeControlBackedStreamHandler do
   end
 
-  defmodule HarnessBackedStreamConnector do
+  defmodule RuntimeControlBackedStreamConnector do
     @behaviour Connector
 
     @impl true
     def manifest do
       Manifest.new!(%{
-        connector: "harness_backed_stream",
+        connector: "runtime_control_backed_stream",
         auth: %{
           binding_kind: :connection_id,
           auth_type: :api_token,
@@ -43,8 +43,8 @@ defmodule Jido.Integration.V2.ConformanceTest do
           secret_names: []
         },
         catalog: %{
-          display_name: "Harness Backed Stream",
-          description: "Harness-targeted stream connector",
+          display_name: "Runtime Control Backed Stream",
+          description: "Runtime Control-targeted stream connector",
           category: "test",
           tags: ["stream"],
           docs_refs: [],
@@ -53,13 +53,13 @@ defmodule Jido.Integration.V2.ConformanceTest do
         },
         operations: [
           %{
-            operation_id: "harness.stream.exec",
+            operation_id: "runtime_control.stream.exec",
             name: "stream_exec",
-            display_name: "Harness stream exec",
-            description: "Exercises Harness-backed runtime fit",
+            display_name: "Runtime Control stream exec",
+            description: "Exercises runtime-control-backed runtime fit",
             runtime_class: :stream,
             transport_mode: :stdio,
-            handler: HarnessBackedStreamHandler,
+            handler: RuntimeControlBackedStreamHandler,
             input_schema:
               Zoi.object(%{
                 prompt: Zoi.string()
@@ -80,7 +80,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
                 level: :standard,
                 egress: :restricted,
                 approvals: :auto,
-                allowed_tools: ["harness.stream.exec"]
+                allowed_tools: ["runtime_control.stream.exec"]
               }
             },
             upstream: %{transport: :stdio},
@@ -1621,7 +1621,8 @@ defmodule Jido.Integration.V2.ConformanceTest do
   end
 
   test "accepts target-driver-backed non-direct marker handlers in runtime fit" do
-    runtime_suite = RuntimeClassFit.run(%{manifest: HarnessBackedStreamConnector.manifest()})
+    runtime_suite =
+      RuntimeClassFit.run(%{manifest: RuntimeControlBackedStreamConnector.manifest()})
 
     assert runtime_suite.status == :passed
   end

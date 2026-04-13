@@ -111,7 +111,7 @@ published profile lease projection, and runtime output, events, and artifacts
 must not echo raw secret values.
 
 Non-direct connectors may also publish `runtime_drivers/0` from the same
-companion module so conformance can bind accepted Harness driver ids such as
+companion module so conformance can bind accepted Runtime Control driver ids such as
 `asm` or `jido_session` to deterministic package-local test drivers.
 
 The companion module is the connector-owned publication point for deterministic

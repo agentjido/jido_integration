@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   import ExUnit.CaptureIO
 
   alias Jido.Integration.TestTmpDir
-  alias Jido.Integration.V2.HarnessRuntime
+  alias Jido.Integration.V2.RuntimeRouter
   alias Mix.Tasks.Jido.Conformance, as: ConformanceTask
 
   @tag timeout: 180_000
@@ -53,8 +53,8 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   end
 
   @tag timeout: 180_000
-  test "boots the harness runtime explicitly for non-direct connector conformance" do
-    stop_harness_runtime!()
+  test "boots the runtime router explicitly for non-direct connector conformance" do
+    stop_runtime_router!()
 
     output = run_task(["Jido.Integration.V2.Connectors.CodexCli"])
 
@@ -112,7 +112,7 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
     end
   end
 
-  defp stop_harness_runtime! do
-    HarnessRuntime.stop!()
+  defp stop_runtime_router! do
+    RuntimeRouter.stop!()
   end
 end

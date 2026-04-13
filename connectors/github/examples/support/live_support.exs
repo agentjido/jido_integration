@@ -428,7 +428,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
 
     %{
       title: "Jido live acceptance #{marker}",
-      body: "Created by the package-local GitHub live proof harness.",
+      body: "Created by the package-local GitHub live proof script.",
       comment_body: "Live proof comment #{marker}"
     }
   end

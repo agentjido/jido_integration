@@ -31,7 +31,7 @@ The same names must appear in docs and examples across:
 - the packet-local Brain contract snapshot
 - `execution_plane`
 - `jido_integration`
-- `jido_harness`
+- `jido_runtime_control`
 - `agent_session_manager`
 
 ## What The Spine Owns

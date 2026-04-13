@@ -55,10 +55,10 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
     guide = @guide_path |> File.read!() |> normalize_whitespace()
 
     assert guide =~
-             "`runtime.driver: \"asm\"` selects `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` in the `jido_integration` source repo."
+             "`runtime.driver: \"asm\"` selects `Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver` in the `jido_integration` source repo."
 
     assert guide =~
-             "`runtime.driver: \"jido_session\"` selects `Jido.Session.HarnessDriver` in `core/session_runtime`."
+             "`runtime.driver: \"jido_session\"` selects `Jido.Session.RuntimeControlDriver` in `core/session_runtime`."
 
     assert guide =~
              "Only the `asm` branch projects further into provider-neutral `agent_session_manager`, which itself uses `cli_subprocess_core` for subprocess, event, and provider profile foundations."
@@ -66,12 +66,12 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
     refute guide =~ "/home/home/p/g/n/"
   end
 
-  test "documents the current sibling-harness validation topology for non-direct scaffolds" do
+  test "documents the current monorepo validation topology for non-direct scaffolds" do
     guide = @guide_path |> File.read!() |> normalize_whitespace()
 
     assert guide =~ "## Current Workspace Validation Topology"
-    assert guide =~ "sibling `../jido_harness` repo"
-    assert guide =~ "published Harness package carries the same Session Control surface"
+    assert guide =~ "under `core/runtime_control`"
+    assert guide =~ "do not require a sibling `../jido_runtime_control` checkout"
     refute guide =~ "/home/home/p/g/n/"
   end
 

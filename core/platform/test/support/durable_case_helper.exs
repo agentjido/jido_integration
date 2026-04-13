@@ -2,7 +2,7 @@ defmodule Jido.Integration.V2.Platform.DurableSupport do
   @moduledoc false
 
   alias Ecto.Adapters.SQL.Sandbox
-  alias Jido.Integration.V2.HarnessRuntime
+  alias Jido.Integration.V2.RuntimeRouter
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.TestSupport
 
@@ -35,7 +35,7 @@ defmodule Jido.Integration.V2.Platform.DurableSupport do
   @spec setup!(keyword()) :: (-> :ok)
   def setup!(opts \\ []) do
     previous_env = snapshot_env()
-    HarnessRuntime.start!()
+    RuntimeRouter.start!()
     TestSupport.configure_defaults!(opts)
     maybe_enable_auto_sandbox(opts)
 

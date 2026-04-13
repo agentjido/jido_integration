@@ -19,6 +19,7 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
+  alias Jido.Integration.V2.ExecutionRouter
   alias Jido.Integration.V2.Gateway
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Manifest
@@ -26,7 +27,6 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.PolicyDecision
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.RuntimeResult
-  alias Jido.Integration.V2.RuntimeRouter
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
@@ -239,7 +239,7 @@ defmodule Jido.Integration.V2.ControlPlane do
     reset_store(Stores.run_store())
     reset_store(Stores.ingress_store())
     Auth.reset!()
-    RuntimeRouter.reset!()
+    ExecutionRouter.reset!()
     :ok
   end
 
@@ -688,7 +688,7 @@ defmodule Jido.Integration.V2.ControlPlane do
   end
 
   defp dispatch(%Capability{} = capability, input, context) do
-    RuntimeRouter.execute(capability, input, context)
+    ExecutionRouter.execute(capability, input, context)
   end
 
   defp resolve_invoke_auth(capability, opts) do

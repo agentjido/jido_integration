@@ -7,7 +7,7 @@ stream, and inference.
 
 Direct capabilities execute through `core/direct_runtime` and a connector's
 provider SDK. This path is for request/response work that does not need a
-Harness-managed session or streaming state.
+runtime-control-managed session or streaming state.
 
 Use it when:
 
@@ -15,16 +15,16 @@ Use it when:
 - the connector can finish cleanly without preserving runtime state
 - you want the simplest dependency and review story
 
-## Harness-Backed Runtime
+## Runtime-Control-Backed Runtime
 
-Sessioned and streamed capabilities go through `Jido.Harness`.
+Sessioned and streamed capabilities go through `Jido.RuntimeControl`.
 
-- `core/harness_runtime` is the authored adapter layer used by the control
+- `core/runtime_router` is the authored adapter layer used by the control
   plane for all non-direct capability execution.
-- `asm` is projected by `core/runtime_asm_bridge` into the
+- `asm` is projected by `core/asm_runtime_bridge` into the
   `agent_session_manager` and `cli_subprocess_core` lane.
 - `jido_session` is projected by `core/session_runtime` via
-  `Jido.Session.HarnessDriver`.
+  `Jido.Session.RuntimeControlDriver`.
 
 This is the stable non-direct seam for long-running or stateful execution.
 
@@ -35,16 +35,16 @@ Use it when:
 - the capability publishes session or stream behavior honestly rather than
   pretending to be direct
 
-The current harness-backed model stops at those two lanes. Lower-boundary
+The current runtime-control-backed model stops at those two lanes. Lower-boundary
 experiments are intentionally outside the active core runtime path.
 
 Important distinction:
 
-- CLI-backed inference does not require `core/harness_runtime` or
+- CLI-backed inference does not require `core/runtime_router` or
   `core/session_runtime`; it flows through `ASM.InferenceEndpoint` and then
   through the ordinary inference endpoint path in the control plane.
-- `core/harness_runtime` and `core/session_runtime` matter when a capability is
-  honestly sessioned or streamed and must execute on the Harness seam.
+- `core/runtime_router` and `core/session_runtime` matter when a capability is
+  honestly sessioned or streamed and must execute on the Runtime Control seam.
 
 ## Hosted Async And Webhooks
 
@@ -64,7 +64,7 @@ Inference is now a first-class runtime family on the public facade.
 - `core/control_plane` records the durable inference event minimum
 - `core/platform` exposes both `invoke_inference/2` and `review_packet/2`
 - CLI-backed inference endpoints are published by ASM and consumed here as
-  inference targets, not as Harness session connectors
+  inference targets, not as Runtime Control session connectors
 - lower spawned-service mechanics sit on `execution_plane`, but lease lineage,
   attachability, and service publication remain above that substrate
 
@@ -82,7 +82,7 @@ Inference-specific route truth is exposed separately through:
 If a capability can finish cleanly without preserving runtime state, keep it
 direct.
 If it needs session continuity, replay, or host-visible recovery, route it
-through Harness or the async packages explicitly.
+through Runtime Control or the async packages explicitly.
 If it is an inference request, keep request execution in `req_llm` and keep
 runtime publication below the control plane.
 

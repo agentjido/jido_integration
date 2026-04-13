@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   use ExUnit.Case
 
   alias Jido.Integration.V2.ArtifactRef
+  alias Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
@@ -12,12 +13,11 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
-  alias Jido.Integration.V2.HarnessRuntime
-  alias Jido.Integration.V2.HarnessRuntime.SessionStore
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.Redaction
-  alias Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver
+  alias Jido.Integration.V2.RuntimeRouter
+  alias Jido.Integration.V2.RuntimeRouter.SessionStore
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
@@ -432,20 +432,20 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   end
 
   setup do
-    HarnessRuntime.start!()
+    RuntimeRouter.start!()
     ControlPlane.reset!()
     :ok
   end
 
-  test "reset tolerates the compiled harness runtime when its application is not started" do
-    assert :ok = stop_harness_runtime!()
+  test "reset tolerates the compiled runtime router when its application is not started" do
+    assert :ok = stop_runtime_router!()
 
     assert Process.whereis(SessionStore) == nil
     assert :ok = ControlPlane.reset!()
   end
 
-  test "asm resolves to the target Harness runtime driver" do
-    assert {:ok, HarnessDriver} = HarnessRuntime.driver_module("asm")
+  test "asm resolves to the target Runtime Router driver" do
+    assert {:ok, RuntimeControlDriver} = RuntimeRouter.driver_module("asm")
   end
 
   test "lists connectors deterministically and fetches connectors and capabilities by id" do
@@ -637,13 +637,18 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert [%Event{attempt: nil, type: "run.failed"}] = ControlPlane.events(error.run.run_id)
   end
 
-  test "fails before attempt creation when the selected session target advertises the wrong Harness driver" do
+  test "fails before attempt creation when the selected session target advertises the wrong Runtime Control driver" do
     connection_id = install_connection!("tester", ["session:execute"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(JidoSessionConnector)
 
     assert :ok =
              ControlPlane.announce_target(
-               harness_target("target-asm-session", "test.session.prompt", :session, "asm")
+               runtime_control_target(
+                 "target-asm-session",
+                 "test.session.prompt",
+                 :session,
+                 "asm"
+               )
              )
 
     assert {:error, error} =
@@ -748,13 +753,13 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert ControlPlane.events(denied.run.run_id) == original_events
   end
 
-  test "routes session work through the authored jido_session harness driver when a compatible target is selected" do
+  test "routes session work through the authored jido_session runtime-control driver when a compatible target is selected" do
     connection_id = install_connection!("tester", ["session:execute"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(JidoSessionConnector)
 
     assert :ok =
              ControlPlane.announce_target(
-               harness_target(
+               runtime_control_target(
                  "target-jido-session",
                  "test.session.prompt",
                  :session,
@@ -809,13 +814,13 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
            end)
   end
 
-  test "routes stream work through the authored asm harness driver when a compatible target is selected" do
+  test "routes stream work through the authored asm runtime-control driver when a compatible target is selected" do
     connection_id = install_connection!("tester", ["stream:execute"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(AsmStreamConnector)
 
     assert :ok =
              ControlPlane.announce_target(
-               harness_target("target-asm-stream", "test.asm.stream", :stream, "asm")
+               runtime_control_target("target-asm-stream", "test.asm.stream", :stream, "asm")
              )
 
     assert {:ok, first} =
@@ -1224,7 +1229,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     })
   end
 
-  defp harness_target(target_id, capability_id, runtime_class, driver_id) do
+  defp runtime_control_target(target_id, capability_id, runtime_class, driver_id) do
     TargetDescriptor.new!(%{
       target_id: target_id,
       capability_id: capability_id,
@@ -1241,7 +1246,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     })
   end
 
-  defp stop_harness_runtime! do
-    HarnessRuntime.stop!()
+  defp stop_runtime_router! do
+    RuntimeRouter.stop!()
   end
 end

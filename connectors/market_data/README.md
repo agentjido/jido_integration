@@ -7,15 +7,15 @@ proof.
 
 - runtime family: `:stream` for `market.ticks.pull`, plus one connector-owned
   direct poll trigger for `market.alert.detected`
-- stable runtime contract seam: `jido_harness` via `Jido.Harness`
+- stable runtime contract seam: `jido_runtime_control` via `Jido.RuntimeControl`
 - public auth binding is `connection_id`
 - the authored stream routing contract is explicit through
   `runtime.driver: "asm"`, `runtime.provider: :claude`, and
   `runtime.options: %{}`
 - the `asm` driver resolves through
-  `Jido.Integration.V2.RuntimeAsmBridge.HarnessDriver` into
+  `Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver` into
   `agent_session_manager`, with `cli_subprocess_core` below that lane
-- this connector package depends on `jido_harness` for the
+- this connector package depends on `jido_runtime_control` for the
   shared seam; it does not take direct
   `agent_session_manager` or `cli_subprocess_core` package deps
 - the package uses short-lived credential leases for deterministic stream pulls
@@ -29,10 +29,10 @@ This package publishes the accepted stream-family authored operation shape:
 - capability id: `market.ticks.pull`
 - shared common-surface projection through `consumer_surface.mode: :common`
 - canonical provider-neutral `metadata.runtime_family` keys for a stream
-  capability routed through the Harness `asm` driver
+  capability routed through the Runtime Control `asm` driver
 
 For this package, `metadata.runtime_family.runtime_ref: :session` is
-intentional. The capability is `:stream`, but the selected Harness driver
+intentional. The capability is `:stream`, but the selected Runtime Control driver
 returns a session-scoped handle that can be reused across pulls.
 
 It also publishes one common poll trigger:
@@ -58,7 +58,7 @@ Proves:
 - durable checkpoint, dedupe, and ingress admission truth stay in
   `jido_integration`
 - lease-bound auth and durable review artifacts/events for each batch
-- deterministic conformance through a package-local Harness test driver bound
+- deterministic conformance through a package-local Runtime Control test driver bound
   to `asm`, while the reusable runtime lane remains below the connector
   package
 
@@ -91,7 +91,7 @@ conformance.
 
 This package owns the stream capability contract, the connector-owned poll
 trigger contract, the generated consumer surface, and the package-local
-Harness conformance seam.
+runtime-control conformance seam.
 
 It does not own the provider-neutral session lane in
 `agent_session_manager`, the CLI subprocess foundation in

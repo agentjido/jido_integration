@@ -28,7 +28,7 @@ The app remains above the shared platform seam:
 
 ## Recommended Usage
 
-Use the app as a permanent proof harness, not as a second control plane.
+Use the app as a permanent proof app, not as a second control plane.
 
 - pass `req_http_options: [plug: ...]` when you want an offline cloud proof
 - pass the default Gemini request or override `:provider` / `:model_id` when

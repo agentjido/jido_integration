@@ -71,7 +71,9 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         refute mix_exs =~ "pristine_runtime(",
                "#{mix_path} must not carry a direct pristine runtime dependency"
 
-        refute mix_exs =~ ":jido_harness", "#{mix_path} must not depend on jido_harness"
+        refute mix_exs =~ ":jido_runtime_control",
+               "#{mix_path} must not depend on jido_runtime_control"
+
         refute mix_exs =~ "agent_session_manager", "#{mix_path} must not depend on ASM directly"
 
         refute mix_exs =~ "cli_subprocess_core",
@@ -177,11 +179,11 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
       refute proof_suite =~ stream_runtime_app,
              "#{package_root} must not boot the removed stream bridge app"
 
-      refute proof_suite =~ "Jido.Harness",
-             "#{test_root} must not route direct connector proofs through Jido.Harness"
+      refute proof_suite =~ "Jido.RuntimeControl",
+             "#{test_root} must not route direct connector proofs through Jido.RuntimeControl"
 
-      refute proof_suite =~ "HarnessRuntime.SessionStore",
-             "#{package_root} must not name HarnessRuntime.SessionStore in direct proofs or example support"
+      refute proof_suite =~ "RuntimeRouter.SessionStore",
+             "#{package_root} must not name RuntimeRouter.SessionStore in direct proofs or example support"
     end)
   end
 end

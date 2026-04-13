@@ -43,7 +43,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       DependencyResolver.req_llm(),
       DependencyResolver.self_hosted_inference_core(),
       DependencyResolver.llama_cpp_sdk(only: :test),
-      DependencyResolver.jido_integration_v2_harness_runtime(only: :test),
+      DependencyResolver.jido_integration_v2_runtime_router(only: :test),
       {:plug, "~> 1.19", only: [:dev, :test]},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

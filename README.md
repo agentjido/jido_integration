@@ -2,7 +2,7 @@
 
 Jido Integration is an Elixir integration platform for publishing connector
 capabilities, managing auth lifecycle, invoking work across direct and
-Harness-backed runtimes, and reviewing durable execution state.
+runtime-control-backed runtimes, and reviewing durable execution state.
 
 This repository includes the public platform facade, bridge packages,
 connector packages, durability tiers, and app-level proofs for hosted webhook
@@ -244,7 +244,7 @@ from the monorepo root. `mix release.archive` then preserves the prepared
 bundle in the archive tree so the exact released artifact remains inspectable.
 
 The first published welded artifact intentionally ships the direct-runtime,
-webhook, async, durability, auth, and public-facade surface. The Harness-backed
+webhook, async, durability, auth, and public-facade surface. The runtime-control-backed
 session and stream packages, plus lower-boundary bridge packages, stay
 source-repo packages until their external runtime dependencies become
 independently publishable.
@@ -273,11 +273,11 @@ jido_integration/
     brain_ingress/           # durable Brain-to-Spine intake and scope resolution
     auth/                    # install, connection, credential, and lease truth
     control_plane/           # durable run, trigger, and artifact truth
-    harness_runtime/         # Harness-backed session/stream adapter package
+    runtime_router/         # runtime-control-backed session/stream adapter package
     consumer_surfaces/       # generated common Jido surface runtime support
     direct_runtime/          # direct capability execution
-    runtime_asm_bridge/      # integration-owned `asm` Harness driver projection
-    session_runtime/         # integration-owned `jido_session` Harness driver
+    asm_runtime_bridge/      # integration-owned `asm` Runtime Control driver projection
+    session_runtime/         # integration-owned `jido_session` Runtime Control driver
     ingress/                 # trigger normalization and durable admission
     policy/                  # pre-attempt policy and shed decisions
     dispatch_runtime/        # async queue, retry, replay, recovery
@@ -291,8 +291,8 @@ jido_integration/
     github/                  # direct GitHub connector + live acceptance runbook
     linear/                  # direct Linear connector + package-local docs
     notion/                  # direct Notion connector + package-local live proofs
-    codex_cli/               # Harness-routed session connector via `asm`
-    market_data/             # Harness-routed stream connector via `asm`
+    codex_cli/               # runtime-control-routed session connector via `asm`
+    market_data/             # runtime-control-routed stream connector via `asm`
   apps/
     trading_ops/             # cross-runtime operator proof
     devops_incident_response # hosted webhook + async recovery proof
@@ -308,19 +308,19 @@ non-direct capability families.
 `Jido.Integration.V2 -> DirectRuntime -> connector -> provider SDK -> pristine`
 
 Only actual `:session` and `:stream` capabilities use
-`jido_harness` via `Jido.Harness`.
+`jido_runtime_control` via `Jido.RuntimeControl`.
 
-`Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
+`Jido.Integration.V2 -> RuntimeRouter -> Jido.RuntimeControl -> {asm | jido_session}`
 
-`asm` routes through `core/runtime_asm_bridge` into `agent_session_manager`
+`asm` routes through `core/asm_runtime_bridge` into `agent_session_manager`
 and `cli_subprocess_core`, while `jido_session` routes through
-`core/session_runtime` via `Jido.Session.HarnessDriver`.
+`core/session_runtime` via `Jido.Session.RuntimeControlDriver`.
 
 Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
 bridge packages. They are not part of the repo or the target runtime
 architecture.
 
-The current core runtime graph stops at those two Harness lanes. Lower-boundary
+The current core runtime graph stops at those two runtime-control lanes. Lower-boundary
 work is not part of the active `asm` or `jido_session` dependency path.
 
 The default root workspace gate is explicit about that scope. `build_support/workspace_contract.exs`

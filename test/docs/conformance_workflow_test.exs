@@ -26,7 +26,7 @@ defmodule Jido.Integration.Docs.ConformanceWorkflowTest do
   test "documents non-direct scaffold runtime drivers as package-local lib code" do
     guide = @guide_path |> File.read!() |> normalize_whitespace()
 
-    assert guide =~ "deterministic Harness driver under `lib/`."
+    assert guide =~ "deterministic Runtime Control driver under `lib/`."
     refute guide =~ "`test_support/`"
   end
 

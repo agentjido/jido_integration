@@ -16,7 +16,7 @@ workspace root.
 - deterministic execution still uses short-lived credential leases published by
   the connector contract
 <%= if @include_runtime_metadata do %>- authored non-direct routing is published through `runtime.driver: "<%= @runtime_driver_id %>"` on the manifest instead of an implicit runtime default
-<% else %>- this direct scaffold keeps runtime routing inside the package handler and does not publish Harness driver metadata
+<% else %>- this direct scaffold keeps runtime routing inside the package handler and does not publish Runtime Control driver metadata
 <% end %>
 
 ## Scaffold Output
@@ -35,10 +35,10 @@ This package starts with:
 - a deterministic conformance companion module
 - package-local tests that prove the scaffold passes the baseline conformance flow
 <%= if @include_runtime_metadata do %>
-- a package-local `runtime_drivers/0` proof hook plus deterministic Harness
+- a package-local `runtime_drivers/0` proof hook plus deterministic Runtime Control
   driver in `lib/` so downstream package tests can load the same conformance surface
 
-This scaffold already publishes the selected Harness runtime driver
+This scaffold already publishes the selected Runtime Control driver
 `<%= @runtime_driver_id %>` on the authored contract. It does not invent a
 legacy bridge default. The generated non-direct common surface already carries
 canonical `metadata.runtime_family` for the selected runtime family.
@@ -72,7 +72,7 @@ override authored runtime.driver, runtime.provider, or runtime.options.
 - handler logic in `[<%= @handler_file %>]`
 - poll trigger logic in `[<%= @trigger_handler_file %>]`
 - deterministic fixture expectations in `[<%= @conformance_file %>]`
-<%= if @include_test_support do %>- deterministic Harness runtime behavior in `[<%= @conformance_harness_driver_file %>]`
+<%= if @include_test_support do %>- deterministic Runtime Control behavior in `[<%= @conformance_runtime_control_driver_file %>]`
 <% end %>- this package `README.md` so it states the runtime families, supported auth
   profiles, install modes, published runtime slice, generated-vs-connector-local
   boundary, package-local verification commands, and live-proof status

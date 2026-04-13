@@ -98,7 +98,7 @@ projected review metadata as `runtime.family: :inference`.
 ## Proof Surface
 
 The landed proof surface is now split between package-local examples and an
-app-level proof harness:
+app-level proof app:
 
 - `core/contracts/test/jido/integration/v2/inference_contracts_test.exs`
 - `core/contracts/examples/inference_contract_round_trip.exs`

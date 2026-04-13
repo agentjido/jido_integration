@@ -1,0 +1,155 @@
+defmodule Jido.RuntimeControl.AdapterContract do
+  @moduledoc """
+  Shared contract tests for provider adapter packages.
+
+  ## Usage
+
+      defmodule MyAdapterTest do
+        use ExUnit.Case, async: false
+        use Jido.RuntimeControl.AdapterContract,
+          adapter: My.Adapter,
+          provider: :my_provider,
+          check_run: true,
+          run_request: %{prompt: "hello", metadata: %{}}
+      end
+  """
+
+  defmacro __using__(opts) do
+    quote do
+      import Jido.RuntimeControl.AdapterContract
+      adapter_contract(unquote(opts))
+    end
+  end
+
+  defmacro adapter_contract(opts) do
+    adapter = opts |> Keyword.fetch!(:adapter) |> Macro.expand(__CALLER__)
+    provider = Keyword.get(opts, :provider)
+    check_run = Keyword.get(opts, :check_run, false)
+    run_request = Keyword.get(opts, :run_request, %{prompt: "contract smoke", metadata: %{}})
+    run_opts = Keyword.get(opts, :run_opts, [])
+
+    quote bind_quoted: [
+            adapter: adapter,
+            provider: provider,
+            check_run: check_run,
+            run_request: run_request,
+            run_opts: run_opts
+          ] do
+      alias Jido.RuntimeControl.{Event, RunRequest, RuntimeContract}
+      @adapter_contract_adapter adapter
+      @adapter_contract_provider provider
+      @adapter_contract_run_request run_request
+      @adapter_contract_run_opts run_opts
+
+      defp __adapter_contract_resolve_module__(value) when is_atom(value), do: value
+
+      defp __adapter_contract_assert_usage_event__(event) do
+        assert is_binary(event.session_id),
+               ":usage event must have a non-nil session_id, got: #{inspect(event.session_id)}"
+
+        assert is_integer(event.payload["input_tokens"]),
+               ":usage payload missing integer \"input_tokens\""
+
+        assert is_integer(event.payload["output_tokens"]),
+               ":usage payload missing integer \"output_tokens\""
+
+        assert is_integer(event.payload["total_tokens"]),
+               ":usage payload missing integer \"total_tokens\""
+      end
+
+      defp __adapter_contract_assert_usage_events__(adapter, run_request, run_opts) do
+        request = RunRequest.new!(run_request)
+        assert {:ok, stream} = adapter.run(request, run_opts)
+
+        usage_events =
+          stream
+          |> Enum.take(100)
+          |> Enum.filter(&(&1.type == :usage))
+
+        assert usage_events != [],
+               "adapter declares usage?: true but emitted no :usage events"
+
+        Enum.each(usage_events, &__adapter_contract_assert_usage_event__/1)
+      end
+
+      test "adapter contract: id/0 returns atom" do
+        adapter = __adapter_contract_resolve_module__(@adapter_contract_adapter)
+        assert Code.ensure_loaded?(adapter), "adapter module could not be loaded: #{inspect(adapter)}"
+        assert function_exported?(adapter, :id, 0), "adapter module not loaded: #{inspect(adapter)}"
+        id = adapter.id()
+        assert is_atom(id)
+
+        if is_atom(@adapter_contract_provider) do
+          assert id == @adapter_contract_provider
+        end
+      end
+
+      test "adapter contract: capabilities/0 returns capability struct" do
+        adapter = __adapter_contract_resolve_module__(@adapter_contract_adapter)
+        assert Code.ensure_loaded?(adapter)
+        assert function_exported?(adapter, :capabilities, 0)
+
+        caps = adapter.capabilities()
+        assert %Jido.RuntimeControl.Capabilities{} = caps
+
+        for key <- [
+              :streaming?,
+              :tool_calls?,
+              :tool_results?,
+              :thinking?,
+              :resume?,
+              :usage?,
+              :file_changes?,
+              :cancellation?
+            ] do
+          assert is_boolean(Map.get(caps, key))
+        end
+      end
+
+      test "adapter contract: runtime_contract/0 is complete" do
+        adapter = __adapter_contract_resolve_module__(@adapter_contract_adapter)
+        assert Code.ensure_loaded?(adapter)
+        assert function_exported?(adapter, :runtime_contract, 0)
+        contract = adapter.runtime_contract()
+        assert %RuntimeContract{} = contract
+        assert is_atom(contract.provider)
+        assert is_list(contract.runtime_tools_required)
+        assert is_list(contract.compatibility_probes)
+        assert is_list(contract.install_steps)
+        assert is_list(contract.auth_bootstrap_steps)
+        assert is_binary(contract.triage_command_template)
+        assert is_binary(contract.coding_command_template)
+        assert is_list(contract.success_markers)
+      end
+
+      if check_run do
+        test "adapter contract: run/2 returns enumerable of normalized events" do
+          adapter = __adapter_contract_resolve_module__(@adapter_contract_adapter)
+          assert Code.ensure_loaded?(adapter)
+          request = RunRequest.new!(@adapter_contract_run_request)
+          assert {:ok, stream} = adapter.run(request, @adapter_contract_run_opts)
+          assert Enumerable.impl_for(stream) != nil
+
+          events =
+            stream
+            |> Enum.take(100)
+
+          assert Enum.all?(events, &match?(%Event{}, &1))
+        end
+
+        test "adapter contract: usage events have canonical payload when usage? is true" do
+          adapter = __adapter_contract_resolve_module__(@adapter_contract_adapter)
+          caps = adapter.capabilities()
+
+          if caps.usage? do
+            __adapter_contract_assert_usage_events__(
+              adapter,
+              @adapter_contract_run_request,
+              @adapter_contract_run_opts
+            )
+          end
+        end
+      end
+    end
+  end
+end

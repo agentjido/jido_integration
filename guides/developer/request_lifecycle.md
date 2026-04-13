@@ -14,16 +14,16 @@ This is the internal path a request takes through the repo.
 6. `core/direct_runtime` executes the capability through the provider SDK path
 7. `core/control_plane` records events, artifacts, and final run state
 
-## Harness-Backed Flow
+## Runtime-Control-Backed Flow
 
 1. the capability is authored with a non-direct runtime driver such as `asm`
    or `jido_session`
 2. `core/control_plane` resolves the authored target requirements
-3. `core/runtime_asm_bridge` projects the authored `asm` driver into Harness
+3. `core/asm_runtime_bridge` projects the authored `asm` driver into Runtime Control
    when that driver is selected
 4. `core/session_runtime` owns the in-repo `jido_session` driver when that
    driver is selected
-5. `Jido.Harness` executes the runtime driver and returns session-aware output
+5. `Jido.RuntimeControl` executes the runtime driver and returns session-aware output
 6. `core/control_plane` persists attempts, events, and artifacts
 
 ## Brain-To-Spine Submission Flow

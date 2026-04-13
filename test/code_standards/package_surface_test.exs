@@ -213,25 +213,25 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   end
 
   test "packages that compile agent_session_manager do not vendor its boundary compiler" do
-    runtime_asm_bridge_mix =
+    asm_runtime_bridge_mix =
       repo_root()
-      |> Path.join("core/runtime_asm_bridge/mix.exs")
+      |> Path.join("core/asm_runtime_bridge/mix.exs")
       |> File.read!()
       |> normalize_whitespace()
 
-    assert runtime_asm_bridge_mix =~
+    assert asm_runtime_bridge_mix =~
              "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)",
-           "core/runtime_asm_bridge/mix.exs must load the shared dependency resolver"
+           "core/asm_runtime_bridge/mix.exs must load the shared dependency resolver"
 
     for required_snippet <- [
           "DependencyResolver.agent_session_manager(env: :dev)"
         ] do
-      assert runtime_asm_bridge_mix =~ required_snippet,
-             "core/runtime_asm_bridge/mix.exs is missing #{required_snippet}"
+      assert asm_runtime_bridge_mix =~ required_snippet,
+             "core/asm_runtime_bridge/mix.exs is missing #{required_snippet}"
     end
 
-    refute runtime_asm_bridge_mix =~ "DependencyResolver.boundary(",
-           "core/runtime_asm_bridge/mix.exs must not depend on agent_session_manager/vendor/boundary"
+    refute asm_runtime_bridge_mix =~ "DependencyResolver.boundary(",
+           "core/asm_runtime_bridge/mix.exs must not depend on agent_session_manager/vendor/boundary"
 
     control_plane_mix =
       repo_root()
@@ -243,13 +243,13 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            "core/control_plane/mix.exs must not own agent_session_manager directly"
 
     refute control_plane_mix =~ "{:agent_session_manager,",
-           "core/control_plane/mix.exs must route ASM through runtime_asm_bridge instead of depending on it directly"
+           "core/control_plane/mix.exs must route ASM through asm_runtime_bridge instead of depending on it directly"
 
     refute control_plane_mix =~ "{:boundary,",
            "core/control_plane/mix.exs must not expose ASM's boundary compiler directly"
   end
 
-  test "control_plane reaches non-direct runtimes through the harness runtime package" do
+  test "control_plane reaches non-direct runtimes through the runtime router package" do
     control_plane_mix =
       repo_root()
       |> Path.join("core/control_plane/mix.exs")
@@ -257,8 +257,8 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       |> normalize_whitespace()
 
     assert control_plane_mix =~
-             "DependencyResolver.jido_integration_v2_harness_runtime(only: :test)",
-           "core/control_plane/mix.exs must keep the harness adapter behind a test-only package dependency"
+             "DependencyResolver.jido_integration_v2_runtime_router(only: :test)",
+           "core/control_plane/mix.exs must keep the runtime router behind a test-only package dependency"
 
     refute control_plane_mix =~ "DependencyResolver.jido_session()",
            "core/control_plane/mix.exs must not depend on the session runtime package directly"

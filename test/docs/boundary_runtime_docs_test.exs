@@ -4,11 +4,11 @@ defmodule Jido.Integration.Docs.BoundaryRuntimeDocsTest do
   @docs [
     Path.expand("../../README.md", __DIR__),
     Path.expand("../../guides/runtime_model.md", __DIR__),
-    Path.expand("../../core/harness_runtime/README.md", __DIR__),
+    Path.expand("../../core/runtime_router/README.md", __DIR__),
     Path.expand("../../core/session_runtime/README.md", __DIR__)
   ]
 
-  test "runtime docs describe asm and jido_session as the two harness-backed lanes" do
+  test "runtime docs describe asm and jido_session as the two runtime-control-backed lanes" do
     Enum.each(@docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 

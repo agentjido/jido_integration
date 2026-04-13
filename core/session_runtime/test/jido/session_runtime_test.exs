@@ -1,7 +1,7 @@
 defmodule Jido.Session.RuntimeTest do
   use ExUnit.Case, async: false
 
-  alias Jido.Harness.{
+  alias Jido.RuntimeControl.{
     ExecutionEvent,
     ExecutionResult,
     ExecutionStatus,

@@ -19,7 +19,7 @@ defmodule Jido.Session.MixProject do
       dialyzer: dialyzer(),
       docs: docs(),
       name: "Jido Session Runtime",
-      description: "Integration-owned internal `jido_session` Harness runtime"
+      description: "Integration-owned internal `jido_session` runtime-control runtime"
     ]
   end
 
@@ -35,7 +35,7 @@ defmodule Jido.Session.MixProject do
 
   defp deps do
     [
-      DependencyResolver.jido_harness(override: true),
+      DependencyResolver.jido_runtime_control(override: true),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

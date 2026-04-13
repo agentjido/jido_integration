@@ -30,12 +30,12 @@ Core runtime graph:
 - `core/policy`
   - pre-attempt allow, deny, and shed decisions
 - `core/direct_runtime`
-- `core/runtime_asm_bridge`
+- `core/asm_runtime_bridge`
   - integration-owned projection from the authored
-    `jido_harness` (`Jido.Harness`) `asm` driver into
+    `jido_runtime_control` (`Jido.RuntimeControl`) `asm` driver into
     `agent_session_manager`
 - `core/session_runtime`
-  - integration-owned home for the authored `jido_session` Harness driver
+  - integration-owned home for the authored `jido_session` Runtime Control driver
 - `core/dispatch_runtime`
   - async queueing, retry, replay, and transport recovery above the control
     plane
@@ -68,13 +68,13 @@ non-direct capability families.
 `Jido.Integration.V2 -> DirectRuntime -> connector -> provider SDK -> pristine`
 
 Only actual `:session` and `:stream` capabilities use
-`jido_harness` via `Jido.Harness`.
+`jido_runtime_control` via `Jido.RuntimeControl`.
 
-`Jido.Integration.V2 -> HarnessRuntime -> Jido.Harness -> {asm | jido_session}`
+`Jido.Integration.V2 -> RuntimeRouter -> Jido.RuntimeControl -> {asm | jido_session}`
 
-`asm` routes through `core/runtime_asm_bridge` into `agent_session_manager`
+`asm` routes through `core/asm_runtime_bridge` into `agent_session_manager`
 and `cli_subprocess_core`, while `jido_session` routes through
-`core/session_runtime` via `Jido.Session.HarnessDriver`.
+`core/session_runtime` via `Jido.Session.RuntimeControlDriver`.
 
 Phase 6A removed the old `core/session_kernel` and `core/stream_runtime`
 bridge packages. They are not part of the repo or the target runtime
@@ -99,24 +99,24 @@ submission acceptance or typed rejection through the selected store package.
 Only actual session and stream capabilities stay above a provider-neutral
 runtime lane:
 
-- `jido_harness` exposes `Jido.Harness`, the stable
+- `jido_runtime_control` exposes `Jido.RuntimeControl`, the stable
   runtime-driver contract consumed by `core/control_plane`
 - authored `runtime.driver` ids such as `asm` stay on connector capabilities
   and target requirements instead of being inferred from targets or apps
-- `core/runtime_asm_bridge` is the integration-owned projection for the `asm`
-  driver; it adapts the Harness seam to
+- `core/asm_runtime_bridge` is the integration-owned projection for the `asm`
+  driver; it adapts the Runtime Control seam to
   `agent_session_manager`
 - `bridges/boundary_bridge` is the lower-boundary package reserved for sandbox
   bridge code, typed bridge IO, and descriptor normalization that do not belong
   in `core/` and are not an app-level proof
 - `core/session_runtime` is the integration-owned home for `jido_session` via
-  `Jido.Session.HarnessDriver`; `jido_integration` still consumes it through
+  `Jido.Session.RuntimeControlDriver`; `jido_integration` still consumes it through
   authored `runtime.driver` metadata rather than a local compatibility shim
 - `agent_session_manager` keeps provider-neutral session
   orchestration and lane selection below `jido_integration` ownership
 - `cli_subprocess_core` remains the subprocess, event, and
   provider-profile foundation below ASM
-- `metadata.runtime_family.runtime_ref` names the stable Harness handle shape,
+- `metadata.runtime_family.runtime_ref` names the stable Runtime Control handle shape,
   so a `:stream` capability may honestly publish `:session` when the selected
   driver exposes session-scoped handles
 
@@ -131,7 +131,7 @@ Connector packages:
     poll-trigger sensor slice backed by `notion_sdk`
 - `connectors/codex_cli`
 - `connectors/market_data`
-  - publishes the Harness-routed stream operation proof through the authored
+  - publishes the runtime-control-routed stream operation proof through the authored
     `asm` driver plus the first common projected poll trigger proof
   - projects one generated `Jido.Sensor` and plugin subscription surface from
     authored trigger truth
@@ -150,11 +150,11 @@ Proof apps:
   test-only deps there
 - apps declare every child package whose modules they reference directly
 - direct connector packages depend on `core/direct_runtime` plus provider SDKs;
-  they do not take `jido_harness`, `agent_session_manager`,
+  they do not take `jido_runtime_control`, `agent_session_manager`,
   `cli_subprocess_core`, or `core/session_runtime`
   as package dependencies
 - session and stream connector packages depend on
-  `jido_harness` for the shared seam rather than taking direct
+  `jido_runtime_control` for the shared seam rather than taking direct
   `core/session_runtime`, `agent_session_manager`, or
   `cli_subprocess_core` deps
 

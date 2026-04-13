@@ -206,7 +206,7 @@ profile `lease_fields`.
 
 `mix jido.integration.new` emits a package-local baseline conformance test and
 companion module. Non-direct scaffolds also emit a package-local
-`runtime_drivers/0` hook plus a deterministic Harness driver under `lib/`.
+`runtime_drivers/0` hook plus a deterministic Runtime Control driver under `lib/`.
 Treat that output as the starting contract, not the finished
 connector.
 

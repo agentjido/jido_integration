@@ -10,7 +10,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.DirectRuntime
   alias Jido.Integration.V2.Gateway.Policy
-  alias Jido.Integration.V2.HarnessRuntime
+  alias Jido.Integration.V2.RuntimeRouter
 
   @spec run(map()) :: SuiteResult.t()
   def run(%{fixtures: raw_fixtures, manifest: manifest}) when is_list(raw_fixtures) do
@@ -370,13 +370,13 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
 
   defp dispatch(%{runtime_class: runtime_class} = capability, input, context)
        when runtime_class in [:session, :stream],
-       do: HarnessRuntime.execute(capability, input, context)
+       do: RuntimeRouter.execute(capability, input, context)
 
   defp reset_runtime!(:direct), do: :ok
 
   defp reset_runtime!(runtime_class) when runtime_class in [:session, :stream] do
-    HarnessRuntime.start!()
-    HarnessRuntime.reset!()
+    RuntimeRouter.start!()
+    RuntimeRouter.reset!()
   end
 
   defp result_summary(result) do
