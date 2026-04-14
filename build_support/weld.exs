@@ -112,7 +112,7 @@ defmodule Jido.Integration.Build.WeldContract do
         licenses: ["Apache-2.0"],
         maintainers: ["nshkrdotcom"],
         links: %{
-          "GitHub" => "https://github.com/nshkrdotcom/jido_integration",
+          "GitHub" => "https://github.com/agentjido/jido_integration",
           "Guides" => "https://hexdocs.pm/jido_integration/readme.html"
         }
       ],
