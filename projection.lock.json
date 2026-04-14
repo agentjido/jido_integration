@@ -425,12 +425,12 @@
       "priv",
       "projection.lock.json"
     ],
-    "git_revision": "dd89e7d1a2456a72ba86fd9cce49873e952a9ca9",
-    "tree_digest": "22a2a9fbdac01eb9452dc4cf589c98deeb69bbdde80f83f527b4f93408c74a34"
+    "git_revision": "96fabd64a69377503085ddb256a9c6cc7e1bcbee",
+    "tree_digest": "c5e339cb591bdb87398aadcc3fd07288f533418edbc77c9182bf888af80cd2f6"
   },
   "manifest": {
     "path": "/home/home/p/g/n/jido_integration/build_support/weld.exs",
-    "digest": "15b5cacdb914ead82ce568963cf218e9823f2ef931fa16c41a5fd30741b68894"
+    "digest": "922986df8d948ede718d08e901c59bd90c3e93d4c1bb4947b4122e75a7916bab"
   },
   "verification": [
     {

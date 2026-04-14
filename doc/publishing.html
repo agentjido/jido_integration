@@ -105,10 +105,10 @@ jido_integration
 
 <p><code class="inline">jido_integration</code> now treats publication as a welded artifact workflow, not as
 an ad hoc branch rewrite.</p><h2 id="release-shape" class="section-heading"><a href="#release-shape" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Release Shape</span></h2><p>The source-of-truth stays in the monorepo. Publishing happens from a prepared
-release bundle generated from <code class="inline">build_support/weld.exs</code>.</p><p><code class="inline">build_support/weld.exs</code> is intentionally thin and delegates the actual
-publication contract to <code class="inline">build_support/weld_contract.exs</code>, where the published
-roots, source-only exclusions, and source-only monolith test support projects
-are declared together.</p><p>The default published artifact intentionally excludes the runtime-control-backed
+release bundle generated from <code class="inline">build_support/weld.exs</code>.</p><p><code class="inline">build_support/weld.exs</code> is the canonical Weld manifest file. It declares the
+published roots, source-only exclusions, and source-only monolith test support
+projects together so the direct Weld task surface can operate without any
+manifest-path alias forwarding.</p><p>The default published artifact intentionally excludes the runtime-control-backed
 session and stream runtime slice for now:</p><ul><li><code class="inline">core/runtime_router</code></li><li><code class="inline">core/asm_runtime_bridge</code></li><li><code class="inline">core/session_runtime</code></li><li><code class="inline">bridges/boundary_bridge</code></li><li><code class="inline">connectors/codex_cli</code></li><li><code class="inline">connectors/market_data</code></li></ul><p>Those packages remain source-only by explicit monorepo publication policy. They
 still participate in the source workspace and monolith test lane, but they are
 not part of the published unified artifact.</p><p>The monolith test lane is allowed to use source-only support from that excluded

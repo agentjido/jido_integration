@@ -8,10 +8,10 @@ an ad hoc branch rewrite.
 The source-of-truth stays in the monorepo. Publishing happens from a prepared
 release bundle generated from `build_support/weld.exs`.
 
-`build_support/weld.exs` is intentionally thin and delegates the actual
-publication contract to `build_support/weld_contract.exs`, where the published
-roots, source-only exclusions, and source-only monolith test support projects
-are declared together.
+`build_support/weld.exs` is the canonical Weld manifest file. It declares the
+published roots, source-only exclusions, and source-only monolith test support
+projects together so the direct Weld task surface can operate without any
+manifest-path alias forwarding.
 
 The default published artifact intentionally excludes the runtime-control-backed
 session and stream runtime slice for now:
