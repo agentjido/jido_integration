@@ -192,6 +192,23 @@ defmodule Jido.Integration.V2.Contracts do
     end
   end
 
+  @spec derived_state_attachment_ref(String.t(), String.t() | nil) :: String.t()
+  def derived_state_attachment_ref(run_id, attempt_id \\ nil) when is_binary(run_id) do
+    run_id = validate_non_empty_string!(run_id, "derived_state_attachment.run_id")
+    base = "jido://v2/derived_state_attachment/run/#{URI.encode_www_form(run_id)}"
+
+    case attempt_id do
+      nil ->
+        base
+
+      attempt_id ->
+        attempt_id =
+          validate_non_empty_string!(attempt_id, "derived_state_attachment.attempt_id")
+
+        base <> "?attempt_id=" <> URI.encode_www_form(attempt_id)
+    end
+  end
+
   @spec attempt_id(String.t(), pos_integer()) :: String.t()
   def attempt_id(run_id, attempt)
       when is_binary(run_id) and is_integer(attempt) and attempt > 0 do

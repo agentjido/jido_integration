@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.Operator do
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.CredentialRef
+  alias Jido.Integration.V2.DerivedStateAttachment
   alias Jido.Integration.V2.EvidenceRef
   alias Jido.Integration.V2.GovernanceRef
   alias Jido.Integration.V2.Manifest
@@ -90,6 +91,18 @@ defmodule Jido.Integration.V2.Operator do
           connector: connector_summary()
         }
 
+  @type attachment_context :: %{
+          run: Jido.Integration.V2.Run.t(),
+          attempt: Jido.Integration.V2.Attempt.t() | nil,
+          attempts: [Jido.Integration.V2.Attempt.t()],
+          events: [Jido.Integration.V2.Event.t()],
+          artifacts: [Jido.Integration.V2.ArtifactRef.t()],
+          triggers: [Jido.Integration.V2.TriggerRecord.t()],
+          target: TargetDescriptor.t() | nil,
+          connection: Jido.Integration.V2.Auth.Connection.t() | nil,
+          install: Jido.Integration.V2.Auth.Install.t() | nil
+        }
+
   @spec catalog_entries() :: [connector_summary()]
   def catalog_entries do
     ControlPlane.connectors()
@@ -123,43 +136,35 @@ defmodule Jido.Integration.V2.Operator do
           {:ok, review_packet()}
           | {:error, :unknown_run | :unknown_attempt | :unknown_capability | :unknown_connector}
   def review_packet(run_id, opts \\ %{}) when is_binary(run_id) and is_map(opts) do
-    with {:ok, run} <- ControlPlane.fetch_run(run_id),
-         attempts = ControlPlane.attempts(run_id),
-         {:ok, attempt} <- resolve_attempt(attempts, opts),
-         {:ok, catalog} <- resolve_review_catalog(run, attempt),
-         events = ControlPlane.events(run_id),
-         artifacts = ControlPlane.run_artifacts(run_id),
-         triggers = ControlPlane.run_triggers(run_id),
-         {:ok, target} <- resolve_target(run, attempt),
-         {:ok, connection} <- resolve_connection(run.credential_ref),
-         {:ok, install} <- resolve_install(connection, run.credential_ref) do
-      review_connection = review_safe_connection(connection)
-      review_install = review_safe_install(install)
+    with {:ok, context} <- attachment_context(run_id, opts),
+         {:ok, catalog} <- resolve_review_catalog(context.run, context.attempt) do
+      review_connection = review_safe_connection(context.connection)
+      review_install = review_safe_install(context.install)
 
       {:ok,
        %{
          metadata:
            build_review_packet_metadata(
-             run,
-             attempt,
+             context.run,
+             context.attempt,
              %{
-               attempts: attempts,
-               events: events,
-               artifacts: artifacts,
-               triggers: triggers,
-               target: target,
+               attempts: context.attempts,
+               events: context.events,
+               artifacts: context.artifacts,
+               triggers: context.triggers,
+               target: context.target,
                connection: review_connection,
                install: review_install
              },
              opts
            ),
-         run: run,
-         attempt: attempt,
-         attempts: attempts,
-         events: events,
-         artifacts: artifacts,
-         triggers: triggers,
-         target: target,
+         run: context.run,
+         attempt: context.attempt,
+         attempts: context.attempts,
+         events: context.events,
+         artifacts: context.artifacts,
+         triggers: context.triggers,
+         target: context.target,
          connection: review_connection,
          install: review_install,
          capability: capability_summary(catalog.capability),
@@ -168,6 +173,21 @@ defmodule Jido.Integration.V2.Operator do
     else
       :error -> {:error, :unknown_run}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @spec derived_state_attachment(String.t(), map()) ::
+          {:ok, DerivedStateAttachment.t()} | {:error, :unknown_run | :unknown_attempt}
+  def derived_state_attachment(run_id, opts \\ %{}) when is_binary(run_id) and is_map(opts) do
+    case attachment_context(run_id, opts) do
+      {:ok, context} ->
+        {:ok, build_derived_state_attachment(context.run, context.attempt, context, opts)}
+
+      :error ->
+        {:error, :unknown_run}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -290,6 +310,34 @@ defmodule Jido.Integration.V2.Operator do
   defp review_safe_install(nil), do: nil
   defp review_safe_install(install), do: Auth.Install.review_safe(install)
 
+  defp attachment_context(run_id, opts) do
+    with {:ok, run} <- ControlPlane.fetch_run(run_id),
+         attempts = ControlPlane.attempts(run_id),
+         {:ok, attempt} <- resolve_attempt(attempts, opts),
+         events = ControlPlane.events(run_id),
+         artifacts = ControlPlane.run_artifacts(run_id),
+         triggers = ControlPlane.run_triggers(run_id),
+         {:ok, target} <- resolve_target(run, attempt),
+         {:ok, connection} <- resolve_connection(run.credential_ref),
+         {:ok, install} <- resolve_install(connection, run.credential_ref) do
+      {:ok,
+       %{
+         run: run,
+         attempt: attempt,
+         attempts: attempts,
+         events: events,
+         artifacts: artifacts,
+         triggers: triggers,
+         target: target,
+         connection: connection,
+         install: install
+       }}
+    else
+      :error -> :error
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp build_review_packet_metadata(
          run,
          attempt,
@@ -358,6 +406,80 @@ defmodule Jido.Integration.V2.Operator do
       governance_refs: build_governance_refs(run, events, subject_ref, evidence_refs)
     })
     |> ReviewProjection.dump()
+  end
+
+  defp build_derived_state_attachment(
+         run,
+         attempt,
+         %{
+           attempts: attempts,
+           events: events,
+           artifacts: artifacts,
+           triggers: triggers,
+           target: target,
+           connection: connection,
+           install: install
+         },
+         opts
+       ) do
+    subject_ref = SubjectRef.new!(%{kind: :run, id: run.run_id})
+    requested_attempt_id = Map.get(opts, :attempt_id)
+    attachment_ref = Contracts.derived_state_attachment_ref(run.run_id, requested_attempt_id)
+
+    evidence_refs =
+      [
+        build_evidence_ref(:run, run.run_id, attachment_ref, subject_ref, %{status: run.status}),
+        build_attempt_evidence_refs(attempts, attachment_ref, subject_ref),
+        build_event_evidence_refs(events, attachment_ref, subject_ref),
+        build_artifact_evidence_refs(artifacts, attachment_ref, subject_ref),
+        build_trigger_evidence_refs(triggers, attachment_ref, subject_ref),
+        build_optional_evidence_ref(
+          target,
+          :target,
+          :target_id,
+          attachment_ref,
+          subject_ref,
+          fn target ->
+            %{capability_id: target.capability_id, runtime_class: target.runtime_class}
+          end
+        ),
+        build_optional_evidence_ref(
+          connection,
+          :connection,
+          :connection_id,
+          attachment_ref,
+          subject_ref,
+          fn connection ->
+            %{connector_id: connection.connector_id, state: connection.state}
+          end
+        ),
+        build_optional_evidence_ref(
+          install,
+          :install,
+          :install_id,
+          attachment_ref,
+          subject_ref,
+          fn install ->
+            %{connection_id: install.connection_id, state: install.state}
+          end
+        )
+      ]
+      |> List.flatten()
+
+    DerivedStateAttachment.new!(%{
+      subject: subject_ref,
+      evidence_refs: evidence_refs,
+      governance_refs: build_governance_refs(run, events, subject_ref, evidence_refs),
+      metadata: %{
+        attachment_ref: attachment_ref,
+        source_projection: "operator.derived_state_attachment",
+        selected_attempt:
+          case selected_attempt_subject_ref(attempt) do
+            nil -> nil
+            subject_ref -> SubjectRef.dump(subject_ref)
+          end
+      }
+    })
   end
 
   defp build_attempt_evidence_refs(attempts, packet_ref, subject_ref) do

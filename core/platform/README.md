@@ -14,6 +14,8 @@ packages directly.
 - public connector and capability discovery
 - public auth lifecycle delegation
 - durable review and target lookup delegation
+- durable Brain-to-Spine intake delegation
+- higher-order derived-state attachment delegation
 - public inference invocation plus review projection over durable control-plane
   truth
 
@@ -51,6 +53,7 @@ Invocation:
 - `invoke/1`
 - `invoke/3`
 - `invoke_inference/2`
+- `accept_brain_invocation/2`
 
 Public invocation uses `connection_id` as the consumer-facing auth binding
 when the capability requires a durable connection. Credential refs stay behind
@@ -72,6 +75,7 @@ Durable review and target truth:
 - `compatible_targets/1`
 - `compatible_targets_for/2`
 - `review_packet/2`
+- `derived_state_attachment/2`
 
 `catalog_entries/0` remains the authored operator-facing summary surface.
 `projected_catalog_entries/0` exports the published generated common consumer
@@ -84,6 +88,14 @@ connector manifest is required for that review path.
 The stored inference envelopes under `run.input`, `run.result`, and
 `attempt.output` remain string-keyed JSON-safe maps, while the projected review
 summary normalizes runtime classification back into the typed platform shape.
+
+For higher-order repos such as `mezzanine`, `derived_state_attachment/2`
+provides the stable subject, evidence, and governance refs that let them anchor
+their own durable derived state without copying Spine-owned truth.
+
+For Brain-side orchestration, `accept_brain_invocation/2` exposes the durable
+Brain-to-Spine intake seam without requiring consumers to reach into
+`core/brain_ingress` directly.
 
 ## Design Boundary
 

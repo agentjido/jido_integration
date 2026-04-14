@@ -19,8 +19,10 @@ defmodule Jido.Integration.V2 do
   - typed invocation through `InvocationRequest` and `invoke/1`
   - direct invocation through `invoke/3` and retry of accepted or failed runs
     through `execute_run/3`
+  - durable Brain-to-Spine intake through `accept_brain_invocation/2`
   - read-only operator review helpers through `targets/1`,
-    `compatible_targets_for/2`, and `review_packet/2`
+    `compatible_targets_for/2`, `review_packet/2`, and
+    `derived_state_attachment/2`
 
   Public invocation binds auth through `connection_id` when a capability
   requires a durable connection. Credential resolution and lease issuance stay
@@ -41,9 +43,11 @@ defmodule Jido.Integration.V2 do
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
+  alias Jido.Integration.V2.BrainIngress
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
+  alias Jido.Integration.V2.DerivedStateAttachment
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.InferenceRequest
   alias Jido.Integration.V2.InvocationRequest
@@ -189,6 +193,19 @@ defmodule Jido.Integration.V2 do
   defdelegate invoke(request), to: ControlPlane
 
   @doc """
+  Accept a durable Brain-to-Spine invocation through the shared platform seam.
+
+  This preserves the typed acceptance and rejection contracts from
+  `core/brain_ingress` while exposing them through the public platform facade.
+  """
+  @spec accept_brain_invocation(Jido.Integration.V2.BrainInvocation.t() | map(), keyword()) ::
+          {:ok, Jido.Integration.V2.SubmissionAcceptance.t(), Jido.Integration.V2.Gateway.t(),
+           BrainIngress.runtime_inputs()}
+          | {:error, Jido.Integration.V2.SubmissionRejection.t()}
+  def accept_brain_invocation(invocation, opts),
+    do: BrainIngress.accept_invocation(invocation, opts)
+
+  @doc """
   Invoke a capability through the control plane.
 
   Public callers bind auth with `:connection_id` when the capability requires
@@ -324,6 +341,18 @@ defmodule Jido.Integration.V2 do
           {:ok, map()}
           | {:error, :unknown_run | :unknown_attempt | :unknown_capability | :unknown_connector}
   defdelegate review_packet(run_id, opts \\ %{}), to: Operator
+
+  @doc """
+  Build the canonical higher-order attachment refs for durable run truth.
+
+  Higher-order repos persist their own derived state, but they should anchor
+  those records to Spine-owned subject, evidence, and governance refs instead
+  of copying lower-level truth.
+  """
+  @spec derived_state_attachment(String.t(), map()) ::
+          {:ok, DerivedStateAttachment.t()}
+          | {:error, :unknown_run | :unknown_attempt}
+  defdelegate derived_state_attachment(run_id, opts \\ %{}), to: Operator
 
   @doc """
   Reset in-memory state for tests and local exploration.
