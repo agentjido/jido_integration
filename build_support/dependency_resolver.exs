@@ -3,7 +3,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
 
   @repo_root Path.expand("..", __DIR__)
   @repo_fallback [
-    github: "agentjido/jido_integration",
+    github: "nshkrdotcom/jido_integration",
     branch: "main"
   ]
 

@@ -7,7 +7,7 @@ defmodule Jido.BoundaryBridge.MixProject do
 
   alias Jido.Integration.Build.DependencyResolver
 
-  @source_url "https://github.com/agentjido/jido_integration"
+  @source_url "https://github.com/nshkrdotcom/jido_integration"
 
   def project do
     [
