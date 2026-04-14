@@ -43,7 +43,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       DependencyResolver.cli_subprocess_core(runtime: false),
       DependencyResolver.sprites(override: true, runtime: false),
       DependencyResolver.req_llm(runtime: false),
-      {:weld, "~> 0.7.0", runtime: false},
+      {:weld, "~> 0.7.1", runtime: false},
       {:jason, "~> 1.4", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
@@ -78,24 +78,8 @@ defmodule Jido.Integration.Workspace.MixProject do
       ],
       quality: ["monorepo.credo --strict", "monorepo.dialyzer"],
       "docs.all": ["monorepo.docs"],
-      "weld.inspect": ["weld.inspect build_support/weld.exs --artifact jido_integration"],
-      "weld.graph": ["weld.graph build_support/weld.exs --artifact jido_integration"],
-      "weld.project": ["weld.project build_support/weld.exs --artifact jido_integration"],
-      "weld.verify": ["weld.verify build_support/weld.exs --artifact jido_integration"],
-      "weld.release.prepare": [
-        "weld.release.prepare build_support/weld.exs --artifact jido_integration"
-      ],
-      "weld.release.track": [
-        "weld.release.track build_support/weld.exs --artifact jido_integration"
-      ],
-      "weld.release.archive": [
-        "weld.release.archive build_support/weld.exs --artifact jido_integration"
-      ],
-      "release.prepare": ["weld.release.prepare"],
-      "release.track": ["weld.release.track"],
       "release.publish.dry_run": ["jido_integration.release.publish --dry-run"],
       "release.publish": ["jido_integration.release.publish"],
-      "release.archive": ["weld.release.archive"],
       "release.candidate": ["release.prepare", "release.publish.dry_run"]
     ] ++ monorepo_aliases ++ mr_aliases
   end

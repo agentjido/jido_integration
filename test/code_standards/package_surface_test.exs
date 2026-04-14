@@ -55,6 +55,15 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
           :"mr.credo",
           :"mr.dialyzer",
           :"mr.docs",
+          :"release.publish.dry_run",
+          :"release.publish",
+          :"release.candidate"
+        ] do
+      assert Keyword.has_key?(aliases, alias_name),
+             "expected workspace alias #{inspect(alias_name)} to exist"
+    end
+
+    for alias_name <- [
           :"weld.inspect",
           :"weld.graph",
           :"weld.project",
@@ -64,21 +73,18 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
           :"weld.release.archive",
           :"release.prepare",
           :"release.track",
-          :"release.publish.dry_run",
-          :"release.publish",
-          :"release.archive",
-          :"release.candidate"
+          :"release.archive"
         ] do
-      assert Keyword.has_key?(aliases, alias_name),
-             "expected workspace alias #{inspect(alias_name)} to exist"
+      refute Keyword.has_key?(aliases, alias_name),
+             "expected workspace alias #{inspect(alias_name)} to be removed"
     end
   end
 
-  test "workspace root uses released Weld 0.7.0 and the repo-local publication contract" do
+  test "workspace root uses released Weld 0.7.1 and the repo-local publication contract" do
     deps = MixProject.project()[:deps]
 
-    assert {:weld, "~> 0.7.0", runtime: false} in deps,
-           "workspace root must depend directly on the released Weld 0.7.0 line"
+    assert {:weld, "~> 0.7.1", runtime: false} in deps,
+           "workspace root must depend directly on the released Weld 0.7.1 line"
 
     assert File.exists?(Path.join(repo_root(), "build_support/weld.exs"))
     assert File.exists?(Path.join(repo_root(), "build_support/workspace_contract.exs"))
