@@ -105,7 +105,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
   test "weld contract keeps the published docs surface package-facing" do
     [{contract_module, _binary}] =
-      Code.require_file("build_support/weld_contract.exs", repo_root())
+      Code.require_file("build_support/weld.exs", repo_root())
 
     docs =
       contract_module.artifact()
