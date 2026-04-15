@@ -78,7 +78,7 @@ The live phase keeps boundaries explicit:
 - `ASM.InferenceEndpoint` owns CLI endpoint publication
 - `self_hosted_inference_core` owns endpoint publication
 - `llama_cpp_sdk` owns the first self-hosted backend package
-- `jido_os` agent-loop ownership still stays outside ordinary completion routes
+- external authority-loop ownership still stays outside ordinary completion routes
 
 ## Proof Surface
 

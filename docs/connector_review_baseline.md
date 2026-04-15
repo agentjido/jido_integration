@@ -18,8 +18,8 @@ Supporting proof surfaces:
 - repo-root conformance via `core/conformance`
 - package-local GitHub live acceptance in `connectors/github`
 - package-local Notion live acceptance in `connectors/notion`
-- cross-runtime operator proof in `apps/trading_ops`
 - hosted webhook and async recovery proof in `apps/devops_incident_response`
+- inference proof in `apps/inference_ops`
 
 ## Connector README Minimums
 
@@ -129,12 +129,6 @@ Deterministic connector capabilities:
 
 Reference-app proofs:
 
-- `apps/trading_ops`
-  - market-alert trigger admission through `core/ingress`
-  - authored trigger capability identity stays `market.alert.detected`
-  - downstream stream work stays the explicit `market.ticks.pull` invocation
-  - one reviewable workflow across stream, session, and direct runtimes
-  - durable run, attempt, event, artifact, target, and connection review
 - `apps/devops_incident_response`
   - install provisioning through the public facade
   - hosted route registration through `core/webhook_router`
@@ -142,6 +136,9 @@ Reference-app proofs:
   - async execution, dead-letter, replay, and restart recovery through
     `core/dispatch_runtime`
   - restart-safe auth and control-plane truth through `core/store_local`
+- `apps/inference_ops`
+  - cloud and self-hosted inference execution through the public facade
+  - durable inference review through `core/control_plane`
 
 ## Recommended Validation Loop
 
@@ -180,8 +177,8 @@ App proof commands stay separate because they are app-owned evidence above the
 connector package contract:
 
 ```bash
-cd apps/trading_ops && mix test
 cd apps/devops_incident_response && mix test
+cd apps/inference_ops && mix test
 ```
 
 Optional live acceptance remains package-local:

@@ -4,12 +4,6 @@ The reference apps show how the platform is composed in real host-facing
 workflows. They are proof surfaces, not the place to reintroduce platform
 ownership.
 
-## `apps/trading_ops`
-
-This app proves one operator-visible workflow across direct, session, and
-stream runtimes. It also shows how trigger admission, control-plane truth, and
-public invocation compose in practice.
-
 ## `apps/devops_incident_response`
 
 This app proves hosted webhook registration, async dispatch, dead-letter,
@@ -31,3 +25,6 @@ This app proves the first live `:inference` runtime family.
 Use the reference apps to understand the integration story end to end. Do not
 use them as a substitute for the package boundaries that own the underlying
 behavior.
+
+`apps/trading_ops` remains available as an archived proof only. It is outside
+the default workspace and CI surface.

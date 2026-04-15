@@ -98,7 +98,8 @@ It:
 - executes cloud provider calls through `req_llm`
 - resolves CLI-backed endpoint descriptors through `ASM.InferenceEndpoint`
 - executes those CLI endpoint routes through `req_llm`
-- resolves self-hosted endpoints through `self_hosted_inference_core`
+- resolves self-hosted endpoints through an optional self-hosted endpoint
+  provider seam
 - executes those self-hosted OpenAI-compatible endpoints through `req_llm`
 - persists the resulting durable inference attempt truth
 
@@ -106,6 +107,10 @@ The self-hosted route now proves both runtime ownership shapes:
 
 - spawned `llama_cpp_sdk`
 - attached-local `ollama`
+
+The concrete self-hosted runtime wiring lives outside `core/control_plane`
+itself. `apps/inference_ops` supplies the current provider implementation backed
+by `self_hosted_inference_core`.
 
 The durable record includes:
 

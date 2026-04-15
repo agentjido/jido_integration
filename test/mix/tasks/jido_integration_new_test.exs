@@ -305,6 +305,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     refute stream_readme =~ removed_stream_bridge_id()
   end
 
+  @tag :scaffold_validation
   @tag timeout: 600_000
   test "generated packages compile, test, build docs, and pass baseline conformance" do
     workspace_root = temp_workspace!("validation")
@@ -319,6 +320,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert_mix!(workspace_root, package_root, ["docs"])
   end
 
+  @tag :scaffold_validation
   @tag timeout: 600_000
   test "generated non-direct packages compile, test, build docs, and pass baseline conformance" do
     workspace_root = temp_workspace!("validation_non_direct")
@@ -428,8 +430,6 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
       {"SSLKEYLOGFILE", nil},
       {"JIDO_INTEGRATION_PATH", repo_root},
       {"JIDO_HARNESS_PATH", sibling_repo_path(repo_root, "../jido_runtime_control")},
-      {"JIDO_OS_PATH", "disabled"},
-      {"JIDO_SHELL_PATH", sibling_repo_path(repo_root, "../jido_shell")},
       {"JIDO_VFS_PATH", Path.expand("../jido_vfs", repo_root)},
       {"REQ_LLM_PATH", "disabled"},
       {"AGENT_SESSION_MANAGER_PATH", Path.expand("../agent_session_manager", repo_root)},

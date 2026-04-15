@@ -19,7 +19,6 @@ session and stream runtime slice for now:
 - `core/runtime_router`
 - `core/asm_runtime_bridge`
 - `core/session_runtime`
-- `bridges/boundary_bridge`
 - `connectors/codex_cli`
 - `connectors/market_data`
 

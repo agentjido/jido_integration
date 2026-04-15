@@ -2,10 +2,9 @@ defmodule Jido.Integration.Build.WeldContract do
   @moduledoc false
 
   @tooling_projects [".", "core/conformance"]
-  @proof_projects ["apps/devops_incident_response", "apps/trading_ops"]
+  @proof_projects ["apps/devops_incident_response", "apps/inference_ops"]
 
   @source_only_publication_projects [
-    "bridges/boundary_bridge",
     "connectors/codex_cli",
     "connectors/market_data",
     "core/runtime_control",
@@ -60,20 +59,9 @@ defmodule Jido.Integration.Build.WeldContract do
   @dependencies [
     agent_session_manager: [requirement: "~> 0.9.1"],
     github_ex: [requirement: "~> 0.1.0"],
-    jido_shell: [opts: [github: "agentjido/jido_shell", branch: "main"]],
     linear_sdk: [requirement: "~> 0.2.0"],
     notion_sdk: [requirement: "~> 0.2.0"],
-    req_llm: [requirement: "~> 1.9"],
-    self_hosted_inference_core: [requirement: "~> 0.1.0"],
-    llama_cpp_sdk: [requirement: "~> 0.1.0"],
-    sprites: [
-      opts: [
-        git: "https://github.com/mikehostetler/sprites-ex.git",
-        branch: "main",
-        optional: true,
-        override: true
-      ]
-    ]
+    req_llm: [requirement: "~> 1.9"]
   ]
 
   def manifest do
@@ -100,7 +88,6 @@ defmodule Jido.Integration.Build.WeldContract do
     [
       mode: :monolith,
       monolith_opts: [
-        extra_test_deps: [:sprites],
         test_support_projects: @source_only_monolith_test_support_projects
       ],
       roots: @published_roots,

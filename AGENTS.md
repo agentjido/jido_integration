@@ -18,7 +18,6 @@ jido_integration/
   test/                 # root tooling tests only
   docs/                 # repo-level docs only
   core/                 # platform/runtime packages
-  bridges/              # non-core runtime bridge packages
   connectors/           # connector packages, one package per connector
   apps/                 # thin app/reference packages above the public platform
 ```
@@ -42,10 +41,6 @@ Current core packages:
 - `core/store_local`
 - `core/store_postgres`
 
-Current bridge packages:
-
-- `bridges/boundary_bridge`
-
 Current connector packages:
 
 - `connectors/github`
@@ -56,9 +51,12 @@ Current connector packages:
 
 Current app packages:
 
-- `apps/trading_ops`
 - `apps/devops_incident_response`
 - `apps/inference_ops`
+
+Archived proof packages kept off the default workspace/CI lane:
+
+- `apps/trading_ops`
 
 ## Documentation Homes
 
@@ -75,8 +73,6 @@ Keep documentation aligned to the permanent V2 layout:
 
 - Keep the repo root tooling-only. Do not move runtime or connector logic into
   the root unless it is genuinely monorepo-wide glue.
-- Keep lower-boundary runtime bridge packages under `bridges/` when they are
-  neither `core/` platform packages nor `apps/` proof packages.
 - Keep package boundaries explicit. If a connector uses a library directly, declare that dependency in the connector package instead of relying on transitive deps.
 - Prefer adding new capabilities by adding or extending child packages, not by broadening the root project.
 - Treat `contracts` as the shared public model and keep downstream packages honest against it.

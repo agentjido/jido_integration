@@ -55,9 +55,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_webhook_router(opts \\ []),
     do: resolve_internal(:jido_integration_v2_webhook_router, "core/webhook_router", opts)
 
-  def jido_integration_v2_boundary_bridge(opts \\ []),
-    do: resolve_internal(:jido_integration_v2_boundary_bridge, "bridges/boundary_bridge", opts)
-
   def jido_session(opts \\ []),
     do: resolve_internal(:jido_session, "core/session_runtime", opts)
 
@@ -90,9 +87,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_inference_ops(opts \\ []),
     do: resolve_internal(:jido_integration_v2_inference_ops, "apps/inference_ops", opts)
 
-  def jido_integration_v2_trading_ops(opts \\ []),
-    do: resolve_internal(:jido_integration_v2_trading_ops, "apps/trading_ops", opts)
-
   def agent_session_manager(opts \\ []) do
     case local_root_path("AGENT_SESSION_MANAGER_PATH", "../agent_session_manager") do
       nil -> {:agent_session_manager, "~> 0.9.1", opts}
@@ -107,47 +101,11 @@ defmodule Jido.Integration.Build.DependencyResolver do
     end
   end
 
-  def external_runtime_transport(opts \\ []) do
-    case local_root_path("EXTERNAL_RUNTIME_TRANSPORT_PATH", "../external_runtime_transport") do
-      nil -> {:external_runtime_transport, "~> 0.1.0", opts}
-      path -> {:external_runtime_transport, Keyword.merge([path: path, override: true], opts)}
-    end
-  end
-
-  def execution_plane(opts \\ []) do
-    case local_root_path("EXECUTION_PLANE_PATH", "../execution_plane") do
-      nil -> {:execution_plane, "~> 0.1.0", opts}
-      path -> {:execution_plane, Keyword.merge([path: path, override: true], opts)}
-    end
-  end
-
-  def jido_os(opts \\ []) do
-    resolve_external(
-      :jido_os,
-      local_root_path("JIDO_OS_PATH", "../jido_os"),
-      [github: "agentjido/jido_os", branch: "main"],
-      opts
-    )
-  end
-
-  def jido_shell(opts \\ []) do
-    resolve_external(
-      :jido_shell,
-      local_root_path("JIDO_SHELL_PATH", "../jido_shell"),
-      [github: "agentjido/jido_shell", branch: "main"],
-      opts
-    )
-  end
-
   def jido_action(opts \\ []) do
     case local_root_path("JIDO_ACTION_PATH", "../jido_action") do
       nil -> {:jido_action, "~> 2.2", opts}
       path -> {:jido_action, Keyword.merge([path: path], opts)}
     end
-  end
-
-  def sprites(opts \\ []) do
-    {:sprites, Keyword.merge([git: "https://github.com/mikehostetler/sprites-ex.git"], opts)}
   end
 
   def req_llm(opts \\ []) do
@@ -188,13 +146,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
     case internal_workspace_path(subdir) do
       nil -> {app, Keyword.merge(fallback_opts, opts)}
       path -> {app, Keyword.merge([path: path], opts)}
-    end
-  end
-
-  defp resolve_external(app, path, fallback_opts, opts) do
-    case existing_path(path) do
-      nil -> {app, Keyword.merge(fallback_opts, opts)}
-      resolved_path -> {app, Keyword.merge([path: resolved_path], opts)}
     end
   end
 

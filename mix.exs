@@ -38,10 +38,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       {:blitz, "~> 0.2.0", runtime: false},
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_v2_contracts(),
-      DependencyResolver.jido_shell(override: true, runtime: false),
-      DependencyResolver.execution_plane(runtime: false),
       DependencyResolver.cli_subprocess_core(runtime: false),
-      DependencyResolver.sprites(override: true, runtime: false),
       DependencyResolver.req_llm(runtime: false),
       {:weld, "~> 0.7.1", runtime: false},
       {:jason, "~> 1.4", runtime: false},
@@ -78,6 +75,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       ],
       quality: ["monorepo.credo --strict", "monorepo.dialyzer"],
       "docs.all": ["monorepo.docs"],
+      "scaffold.validate": ["test --include scaffold_validation"],
       "release.publish.dry_run": ["jido_integration.release.publish --dry-run"],
       "release.publish": ["jido_integration.release.publish"],
       "release.candidate": ["release.prepare", "release.publish.dry_run"]

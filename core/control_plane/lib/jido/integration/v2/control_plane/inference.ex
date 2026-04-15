@@ -14,7 +14,6 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   alias Jido.Integration.V2.LeaseRef
   alias ReqLLM.Response
   alias ReqLLM.Response.Stream, as: ResponseStream
-  alias SelfHostedInferenceCore.ConsumerManifest, as: SelfHostedConsumerManifest
 
   @req_llm_passthrough_keys [
     :api_key,
@@ -308,28 +307,11 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     request =
       merge_target_backend_options(request, Keyword.get(opts, :target_backend_options, %{}))
 
-    with {:ok, self_hosted_consumer_manifest} <-
-           SelfHostedConsumerManifest.new(Map.from_struct(consumer_manifest)),
-         {:ok, backend} <- fetch_target_backend(request),
-         {:ok, raw_endpoint, raw_compatibility} <-
-           SelfHostedInferenceCore.ensure_endpoint(
-             request,
-             self_hosted_consumer_manifest,
-             Map.from_struct(context),
-             owner_ref: Keyword.get(opts, :owner_ref, context.attempt_id),
-             ttl_ms: Keyword.get(opts, :ttl_ms, 60_000),
-             renewable?: Keyword.get(opts, :renewable?, true),
-             await_timeout_ms: Keyword.get(opts, :await_timeout_ms, 5_000)
-           ),
-         {:ok, raw_backend_manifest} <- SelfHostedInferenceCore.fetch_backend_manifest(backend),
-         endpoint_descriptor <- EndpointDescriptor.new!(Map.from_struct(raw_endpoint)),
-         compatibility_result <-
-           CompatibilityResult.new!(
-             raw_compatibility
-             |> Map.from_struct()
-             |> Map.update!(:metadata, &Map.put(Map.new(&1), :route, :self_hosted))
-           ),
-         backend_manifest <- BackendManifest.new!(Map.from_struct(raw_backend_manifest)),
+    with {:ok, provider} <- fetch_self_hosted_endpoint_provider(opts),
+         {:ok, resolution} <- provider.ensure_endpoint(request, consumer_manifest, context, opts),
+         %{endpoint_descriptor: %EndpointDescriptor{} = endpoint_descriptor} <- resolution,
+         %{compatibility_result: %CompatibilityResult{} = compatibility_result} <- resolution,
+         %{backend_manifest: %BackendManifest{} = backend_manifest} <- resolution,
          lease_ref <- build_lease_ref(endpoint_descriptor, context, opts) do
       {:ok,
        %{
@@ -340,6 +322,27 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          backend_manifest: backend_manifest,
          lease_ref: lease_ref
        }}
+    end
+  end
+
+  defp fetch_self_hosted_endpoint_provider(opts) do
+    case Keyword.get(opts, :self_hosted_endpoint_provider) ||
+           Application.get_env(
+             :jido_integration_v2_control_plane,
+             :self_hosted_endpoint_provider
+           ) do
+      nil ->
+        {:error, :self_hosted_endpoint_provider_not_configured}
+
+      provider when is_atom(provider) ->
+        if Code.ensure_loaded?(provider) and function_exported?(provider, :ensure_endpoint, 4) do
+          {:ok, provider}
+        else
+          {:error, {:invalid_self_hosted_endpoint_provider, provider}}
+        end
+
+      other ->
+        {:error, {:invalid_self_hosted_endpoint_provider, other}}
     end
   end
 
@@ -479,13 +482,6 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
                |> Contracts.dump_json_safe!()
            })
        }}
-    end
-  end
-
-  defp fetch_target_backend(%InferenceRequest{} = request) do
-    case request.target_preference |> map_or_empty() |> Contracts.get(:backend) do
-      nil -> {:error, {:missing_target_preference, :backend}}
-      backend -> {:ok, Contracts.normalize_atomish!(backend, "target_preference.backend")}
     end
   end
 

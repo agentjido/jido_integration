@@ -19,7 +19,7 @@ defmodule Jido.Integration.V2.InferenceExecutionContext do
                 Contracts.non_empty_string_schema("inference_execution_context.attempt_id"),
               authority_source:
                 Contracts.enumish_schema(
-                  [:jido_integration, :jido_os, :external],
+                  [:jido_integration, :external],
                   "inference_execution_context.authority_source"
                 ),
               decision_ref:

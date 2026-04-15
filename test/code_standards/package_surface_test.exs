@@ -55,6 +55,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
           :"mr.credo",
           :"mr.dialyzer",
           :"mr.docs",
+          :"scaffold.validate",
           :"release.publish.dry_run",
           :"release.publish",
           :"release.candidate"
@@ -158,9 +159,16 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            "repo-local mix wrapper is missing from #{repo_root()}"
   end
 
-  test "workspace scope is explicit about legacy source-only packages" do
-    assert WorkspaceContract.active_project_globs() == [".", "core/*", "connectors/*", "apps/*"]
-    assert WorkspaceContract.legacy_project_roots() == ["bridges/boundary_bridge"]
+  test "workspace scope is explicit about the active package families" do
+    assert WorkspaceContract.active_project_globs() == [
+             ".",
+             "core/*",
+             "connectors/*",
+             "apps/devops_incident_response",
+             "apps/inference_ops"
+           ]
+
+    refute File.dir?(Path.join(repo_root(), "bridges"))
   end
 
   test "workspace runner resolves a real mix executable outside the repo wrapper" do

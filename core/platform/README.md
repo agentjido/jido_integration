@@ -145,7 +145,6 @@ Current public-facade proofs:
 - `core/platform/test/jido/integration/v2_inference_review_packet_test.exs`
 - `core/platform/test/jido/integration/v2_inference_invoke_test.exs`
 - `core/platform/examples/inference_review_packet.exs`
-- `apps/trading_ops`
 - `apps/inference_ops`
 - `connectors/github` live acceptance, which drives the current auth and
   invocation surface through `Jido.Integration.V2`

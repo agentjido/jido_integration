@@ -15,4 +15,4 @@ durable control plane.
 - the example keeps the cloud proof offline with `Req.Test`
 - the stored inference envelopes stay string-keyed and JSON-safe while the
   projected packet keeps typed runtime summary fields
-- no live self-hosted runtime or `jido_os` integration is required
+- no live self-hosted runtime or external authority-runtime integration is required

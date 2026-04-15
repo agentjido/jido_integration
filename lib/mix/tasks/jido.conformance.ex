@@ -21,6 +21,7 @@ defmodule Mix.Tasks.Jido.Conformance do
       mix jido.conformance Jido.Integration.V2.Connectors.GitHub --output report.json
   """
 
+  alias Jido.Integration.Build.WorkspaceContract
   alias Jido.Integration.Toolchain
   alias Jido.Integration.V2.Conformance
   alias Jido.Integration.V2.Conformance.Renderer
@@ -34,7 +35,7 @@ defmodule Mix.Tasks.Jido.Conformance do
   @profile_atoms %{@default_profile => :connector_foundation}
   @profile_names [@default_profile]
   @loader_project :jido_conformance_loader
-  @active_project_globs [".", "core/*", "connectors/*", "apps/*"]
+  @active_project_globs WorkspaceContract.active_project_globs()
 
   @impl Mix.Task
   def run(args) do

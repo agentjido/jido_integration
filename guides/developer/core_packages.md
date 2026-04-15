@@ -7,11 +7,6 @@ This is the internal map for contributors. If you are deciding where code
 belongs, start here before touching the root workspace or widening an existing
 package.
 
-Legacy bridge packages live under `bridges/`. `bridges/boundary_bridge` is
-deprecated, no longer part of the active core runtime path, and remains outside
-the default root workspace gate until its external dependency boundary is
-stabilized.
-
 ## Package Map
 
 | Package | Owns | Key Use |

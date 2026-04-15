@@ -192,6 +192,10 @@ defmodule Jido.Integration.V2.Apps.InferenceOps do
         :tenant_id
       ]
     )
+    |> Keyword.put_new(
+      :self_hosted_endpoint_provider,
+      Jido.Integration.V2.Apps.InferenceOps.SelfHostedEndpointProvider
+    )
     |> maybe_put_runtime_opt(
       :target_backend_options,
       %{} |> maybe_put(:ollama_http, Keyword.get(opts, :ollama_http))

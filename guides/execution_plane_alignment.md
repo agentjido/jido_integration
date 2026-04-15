@@ -6,7 +6,7 @@ the Execution Plane workspace, and the facade/session layers.
 
 ## Ownership
 
-- `jido_os` remains the Brain and authors `AuthorityDecision.v1`
+- the Brain-side authority layer authors `AuthorityDecision.v1`
 - `jido_integration` remains the Spine and owns durable meaning
 - `execution_plane` owns lower runtime mechanics and raw execution facts
 

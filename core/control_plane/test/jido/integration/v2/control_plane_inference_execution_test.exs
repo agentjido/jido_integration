@@ -7,9 +7,9 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec
   alias Jido.Integration.V2.ControlPlane.TestSupport.FakeLlamaServerFixture
+  alias Jido.Integration.V2.ControlPlane.TestSupport.FakeSelfHostedEndpointProvider
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceRequest
-  alias LlamaCppSdk
 
   @socket_capable? (case :gen_tcp.listen(0, [
                            :binary,
@@ -342,19 +342,37 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     Application.ensure_all_started(:inets)
     Application.ensure_all_started(:ssl)
     ControlPlane.reset!()
-    _ = LlamaCppSdk.unregister_backend()
-    _ = SelfHostedInferenceCore.Ollama.unregister_backend()
     original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
 
+    original_self_hosted_provider =
+      Application.get_env(:jido_integration_v2_control_plane, :self_hosted_endpoint_provider)
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :self_hosted_endpoint_provider,
+      FakeSelfHostedEndpointProvider
+    )
+
     on_exit(fn ->
-      _ = SelfHostedInferenceCore.stop_all_instances()
-      _ = LlamaCppSdk.unregister_backend()
-      _ = SelfHostedInferenceCore.Ollama.unregister_backend()
+      FakeSelfHostedEndpointProvider.cleanup!()
 
       if is_nil(original_asm_endpoint) do
         Application.delete_env(:agent_session_manager, ASM.InferenceEndpoint)
       else
         Application.put_env(:agent_session_manager, ASM.InferenceEndpoint, original_asm_endpoint)
+      end
+
+      if is_nil(original_self_hosted_provider) do
+        Application.delete_env(
+          :jido_integration_v2_control_plane,
+          :self_hosted_endpoint_provider
+        )
+      else
+        Application.put_env(
+          :jido_integration_v2_control_plane,
+          :self_hosted_endpoint_provider,
+          original_self_hosted_provider
+        )
       end
     end)
 
@@ -557,8 +575,6 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
       FakeLlamaServerFixture.cleanup(fixture)
     end)
 
-    assert :ok = LlamaCppSdk.register_backend()
-
     request =
       InferenceRequest.new!(%{
         request_id: "req-live-self-hosted-1",
@@ -631,8 +647,6 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     on_exit(fn ->
       FakeOllamaAttachFixture.stop(fixture)
     end)
-
-    assert :ok = SelfHostedInferenceCore.Ollama.register_backend()
 
     request =
       InferenceRequest.new!(%{

@@ -22,6 +22,54 @@ defmodule Jido.Integration.Workspace.MonorepoRunner do
     :ok
   end
 
+  @spec run_projects!(atom(), [String.t()], [String.t()]) :: :ok
+  def run_projects!(task, args, project_paths)
+      when is_atom(task) and is_list(args) and is_list(project_paths) do
+    workspace = MixWorkspace.load!()
+    mix_command = mix_command!(workspace)
+    allowed_paths = MapSet.new(project_paths)
+
+    workspace
+    |> MixWorkspace.plan(task, args)
+    |> Enum.each(fn stage ->
+      commands =
+        stage.commands
+        |> Enum.filter(&MapSet.member?(allowed_paths, &1.id))
+        |> Enum.map(&rewrite_command(&1, mix_command))
+
+      if commands != [] do
+        Blitz.run!(commands, max_concurrency: stage.max_concurrency)
+      end
+    end)
+
+    :ok
+  end
+
+  @spec run_root_task!(atom(), [String.t()]) :: :ok
+  def run_root_task!(task, args) when is_atom(task) and is_list(args) do
+    workspace = MixWorkspace.load!()
+    mix_command = mix_command!(workspace)
+    {task_args, _runner_opts} = MixWorkspace.split_runner_args(args)
+    mix_args = MixWorkspace.task_args(workspace, task, task_args)
+    env = MixWorkspace.command_env(workspace, ".", task)
+
+    case System.cmd(mix_command, mix_args,
+           cd: workspace.root,
+           env: env,
+           stderr_to_stdout: true
+         ) do
+      {_output, 0} ->
+        :ok
+
+      {output, exit_code} ->
+        Mix.raise("""
+        root mix #{Enum.join(mix_args, " ")} failed with exit code #{exit_code}
+
+        #{output}
+        """)
+    end
+  end
+
   @doc false
   @spec mix_command!(map()) :: String.t()
   def mix_command!(workspace) do

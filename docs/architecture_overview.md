@@ -44,13 +44,6 @@ Core runtime graph:
 - `core/ingress`
   - request normalization and durable trigger admission
 
-Bridge packages:
-
-- `bridges/boundary_bridge`
-  - lower-boundary sandbox bridge package that exposes the typed
-    `Jido.BoundaryBridge` contract below authored runtime intent and above
-    external sandbox kernels such as `jido_os`
-
 Durability tiers:
 
 - in-memory defaults in `core/auth` and `core/control_plane`
@@ -106,9 +99,6 @@ runtime lane:
 - `core/asm_runtime_bridge` is the integration-owned projection for the `asm`
   driver; it adapts the Runtime Control seam to
   `agent_session_manager`
-- `bridges/boundary_bridge` is the lower-boundary package reserved for sandbox
-  bridge code, typed bridge IO, and descriptor normalization that do not belong
-  in `core/` and are not an app-level proof
 - `core/session_runtime` is the integration-owned home for `jido_session` via
   `Jido.Session.RuntimeControlDriver`; `jido_integration` still consumes it through
   authored `runtime.driver` metadata rather than a local compatibility shim
@@ -138,8 +128,8 @@ Connector packages:
 
 Proof apps:
 
-- `apps/trading_ops`
 - `apps/devops_incident_response`
+- `apps/inference_ops`
 
 ## Dependency Rules
 
@@ -303,16 +293,13 @@ Proofs live where the behavior belongs:
 
 The current app proofs are:
 
-- `apps/trading_ops`
-  - cross-runtime operator workflow
-  - consumption of the connector-authored `market.alert.detected` poll trigger
-    before the explicit downstream `market.ticks.pull` invocation
-  - workflow-local shaping over the shared `Jido.Integration.V2.review_packet/2`
-    operator packet
 - `apps/devops_incident_response`
   - hosted webhook to async replay and restart recovery
   - app-owned webhook trigger publication through the same generated
     sensor-facing contract family used by common poll triggers
+- `apps/inference_ops`
+  - cloud and self-hosted inference proof above the public facade
+  - durable review truth through `core/control_plane`
 
 Root `examples/` and `reference_apps/` are intentionally not part of the V2
 layout.

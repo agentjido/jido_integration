@@ -31,7 +31,9 @@ use to verify changes.
 8. root `mix monorepo.dialyzer`
 9. root `mix monorepo.docs`
 10. root `mix monorepo.test`
-11. root `mix ci`
+11. optional root `mix scaffold.validate` when scaffold output validation is
+    the thing you changed
+12. root `mix ci`
 
 ## What To Check First
 

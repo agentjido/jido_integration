@@ -59,7 +59,7 @@ Inference is now a first-class runtime family on the public facade.
 - cloud routes execute as `runtime_kind: :client` against provider-managed
   endpoints
 - self-hosted routes execute as `runtime_kind: :service` after endpoint
-  resolution through `self_hosted_inference_core`
+  resolution through an optional self-hosted endpoint provider
 - both routes execute the data-plane call through `req_llm`
 - `core/control_plane` records the durable inference event minimum
 - `core/platform` exposes both `invoke_inference/2` and `review_packet/2`

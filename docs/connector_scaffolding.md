@@ -104,6 +104,8 @@ Treat that as the supported contributor topology:
   `runtime.driver` surface for scaffold review
 - rely on the root monorepo commands and `mix ci` as the primary validation
   gate
+- use `mix scaffold.validate` when you explicitly need the slower generated
+  package compile/test/docs validation lane
 - do not require a sibling `../jido_runtime_control` checkout for scaffold
   generation or validation
 

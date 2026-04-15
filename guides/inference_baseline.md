@@ -36,7 +36,7 @@ It:
 - executes cloud provider calls through `req_llm`
 - resolves CLI endpoint descriptors through `ASM.InferenceEndpoint`
 - executes those CLI endpoint routes through `req_llm`
-- resolves self-hosted endpoints through `self_hosted_inference_core`
+- resolves self-hosted endpoints through an optional provider seam
 - executes those self-hosted OpenAI-compatible endpoints through `req_llm`
 
 The self-hosted lane now proves both ownership shapes:
@@ -51,7 +51,7 @@ For Wave 7, that also means:
 
 - lower spawned-service mechanics run on `execution_plane`
 - service-runtime readiness, health, lease reuse, and attachability stay in
-  `self_hosted_inference_core`
+  the optional self-hosted runtime family kit
 - durable descriptor and lease lineage stay in Spine-owned review and route
   truth rather than in raw process state
 
@@ -124,7 +124,7 @@ Ollama-backed example in `apps/inference_ops/examples/ollama_attach_proof.exs`.
 
 This phase still does not require:
 
-- a live `jido_os` dependency
+- a live external authority-runtime dependency
 - a separate shared `ReqLLMCallSpec` contract repo
 - turning `req_llm` into a runtime manager or policy engine
 

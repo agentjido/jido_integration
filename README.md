@@ -99,9 +99,9 @@ surface:
 - `apps/inference_ops` is the dedicated proof app for the cloud,
   CLI-endpoint, and self-hosted paths
 - spawned self-hosted service startup now resolves through
-  `self_hosted_inference_core` on top of `execution_plane`, while attached-local
-  `ollama` keeps service-runtime semantics in the same family kit instead of in
-  the control plane
+  an optional self-hosted endpoint provider on top of `execution_plane`, while
+  attached-local `ollama` keeps service-runtime semantics in the same family kit
+  instead of in the control plane
 
 Phase 7 also lands the explicit cross-repo reference seam in
 `core/contracts`:
@@ -167,11 +167,6 @@ Inference phase-1 proofs:
 
 Reference apps:
 
-- `apps/trading_ops`
-  - proves one operator-visible workflow across stream, session, and direct
-    runtimes
-  - keeps trigger admission in `core/ingress`
-  - keeps durable review truth in `core/control_plane`
 - `apps/devops_incident_response`
   - proves hosted webhook registration, async dispatch, dead-letter, replay,
   and restart recovery
@@ -180,9 +175,9 @@ Reference apps:
   - proves cloud, CLI endpoint, spawned self-hosted, and attached-local
     inference execution through the public facade
   - keeps durable review truth in `core/control_plane`
-  - keeps client execution in `req_llm` and self-hosted service ownership in
-    `self_hosted_inference_core`, the built-in `ollama` adapter, and
-    `llama_cpp_sdk`
+  - keeps client execution in `req_llm` and supplies the current optional
+    self-hosted provider backed by `self_hosted_inference_core`, the built-in
+    `ollama` adapter, and `llama_cpp_sdk`
 
 The current surface also proves:
 
@@ -294,8 +289,6 @@ jido_integration/
     conformance/             # reusable connector conformance engine
     store_local/             # restart-safe local durability tier
     store_postgres/          # database-backed durable tier
-  bridges/
-    boundary_bridge/         # legacy lower-boundary sandbox bridge reference package
   connectors/
     github/                  # direct GitHub connector + live acceptance runbook
     linear/                  # direct Linear connector + package-local docs
@@ -303,9 +296,9 @@ jido_integration/
     codex_cli/               # runtime-control-routed session connector via `asm`
     market_data/             # runtime-control-routed stream connector via `asm`
   apps/
-    trading_ops/             # cross-runtime operator proof
     devops_incident_response # hosted webhook + async recovery proof
     inference_ops/           # cloud + self-hosted inference proof
+    trading_ops/             # archived proof, excluded from default workspace/CI
 ```
 
 ## Direct Versus Runtime Boundary
@@ -332,10 +325,9 @@ architecture.
 The current core runtime graph stops at those two runtime-control lanes. Lower-boundary
 work is not part of the active `asm` or `jido_session` dependency path.
 
-The default root workspace gate is explicit about that scope. `build_support/workspace_contract.exs`
-defines the active workspace package globs that run under `mix mr.*` and
-`mix ci`, while `bridges/boundary_bridge` remains a source-only legacy package
-until its external dependency boundary is stable enough to rejoin that gate.
+The default root workspace gate is explicit about that scope.
+`build_support/workspace_contract.exs` defines the active workspace package
+globs that run under `mix mr.*` and `mix ci`.
 
 ## Developer Docs
 
@@ -352,14 +344,13 @@ Primary package and app runbooks:
 - `core/store_local/README.md`
 - `core/dispatch_runtime/README.md`
 - `core/webhook_router/README.md`
-- `bridges/boundary_bridge/README.md`
 - `connectors/github/README.md`
 - `connectors/github/docs/live_acceptance.md`
 - `connectors/linear/README.md`
 - `connectors/notion/README.md`
 - `connectors/notion/docs/live_acceptance.md`
-- `apps/trading_ops/README.md`
 - `apps/devops_incident_response/README.md`
+- `apps/inference_ops/README.md`
 
 ## Validation Prerequisites
 

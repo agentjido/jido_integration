@@ -30,14 +30,20 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "connectors/market_data",
              "connectors/notion",
              "apps/devops_incident_response",
-             "apps/inference_ops",
-             "apps/trading_ops"
+             "apps/inference_ops"
            ]
   end
 
-  test "keeps legacy source-only packages outside the default workspace graph" do
-    assert WorkspaceContract.legacy_project_roots() == ["bridges/boundary_bridge"]
-    refute "bridges/boundary_bridge" in Blitz.MixWorkspace.project_paths()
+  test "default workspace graph contains only the active package families" do
+    assert WorkspaceContract.active_project_globs() == [
+             ".",
+             "core/*",
+             "connectors/*",
+             "apps/devops_incident_response",
+             "apps/inference_ops"
+           ]
+
+    refute Enum.any?(Blitz.MixWorkspace.project_paths(), &String.starts_with?(&1, "bridges/"))
   end
 
   test "builds task args for each supported workspace task" do
@@ -115,12 +121,5 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              max_bytes: 63
            ) ==
              "jido_integration_v2_test_core_dispatch_runtime_7510d0e3"
-
-    assert Blitz.MixWorkspace.hashed_project_name(
-             "jido_integration_v2_test",
-             "apps/trading_ops",
-             max_bytes: 63
-           ) ==
-             "jido_integration_v2_test_apps_trading_ops_57fc89c1"
   end
 end

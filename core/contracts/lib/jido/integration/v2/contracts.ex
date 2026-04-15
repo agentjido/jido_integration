@@ -47,7 +47,7 @@ defmodule Jido.Integration.V2.Contracts do
   @type inference_operation :: :generate_text | :stream_text
   @type inference_target_class :: :cloud_provider | :cli_endpoint | :self_hosted_endpoint
   @type inference_protocol :: :openai_chat_completions
-  @type authority_source :: :jido_integration | :jido_os | :external
+  @type authority_source :: :jido_integration | :external
   @type inference_checkpoint_policy :: :summary | :artifact | :disabled
   @type inference_status :: :ok | :error | :cancelled
   @type sandbox_level :: :strict | :standard | :none
@@ -494,13 +494,13 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec validate_authority_source!(authority_source()) :: authority_source()
   def validate_authority_source!(authority_source)
-      when authority_source in [:jido_integration, :jido_os, :external],
+      when authority_source in [:jido_integration, :external],
       do: authority_source
 
   def validate_authority_source!(authority_source) when is_binary(authority_source) do
     validate_enum_string!(
       authority_source,
-      [:jido_integration, :jido_os, :external],
+      [:jido_integration, :external],
       "authority_source"
     )
   end
