@@ -87,6 +87,41 @@ defmodule Jido.Integration.V2.BrainIngressTest do
     %{agent: agent}
   end
 
+  test "uses the configured submission ledger when callers omit the override", %{agent: agent} do
+    previous_ledger = Application.get_env(:jido_integration_v2_brain_ingress, :submission_ledger)
+    invocation = brain_invocation_fixture()
+
+    Application.put_env(:jido_integration_v2_brain_ingress, :submission_ledger, Ledger)
+
+    on_exit(fn ->
+      case previous_ledger do
+        nil ->
+          Application.delete_env(:jido_integration_v2_brain_ingress, :submission_ledger)
+
+        ledger ->
+          Application.put_env(:jido_integration_v2_brain_ingress, :submission_ledger, ledger)
+      end
+    end)
+
+    assert {:ok, %SubmissionAcceptance{} = acceptance, _gateway, _runtime_inputs} =
+             BrainIngress.accept_invocation(
+               invocation,
+               submission_ledger_opts: [agent: agent, invocation: invocation],
+               scope_resolver: Resolver,
+               scope_resolver_opts: [
+                 mapping: %{
+                   "workspace://tenant-1/root" => "/srv/workspaces/tenant-1"
+                 }
+               ]
+             )
+
+    assert {:ok, ^acceptance} =
+             BrainIngress.fetch_acceptance(
+               invocation.submission_key,
+               submission_ledger_opts: [agent: agent]
+             )
+  end
+
   test "accepts a submission once the shadows verify and scopes resolve", %{agent: agent} do
     invocation = brain_invocation_fixture()
 

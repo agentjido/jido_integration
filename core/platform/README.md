@@ -97,6 +97,16 @@ For Brain-side orchestration, `accept_brain_invocation/2` exposes the durable
 Brain-to-Spine intake seam without requiring consumers to reach into
 `core/brain_ingress` directly.
 
+Substrate-facing lower facts:
+
+- `Jido.Integration.V2.LowerFacts.fetch_submission_receipt/2`
+- `Jido.Integration.V2.LowerFacts.fetch_run/1`
+- `Jido.Integration.V2.LowerFacts.attempts/1`
+- `Jido.Integration.V2.LowerFacts.fetch_attempt/1`
+- `Jido.Integration.V2.LowerFacts.events/1`
+- `Jido.Integration.V2.LowerFacts.fetch_artifact/1`
+- `Jido.Integration.V2.LowerFacts.run_artifacts/1`
+
 ## Design Boundary
 
 This package is the public facade, not the place where every runtime concern

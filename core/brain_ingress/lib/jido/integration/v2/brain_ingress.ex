@@ -60,6 +60,21 @@ defmodule Jido.Integration.V2.BrainIngress do
     end
   end
 
+  @doc """
+  Fetch a durable submission acceptance by submission key.
+
+  The backing submission ledger resolves through the configured
+  `:jido_integration_v2_brain_ingress` application environment unless the
+  caller overrides it via `:submission_ledger`.
+  """
+  @spec fetch_acceptance(String.t(), keyword()) ::
+          {:ok, Jido.Integration.V2.SubmissionAcceptance.t()} | :error
+  def fetch_acceptance(submission_key, opts \\ []) when is_binary(submission_key) do
+    ledger_opts = Keyword.get(opts, :submission_ledger_opts, [])
+    ledger = submission_ledger!(opts)
+    ledger.fetch_acceptance(submission_key, ledger_opts)
+  end
+
   defp verify_projection(
          invocation,
          projection,
@@ -167,7 +182,7 @@ defmodule Jido.Integration.V2.BrainIngress do
   end
 
   defp submission_ledger!(opts) do
-    case Keyword.get(opts, :submission_ledger) do
+    case Keyword.get(opts, :submission_ledger, configured_submission_ledger()) do
       nil ->
         raise ArgumentError,
               "brain_ingress requires :submission_ledger implementing #{inspect(SubmissionLedger)}"
@@ -175,5 +190,9 @@ defmodule Jido.Integration.V2.BrainIngress do
       ledger ->
         ledger
     end
+  end
+
+  defp configured_submission_ledger do
+    Application.get_env(:jido_integration_v2_brain_ingress, :submission_ledger)
   end
 end
