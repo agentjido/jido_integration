@@ -99,6 +99,7 @@ Brain-to-Spine intake seam without requiring consumers to reach into
 
 Substrate-facing lower facts:
 
+- `Jido.Integration.V2.LowerFacts.operations/0`
 - `Jido.Integration.V2.LowerFacts.fetch_submission_receipt/2`
 - `Jido.Integration.V2.LowerFacts.fetch_run/1`
 - `Jido.Integration.V2.LowerFacts.attempts/1`
@@ -106,6 +107,12 @@ Substrate-facing lower facts:
 - `Jido.Integration.V2.LowerFacts.events/1`
 - `Jido.Integration.V2.LowerFacts.fetch_artifact/1`
 - `Jido.Integration.V2.LowerFacts.run_artifacts/1`
+
+Higher-order substrate bridges should treat `Jido.Integration.V2.LowerFacts`
+as the explicit lower-read contract. The top-level `Jido.Integration.V2`
+facade may continue to expose convenience read helpers for general consumers,
+but lower-stack integrations should freeze against the bounded `LowerFacts`
+surface instead.
 
 ## Design Boundary
 

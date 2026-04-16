@@ -43,6 +43,58 @@ defmodule Jido.Integration.V2LowerFactsTest do
     :ok
   end
 
+  test "publishes the frozen lower-facts operation inventory" do
+    assert LowerFacts.operations() == [
+             :fetch_submission_receipt,
+             :fetch_run,
+             :attempts,
+             :fetch_attempt,
+             :events,
+             :fetch_artifact,
+             :run_artifacts
+           ]
+
+    assert LowerFacts.operation_supported?(:fetch_run)
+    assert LowerFacts.operation_supported?(:run_artifacts)
+    refute LowerFacts.operation_supported?(:review_packet)
+    refute LowerFacts.operation_supported?(:derived_state_attachment)
+  end
+
+  test "submission receipt lookup stays stable across duplicate acceptance" do
+    invocation = brain_invocation_fixture()
+
+    assert {:ok, %SubmissionAcceptance{} = first_receipt, _gateway, _runtime_inputs} =
+             V2.accept_brain_invocation(
+               invocation,
+               scope_resolver: __MODULE__.Resolver,
+               scope_resolver_opts: [
+                 mapping: %{
+                   "workspace://tenant-1/root" => "/srv/workspaces/tenant-1"
+                 }
+               ]
+             )
+
+    assert {:ok, %SubmissionAcceptance{} = duplicate_receipt, _gateway, _runtime_inputs} =
+             V2.accept_brain_invocation(
+               invocation,
+               scope_resolver: __MODULE__.Resolver,
+               scope_resolver_opts: [
+                 mapping: %{
+                   "workspace://tenant-1/root" => "/srv/workspaces/tenant-1"
+                 }
+               ]
+             )
+
+    assert duplicate_receipt.status == :duplicate
+    assert duplicate_receipt.submission_receipt_ref == first_receipt.submission_receipt_ref
+
+    assert {:ok, fetched_receipt} = LowerFacts.fetch_submission_receipt(invocation.submission_key)
+    assert fetched_receipt.status == :accepted
+    assert fetched_receipt.submission_key == first_receipt.submission_key
+    assert fetched_receipt.submission_receipt_ref == first_receipt.submission_receipt_ref
+    assert fetched_receipt.ledger_version == first_receipt.ledger_version
+  end
+
   test "returns the typed generic lower-facts surface without review aggregation" do
     invocation = brain_invocation_fixture()
 

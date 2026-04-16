@@ -23,6 +23,40 @@ defmodule Jido.Integration.V2.LowerFacts do
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.SubmissionAcceptance
 
+  @typedoc """
+  Stable lower-read operations exposed to higher-order substrate bridges.
+  """
+  @type operation ::
+          :fetch_submission_receipt
+          | :fetch_run
+          | :attempts
+          | :fetch_attempt
+          | :events
+          | :fetch_artifact
+          | :run_artifacts
+
+  @operations [
+    :fetch_submission_receipt,
+    :fetch_run,
+    :attempts,
+    :fetch_attempt,
+    :events,
+    :fetch_artifact,
+    :run_artifacts
+  ]
+
+  @doc """
+  Return the bounded lower-read operation inventory exported by this facade.
+  """
+  @spec operations() :: [operation()]
+  def operations, do: @operations
+
+  @doc """
+  Predicate for whether an operation belongs to the frozen lower-facts surface.
+  """
+  @spec operation_supported?(atom()) :: boolean()
+  def operation_supported?(operation) when is_atom(operation), do: operation in @operations
+
   @doc """
   Fetch a durable submission receipt by submission key.
   """
