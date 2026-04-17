@@ -64,6 +64,7 @@ or inference surfaces remain secret-decoupled from durable credential truth.
 Durable review and target truth:
 
 - `fetch_run/1`
+- `runs/1`
 - `fetch_attempt/1`
 - `events/1`
 - `record_artifact/1`
@@ -74,6 +75,11 @@ Durable review and target truth:
 - `targets/1`
 - `compatible_targets/1`
 - `compatible_targets_for/2`
+- `boundary_sessions/1`
+- `fetch_boundary_session/1`
+- `attach_grants/1`
+- `fetch_attach_grant/1`
+- `issue_attach_grant/2`
 - `review_packet/2`
 - `derived_state_attachment/2`
 
@@ -92,6 +98,11 @@ summary normalizes runtime classification back into the typed platform shape.
 For higher-order repos such as `mezzanine`, `derived_state_attachment/2`
 provides the stable subject, evidence, and governance refs that let them anchor
 their own durable derived state without copying Spine-owned truth.
+
+For northbound operator surfaces such as Switchyard, `runs/1`,
+`boundary_sessions/1`, and `attach_grants/1` are the stable durable read seam,
+while `issue_attach_grant/2` is the durable attachability seam. Live bytes and
+terminal/session mechanics still belong to `execution_plane`.
 
 For Brain-side orchestration, `accept_brain_invocation/2` exposes the durable
 Brain-to-Spine intake seam without requiring consumers to reach into
@@ -161,6 +172,7 @@ Current public-facade proofs:
 - `core/platform/test/jido/integration/v2_test.exs`
 - `core/platform/test/jido/integration/v2_inference_review_packet_test.exs`
 - `core/platform/test/jido/integration/v2_inference_invoke_test.exs`
+- `core/platform/test/jido/integration/v2_operator_surface_expansion_test.exs`
 - `core/platform/examples/inference_review_packet.exs`
 - `apps/inference_ops`
 - `connectors/github` live acceptance, which drives the current auth and

@@ -18,6 +18,11 @@ defmodule Jido.Integration.V2.StoreLocal.RunStore do
   end
 
   @impl true
+  def list_runs do
+    Storage.read(&State.list_runs/1)
+  end
+
+  @impl true
   def update_run(run_id, status, result) do
     Storage.mutate(&State.update_run(&1, run_id, status, result))
   end

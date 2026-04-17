@@ -254,6 +254,13 @@ defmodule Jido.Integration.V2.StoreLocal.State do
     end
   end
 
+  @spec list_runs(t()) :: [Run.t()]
+  def list_runs(%__MODULE__{} = state) do
+    state.runs
+    |> Map.values()
+    |> Enum.sort_by(&{&1.inserted_at, &1.run_id})
+  end
+
   @spec update_run(t(), String.t(), atom(), map() | nil) ::
           {:ok, t()} | {{:error, :not_found}, t()}
   def update_run(%__MODULE__{} = state, run_id, status, result) do

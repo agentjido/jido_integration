@@ -23,8 +23,8 @@ runtime behavior lives.
   resolution before runtime execution.
 - `core/platform` exposes the stable public facade `Jido.Integration.V2`,
   including raw authored catalog summaries and the projected common consumer
-  catalog export plus live inference invocation and review projection over
-  durable truth.
+  catalog export plus live inference invocation, durable operator reads, and
+  review projection over durable truth.
 - `core/auth` owns installs, credentials, connection truth, and leases.
 - `core/control_plane` owns runs, attempts, events, triggers, artifacts,
   target truth, the local `ReqLLMCallSpec`, live inference execution, and the
@@ -99,6 +99,11 @@ the broad runtime extraction is not yet complete.
 The public product surface here remains `Jido.Integration.V2` plus the current
 `core/contracts` seam. This repo may carry Execution Plane contracts, but it
 must not re-export raw `execution_plane/*` packages as the platform API.
+
+That means northbound operator products should use this repo for durable run,
+boundary-session, attach-grant, auth, target, retry, and review truth, while
+continuing to use `execution_plane` for hot-path attach, PTY, and transport
+mechanics.
 
 Durable Brain-to-Spine carriage also stays on that same ownership split:
 

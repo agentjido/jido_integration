@@ -126,6 +126,12 @@ defmodule Jido.Integration.V2.ControlPlane do
   @spec fetch_run(String.t()) :: {:ok, Run.t()} | :error
   def fetch_run(run_id), do: Stores.run_store().fetch_run(run_id)
 
+  @spec runs(map()) :: [Run.t()]
+  def runs(filters \\ %{}) when is_map(filters) do
+    Stores.run_store().list_runs()
+    |> filter_records(filters)
+  end
+
   @spec fetch_attempt(String.t()) :: {:ok, Attempt.t()} | :error
   def fetch_attempt(attempt_id), do: Stores.attempt_store().fetch_attempt(attempt_id)
 

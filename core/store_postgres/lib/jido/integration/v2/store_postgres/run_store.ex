@@ -38,6 +38,14 @@ defmodule Jido.Integration.V2.StorePostgres.RunStore do
   end
 
   @impl true
+  def list_runs do
+    RunRecord
+    |> order_by([run], asc: run.inserted_at, asc: run.run_id)
+    |> Repo.all()
+    |> Enum.map(&to_contract/1)
+  end
+
+  @impl true
   def update_run(run_id, status, result) do
     timestamp = Contracts.now()
 

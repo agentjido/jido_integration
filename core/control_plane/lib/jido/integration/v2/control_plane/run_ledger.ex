@@ -148,6 +148,15 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
     end)
   end
 
+  @impl Jido.Integration.V2.ControlPlane.RunStore
+  def list_runs do
+    Agent.get(__MODULE__, fn state ->
+      state.runs
+      |> Map.values()
+      |> Enum.sort_by(&{&1.inserted_at, &1.run_id})
+    end)
+  end
+
   def fetch_run!(run_id) do
     Agent.get(__MODULE__, fn state -> Map.fetch!(state.runs, run_id) end)
   end

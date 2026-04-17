@@ -1,12 +1,14 @@
 defmodule Jido.Integration.V2.Operator do
   @moduledoc """
-  Shared read-only operator surface over durable auth and control-plane truth.
+  Shared operator surface over durable auth and control-plane truth.
 
   This module packages durable discovery, compatibility, and review state
   without introducing a second store or cache.
   """
 
+  alias Jido.Integration.V2.AttachGrant
   alias Jido.Integration.V2.Auth
+  alias Jido.Integration.V2.BoundarySession
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
@@ -20,6 +22,18 @@ defmodule Jido.Integration.V2.Operator do
   alias Jido.Integration.V2.ReviewProjection
   alias Jido.Integration.V2.SubjectRef
   alias Jido.Integration.V2.TargetDescriptor
+
+  @normalized_atom_keys %{
+    "accepted" => :accepted,
+    "allocated" => :allocated,
+    "attached" => :attached,
+    "attaching" => :attaching,
+    "closed" => :closed,
+    "expired" => :expired,
+    "issued" => :issued,
+    "revoked" => :revoked,
+    "stale" => :stale
+  }
 
   @type connector_summary :: %{
           connector_id: String.t(),
@@ -103,16 +117,77 @@ defmodule Jido.Integration.V2.Operator do
           install: Jido.Integration.V2.Auth.Install.t() | nil
         }
 
+  @type boundary_session_projection :: BoundarySession.t()
+  @type attach_grant_projection :: AttachGrant.t()
+
   @spec catalog_entries() :: [connector_summary()]
   def catalog_entries do
     ControlPlane.connectors()
     |> Enum.map(&connector_summary/1)
   end
 
+  @spec runs(map()) :: [Jido.Integration.V2.Run.t()]
+  def runs(filters \\ %{}) when is_map(filters) do
+    ControlPlane.runs(%{})
+    |> Enum.sort_by(&record_sort_key(&1, :run_id))
+    |> filter_records(filters)
+  end
+
   @spec projected_catalog_entries() :: [projected_connector_summary()]
   def projected_catalog_entries do
     ControlPlane.connectors()
     |> Enum.map(&ProjectedCatalog.connector_entry/1)
+  end
+
+  @spec boundary_sessions(map()) :: [boundary_session_projection()]
+  def boundary_sessions(filters \\ %{}) when is_map(filters) do
+    ControlPlane.runs(%{})
+    |> Enum.flat_map(&boundary_sessions_for_run/1)
+    |> Enum.sort_by(&record_sort_key(&1, :boundary_session_id))
+    |> filter_records(filters)
+  end
+
+  @spec fetch_boundary_session(String.t()) :: {:ok, BoundarySession.t()} | :error
+  def fetch_boundary_session(boundary_session_id) when is_binary(boundary_session_id) do
+    case Enum.find(boundary_sessions(%{}), &(&1.boundary_session_id == boundary_session_id)) do
+      %BoundarySession{} = boundary_session -> {:ok, boundary_session}
+      nil -> :error
+    end
+  end
+
+  @spec attach_grants(map()) :: [attach_grant_projection()]
+  def attach_grants(filters \\ %{}) when is_map(filters) do
+    ControlPlane.runs(%{})
+    |> Enum.flat_map(&attach_grants_for_run/1)
+    |> Enum.sort_by(&record_sort_key(&1, :attach_grant_id))
+    |> filter_records(filters)
+  end
+
+  @spec fetch_attach_grant(String.t()) :: {:ok, AttachGrant.t()} | :error
+  def fetch_attach_grant(attach_grant_id) when is_binary(attach_grant_id) do
+    case Enum.find(attach_grants(%{}), &(&1.attach_grant_id == attach_grant_id)) do
+      %AttachGrant{} = attach_grant -> {:ok, attach_grant}
+      nil -> :error
+    end
+  end
+
+  @spec issue_attach_grant(String.t(), map()) ::
+          {:ok, AttachGrant.t()}
+          | {:error, :unknown_run | :unknown_attempt | :boundary_session_unavailable}
+  def issue_attach_grant(run_id, opts \\ %{}) when is_binary(run_id) and is_map(opts) do
+    case attachment_context(run_id, opts) do
+      {:ok, %{run: run, attempt: attempt}} ->
+        case attach_grant_projection(run, attempt) do
+          %AttachGrant{} = attach_grant -> {:ok, attach_grant}
+          nil -> {:error, :boundary_session_unavailable}
+        end
+
+      :error ->
+        {:error, :unknown_run}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @spec compatible_targets_for(String.t(), map()) ::
@@ -336,6 +411,211 @@ defmodule Jido.Integration.V2.Operator do
       :error -> :error
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp boundary_sessions_for_run(run) do
+    run.run_id
+    |> ControlPlane.attempts()
+    |> Enum.map(&boundary_session_projection(run, &1))
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp attach_grants_for_run(run) do
+    run.run_id
+    |> ControlPlane.attempts()
+    |> Enum.map(&attach_grant_projection(run, &1))
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp boundary_session_projection(_run, nil), do: nil
+
+  defp boundary_session_projection(run, attempt) do
+    case fetch_boundary_metadata(attempt) do
+      %{descriptor: descriptor, route: route, attach_grant: attach_grant} ->
+        build_boundary_session(run, attempt, descriptor, route, attach_grant)
+
+      nil ->
+        nil
+    end
+  end
+
+  defp attach_grant_projection(_run, nil), do: nil
+
+  defp attach_grant_projection(run, attempt) do
+    with %BoundarySession{} = boundary_session <- boundary_session_projection(run, attempt),
+         %{attach_grant: attach_grant, descriptor: descriptor, route: route} <-
+           fetch_boundary_metadata(attempt) do
+      build_attach_grant(boundary_session, run, attempt, descriptor, route, attach_grant)
+    else
+      _other -> nil
+    end
+  end
+
+  defp build_boundary_session(run, attempt, descriptor, route, attach_grant) do
+    boundary_session_id =
+      map_get(descriptor, :boundary_session_id) ||
+        map_get(descriptor, :session_id) ||
+        attempt.runtime_ref_id
+
+    if is_binary(boundary_session_id) and boundary_session_id != "" do
+      BoundarySession.new!(%{
+        boundary_session_id: boundary_session_id,
+        session_id: map_get(descriptor, :session_id, boundary_session_id),
+        tenant_id: tenant_id(run),
+        target_id: attempt.target_id || run.target_id,
+        route_id: map_get(route, :route_id),
+        attach_grant_id: attach_grant_id(boundary_session_id, attempt, attach_grant),
+        status: boundary_session_status(descriptor, attach_grant),
+        inserted_at: attempt.inserted_at,
+        updated_at: attempt.updated_at,
+        metadata: %{
+          "run_id" => run.run_id,
+          "attempt_id" => attempt.attempt_id,
+          "runtime_ref_id" => attempt.runtime_ref_id,
+          "boundary_descriptor" => descriptor,
+          "route" => route,
+          "attach_grant" => attach_grant
+        }
+      })
+    end
+  end
+
+  defp build_attach_grant(boundary_session, run, attempt, descriptor, route, attach_grant) do
+    AttachGrant.new!(%{
+      attach_grant_id:
+        map_get(attach_grant, :attach_grant_id) ||
+          attach_grant_id(boundary_session.boundary_session_id, attempt, attach_grant),
+      boundary_session_id: boundary_session.boundary_session_id,
+      route_id: map_get(route, :route_id),
+      subject_id: map_get(attach_grant, :subject_id, run.run_id),
+      status: attach_grant_status(attach_grant),
+      lease_expires_at: map_get(attach_grant, :lease_expires_at),
+      inserted_at: attempt.inserted_at,
+      updated_at: attempt.updated_at,
+      metadata: %{
+        "run_id" => run.run_id,
+        "attempt_id" => attempt.attempt_id,
+        "runtime_ref_id" => attempt.runtime_ref_id,
+        "attach_mode" => map_get(attach_grant, :attach_mode),
+        "boundary_descriptor" => descriptor,
+        "route" => route
+      }
+    })
+  end
+
+  defp fetch_boundary_metadata(attempt) do
+    boundary =
+      attempt.output
+      |> map_get(:metadata, %{})
+      |> map_get(:boundary)
+
+    case boundary do
+      %{} = boundary_map ->
+        %{
+          descriptor: normalize_metadata_map(map_get(boundary_map, :descriptor, %{})),
+          route: normalize_metadata_map(map_get(boundary_map, :route, %{})),
+          attach_grant: normalize_metadata_map(map_get(boundary_map, :attach_grant, %{}))
+        }
+
+      _other ->
+        nil
+    end
+  end
+
+  defp attach_grant_id(boundary_session_id, attempt, attach_grant) do
+    map_get(attach_grant, :attach_grant_id) ||
+      "attach_grant:#{boundary_session_id}:#{attempt.attempt_id}"
+  end
+
+  defp tenant_id(run) do
+    run.credential_ref.metadata
+    |> map_get(:tenant_id)
+  end
+
+  defp boundary_session_status(descriptor, attach_grant) do
+    descriptor
+    |> map_get(:session_status, map_get(descriptor, :status))
+    |> normalize_boundary_session_status(attach_grant)
+  end
+
+  defp normalize_boundary_session_status(nil, attach_grant) do
+    case attach_grant_status(attach_grant) do
+      :accepted -> :attached
+      :revoked -> :closed
+      :expired -> :stale
+      _other -> :allocated
+    end
+  end
+
+  defp normalize_boundary_session_status(value, _attach_grant) do
+    case normalize_atom_key(value) do
+      :allocated -> :allocated
+      :attaching -> :attaching
+      :attached -> :attached
+      :stale -> :stale
+      :closed -> :closed
+      _other -> :allocated
+    end
+  end
+
+  defp attach_grant_status(attach_grant) do
+    case normalize_atom_key(map_get(attach_grant, :status)) do
+      :issued -> :issued
+      :accepted -> :accepted
+      :revoked -> :revoked
+      :expired -> :expired
+      _other -> :issued
+    end
+  end
+
+  defp filter_records(records, filters) when is_map(filters) do
+    Enum.filter(records, fn record ->
+      Enum.all?(filters, fn {key, value} ->
+        actual =
+          map_get(
+            record,
+            key,
+            map_get(
+              map_get(record, :metadata, %{}),
+              key,
+              map_get(map_get(record, :credential_ref, %{}), :metadata, %{}) |> map_get(key)
+            )
+          )
+
+        comparable_value(actual) == comparable_value(value)
+      end)
+    end)
+  end
+
+  defp record_sort_key(record, id_key) do
+    {sort_timestamp(map_get(record, :inserted_at)), comparable_value(map_get(record, id_key, ""))}
+  end
+
+  defp sort_timestamp(%DateTime{} = timestamp), do: DateTime.to_unix(timestamp, :microsecond)
+  defp sort_timestamp(_other), do: 0
+
+  defp comparable_value(value) when is_atom(value), do: Atom.to_string(value)
+  defp comparable_value(value), do: value
+
+  defp normalize_metadata_map(%{} = value), do: value
+  defp normalize_metadata_map(_other), do: %{}
+
+  defp map_get(map, key, default \\ nil)
+  defp map_get(nil, _key, default), do: default
+
+  defp map_get(map, key, default) when is_map(map) do
+    Map.get(map, key, Map.get(map, to_string(key), default))
+  end
+
+  defp normalize_atom_key(value) when is_atom(value), do: value
+
+  defp normalize_atom_key(value) when is_binary(value) do
+    normalized_key =
+      value
+      |> String.downcase()
+      |> String.replace("-", "_")
+
+    Map.get(@normalized_atom_keys, normalized_key, normalized_key)
   end
 
   defp build_review_packet_metadata(

@@ -10,6 +10,12 @@ the Execution Plane workspace, and the facade/session layers.
 - `jido_integration` remains the Spine and owns durable meaning
 - `execution_plane` owns lower runtime mechanics and raw execution facts
 
+Northbound operator products such as Switchyard must sit above both:
+
+- `jido_integration` for durable runs, boundary sessions, attach grants,
+  review, retry, and auth or target truth
+- `execution_plane` for live terminal, PTY, attach, and transport mechanics
+
 That means this repo may carry lower-boundary contracts, but it must not
 become a thin re-export of `execution_plane/*` packages.
 
@@ -56,6 +62,10 @@ The stable northbound surface remains:
 
 - `Jido.Integration.V2`
 - the current `core/contracts` public IR for platform semantics
+
+That northbound surface now explicitly includes durable operator reads and
+attachability helpers such as `runs/1`, `boundary_sessions/1`,
+`attach_grants/1`, and `issue_attach_grant/2`.
 
 This repo may map or carry lower-boundary packet shapes, but it must not turn
 raw `execution_plane` package names into the public platform API.

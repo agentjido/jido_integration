@@ -20,9 +20,9 @@ defmodule Jido.Integration.V2 do
   - direct invocation through `invoke/3` and retry of accepted or failed runs
     through `execute_run/3`
   - durable Brain-to-Spine intake through `accept_brain_invocation/2`
-  - read-only operator review helpers through `targets/1`,
-    `compatible_targets_for/2`, `review_packet/2`, and
-    `derived_state_attachment/2`
+  - read-only operator review helpers through `runs/1`, `targets/1`,
+    `boundary_sessions/1`, `attach_grants/1`, `compatible_targets_for/2`,
+    `review_packet/2`, and `derived_state_attachment/2`
 
   Public invocation binds auth through `connection_id` when a capability
   requires a durable connection. Credential resolution and lease issuance stay
@@ -39,10 +39,12 @@ defmodule Jido.Integration.V2 do
   """
 
   alias Jido.Integration.V2.ArtifactRef
+  alias Jido.Integration.V2.AttachGrant
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
+  alias Jido.Integration.V2.BoundarySession
   alias Jido.Integration.V2.BrainIngress
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.CredentialLease
@@ -249,6 +251,12 @@ defmodule Jido.Integration.V2 do
   defdelegate fetch_run(run_id), to: ControlPlane
 
   @doc """
+  List durable runs through the shared operator surface.
+  """
+  @spec runs(map()) :: [Run.t()]
+  defdelegate runs(filters \\ %{}), to: Operator
+
+  @doc """
   Invoke one inference request through the public control-plane facade.
   """
   @spec invoke_inference(InferenceRequest.t() | map() | keyword(), keyword()) ::
@@ -314,6 +322,38 @@ defmodule Jido.Integration.V2 do
   """
   @spec catalog_entries() :: [map()]
   defdelegate catalog_entries(), to: Operator
+
+  @doc """
+  List derived durable boundary-session projections for operator surfaces.
+  """
+  @spec boundary_sessions(map()) :: [BoundarySession.t()]
+  defdelegate boundary_sessions(filters \\ %{}), to: Operator
+
+  @doc """
+  Fetch one derived durable boundary-session projection by id.
+  """
+  @spec fetch_boundary_session(String.t()) :: {:ok, BoundarySession.t()} | :error
+  defdelegate fetch_boundary_session(boundary_session_id), to: Operator
+
+  @doc """
+  List derived attach grants projected from durable boundary truth.
+  """
+  @spec attach_grants(map()) :: [AttachGrant.t()]
+  defdelegate attach_grants(filters \\ %{}), to: Operator
+
+  @doc """
+  Fetch one derived attach grant by id.
+  """
+  @spec fetch_attach_grant(String.t()) :: {:ok, AttachGrant.t()} | :error
+  defdelegate fetch_attach_grant(attach_grant_id), to: Operator
+
+  @doc """
+  Issue a Switchyard-facing attach grant projected from durable boundary truth.
+  """
+  @spec issue_attach_grant(String.t(), map()) ::
+          {:ok, AttachGrant.t()}
+          | {:error, :unknown_run | :unknown_attempt | :boundary_session_unavailable}
+  defdelegate issue_attach_grant(run_id, opts \\ %{}), to: Operator
 
   @doc """
   Export the common projected consumer surface with generated identities and
