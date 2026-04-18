@@ -932,7 +932,6 @@ defmodule Jido.Integration.V2.ControlPlane do
           artifact_type: artifact_ref.artifact_type,
           retention_class: artifact_ref.retention_class
         },
-        payload_ref: artifact_ref.payload_ref,
         runtime_ref_id: runtime_ref_id
       }
     end)

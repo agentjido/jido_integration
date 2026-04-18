@@ -328,8 +328,20 @@ defmodule Jido.Integration.V2.StorePostgres.ClaimCheckStore do
     Application.get_env(
       :jido_integration_v2_store_postgres,
       :claim_check_root,
-      Path.join(System.tmp_dir!(), "jido_integration_v2_claim_check")
+      default_root_path()
     )
+  end
+
+  defp default_root_path do
+    Path.join(
+      System.tmp_dir!(),
+      Path.join("jido_integration_v2_claim_check", current_database_name())
+    )
+  end
+
+  defp current_database_name do
+    Application.get_env(:jido_integration_v2_store_postgres, Repo, [])[:database] ||
+      System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_dev")
   end
 
   defp maybe_stringify(nil), do: nil

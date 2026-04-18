@@ -557,7 +557,10 @@ defmodule Jido.Integration.V2.StoreLocal.State do
                 last_seen_at: now,
                 expires_at: expires_at
               })
-              |> put_in([Access.key(:submission_acceptances), invocation.submission_key], acceptance)
+              |> put_in(
+                [Access.key(:submission_acceptances), invocation.submission_key],
+                acceptance
+              )
 
             {{:ok, acceptance}, next_state}
 
@@ -693,7 +696,9 @@ defmodule Jido.Integration.V2.StoreLocal.State do
       end)
 
     expired_submissions =
-      Enum.reduce(expired, state.expired_submissions, fn {{tenant_id, submission_dedupe_key}, entry}, acc ->
+      Enum.reduce(expired, state.expired_submissions, fn {{tenant_id, submission_dedupe_key},
+                                                          entry},
+                                                         acc ->
         Map.put(acc, {tenant_id, submission_dedupe_key}, %{
           submission_key: entry.submission_key,
           status: if(entry.acceptance, do: :accepted, else: :rejected),

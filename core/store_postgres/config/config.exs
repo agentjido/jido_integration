@@ -25,7 +25,7 @@ config :jido_integration_v2_store_postgres,
   claim_check_root:
     System.get_env(
       "JIDO_INTEGRATION_V2_CLAIM_CHECK_ROOT",
-      Path.join(System.tmp_dir!(), "jido_integration_v2_claim_check")
+      Path.join(System.tmp_dir!(), Path.join("jido_integration_v2_claim_check", db_name))
     )
 
 config :jido_integration_v2_store_postgres, Jido.Integration.V2.StorePostgres.Repo,

@@ -208,7 +208,8 @@ defmodule Jido.Integration.V2.BrainIngress do
   end
 
   @spec submission_dedupe_key!(BrainInvocation.t()) :: String.t()
-  def submission_dedupe_key!(%BrainInvocation{} = invocation), do: SubmissionDedupe.key!(invocation)
+  def submission_dedupe_key!(%BrainInvocation{} = invocation),
+    do: SubmissionDedupe.key!(invocation)
 
   defp configured_submission_ledger do
     Application.get_env(:jido_integration_v2_brain_ingress, :submission_ledger)

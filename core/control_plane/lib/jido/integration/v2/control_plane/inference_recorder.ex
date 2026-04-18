@@ -431,8 +431,8 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
     Contracts.get(payload, :contract_version) == Contracts.inference_contract_version() or
       (ClaimCheck.claim_checked?(payload) and
          payload
-         |> Contracts.get(ClaimCheck.metadata_key(), %{})
-         |> Contracts.get(:preview, %{})
+         |> Map.get(ClaimCheck.metadata_key(), %{})
+         |> Map.get("preview", %{})
          |> Contracts.get(:contract_version) == Contracts.inference_contract_version())
   end
 

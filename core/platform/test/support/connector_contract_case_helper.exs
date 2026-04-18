@@ -88,6 +88,11 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
     assert Enum.any?(events, &(&1.type == spec.event_type))
     assert Enum.any?(events, &(&1.type == "artifact.recorded"))
 
+    assert Enum.all?(
+             Enum.filter(events, &(&1.type == "artifact.recorded")),
+             &is_nil(&1.payload_ref)
+           )
+
     assert [artifact] = V2.run_artifacts(result.run.run_id)
     assert artifact.attempt_id == result.attempt.attempt_id
     assert artifact.artifact_type == spec.artifact_type

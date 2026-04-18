@@ -232,14 +232,27 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
     Application.put_env(
       :jido_integration_v2_store_postgres,
       :claim_check_root,
-      claim_check_root()
+      claim_check_root(opts)
     )
 
     :ok
   end
 
-  defp claim_check_root do
-    Path.join(System.tmp_dir!(), "jido_integration_v2_claim_check_test")
+  defp claim_check_root(opts \\ []) do
+    System.get_env("JIDO_INTEGRATION_V2_CLAIM_CHECK_ROOT") || default_claim_check_root(opts)
+  end
+
+  @spec default_claim_check_root(keyword()) :: String.t()
+  def default_claim_check_root(opts \\ []) do
+    Path.join(
+      System.tmp_dir!(),
+      Path.join("jido_integration_v2_claim_check", database_name(opts))
+    )
+  end
+
+  defp database_name(opts) do
+    repo_config(opts)[:database] ||
+      System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_test")
   end
 
   defp with_repo_ownership(opts, fun) do

@@ -6,8 +6,8 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
   alias Jido.Integration.V2.ArtifactRef
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Contracts
-  alias Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry
   alias Jido.Integration.V2.ControlPlane.ClaimCheckStore
+  alias Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.TargetDescriptor
@@ -485,19 +485,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
     Agent.get_and_update(__MODULE__, fn state ->
       {next_blobs, deleted_count} =
         Enum.reduce(state.claim_check_blobs, {%{}, 0}, fn {blob_key, blob}, {acc, count} ->
-          if blob.status == :staged and blob.staged_at <= cutoff and
-               live_reference_count(state, blob_key) == 0 do
-            ClaimCheckTelemetry.orphaned_staged_payload(
-              blob.payload_ref,
-              blob.metadata,
-              source_component: :run_ledger,
-              store_backend: :run_ledger
-            )
-
-            {acc, count + 1}
-          else
-            {Map.put(acc, blob_key, blob), count}
-          end
+          sweep_staged_payload_blob(state, blob_key, blob, cutoff, acc, count)
         end)
 
       result = {:ok, %{deleted_count: deleted_count}}
@@ -516,31 +504,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
                                                              {acc, deleted, skipped} ->
           live_refs = live_reference_count(state, blob_key)
 
-          cond do
-            live_refs > 0 ->
-              ClaimCheckTelemetry.blob_gc_skipped_live_reference(
-                blob.payload_ref,
-                blob.metadata,
-                source_component: :run_ledger,
-                store_backend: :run_ledger,
-                live_reference_count: live_refs
-              )
-
-              {Map.put(acc, blob_key, blob), deleted, skipped + 1}
-
-            blob.staged_at <= cutoff ->
-              ClaimCheckTelemetry.blob_gc_deleted(
-                blob.payload_ref,
-                blob.metadata,
-                source_component: :run_ledger,
-                store_backend: :run_ledger
-              )
-
-              {acc, deleted + 1, skipped}
-
-            true ->
-              {Map.put(acc, blob_key, blob), deleted, skipped}
-          end
+          handle_blob_gc(blob_key, blob, live_refs, cutoff, acc, deleted, skipped)
         end)
 
       result =
@@ -559,6 +523,58 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
 
   defp attempt_number(%Attempt{attempt: attempt}), do: attempt
   defp attempt_number(nil), do: nil
+
+  defp orphaned_staged_payload?(state, blob_key, blob, cutoff) do
+    blob.status == :staged and older_than_cutoff?(blob.staged_at, cutoff) and
+      live_reference_count(state, blob_key) == 0
+  end
+
+  defp sweep_staged_payload_blob(state, blob_key, blob, cutoff, acc, count) do
+    if orphaned_staged_payload?(state, blob_key, blob, cutoff) do
+      ClaimCheckTelemetry.orphaned_staged_payload(
+        blob.payload_ref,
+        blob.metadata,
+        source_component: :run_ledger,
+        store_backend: :run_ledger
+      )
+
+      {acc, count + 1}
+    else
+      {Map.put(acc, blob_key, blob), count}
+    end
+  end
+
+  defp handle_blob_gc(blob_key, blob, live_refs, cutoff, acc, deleted, skipped) do
+    cond do
+      live_refs > 0 ->
+        ClaimCheckTelemetry.blob_gc_skipped_live_reference(
+          blob.payload_ref,
+          blob.metadata,
+          source_component: :run_ledger,
+          store_backend: :run_ledger,
+          live_reference_count: live_refs
+        )
+
+        {Map.put(acc, blob_key, blob), deleted, skipped + 1}
+
+      older_than_cutoff?(blob.staged_at, cutoff) ->
+        ClaimCheckTelemetry.blob_gc_deleted(
+          blob.payload_ref,
+          blob.metadata,
+          source_component: :run_ledger,
+          store_backend: :run_ledger
+        )
+
+        {acc, deleted + 1, skipped}
+
+      true ->
+        {Map.put(acc, blob_key, blob), deleted, skipped}
+    end
+  end
+
+  defp older_than_cutoff?(%DateTime{} = value, %DateTime{} = cutoff) do
+    DateTime.compare(value, cutoff) != :gt
+  end
 
   defp target_id(%Attempt{target_id: target_id}), do: target_id
   defp target_id(nil), do: nil

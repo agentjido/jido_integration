@@ -311,7 +311,8 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
                redaction_class: "test_payload"
              )
 
-    assert {:ok, %{deleted_count: 1}} = Stores.claim_check_store().sweep_staged_payloads(older_than_s: 0)
+    assert {:ok, %{deleted_count: 1}} =
+             Stores.claim_check_store().sweep_staged_payloads(older_than_s: 0)
 
     assert_claim_check_events(:orphaned_staged_payload, 1, fn measurements, metadata ->
       assert measurements.count == 1

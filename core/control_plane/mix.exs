@@ -42,6 +42,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       DependencyResolver.agent_session_manager(env: :dev),
       DependencyResolver.req_llm(),
       DependencyResolver.jido_integration_v2_runtime_router(only: :test),
+      {:jason, "~> 1.4"},
       {:telemetry, "~> 1.0"},
       {:plug, "~> 1.19", only: [:dev, :test]},
       {:zoi, "~> 0.17"},

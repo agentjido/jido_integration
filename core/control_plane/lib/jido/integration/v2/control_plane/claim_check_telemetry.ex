@@ -114,7 +114,8 @@ defmodule Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry do
       source_component: Keyword.get(opts, :source_component),
       store_backend: Keyword.get(opts, :store_backend),
       reason: Keyword.get(opts, :reason),
-      live_reference_count: normalize_non_negative_integer(Keyword.get(opts, :live_reference_count))
+      live_reference_count:
+        normalize_non_negative_integer(Keyword.get(opts, :live_reference_count))
     }
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)
     |> Map.new()
@@ -137,7 +138,9 @@ defmodule Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry do
 
   defp normalize_payload_ref(_payload_ref), do: %{}
 
-  defp fetch_value(map, key) when is_map(map), do: Map.get(map, key, Map.get(map, Atom.to_string(key)))
+  defp fetch_value(map, key) when is_map(map),
+    do: Map.get(map, key, Map.get(map, Atom.to_string(key)))
+
   defp fetch_value(_other, _key), do: nil
 
   defp maybe_put(map, _key, nil), do: map

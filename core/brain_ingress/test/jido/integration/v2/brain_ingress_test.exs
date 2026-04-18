@@ -57,13 +57,7 @@ defmodule Jido.Integration.V2.BrainIngressTest do
       agent = Keyword.fetch!(opts, :agent)
 
       Agent.get(agent, fn state ->
-        case Enum.find_value(state, fn
-               {{_tenant_id, _dedupe_key}, %SubmissionAcceptance{submission_key: ^submission_key} = acceptance} ->
-                 {:ok, acceptance}
-
-               _other ->
-                 nil
-             end) do
+        case find_acceptance(state, submission_key) do
           {:ok, acceptance} -> {:ok, acceptance}
           :error -> :error
           nil -> :error
@@ -79,6 +73,17 @@ defmodule Jido.Integration.V2.BrainIngressTest do
     end
 
     def expire_submissions(_opts), do: 0
+
+    defp find_acceptance(state, submission_key) do
+      Enum.find_value(state, fn
+        {{_tenant_id, _dedupe_key},
+         %SubmissionAcceptance{submission_key: ^submission_key} = acceptance} ->
+          {:ok, acceptance}
+
+        _other ->
+          nil
+      end)
+    end
   end
 
   defmodule Resolver do

@@ -41,6 +41,8 @@ defmodule Jido.Integration.V2 do
   alias Jido.Integration.V2.ArtifactRef
   alias Jido.Integration.V2.AttachGrant
   alias Jido.Integration.V2.Attempt
+  alias Jido.Integration.V2.AuditExportEnvelope
+  alias Jido.Integration.V2.AuditSubscriber
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
@@ -274,6 +276,24 @@ defmodule Jido.Integration.V2 do
   """
   @spec events(String.t()) :: [Event.t()]
   defdelegate events(run_id), to: ControlPlane
+
+  @doc """
+  Return the frozen observer export kinds supported by the audit-subscriber seam.
+  """
+  @spec audit_export_kinds() :: [AuditExportEnvelope.export_kind(), ...]
+  def audit_export_kinds, do: AuditSubscriber.export_kinds()
+
+  @doc """
+  Replay typed observer exports for one durable run lineage.
+
+  Replay is scoped by `run_id` and filtered only by the frozen Stage 14 export
+  kinds. The surface does not expose arbitrary lower-id lookups or live PubSub
+  taps.
+  """
+  @spec replay_audit_exports(String.t(), keyword()) ::
+          {:ok, [AuditExportEnvelope.t()]}
+          | {:error, :unknown_run | :invalid_event_types}
+  def replay_audit_exports(run_id, opts \\ []), do: AuditSubscriber.replay(run_id, opts)
 
   @doc """
   Record an artifact reference emitted by the control plane or runtime.

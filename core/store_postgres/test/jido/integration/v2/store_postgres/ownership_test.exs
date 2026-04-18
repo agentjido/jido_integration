@@ -55,6 +55,16 @@ defmodule Jido.Integration.V2.StorePostgres.OwnershipTest do
     assert %{rows: [[1]]} = Repo.query!("SELECT 1")
   end
 
+  test "default claim-check root follows the effective test database name" do
+    isolated_db_name = "jido_integration_v2_store_postgres_claim_check_isolation"
+
+    assert TestSupport.default_claim_check_root(database: isolated_db_name) ==
+             Path.join(
+               System.tmp_dir!(),
+               Path.join("jido_integration_v2_claim_check", isolated_db_name)
+             )
+  end
+
   defp safe_app_dir(otp_app, repo_priv) do
     {:ok, Application.app_dir(otp_app, repo_priv) |> Path.expand()}
   rescue
