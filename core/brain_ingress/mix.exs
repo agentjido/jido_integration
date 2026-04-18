@@ -18,7 +18,7 @@ defmodule Jido.Integration.V2.BrainIngress.MixProject do
       dialyzer: dialyzer(),
       docs: docs(),
       name: "Jido Integration V2 Brain Ingress",
-      description: "Durable Brain-to-Spine submission intake and scope resolution"
+      description: "Durable brain-to-lower-gateway submission intake and scope resolution"
     ]
   end
 
@@ -30,7 +30,7 @@ defmodule Jido.Integration.V2.BrainIngress.MixProject do
 
   defp deps do
     [
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

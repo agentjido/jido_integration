@@ -1,13 +1,16 @@
 # Execution Plane Alignment
 
 This guide freezes the lower-boundary packet vocabulary and the Wave 5 durable
-session-carriage vocabulary between the Brain-side packet snapshot, the Spine,
-the Execution Plane workspace, and the facade/session layers.
+session-carriage vocabulary between the Brain-side packet snapshot, the lower
+acceptance gateway, the Execution Plane workspace, and the facade/session
+layers.
 
 ## Ownership
 
 - the Brain-side authority layer authors `AuthorityDecision.v1`
-- `jido_integration` remains the Spine and owns durable meaning
+- `mezzanine` owns substrate truth, orchestration state, and recovery posture
+- `jido_integration` remains the lower acceptance gateway and lower-boundary
+  contract carrier
 - `execution_plane` owns lower runtime mechanics and raw execution facts
 
 Northbound operator products such as Switchyard must sit above both:
@@ -40,16 +43,18 @@ The same names must appear in docs and examples across:
 - `jido_runtime_control`
 - `agent_session_manager`
 
-## What The Spine Owns
+## What The Lower Acceptance Gateway Owns
 
 In this repo specifically:
 
-- `BoundarySessionDescriptor.v1` is durable Spine truth
-- `ExecutionRoute.v1` is durable route choice, replay input, and reconciliation state
-- durable service descriptors, lease lineage, and attachability remain Spine or
-  family-kit truth above lower process state
+- `BoundarySessionDescriptor.v1` is the durable lower-gateway session
+  descriptor record
+- `ExecutionRoute.v1` is the durable lower-gateway route, replay-input, and
+  reconciliation-input record
+- durable service descriptors, lease lineage, and attachability remain
+  lower-gateway or family-kit records above lower process state
 - attach grants, approval lineage, callback truth, and credential-handle
-  carriage remain Spine concerns
+  carriage remain lower-gateway concerns
 - `ExecutionEvent.v1` and `ExecutionOutcome.v1` are consumed as raw lower
   facts, not as durable business meaning on their own
 - boundary-backed metadata now keeps those Wave 5 semantics explicit under:

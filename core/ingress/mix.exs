@@ -30,7 +30,7 @@ defmodule Jido.Integration.V2.Ingress.MixProject do
 
   defp deps do
     [
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_control_plane(),
       {:jido_signal, "~> 2.1"},
       {:zoi, "~> 0.17"},

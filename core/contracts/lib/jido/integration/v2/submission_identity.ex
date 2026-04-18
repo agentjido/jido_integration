@@ -1,6 +1,6 @@
 defmodule Jido.Integration.V2.SubmissionIdentity do
   @moduledoc """
-  Spine-owned stable identity for a durable Brain submission.
+  lower-gateway-owned stable identity for a durable Brain submission.
   """
 
   alias Jido.Integration.V2.CanonicalJson

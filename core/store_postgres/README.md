@@ -83,7 +83,7 @@ If you validate against a socket-mounted local Postgres instead of TCP, set
 `JIDO_INTEGRATION_V2_DB_SOCKET_DIR`.
 
 The same package now backs the canonical shared submission ledger for durable
-Brain-to-Spine intake. Hosts that adopt `core/brain_ingress` in shared
+brain-to-lower-gateway intake. Hosts that adopt `core/brain_ingress` in shared
 environments should point that package at the Postgres-backed ledger adapter.
 
 ## Related Guides

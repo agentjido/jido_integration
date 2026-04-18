@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
     :attempt_store,
     :event_store,
     :artifact_store,
+    :claim_check_store,
     :target_store,
     :ingress_store
   ]
@@ -25,7 +26,7 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
     :external_secret_resolver
   ]
   @brain_ingress_keys [:submission_ledger]
-  @store_postgres_keys [:ecto_repos, Repo]
+  @store_postgres_keys [:ecto_repos, Repo, :claim_check_root]
 
   using do
     quote do

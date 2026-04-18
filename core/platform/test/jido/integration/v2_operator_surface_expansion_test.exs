@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2OperatorSurfaceExpansionTest do
   alias Jido.Integration.V2
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.ControlPlane
+  alias Jido.Integration.V2.ControlPlane.ClaimCheck
   alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Run
@@ -61,6 +62,24 @@ defmodule Jido.Integration.V2OperatorSurfaceExpansionTest do
     _attempt = put_attempt_without_boundary!(run)
 
     assert {:error, :boundary_session_unavailable} = V2.issue_attach_grant(run.run_id, %{})
+  end
+
+  test "boundary sessions and attach grants resolve claim-checked attempt output" do
+    run = put_run!("run-claim-checked-boundary", :completed, "tenant-1")
+    attempt = put_claim_checked_attempt!(run, "boundary-claim-checked-1")
+
+    assert [boundary_session] = V2.boundary_sessions(%{})
+    assert boundary_session.boundary_session_id == "boundary-claim-checked-1"
+    assert boundary_session.route_id == "route-1"
+
+    assert boundary_session.attach_grant_id ==
+             "attach_grant:boundary-claim-checked-1:#{attempt.attempt_id}"
+
+    assert {:ok, issued_attach_grant} =
+             V2.issue_attach_grant(run.run_id, %{attempt_id: attempt.attempt_id})
+
+    assert issued_attach_grant.boundary_session_id == "boundary-claim-checked-1"
+    assert issued_attach_grant.route_id == "route-1"
   end
 
   defp put_run!(run_id, status, tenant_id) do
@@ -130,5 +149,52 @@ defmodule Jido.Integration.V2OperatorSurfaceExpansionTest do
 
     :ok = Stores.attempt_store().put_attempt(attempt)
     attempt
+  end
+
+  defp put_claim_checked_attempt!(run, boundary_session_id) do
+    large_payload =
+      %{
+        "metadata" => %{
+          "boundary" => %{
+            "descriptor" => %{
+              "boundary_session_id" => boundary_session_id,
+              "session_status" => "attached"
+            },
+            "route" => %{
+              "route_id" => "route-1"
+            },
+            "attach_grant" => %{
+              "attach_mode" => "read_write"
+            }
+          }
+        },
+        "transcript" => large_text()
+      }
+
+    assert {:ok, staged_output} =
+             ClaimCheck.prepare_json(large_payload,
+               payload_kind: :boundary_output,
+               trace_id: "trace-boundary-claim-check-1",
+               redaction_class: "boundary_output"
+             )
+
+    attempt =
+      Attempt.new!(%{
+        run_id: run.run_id,
+        attempt: 1,
+        runtime_class: :session,
+        status: :completed,
+        target_id: "target-1",
+        runtime_ref_id: "runtime-ref-1",
+        output: staged_output.payload,
+        output_payload_ref: staged_output.payload_ref
+      })
+
+    :ok = Stores.attempt_store().put_attempt(attempt)
+    attempt
+  end
+
+  defp large_text do
+    String.duplicate("boundary-claim-check-transcript-", 3_000)
   end
 end

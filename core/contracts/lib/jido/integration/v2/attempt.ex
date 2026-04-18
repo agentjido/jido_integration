@@ -38,6 +38,10 @@ defmodule Jido.Integration.V2.Attempt do
                 |> Zoi.nullish()
                 |> Zoi.optional(),
               output: Contracts.any_map_schema() |> Zoi.nullish() |> Zoi.optional(),
+              output_payload_ref:
+                Contracts.payload_ref_schema("attempt.output_payload_ref")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
               inserted_at:
                 Contracts.datetime_schema("attempt.inserted_at")
                 |> Zoi.nullish()

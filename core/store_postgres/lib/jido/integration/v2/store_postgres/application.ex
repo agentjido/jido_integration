@@ -6,7 +6,8 @@ defmodule Jido.Integration.V2.StorePostgres.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      Jido.Integration.V2.StorePostgres.Repo
+      Jido.Integration.V2.StorePostgres.Repo,
+      Jido.Integration.V2.StorePostgres.SubmissionRetentionWorker
     ]
 
     Supervisor.start_link(

@@ -108,7 +108,7 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
              "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)"
 
     assert mix_content =~ "alias Jido.Integration.Build.DependencyResolver"
-    assert mix_content =~ "DependencyResolver.jido_integration_v2_contracts(override: true)"
+    assert mix_content =~ "DependencyResolver.jido_integration_contracts(override: true)"
 
     assert mix_content =~
              "DependencyResolver.jido_integration_v2_consumer_surfaces(override: true)"

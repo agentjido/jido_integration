@@ -34,6 +34,11 @@ defmodule Jido.Integration.V2.StoreLocal.SubmissionLedgerContractTest do
     assert {:ok, duplicate} = SubmissionLedger.accept_submission(invocation, [])
     assert duplicate.status == :duplicate
     assert duplicate.submission_receipt_ref == acceptance.submission_receipt_ref
+
+    assert {:accepted, looked_up} =
+             SubmissionLedger.lookup_submission("dedupe-1", "tenant-1", [])
+
+    assert looked_up.submission_key == invocation.submission_key
   end
 
   test "records typed rejections durably" do
@@ -49,12 +54,17 @@ defmodule Jido.Integration.V2.StoreLocal.SubmissionLedgerContractTest do
         details: %{"logical_workspace_ref" => "workspace://tenant-1/root"}
       })
 
-    assert :ok = SubmissionLedger.record_rejection(invocation.submission_key, rejection, [])
+    assert :ok = SubmissionLedger.record_rejection(invocation, rejection, [])
 
     assert %SubmissionRejection{} =
              Storage.read(fn state ->
                Map.fetch!(state.submission_rejections, invocation.submission_key)
              end)
+
+    assert {:rejected, looked_up} =
+             SubmissionLedger.lookup_submission("dedupe-1", "tenant-1", [])
+
+    assert looked_up.reason_code == "workspace_ref_unresolved"
   end
 
   defp brain_invocation_fixture do
@@ -168,7 +178,7 @@ defmodule Jido.Integration.V2.StoreLocal.SubmissionLedgerContractTest do
       boundary_request: shadows.boundary_request,
       execution_intent_family: "process",
       execution_intent: %{"argv" => ["echo", "hello"]},
-      extensions: %{}
+      extensions: %{"submission_dedupe_key" => "dedupe-1"}
     })
   end
 end

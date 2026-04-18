@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.StorePostgres.RunStore do
 
   alias Jido.Integration.V2.ArtifactRef
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.Run
@@ -19,14 +20,21 @@ defmodule Jido.Integration.V2.StorePostgres.RunStore do
 
   @impl true
   def put_run(%Run{} = run) do
-    run
-    |> to_record_attrs()
-    |> then(&RunRecord.changeset(%RunRecord{}, &1))
-    |> Repo.insert()
-    |> case do
-      {:ok, _record} -> :ok
-      {:error, changeset} -> {:error, changeset}
-    end
+    Repo.transaction(fn ->
+      run
+      |> to_record_attrs()
+      |> then(&RunRecord.changeset(%RunRecord{}, &1))
+      |> Repo.insert()
+      |> case do
+        {:ok, _record} ->
+          :ok = register_run_payload_refs(run)
+          :ok
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+    |> normalize_transaction()
   end
 
   @impl true
@@ -76,12 +84,22 @@ defmodule Jido.Integration.V2.StorePostgres.RunStore do
       runtime_class: run.runtime_class,
       status: run.status,
       input: run.input |> Redaction.redact() |> Serialization.dump(),
+      input_payload_ref:
+        if(is_nil(run.input_payload_ref),
+          do: nil,
+          else: Serialization.dump(run.input_payload_ref)
+        ),
       credential_ref: Serialization.dump(run.credential_ref),
       target_id: run.target_id,
       result:
         if(is_nil(run.result),
           do: nil,
           else: run.result |> Redaction.redact() |> Serialization.dump()
+        ),
+      result_payload_ref:
+        if(is_nil(run.result_payload_ref),
+          do: nil,
+          else: Serialization.dump(run.result_payload_ref)
         ),
       artifact_refs: Enum.map(run.artifact_refs, &Serialization.dump/1),
       inserted_at: run.inserted_at,
@@ -96,9 +114,11 @@ defmodule Jido.Integration.V2.StorePostgres.RunStore do
       runtime_class: record.runtime_class,
       status: record.status,
       input: Serialization.load_json(record.input),
+      input_payload_ref: Serialization.load_json(record.input_payload_ref),
       credential_ref: to_credential_ref(record.credential_ref),
       target_id: record.target_id,
       result: Serialization.load_json(record.result),
+      result_payload_ref: Serialization.load_json(record.result_payload_ref),
       artifact_refs: Enum.map(record.artifact_refs || [], &to_artifact_ref/1),
       inserted_at: record.inserted_at,
       updated_at: record.updated_at
@@ -132,5 +152,30 @@ defmodule Jido.Integration.V2.StorePostgres.RunStore do
       redaction_status: Serialization.fetch(map, :redaction_status),
       metadata: Serialization.fetch(map, :metadata, %{})
     })
+  end
+
+  defp normalize_transaction({:ok, result}), do: result
+  defp normalize_transaction({:error, reason}), do: {:error, reason}
+
+  defp register_run_payload_refs(%Run{} = run) do
+    Enum.each(
+      [
+        {:input, run.input_payload_ref},
+        {:result, run.result_payload_ref}
+      ],
+      fn
+        {_field, nil} ->
+          :ok
+
+        {field, payload_ref} ->
+          :ok =
+            Stores.claim_check_store().register_reference(payload_ref, %{
+              ledger_kind: :run,
+              ledger_id: run.run_id,
+              payload_field: field,
+              run_id: run.run_id
+            })
+      end
+    )
   end
 end

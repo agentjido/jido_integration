@@ -31,7 +31,7 @@ defmodule Jido.Integration.V2.RuntimeRouter.MixProject do
 
   defp deps do
     [
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_asm_runtime_bridge(),
       DependencyResolver.jido_session(),
       DependencyResolver.jido_runtime_control(override: true),

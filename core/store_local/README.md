@@ -96,7 +96,7 @@ Compared with `core/store_postgres`:
 - `store_local` does not try to replace Postgres for multi-writer, production,
   or SQL-queryable scenarios
 - both packages now also implement the `core/brain_ingress` submission-ledger
-  behaviour for durable Brain-to-Spine acceptance
+  behaviour for durable brain-to-lower-gateway acceptance
 
 ## When To Use Which Tier
 

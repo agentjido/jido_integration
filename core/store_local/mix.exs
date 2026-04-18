@@ -31,7 +31,7 @@ defmodule Jido.Integration.V2.StoreLocal.MixProject do
 
   defp deps do
     [
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_auth(),
       DependencyResolver.jido_integration_v2_brain_ingress(),
       DependencyResolver.jido_integration_v2_control_plane(),

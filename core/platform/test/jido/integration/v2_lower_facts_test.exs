@@ -330,7 +330,7 @@ defmodule Jido.Integration.V2LowerFactsTest do
       boundary_request: compiled_projection.boundary_request,
       execution_intent_family: "process",
       execution_intent: %{"argv" => ["echo", "hello"]},
-      extensions: %{}
+      extensions: %{"submission_dedupe_key" => "dedupe-#{token}"}
     })
   end
 end

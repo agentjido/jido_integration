@@ -1,6 +1,6 @@
 defmodule Jido.Integration.V2.AuthorityAuditEnvelope do
   @moduledoc """
-  Spine-owned machine-readable authority audit payload derived from the Brain packet.
+  lower-gateway-owned machine-readable authority audit payload derived from the Brain packet.
   """
 
   alias Jido.Integration.V2.CanonicalJson

@@ -1,9 +1,9 @@
 defmodule Jido.Integration.V2.BrainIngress do
   @moduledoc """
-  Durable Brain-to-Spine invocation intake.
+  Durable brain-to-lower-gateway invocation intake.
   """
 
-  alias Jido.Integration.V2.BrainIngress.{StaticScopeResolver, SubmissionLedger}
+  alias Jido.Integration.V2.BrainIngress.{StaticScopeResolver, SubmissionDedupe, SubmissionLedger}
   alias Jido.Integration.V2.BrainInvocation
   alias Jido.Integration.V2.ExecutionGovernanceProjection.Verifier
   alias Jido.Integration.V2.Gateway
@@ -50,12 +50,12 @@ defmodule Jido.Integration.V2.BrainIngress do
       {:ok, acceptance, gateway, runtime_inputs}
     else
       {:error, %SubmissionRejection{} = rejection} ->
-        _ = record_rejection(ledger, invocation.submission_key, rejection, ledger_opts)
+        _ = record_rejection(ledger, invocation, rejection, ledger_opts)
         {:error, rejection}
 
       {:error, reason} ->
         rejection = invalid_submission(invocation, reason)
-        _ = record_rejection(ledger, invocation.submission_key, rejection, ledger_opts)
+        _ = record_rejection(ledger, invocation, rejection, ledger_opts)
         {:error, rejection}
     end
   end
@@ -73,6 +73,21 @@ defmodule Jido.Integration.V2.BrainIngress do
     ledger_opts = Keyword.get(opts, :submission_ledger_opts, [])
     ledger = submission_ledger!(opts)
     ledger.fetch_acceptance(submission_key, ledger_opts)
+  end
+
+  @doc """
+  Lookup a durable submission by tenant-scoped `submission_dedupe_key`.
+  """
+  @spec lookup_submission(String.t(), String.t(), keyword()) ::
+          {:accepted, Jido.Integration.V2.SubmissionAcceptance.t()}
+          | {:rejected, SubmissionRejection.t()}
+          | :never_seen
+          | {:expired, DateTime.t()}
+  def lookup_submission(submission_dedupe_key, tenant_id, opts \\ [])
+      when is_binary(submission_dedupe_key) and is_binary(tenant_id) do
+    ledger_opts = Keyword.get(opts, :submission_ledger_opts, [])
+    ledger = submission_ledger!(opts)
+    ledger.lookup_submission(submission_dedupe_key, tenant_id, ledger_opts)
   end
 
   defp verify_projection(
@@ -173,9 +188,9 @@ defmodule Jido.Integration.V2.BrainIngress do
   defp normalize_reason_code(reason) when is_atom(reason), do: Atom.to_string(reason)
   defp normalize_reason_code(_reason), do: "invalid_submission"
 
-  defp record_rejection(ledger, submission_key, rejection, ledger_opts) do
+  defp record_rejection(ledger, invocation, rejection, ledger_opts) do
     if Code.ensure_loaded?(ledger) and function_exported?(ledger, :record_rejection, 3) do
-      ledger.record_rejection(submission_key, rejection, ledger_opts)
+      ledger.record_rejection(invocation, rejection, ledger_opts)
     else
       :ok
     end
@@ -191,6 +206,9 @@ defmodule Jido.Integration.V2.BrainIngress do
         ledger
     end
   end
+
+  @spec submission_dedupe_key!(BrainInvocation.t()) :: String.t()
+  def submission_dedupe_key!(%BrainInvocation{} = invocation), do: SubmissionDedupe.key!(invocation)
 
   defp configured_submission_ledger do
     Application.get_env(:jido_integration_v2_brain_ingress, :submission_ledger)

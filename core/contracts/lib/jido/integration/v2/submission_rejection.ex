@@ -1,6 +1,6 @@
 defmodule Jido.Integration.V2.SubmissionRejection do
   @moduledoc """
-  Typed Spine rejection for a Brain submission.
+  Typed lower-gateway rejection for a Brain submission.
   """
 
   alias Jido.Integration.V2.CanonicalJson

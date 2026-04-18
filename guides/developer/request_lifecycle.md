@@ -26,11 +26,11 @@ This is the internal path a request takes through the repo.
 5. `Jido.RuntimeControl` executes the runtime driver and returns session-aware output
 6. `core/control_plane` persists attempts, events, and artifacts
 
-## Brain-To-Spine Submission Flow
+## Brain-to-lower-gateway Submission Flow
 
 1. an upstream Brain emits a durable submission packet such as
    `BrainInvocation`
-2. `core/brain_ingress` validates the packet and re-verifies Spine-owned
+2. `core/brain_ingress` validates the packet and re-verifies lower-gateway-owned
    governance shadows before runtime policy is touched
 3. `core/brain_ingress` resolves logical workspace or file-scope refs into
    concrete runtime paths
@@ -50,7 +50,7 @@ This is the internal path a request takes through the repo.
 ## Data Ownership
 
 - auth state belongs to `core/auth`
-- durable Brain-to-Spine acceptance belongs to `core/brain_ingress`
+- durable brain-to-lower-gateway acceptance belongs to `core/brain_ingress`
 - run and attempt truth belongs to `core/control_plane`
 - route state belongs to `core/webhook_router`
 - transport retry state belongs to `core/dispatch_runtime`

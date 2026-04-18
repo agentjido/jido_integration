@@ -1,6 +1,6 @@
 defmodule Jido.Integration.V2.ExecutionGovernanceProjection.Verifier do
   @moduledoc """
-  Verifies that supplied operational shadow sections still match the Spine compiler.
+  Verifies that supplied operational shadow sections still match the lower-gateway compiler.
   """
 
   alias Jido.Integration.V2.CanonicalJson

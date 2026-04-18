@@ -6,6 +6,8 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
   alias Jido.Integration.V2.ArtifactRef
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry
+  alias Jido.Integration.V2.ControlPlane.ClaimCheckStore
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.TargetDescriptor
@@ -16,6 +18,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
   @behaviour Jido.Integration.V2.ControlPlane.AttemptStore
   @behaviour Jido.Integration.V2.ControlPlane.EventStore
   @behaviour Jido.Integration.V2.ControlPlane.ArtifactStore
+  @behaviour ClaimCheckStore
   @behaviour Jido.Integration.V2.ControlPlane.TargetStore
   @behaviour Jido.Integration.V2.ControlPlane.IngressStore
 
@@ -28,6 +31,8 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
           events: %{},
           artifacts: %{},
           run_artifacts: %{},
+          claim_check_blobs: %{},
+          claim_check_references: %{},
           targets: %{},
           triggers: %{},
           run_triggers: %{},
@@ -54,13 +59,28 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
 
   @impl Jido.Integration.V2.ControlPlane.RunStore
   def put_run(run) do
-    Agent.update(__MODULE__, fn state -> put_in(state, [:runs, run.run_id], sanitize_run(run)) end)
+    Agent.update(__MODULE__, fn state ->
+      run = sanitize_run(run)
+
+      state
+      |> put_in([:runs, run.run_id], run)
+      |> maybe_put_run_claim_check_reference(run, :input, Map.get(run, :input_payload_ref))
+      |> maybe_put_run_claim_check_reference(run, :result, Map.get(run, :result_payload_ref))
+    end)
   end
 
   @impl Jido.Integration.V2.ControlPlane.AttemptStore
   def put_attempt(attempt) do
     Agent.update(__MODULE__, fn state ->
-      put_in(state, [:attempts, attempt.attempt_id], sanitize_attempt(attempt))
+      attempt = sanitize_attempt(attempt)
+
+      state
+      |> put_in([:attempts, attempt.attempt_id], attempt)
+      |> maybe_put_attempt_claim_check_reference(
+        attempt,
+        :output,
+        Map.get(attempt, :output_payload_ref)
+      )
     end)
   end
 
@@ -369,12 +389,168 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
         events: %{},
         artifacts: %{},
         run_artifacts: %{},
+        claim_check_blobs: %{},
+        claim_check_references: %{},
         targets: %{},
         triggers: %{},
         run_triggers: %{},
         checkpoints: %{},
         dedupe: %{}
       }
+    end)
+  end
+
+  @impl ClaimCheckStore
+  def stage_blob(payload_ref, encoded, metadata) when is_binary(encoded) and is_map(metadata) do
+    Agent.update(__MODULE__, fn state ->
+      blob_key = claim_check_blob_key(payload_ref)
+      now = Contracts.now()
+
+      blob =
+        state
+        |> Map.get(:claim_check_blobs, %{})
+        |> Map.get(blob_key, %{
+          payload_ref: payload_ref,
+          encoded: encoded,
+          metadata: metadata,
+          status: :staged,
+          staged_at: now,
+          referenced_at: nil,
+          deleted_at: nil
+        })
+        |> Map.merge(%{
+          payload_ref: payload_ref,
+          encoded: encoded,
+          metadata: metadata,
+          status: :staged,
+          staged_at: now
+        })
+
+      put_in(state, [:claim_check_blobs, blob_key], blob)
+    end)
+  end
+
+  @impl ClaimCheckStore
+  def fetch_blob(payload_ref) do
+    Agent.get(__MODULE__, fn state ->
+      state
+      |> Map.get(:claim_check_blobs, %{})
+      |> Map.get(claim_check_blob_key(payload_ref))
+      |> case do
+        %{encoded: encoded, status: status}
+        when is_binary(encoded) and status != :deleted ->
+          {:ok, encoded}
+
+        _other ->
+          :error
+      end
+    end)
+  end
+
+  @impl ClaimCheckStore
+  def register_reference(payload_ref, attrs) when is_map(attrs) do
+    Agent.update(__MODULE__, fn state ->
+      put_claim_check_reference(state, payload_ref, attrs)
+    end)
+  end
+
+  @impl ClaimCheckStore
+  def fetch_blob_metadata(payload_ref) do
+    Agent.get(__MODULE__, fn state ->
+      state
+      |> Map.get(:claim_check_blobs, %{})
+      |> Map.get(claim_check_blob_key(payload_ref))
+      |> case do
+        nil -> :error
+        blob -> {:ok, Map.drop(blob, [:encoded])}
+      end
+    end)
+  end
+
+  @impl ClaimCheckStore
+  def count_live_references(payload_ref) do
+    Agent.get(__MODULE__, fn state ->
+      state
+      |> Map.get(:claim_check_references, %{})
+      |> Map.get(claim_check_blob_key(payload_ref), %{})
+      |> map_size()
+    end)
+  end
+
+  @impl ClaimCheckStore
+  def sweep_staged_payloads(opts \\ []) do
+    older_than_s = Keyword.get(opts, :older_than_s, 0)
+    cutoff = DateTime.add(Contracts.now(), -older_than_s, :second)
+
+    Agent.get_and_update(__MODULE__, fn state ->
+      {next_blobs, deleted_count} =
+        Enum.reduce(state.claim_check_blobs, {%{}, 0}, fn {blob_key, blob}, {acc, count} ->
+          if blob.status == :staged and blob.staged_at <= cutoff and
+               live_reference_count(state, blob_key) == 0 do
+            ClaimCheckTelemetry.orphaned_staged_payload(
+              blob.payload_ref,
+              blob.metadata,
+              source_component: :run_ledger,
+              store_backend: :run_ledger
+            )
+
+            {acc, count + 1}
+          else
+            {Map.put(acc, blob_key, blob), count}
+          end
+        end)
+
+      result = {:ok, %{deleted_count: deleted_count}}
+      {result, %{state | claim_check_blobs: next_blobs}}
+    end)
+  end
+
+  @impl ClaimCheckStore
+  def garbage_collect(opts \\ []) do
+    older_than_s = Keyword.get(opts, :older_than_s, 0)
+    cutoff = DateTime.add(Contracts.now(), -older_than_s, :second)
+
+    Agent.get_and_update(__MODULE__, fn state ->
+      {next_blobs, deleted_count, skipped_live_reference_count} =
+        Enum.reduce(state.claim_check_blobs, {%{}, 0, 0}, fn {blob_key, blob},
+                                                             {acc, deleted, skipped} ->
+          live_refs = live_reference_count(state, blob_key)
+
+          cond do
+            live_refs > 0 ->
+              ClaimCheckTelemetry.blob_gc_skipped_live_reference(
+                blob.payload_ref,
+                blob.metadata,
+                source_component: :run_ledger,
+                store_backend: :run_ledger,
+                live_reference_count: live_refs
+              )
+
+              {Map.put(acc, blob_key, blob), deleted, skipped + 1}
+
+            blob.staged_at <= cutoff ->
+              ClaimCheckTelemetry.blob_gc_deleted(
+                blob.payload_ref,
+                blob.metadata,
+                source_component: :run_ledger,
+                store_backend: :run_ledger
+              )
+
+              {acc, deleted + 1, skipped}
+
+            true ->
+              {Map.put(acc, blob_key, blob), deleted, skipped}
+          end
+        end)
+
+      result =
+        {:ok,
+         %{
+           deleted_count: deleted_count,
+           skipped_live_reference_count: skipped_live_reference_count
+         }}
+
+      {result, %{state | claim_check_blobs: next_blobs}}
     end)
   end
 
@@ -394,7 +570,12 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
 
       case Enum.find(run_events, &same_position?(&1, event)) do
         nil ->
-          {:cont, {:ok, put_in(acc_state, [:events, event.run_id], run_events ++ [event])}}
+          next_state =
+            acc_state
+            |> put_in([:events, event.run_id], run_events ++ [event])
+            |> maybe_put_event_claim_check_reference(event)
+
+          {:cont, {:ok, next_state}}
 
         ^event ->
           {:cont, {:ok, acc_state}}
@@ -415,6 +596,87 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
 
   defp sanitize_event(event) do
     %{event | payload: Redaction.redact(event.payload)}
+  end
+
+  defp maybe_put_run_claim_check_reference(state, _run, _field, nil), do: state
+
+  defp maybe_put_run_claim_check_reference(state, run, field, payload_ref) do
+    put_claim_check_reference(state, payload_ref, %{
+      ledger_kind: :run,
+      ledger_id: run.run_id,
+      payload_field: field,
+      run_id: run.run_id
+    })
+  end
+
+  defp maybe_put_attempt_claim_check_reference(state, _attempt, _field, nil), do: state
+
+  defp maybe_put_attempt_claim_check_reference(state, attempt, field, payload_ref) do
+    put_claim_check_reference(state, payload_ref, %{
+      ledger_kind: :attempt,
+      ledger_id: attempt.attempt_id,
+      payload_field: field,
+      run_id: attempt.run_id,
+      attempt_id: attempt.attempt_id
+    })
+  end
+
+  defp maybe_put_event_claim_check_reference(state, %Event{payload_ref: nil}), do: state
+
+  defp maybe_put_event_claim_check_reference(state, %Event{} = event) do
+    put_claim_check_reference(state, event.payload_ref, %{
+      ledger_kind: :event,
+      ledger_id: event.event_id,
+      payload_field: :payload,
+      run_id: event.run_id,
+      attempt_id: event.attempt_id,
+      event_id: event.event_id,
+      trace_id: Contracts.get(event.trace, :trace_id)
+    })
+  end
+
+  defp put_claim_check_reference(state, payload_ref, attrs) do
+    blob_key = claim_check_blob_key(payload_ref)
+    reference_key = claim_check_reference_key(attrs)
+    now = Contracts.now()
+
+    state
+    |> update_in([:claim_check_references, blob_key], fn
+      nil -> %{reference_key => Map.put(attrs, :inserted_at, now)}
+      references -> Map.put_new(references, reference_key, Map.put(attrs, :inserted_at, now))
+    end)
+    |> update_in([:claim_check_blobs, blob_key], fn
+      nil ->
+        %{
+          payload_ref: payload_ref,
+          encoded: nil,
+          metadata: %{},
+          status: :referenced,
+          staged_at: now,
+          referenced_at: now,
+          deleted_at: nil
+        }
+
+      blob ->
+        %{blob | status: :referenced, referenced_at: blob.referenced_at || now, deleted_at: nil}
+    end)
+  end
+
+  defp claim_check_blob_key(payload_ref), do: {payload_ref.store, payload_ref.key}
+
+  defp claim_check_reference_key(attrs) do
+    {
+      attrs[:ledger_kind] || attrs["ledger_kind"],
+      attrs[:ledger_id] || attrs["ledger_id"],
+      attrs[:payload_field] || attrs["payload_field"]
+    }
+  end
+
+  defp live_reference_count(state, blob_key) do
+    state
+    |> Map.get(:claim_check_references, %{})
+    |> Map.get(blob_key, %{})
+    |> map_size()
   end
 
   defp same_position?(left, right) do

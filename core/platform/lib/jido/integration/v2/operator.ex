@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.Operator do
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
+  alias Jido.Integration.V2.ControlPlane.ClaimCheck
   alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.DerivedStateAttachment
@@ -506,6 +507,7 @@ defmodule Jido.Integration.V2.Operator do
   defp fetch_boundary_metadata(attempt) do
     boundary =
       attempt.output
+      |> resolve_output_payload(Map.get(attempt, :output_payload_ref))
       |> map_get(:metadata, %{})
       |> map_get(:boundary)
 
@@ -519,6 +521,13 @@ defmodule Jido.Integration.V2.Operator do
 
       _other ->
         nil
+    end
+  end
+
+  defp resolve_output_payload(payload, payload_ref) do
+    case ClaimCheck.resolve_json(payload || %{}, payload_ref) do
+      {:ok, resolved} -> resolved
+      {:error, _reason} -> payload || %{}
     end
   end
 

@@ -19,6 +19,11 @@ defmodule Jido.Integration.V2.StorePostgres.SubmissionLedgerTest do
     assert {:ok, duplicate} = SubmissionLedger.accept_submission(invocation, [])
     assert duplicate.status == :duplicate
     assert duplicate.submission_receipt_ref == acceptance.submission_receipt_ref
+
+    assert {:accepted, looked_up} =
+             SubmissionLedger.lookup_submission("dedupe-1", "tenant-1", [])
+
+    assert looked_up.submission_key == invocation.submission_key
   end
 
   test "persists rejections for later inspection" do
@@ -34,12 +39,38 @@ defmodule Jido.Integration.V2.StorePostgres.SubmissionLedgerTest do
         details: %{"logical_workspace_ref" => "workspace://tenant-1/root"}
       })
 
-    assert :ok = SubmissionLedger.record_rejection(invocation.submission_key, rejection, [])
+    assert :ok = SubmissionLedger.record_rejection(invocation, rejection, [])
+
+    assert {:rejected, looked_up} =
+             SubmissionLedger.lookup_submission("dedupe-1", "tenant-1", [])
+
+    assert looked_up.reason_code == "workspace_ref_unresolved"
 
     record =
-      Repo.get_by!(SubmissionRecord, submission_key: invocation.submission_key)
+      Repo.get_by!(SubmissionRecord,
+        tenant_id: "tenant-1",
+        submission_dedupe_key: "dedupe-1"
+      )
 
     assert fetch_map_value(record.rejection_json, :reason_code) == "workspace_ref_unresolved"
+  end
+
+  test "moves expired dedupe entries into archive and surfaces lookup expiry" do
+    invocation = brain_invocation_fixture()
+
+    assert {:ok, _acceptance} =
+             SubmissionLedger.accept_submission(invocation,
+               now: ~U[2026-04-01 00:00:00Z],
+               retention_days: 14
+             )
+
+    assert 1 =
+             SubmissionLedger.expire_submissions(now: ~U[2026-04-16 00:00:01Z])
+
+    assert {:expired, last_seen_at} =
+             SubmissionLedger.lookup_submission("dedupe-1", "tenant-1", [])
+
+    assert DateTime.compare(last_seen_at, ~U[2026-04-01 00:00:00Z]) == :eq
   end
 
   defp brain_invocation_fixture do
@@ -153,7 +184,7 @@ defmodule Jido.Integration.V2.StorePostgres.SubmissionLedgerTest do
       boundary_request: shadows.boundary_request,
       execution_intent_family: "process",
       execution_intent: %{"argv" => ["echo", "hello"]},
-      extensions: %{}
+      extensions: %{"submission_dedupe_key" => "dedupe-1"}
     })
   end
 end

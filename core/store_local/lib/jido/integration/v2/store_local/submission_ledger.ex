@@ -14,13 +14,23 @@ defmodule Jido.Integration.V2.StoreLocal.SubmissionLedger do
   end
 
   @impl true
+  def lookup_submission(submission_dedupe_key, tenant_id, _opts) do
+    Storage.read(&State.lookup_submission(&1, submission_dedupe_key, tenant_id))
+  end
+
+  @impl true
   def fetch_acceptance(submission_key, _opts) do
     Storage.read(&State.fetch_submission_acceptance(&1, submission_key))
   end
 
   @impl true
-  def record_rejection(submission_key, %SubmissionRejection{} = rejection, _opts) do
-    Storage.mutate(&State.record_submission_rejection(&1, submission_key, rejection))
+  def record_rejection(%BrainInvocation{} = invocation, %SubmissionRejection{} = rejection, _opts) do
+    Storage.mutate(&State.record_submission_rejection(&1, invocation, rejection))
+  end
+
+  @impl true
+  def expire_submissions(opts) do
+    Storage.mutate(&State.expire_submissions(&1, Keyword.get(opts, :now)))
   end
 
   def reset! do

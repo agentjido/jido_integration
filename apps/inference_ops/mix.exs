@@ -32,7 +32,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOps.MixProject do
     [
       DependencyResolver.jido_integration_v2(),
       DependencyResolver.jido_integration_v2_control_plane(),
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       DependencyResolver.self_hosted_inference_core(),
       DependencyResolver.llama_cpp_sdk(),
       {:plug, "~> 1.19", only: [:dev, :test]},

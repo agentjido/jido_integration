@@ -36,7 +36,7 @@ defmodule Jido.Integration.V2.Connectors.MarketData.MixProject do
     [
       {:jido, "~> 2.2"},
       {:jido_action, "~> 2.2"},
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_consumer_surfaces(),
       DependencyResolver.jido_integration_v2_ingress(),
       DependencyResolver.jido_runtime_control(override: true),

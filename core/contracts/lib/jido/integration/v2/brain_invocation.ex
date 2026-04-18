@@ -1,6 +1,6 @@
 defmodule Jido.Integration.V2.BrainInvocation do
   @moduledoc """
-  Durable Brain-to-Spine invocation handoff packet.
+  Durable brain-to-lower-gateway invocation handoff packet.
   """
 
   alias Jido.Integration.V2.AuthorityAuditEnvelope

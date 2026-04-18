@@ -3,7 +3,7 @@ defmodule Jido.Integration.V2.Contracts.MixProject do
 
   def project do
     [
-      app: :jido_integration_v2_contracts,
+      app: :jido_integration_contracts,
       version: "0.1.0",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
@@ -11,7 +11,7 @@ defmodule Jido.Integration.V2.Contracts.MixProject do
       deps: deps(),
       dialyzer: dialyzer(),
       docs: docs(),
-      name: "Jido Integration V2 Contracts",
+      name: "Jido Integration Contracts",
       description: "Greenfield public contracts for runs, attempts, capabilities, and credentials"
     ]
   end

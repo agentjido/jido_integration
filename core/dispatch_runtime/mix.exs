@@ -30,7 +30,7 @@ defmodule Jido.Integration.V2.DispatchRuntime.MixProject do
 
   defp deps do
     [
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_control_plane(),
       {:zoi, "~> 0.17"},
       {:telemetry, "~> 1.0"},

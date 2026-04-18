@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.StoreLocal.State do
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Auth.LeaseRecord
   alias Jido.Integration.V2.Auth.SecretEnvelope
+  alias Jido.Integration.V2.BrainIngress.SubmissionDedupe
   alias Jido.Integration.V2.BrainInvocation
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Credential
@@ -54,6 +55,8 @@ defmodule Jido.Integration.V2.StoreLocal.State do
             checkpoints: %{},
             dedupe: %{},
             submissions: %{},
+            expired_submissions: %{},
+            submission_acceptances: %{},
             submission_rejections: %{}
 
   @type t :: %__MODULE__{
@@ -74,11 +77,23 @@ defmodule Jido.Integration.V2.StoreLocal.State do
           },
           dedupe: %{optional({String.t(), String.t(), String.t(), String.t()}) => DateTime.t()},
           submissions: %{
-            optional(String.t()) => %{
+            optional({String.t(), String.t()}) => %{
+              submission_key: String.t(),
               identity_checksum: String.t(),
-              acceptance: SubmissionAcceptance.t()
+              acceptance: SubmissionAcceptance.t() | nil,
+              rejection: SubmissionRejection.t() | nil,
+              last_seen_at: DateTime.t(),
+              expires_at: DateTime.t()
             }
           },
+          expired_submissions: %{
+            optional({String.t(), String.t()}) => %{
+              submission_key: String.t(),
+              status: :accepted | :rejected,
+              last_seen_at: DateTime.t()
+            }
+          },
+          submission_acceptances: %{optional(String.t()) => SubmissionAcceptance.t()},
           submission_rejections: %{optional(String.t()) => SubmissionRejection.t()}
         }
 
@@ -123,7 +138,14 @@ defmodule Jido.Integration.V2.StoreLocal.State do
 
   @spec reset_submission_ledger(t()) :: {:ok, t()}
   def reset_submission_ledger(%__MODULE__{} = state) do
-    {:ok, %{state | submissions: %{}, submission_rejections: %{}}}
+    {:ok,
+     %{
+       state
+       | submissions: %{},
+         expired_submissions: %{},
+         submission_acceptances: %{},
+         submission_rejections: %{}
+     }}
   end
 
   @spec store_credential(t(), Credential.t()) :: {:ok, t()}
@@ -500,57 +522,191 @@ defmodule Jido.Integration.V2.StoreLocal.State do
   end
 
   @spec accept_submission(t(), BrainInvocation.t()) ::
-          {{:ok, SubmissionAcceptance.t()} | {:error, :conflicting_submission}, t()}
+          {{:ok, SubmissionAcceptance.t()} | {:error, term()}, t()}
   def accept_submission(%__MODULE__{} = state, %BrainInvocation{} = invocation) do
+    tenant_id = invocation.tenant_id
+    submission_dedupe_key = SubmissionDedupe.key!(invocation)
     identity_checksum = SubmissionIdentity.submission_key(invocation.submission_identity)
+    key = {tenant_id, submission_dedupe_key}
+    now = Contracts.now()
+    expires_at = DateTime.add(now, 14 * 86_400, :second)
 
-    case Map.get(state.submissions, invocation.submission_key) do
+    case Map.get(state.expired_submissions, key) do
+      %{last_seen_at: %DateTime{} = last_seen_at} ->
+        {{:error, {:expired_submission_dedupe_key, last_seen_at}}, state}
+
       nil ->
-        acceptance =
-          SubmissionAcceptance.new!(%{
-            submission_key: invocation.submission_key,
-            submission_receipt_ref: "submission://local/#{invocation.submission_key}",
-            status: :accepted,
-            ledger_version: map_size(state.submissions) + 1
-          })
+        case Map.get(state.submissions, key) do
+          nil ->
+            acceptance =
+              SubmissionAcceptance.new!(%{
+                submission_key: invocation.submission_key,
+                submission_receipt_ref: "submission://local/#{invocation.submission_key}",
+                status: :accepted,
+                accepted_at: now,
+                ledger_version: map_size(state.submissions) + 1
+              })
 
-        {{:ok, acceptance},
-         put_in(state.submissions[invocation.submission_key], %{
-           identity_checksum: identity_checksum,
-           acceptance: acceptance
-         })}
+            next_state =
+              state
+              |> put_in([Access.key(:submissions), key], %{
+                submission_key: invocation.submission_key,
+                identity_checksum: identity_checksum,
+                acceptance: acceptance,
+                rejection: nil,
+                last_seen_at: now,
+                expires_at: expires_at
+              })
+              |> put_in([Access.key(:submission_acceptances), invocation.submission_key], acceptance)
 
-      %{identity_checksum: ^identity_checksum, acceptance: %SubmissionAcceptance{} = acceptance} ->
-        duplicate =
-          SubmissionAcceptance.new!(%{
-            SubmissionAcceptance.dump(acceptance)
-            | status: :duplicate
-          })
+            {{:ok, acceptance}, next_state}
 
-        {{:ok, duplicate}, state}
+          %{
+            identity_checksum: ^identity_checksum,
+            acceptance: %SubmissionAcceptance{} = acceptance
+          } = entry ->
+            duplicate =
+              SubmissionAcceptance.new!(%{
+                SubmissionAcceptance.dump(acceptance)
+                | status: :duplicate
+              })
 
-      _other ->
-        {{:error, :conflicting_submission}, state}
+            next_state =
+              put_in(state.submissions[key], %{
+                entry
+                | last_seen_at: now,
+                  expires_at: expires_at
+              })
+
+            {{:ok, duplicate}, next_state}
+
+          _other ->
+            {{:error, :conflicting_submission}, state}
+        end
+    end
+  end
+
+  @spec lookup_submission(t(), String.t(), String.t()) ::
+          {:accepted, SubmissionAcceptance.t()}
+          | {:rejected, SubmissionRejection.t()}
+          | :never_seen
+          | {:expired, DateTime.t()}
+  def lookup_submission(%__MODULE__{} = state, submission_dedupe_key, tenant_id) do
+    key = {tenant_id, submission_dedupe_key}
+    now = Contracts.now()
+
+    case Map.get(state.submissions, key) do
+      %{acceptance: %SubmissionAcceptance{} = acceptance, expires_at: expires_at} = entry ->
+        if DateTime.compare(expires_at, now) == :gt do
+          {:accepted, acceptance}
+        else
+          {:expired, entry.last_seen_at}
+        end
+
+      %{rejection: %SubmissionRejection{} = rejection, expires_at: expires_at} = entry ->
+        if DateTime.compare(expires_at, now) == :gt do
+          {:rejected, rejection}
+        else
+          {:expired, entry.last_seen_at}
+        end
+
+      %{last_seen_at: %DateTime{} = last_seen_at} ->
+        {:expired, last_seen_at}
+
+      nil ->
+        case Map.get(state.expired_submissions, key) do
+          %{last_seen_at: %DateTime{} = last_seen_at} -> {:expired, last_seen_at}
+          _other -> :never_seen
+        end
     end
   end
 
   @spec fetch_submission_acceptance(t(), String.t()) ::
           {:ok, SubmissionAcceptance.t()} | :error
   def fetch_submission_acceptance(%__MODULE__{} = state, submission_key) do
-    case Map.get(state.submissions, submission_key) do
-      %{acceptance: %SubmissionAcceptance{} = acceptance} -> {:ok, acceptance}
+    case Map.get(state.submission_acceptances, submission_key) do
+      %SubmissionAcceptance{} = acceptance -> {:ok, acceptance}
       _other -> :error
     end
   end
 
-  @spec record_submission_rejection(t(), String.t(), SubmissionRejection.t()) ::
+  @spec record_submission_rejection(t(), BrainInvocation.t(), SubmissionRejection.t()) ::
           {:ok, t()}
   def record_submission_rejection(
         %__MODULE__{} = state,
-        submission_key,
+        %BrainInvocation{} = invocation,
         %SubmissionRejection{} = rejection
       ) do
-    {:ok, put_in(state.submission_rejections[submission_key], rejection)}
+    tenant_id = invocation.tenant_id
+    submission_dedupe_key = SubmissionDedupe.key!(invocation)
+    identity_checksum = SubmissionIdentity.submission_key(invocation.submission_identity)
+    key = {tenant_id, submission_dedupe_key}
+    now = Contracts.now()
+    expires_at = DateTime.add(now, 14 * 86_400, :second)
+
+    case Map.get(state.expired_submissions, key) do
+      %{last_seen_at: %DateTime{} = _last_seen_at} ->
+        {:ok, state}
+
+      nil ->
+        case Map.get(state.submissions, key) do
+          nil ->
+            entry = %{
+              submission_key: invocation.submission_key,
+              identity_checksum: identity_checksum,
+              acceptance: nil,
+              rejection: rejection,
+              last_seen_at: now,
+              expires_at: expires_at
+            }
+
+            {:ok,
+             state
+             |> put_in([Access.key(:submissions), key], entry)
+             |> put_in([Access.key(:submission_rejections), invocation.submission_key], rejection)}
+
+          %{identity_checksum: ^identity_checksum} = entry ->
+            {:ok,
+             state
+             |> put_in([Access.key(:submissions), key], %{
+               entry
+               | rejection: rejection,
+                 acceptance: nil,
+                 last_seen_at: now,
+                 expires_at: expires_at
+             })
+             |> put_in([Access.key(:submission_rejections), invocation.submission_key], rejection)}
+
+          _other ->
+            {:ok, state}
+        end
+    end
+  end
+
+  @spec expire_submissions(t(), DateTime.t() | nil) :: {non_neg_integer(), t()}
+  def expire_submissions(%__MODULE__{} = state, now \\ nil) do
+    now = now || Contracts.now()
+
+    {expired, live} =
+      Enum.split_with(state.submissions, fn {_key, entry} ->
+        DateTime.compare(entry.expires_at, now) != :gt
+      end)
+
+    expired_submissions =
+      Enum.reduce(expired, state.expired_submissions, fn {{tenant_id, submission_dedupe_key}, entry}, acc ->
+        Map.put(acc, {tenant_id, submission_dedupe_key}, %{
+          submission_key: entry.submission_key,
+          status: if(entry.acceptance, do: :accepted, else: :rejected),
+          last_seen_at: entry.last_seen_at
+        })
+      end)
+
+    {length(expired),
+     %{
+       state
+       | submissions: Map.new(live),
+         expired_submissions: expired_submissions
+     }}
   end
 
   defp validate_event_epoch(state, [%Event{attempt_id: nil}], _opts), do: {:ok, state}

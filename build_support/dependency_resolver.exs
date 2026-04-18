@@ -22,8 +22,8 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_consumer_surfaces(opts \\ []),
     do: resolve_internal(:jido_integration_v2_consumer_surfaces, "core/consumer_surfaces", opts)
 
-  def jido_integration_v2_contracts(opts \\ []),
-    do: resolve_internal(:jido_integration_v2_contracts, "core/contracts", opts)
+  def jido_integration_contracts(opts \\ []),
+    do: resolve_internal(:jido_integration_contracts, "core/contracts", opts)
 
   def jido_integration_v2_control_plane(opts \\ []),
     do: resolve_internal(:jido_integration_v2_control_plane, "core/control_plane", opts)

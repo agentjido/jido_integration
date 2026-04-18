@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.StorePostgres.EventStore do
 
   import Ecto.Query
 
+  alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.StorePostgres
@@ -125,8 +126,12 @@ defmodule Jido.Integration.V2.StorePostgres.EventStore do
 
   defp persist_event!(event) do
     case insert_event(event) do
-      :ok -> :ok
-      {:error, reason} -> Repo.rollback(reason)
+      :ok ->
+        :ok = register_event_payload_ref(event)
+        :ok
+
+      {:error, reason} ->
+        Repo.rollback(reason)
     end
   end
 
@@ -252,6 +257,20 @@ defmodule Jido.Integration.V2.StorePostgres.EventStore do
       session_id: record.session_id,
       runtime_ref_id: record.runtime_ref_id,
       ts: record.ts
+    })
+  end
+
+  defp register_event_payload_ref(%Event{payload_ref: nil}), do: :ok
+
+  defp register_event_payload_ref(%Event{} = event) do
+    Stores.claim_check_store().register_reference(event.payload_ref, %{
+      ledger_kind: :event,
+      ledger_id: event.event_id,
+      payload_field: :payload,
+      run_id: event.run_id,
+      attempt_id: event.attempt_id,
+      event_id: event.event_id,
+      trace_id: Map.get(event.trace, :trace_id, Map.get(event.trace, "trace_id"))
     })
   end
 end

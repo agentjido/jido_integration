@@ -52,7 +52,7 @@ For Wave 7, that also means:
 - lower spawned-service mechanics run on `execution_plane`
 - service-runtime readiness, health, lease reuse, and attachability stay in
   the optional self-hosted runtime family kit
-- durable descriptor and lease lineage stay in Spine-owned review and route
+- durable descriptor and lease lineage stay in lower-gateway-owned review and route
   truth rather than in raw process state
 
 ## Durable Control-Plane Truth

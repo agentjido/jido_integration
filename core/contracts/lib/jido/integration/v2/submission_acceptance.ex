@@ -1,6 +1,6 @@
 defmodule Jido.Integration.V2.SubmissionAcceptance do
   @moduledoc """
-  Durable Spine acceptance receipt for a Brain submission.
+  Durable lower-gateway acceptance receipt for a Brain submission.
   """
 
   alias Jido.Integration.V2.Contracts

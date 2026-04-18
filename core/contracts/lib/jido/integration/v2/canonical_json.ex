@@ -1,6 +1,6 @@
 defmodule Jido.Integration.V2.CanonicalJson do
   @moduledoc """
-  Spine-owned canonical JSON normalization and RFC 8785 / JCS encoding helpers.
+  lower-gateway-owned canonical JSON normalization and RFC 8785 / JCS encoding helpers.
   """
 
   alias Jido.Integration.V2.Contracts

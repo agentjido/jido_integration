@@ -15,7 +15,7 @@ Runtime Control must not:
 
 - become the raw Execution Plane public API
 - reclaim transport ownership
-- reinterpret Brain or Spine policy locally
+- reinterpret Brain or lower-gateway policy locally
 
 ## Frozen Packet Vocabulary
 

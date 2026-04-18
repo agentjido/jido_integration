@@ -18,6 +18,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.AttemptRecord do
     field(:target_id, :string)
     field(:runtime_ref_id, :string)
     field(:output, :map)
+    field(:output_payload_ref, :map)
 
     timestamps()
   end
@@ -36,6 +37,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.AttemptRecord do
       :target_id,
       :runtime_ref_id,
       :output,
+      :output_payload_ref,
       :inserted_at,
       :updated_at
     ])

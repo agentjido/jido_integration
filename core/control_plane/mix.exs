@@ -35,13 +35,14 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
 
   defp deps do
     [
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_auth(),
       DependencyResolver.jido_integration_v2_policy(),
       DependencyResolver.jido_integration_v2_direct_runtime(),
       DependencyResolver.agent_session_manager(env: :dev),
       DependencyResolver.req_llm(),
       DependencyResolver.jido_integration_v2_runtime_router(only: :test),
+      {:telemetry, "~> 1.0"},
       {:plug, "~> 1.19", only: [:dev, :test]},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

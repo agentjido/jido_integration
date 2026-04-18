@@ -1,6 +1,6 @@
 defmodule Jido.Integration.V2.ExecutionGovernanceProjection do
   @moduledoc """
-  Spine-owned machine-readable governance projection carried in Brain submissions.
+  lower-gateway-owned machine-readable governance projection carried in Brain submissions.
   """
 
   alias Jido.Integration.V2.CanonicalJson

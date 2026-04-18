@@ -260,6 +260,90 @@ defmodule Jido.Integration.V2InferenceReviewPacketTest do
     assert connector_capability.runtime == packet.capability.runtime
   end
 
+  test "review_packet keeps inference catalog summary available when run and attempt payloads are claim-checked" do
+    large_text = large_text()
+
+    assert {:ok, recorded} =
+             ControlPlane.record_inference_attempt(%{
+               request:
+                 InferenceRequest.new!(%{
+                   request_id: "req-review-claim-check-1",
+                   operation: :generate_text,
+                   messages: [%{role: "user", content: large_text}],
+                   prompt: nil,
+                   model_preference: %{provider: "openai", id: "gpt-4o-mini"},
+                   target_preference: %{target_class: "cloud_provider"},
+                   stream?: false,
+                   tool_policy: %{},
+                   output_constraints: %{format: "text"},
+                   metadata: %{tenant_id: "tenant-1"}
+                 }),
+               context:
+                 InferenceExecutionContext.new!(%{
+                   run_id: "run-review-claim-check-1",
+                   attempt_id: "run-review-claim-check-1:1",
+                   authority_source: :jido_integration,
+                   decision_ref: "decision-review-claim-check-1",
+                   authority_ref: nil,
+                   boundary_ref: nil,
+                   credential_scope: %{},
+                   network_policy: %{egress: :restricted},
+                   observability: %{trace_id: "trace-review-claim-check-1"},
+                   streaming_policy: %{checkpoint_policy: :disabled},
+                   replay: %{replayable?: false, recovery_class: nil},
+                   metadata: %{phase: "phase_2"}
+                 }),
+               consumer_manifest:
+                 ConsumerManifest.new!(%{
+                   consumer: :jido_integration_req_llm,
+                   accepted_runtime_kinds: [:client],
+                   accepted_management_modes: [:provider_managed],
+                   accepted_protocols: [:openai_chat_completions],
+                   required_capabilities: %{},
+                   optional_capabilities: %{},
+                   constraints: %{},
+                   metadata: %{phase: :phase_2}
+                 }),
+               compatibility_result:
+                 CompatibilityResult.new!(%{
+                   compatible?: true,
+                   reason: :protocol_match,
+                   resolved_runtime_kind: :client,
+                   resolved_management_mode: :provider_managed,
+                   resolved_protocol: nil,
+                   warnings: [],
+                   missing_requirements: [],
+                   metadata: %{route: :cloud, provider: :openai}
+                 }),
+               stream: nil,
+               result:
+                 InferenceResult.new!(%{
+                   run_id: "run-review-claim-check-1",
+                   attempt_id: "run-review-claim-check-1:1",
+                   status: :error,
+                   streaming?: false,
+                   endpoint_id: nil,
+                   stream_id: nil,
+                   finish_reason: :error,
+                   usage: nil,
+                   error: %{message: large_text, reason: :timeout},
+                   metadata: %{provider: :openai}
+                 })
+             })
+
+    assert {:ok, packet} =
+             V2.review_packet(recorded.run.run_id, %{attempt_id: recorded.attempt.attempt_id})
+
+    assert packet.connector.connector_id == "inference"
+    assert packet.capability.capability_id == "inference.execute"
+    assert packet.capability.runtime.runtime_kind == :client
+    assert packet.capability.runtime.management_mode == :provider_managed
+    assert packet.capability.runtime.target_class == :cloud_provider
+    assert Map.has_key?(packet.run.input, "__claim_check__")
+    assert Map.has_key?(packet.attempt.output, "__claim_check__")
+    assert packet.attempt.output["__claim_check__"]["trace_id"] == "trace-review-claim-check-1"
+  end
+
   defp assert_json_safe(value) when is_binary(value) or is_boolean(value) or is_nil(value),
     do: :ok
 
@@ -272,5 +356,9 @@ defmodule Jido.Integration.V2InferenceReviewPacketTest do
   defp assert_json_safe(value) when is_map(value) do
     assert Enum.all?(Map.keys(value), &is_binary/1)
     Enum.each(value, fn {_key, nested} -> assert_json_safe(nested) end)
+  end
+
+  defp large_text do
+    String.duplicate("review-packet-claim-check-payload-", 3_000)
   end
 end

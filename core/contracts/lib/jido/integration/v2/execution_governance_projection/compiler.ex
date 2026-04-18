@@ -1,6 +1,6 @@
 defmodule Jido.Integration.V2.ExecutionGovernanceProjection.Compiler do
   @moduledoc """
-  Compiles Spine-owned governance projections into operational shadow sections.
+  Compiles lower-gateway-owned governance projections into operational shadow sections.
   """
 
   alias Jido.Integration.V2.Contracts

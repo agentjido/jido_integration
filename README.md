@@ -64,7 +64,7 @@ in `apps/*/README.md`.
   replay, approval, callback, and identity truth
 - Wave 7 keeps durable service descriptors, lease lineage, and attachability
   above lower process state instead of leaking raw Execution Plane structs into
-  the public Spine surface
+  the public lower-gateway surface
 - connector packages publish authored capability contracts and may also expose
   curated generated `Jido.Action`, `Jido.Sensor`, and `Jido.Plugin` surfaces.
 - `core/dispatch_runtime` and `core/webhook_router` provide the hosted async
@@ -125,7 +125,7 @@ instead of reopening control-plane, catalog, or review authority in those
 repos.
 
 The lower execution packet is carried, not re-exported, from this repo.
-`core/contracts` remains the stable Spine-side public seam, while the
+`core/contracts` remains the stable lower-gateway public seam, while the
 family-facing minimal-lane payload interiors for `HttpExecutionIntent.v1`,
 `ProcessExecutionIntent.v1`, and `JsonRpcExecutionIntent.v1` are explicitly
 provisional until Wave 3 closes prove-out.
@@ -201,7 +201,7 @@ The current surface also proves:
   just execution success
 - local durability, async queue state, and webhook route state are all
   explicit opt-in packages
-- durable Brain-to-Spine acceptance now stays on an explicit seam:
+- durable brain-to-lower-gateway acceptance now stays on an explicit seam:
   - `core/contracts` owns canonical JSON, submission identity, audit payload,
     and governance-projection contracts
   - `core/brain_ingress` owns verification, scope resolution, and durable
@@ -274,7 +274,7 @@ jido_integration/
   core/
     platform/                # public facade package (`:jido_integration_v2`)
     contracts/               # shared public structs and behaviours
-    brain_ingress/           # durable Brain-to-Spine intake and scope resolution
+    brain_ingress/           # durable brain-to-lower-gateway intake and scope resolution
     auth/                    # install, connection, credential, and lease truth
     control_plane/           # durable run, trigger, and artifact truth
     runtime_router/         # runtime-control-backed session/stream adapter package

@@ -31,7 +31,7 @@ defmodule <%= @project_module %> do
 
   defp deps do
     [
-      DependencyResolver.jido_integration_v2_contracts(override: true),
+      DependencyResolver.jido_integration_contracts(override: true),
       DependencyResolver.jido_integration_v2_consumer_surfaces(override: true),
       DependencyResolver.jido_integration_v2_direct_runtime(override: true),
       {:jido, "~> 2.1"},

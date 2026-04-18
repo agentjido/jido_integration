@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.ControlPlane.Stores do
   @default_attempt_store Jido.Integration.V2.ControlPlane.RunLedger
   @default_event_store Jido.Integration.V2.ControlPlane.RunLedger
   @default_artifact_store Jido.Integration.V2.ControlPlane.RunLedger
+  @default_claim_check_store Jido.Integration.V2.ControlPlane.RunLedger
   @default_target_store Jido.Integration.V2.ControlPlane.RunLedger
   @default_ingress_store Jido.Integration.V2.ControlPlane.RunLedger
 
@@ -33,6 +34,15 @@ defmodule Jido.Integration.V2.ControlPlane.Stores do
       :jido_integration_v2_control_plane,
       :artifact_store,
       @default_artifact_store
+    )
+  end
+
+  @spec claim_check_store() :: module()
+  def claim_check_store do
+    Application.get_env(
+      :jido_integration_v2_control_plane,
+      :claim_check_store,
+      @default_claim_check_store
     )
   end
 

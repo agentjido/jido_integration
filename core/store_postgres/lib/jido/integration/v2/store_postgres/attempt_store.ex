@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
 
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
@@ -15,14 +16,21 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
 
   @impl true
   def put_attempt(%Attempt{} = attempt) do
-    attempt
-    |> to_record_attrs()
-    |> then(&AttemptRecord.changeset(%AttemptRecord{}, &1))
-    |> Repo.insert()
-    |> case do
-      {:ok, _record} -> :ok
-      {:error, changeset} -> {:error, changeset}
-    end
+    Repo.transaction(fn ->
+      attempt
+      |> to_record_attrs()
+      |> then(&AttemptRecord.changeset(%AttemptRecord{}, &1))
+      |> Repo.insert()
+      |> case do
+        {:ok, _record} ->
+          :ok = register_attempt_payload_refs(attempt)
+          :ok
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+    |> normalize_transaction()
   end
 
   @impl true
@@ -112,6 +120,11 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
           do: nil,
           else: attempt.output |> Redaction.redact() |> Serialization.dump()
         ),
+      output_payload_ref:
+        if(is_nil(attempt.output_payload_ref),
+          do: nil,
+          else: Serialization.dump(attempt.output_payload_ref)
+        ),
       inserted_at: attempt.inserted_at,
       updated_at: attempt.updated_at
     }
@@ -130,8 +143,25 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
       target_id: record.target_id,
       runtime_ref_id: record.runtime_ref_id,
       output: Serialization.load_json(record.output),
+      output_payload_ref: Serialization.load_json(record.output_payload_ref),
       inserted_at: record.inserted_at,
       updated_at: record.updated_at
     })
+  end
+
+  defp register_attempt_payload_refs(%Attempt{} = attempt) do
+    case attempt.output_payload_ref do
+      nil ->
+        :ok
+
+      payload_ref ->
+        Stores.claim_check_store().register_reference(payload_ref, %{
+          ledger_kind: :attempt,
+          ledger_id: attempt.attempt_id,
+          payload_field: :output,
+          run_id: attempt.run_id,
+          attempt_id: attempt.attempt_id
+        })
+    end
   end
 end

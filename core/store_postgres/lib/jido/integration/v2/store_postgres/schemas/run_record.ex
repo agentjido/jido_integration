@@ -12,9 +12,11 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.RunRecord do
     field(:runtime_class, Ecto.Enum, values: [:direct, :session, :stream])
     field(:status, Ecto.Enum, values: [:accepted, :running, :completed, :failed, :denied, :shed])
     field(:input, :map)
+    field(:input_payload_ref, :map)
     field(:credential_ref, :map)
     field(:target_id, :string)
     field(:result, :map)
+    field(:result_payload_ref, :map)
     field(:artifact_refs, {:array, :map}, default: [])
 
     timestamps()
@@ -28,9 +30,11 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.RunRecord do
       :runtime_class,
       :status,
       :input,
+      :input_payload_ref,
       :credential_ref,
       :target_id,
       :result,
+      :result_payload_ref,
       :artifact_refs,
       :inserted_at,
       :updated_at

@@ -30,7 +30,7 @@ defmodule Jido.Integration.V2.Conformance.MixProject do
 
   defp deps do
     [
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_control_plane(),
       DependencyResolver.jido_integration_v2_runtime_router(),
       DependencyResolver.jido_integration_v2_direct_runtime(),

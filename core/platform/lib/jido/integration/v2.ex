@@ -19,7 +19,7 @@ defmodule Jido.Integration.V2 do
   - typed invocation through `InvocationRequest` and `invoke/1`
   - direct invocation through `invoke/3` and retry of accepted or failed runs
     through `execute_run/3`
-  - durable Brain-to-Spine intake through `accept_brain_invocation/2`
+  - durable brain-to-lower-gateway intake through `accept_brain_invocation/2`
   - read-only operator review helpers through `runs/1`, `targets/1`,
     `boundary_sessions/1`, `attach_grants/1`, `compatible_targets_for/2`,
     `review_packet/2`, and `derived_state_attachment/2`
@@ -195,7 +195,7 @@ defmodule Jido.Integration.V2 do
   defdelegate invoke(request), to: ControlPlane
 
   @doc """
-  Accept a durable Brain-to-Spine invocation through the shared platform seam.
+  Accept a durable brain-to-lower-gateway invocation through the shared platform seam.
 
   This preserves the typed acceptance and rejection contracts from
   `core/brain_ingress` while exposing them through the public platform facade.
@@ -386,7 +386,7 @@ defmodule Jido.Integration.V2 do
   Build the canonical higher-order attachment refs for durable run truth.
 
   Higher-order repos persist their own derived state, but they should anchor
-  those records to Spine-owned subject, evidence, and governance refs instead
+  those records to lower-gateway-owned subject, evidence, and governance refs instead
   of copying lower-level truth.
   """
   @spec derived_state_attachment(String.t(), map()) ::

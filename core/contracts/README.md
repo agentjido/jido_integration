@@ -1,4 +1,4 @@
-# Jido Integration V2 Contracts
+# Jido Integration Contracts
 
 Public structs, behaviours, and projection rules for the greenfield platform.
 
@@ -6,7 +6,7 @@ This package is the contract spine. It defines the canonical objects used by
 auth, control-plane durability, runtime invocation, and generated consumer
 surfaces.
 
-It now also documents the lower-boundary contract packet that the Spine is
+It now also documents the lower-boundary contract packet that the lower acceptance gateway is
 allowed to carry without re-exporting raw `execution_plane` package surfaces.
 
 ## Public Types
@@ -148,8 +148,8 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
   cross-repo reference seam for higher-order repos
 - `core/contracts` is the only intended shared dependency seam for higher-order
   repos such as `jido_memory`, `jido_skill`, and `jido_eval`
-- durable Brain-to-Spine carriage also stays on this seam:
-  - `CanonicalJson` defines the Spine-owned canonicalization and hashing basis
+- durable brain-to-lower-gateway carriage also stays on this seam:
+  - `CanonicalJson` defines the lower-gateway-owned canonicalization and hashing basis
     for submission identity
   - `SubmissionIdentity` defines the cross-repo idempotency anchor
   - `AuthorityAuditEnvelope` and `ExecutionGovernanceProjection` keep audit
@@ -180,7 +180,7 @@ around this repo:
 - `ExecutionOutcome.v1`
 
 This package does not replace those lower contracts and it does not flatten
-them into one mega-struct. It remains the stable Spine-side public seam above
+them into one mega-struct. It remains the stable lower-gateway public seam above
 that packet.
 
 The family-specific lower intent payload interiors for
@@ -271,7 +271,7 @@ explicit:
 - `identity`
 
 `Jido.Integration.V2.Contracts.boundary_metadata_contract_keys/0` publishes
-that list for the Spine-owned carrier vocabulary.
+that list for the lower-gateway-owned carrier vocabulary.
 
 - authors connector auth truth through explicit profile records rather than one
   flat auth mode
@@ -354,13 +354,13 @@ The contract rules are the same as the rest of this package:
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be
-installed by adding `jido_integration_v2_contracts` to your list of
+installed by adding `jido_integration_contracts` to your list of
 dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:jido_integration_v2_contracts, "~> 0.1.0"}
+    {:jido_integration_contracts, "~> 0.1.0"}
   ]
 end
 ```

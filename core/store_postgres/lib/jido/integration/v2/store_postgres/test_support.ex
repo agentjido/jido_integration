@@ -8,6 +8,8 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.ArtifactRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.AttemptRecord
+  alias Jido.Integration.V2.StorePostgres.Schemas.ClaimCheckBlobRecord
+  alias Jido.Integration.V2.StorePostgres.Schemas.ClaimCheckReferenceRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.ConnectionRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.CredentialRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.DedupeKeyRecord
@@ -44,6 +46,12 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
       :jido_integration_v2_control_plane,
       :artifact_store,
       Jido.Integration.V2.StorePostgres.ArtifactStore
+    )
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :claim_check_store,
+      Jido.Integration.V2.StorePostgres.ClaimCheckStore
     )
 
     Application.put_env(
@@ -150,6 +158,8 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
     Repo.delete_all(SubmissionRecord)
     Repo.delete_all(TargetRecord)
     Repo.delete_all(ArtifactRecord)
+    Repo.delete_all(ClaimCheckReferenceRecord)
+    Repo.delete_all(ClaimCheckBlobRecord)
     Repo.delete_all(EventRecord)
     Repo.delete_all(AttemptRecord)
     Repo.delete_all(RunRecord)
@@ -160,6 +170,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
     Repo.delete_all(ConnectionRecord)
     Repo.delete_all(LeaseRecord)
     Repo.delete_all(CredentialRecord)
+    File.rm_rf!(claim_check_root())
     :ok
   end
 
@@ -217,7 +228,18 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   defp configure_repo_defaults!(opts) do
     Application.put_env(:jido_integration_v2_store_postgres, :ecto_repos, [Repo])
     Application.put_env(:jido_integration_v2_store_postgres, Repo, repo_config(opts))
+
+    Application.put_env(
+      :jido_integration_v2_store_postgres,
+      :claim_check_root,
+      claim_check_root()
+    )
+
     :ok
+  end
+
+  defp claim_check_root do
+    Path.join(System.tmp_dir!(), "jido_integration_v2_claim_check_test")
   end
 
   defp with_repo_ownership(opts, fun) do

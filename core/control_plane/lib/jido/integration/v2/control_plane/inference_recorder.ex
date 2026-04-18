@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
   alias Jido.Integration.V2.CompatibilityResult
   alias Jido.Integration.V2.ConsumerManifest
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.ControlPlane.ClaimCheck
   alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.EndpointDescriptor
@@ -47,9 +48,11 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
 
   @spec inference_review_summary(Run.t(), Attempt.t() | nil) :: {:ok, map()} | :error
   def inference_review_summary(%Run{} = run, %Attempt{} = attempt) do
-    output = attempt.output || run.result || %{}
+    input = resolved_payload(run.input, Map.get(run, :input_payload_ref))
+    {output_payload, output_ref} = output_source(run, attempt)
+    output = resolved_payload(output_payload, output_ref)
 
-    if inference_payload?(run.input) or inference_payload?(output) do
+    if inference_payload?(input) or inference_payload?(output) do
       capability = capability_summary(run, attempt, output)
 
       {:ok,
@@ -136,64 +139,107 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
 
   defp build_run(spec) do
     runtime_class = legacy_runtime_class(spec.request)
+    trace_id = trace_id(spec)
 
-    Run.new(%{
-      run_id: spec.context.run_id,
-      capability_id: @inference_capability_id,
-      runtime_class: runtime_class,
-      status: terminal_run_status(spec.result),
-      input: run_input(spec),
-      credential_ref: inference_credential_ref(),
-      target_id: nil,
-      result: run_result(spec)
-    })
+    with {:ok, staged_input} <-
+           stage_payload(run_input(spec),
+             payload_kind: :run_input,
+             trace_id: trace_id,
+             redaction_class: "inference_run_input"
+           ),
+         {:ok, staged_result} <-
+           stage_payload(run_result(spec),
+             payload_kind: :run_result,
+             trace_id: trace_id,
+             redaction_class: "inference_run_result"
+           ) do
+      Run.new(%{
+        run_id: spec.context.run_id,
+        capability_id: @inference_capability_id,
+        runtime_class: runtime_class,
+        status: terminal_run_status(spec.result),
+        input: staged_input.payload,
+        input_payload_ref: staged_input.payload_ref,
+        credential_ref: inference_credential_ref(),
+        target_id: nil,
+        result: staged_result.payload,
+        result_payload_ref: staged_result.payload_ref
+      })
+    end
   end
 
   defp build_attempt(spec, run) do
-    Attempt.new(%{
-      attempt_id: spec.context.attempt_id,
-      run_id: run.run_id,
-      attempt: Contracts.attempt_from_id!(run.run_id, spec.context.attempt_id),
-      aggregator_id: "inference_control_plane",
-      aggregator_epoch: 1,
-      runtime_class: run.runtime_class,
-      status: terminal_attempt_status(spec.result),
-      credential_lease_id: nil,
-      target_id: nil,
-      runtime_ref_id: spec.endpoint_descriptor && spec.endpoint_descriptor.source_runtime_ref,
-      output: attempt_output(spec)
-    })
+    with {:ok, staged_output} <-
+           stage_payload(attempt_output(spec),
+             payload_kind: :attempt_output,
+             trace_id: trace_id(spec),
+             redaction_class: "inference_attempt_output"
+           ) do
+      Attempt.new(%{
+        attempt_id: spec.context.attempt_id,
+        run_id: run.run_id,
+        attempt: Contracts.attempt_from_id!(run.run_id, spec.context.attempt_id),
+        aggregator_id: "inference_control_plane",
+        aggregator_epoch: 1,
+        runtime_class: run.runtime_class,
+        status: terminal_attempt_status(spec.result),
+        credential_lease_id: nil,
+        target_id: nil,
+        runtime_ref_id: spec.endpoint_descriptor && spec.endpoint_descriptor.source_runtime_ref,
+        output: staged_output.payload,
+        output_payload_ref: staged_output.payload_ref
+      })
+    end
   end
 
   defp append_events(run, attempt, spec) do
     event_store = Stores.event_store()
     start_seq = event_store.next_seq(run.run_id, attempt.attempt_id)
 
-    events =
-      spec
-      |> event_specs()
-      |> Enum.with_index(start_seq)
-      |> Enum.map(fn {event_spec, seq} ->
-        Event.new!(%{
-          event_id: Contracts.event_id(run.run_id, attempt.attempt_id, seq),
-          run_id: run.run_id,
-          attempt: attempt.attempt,
-          attempt_id: attempt.attempt_id,
-          seq: seq,
-          type: event_spec.type,
-          stream: Map.get(event_spec, :stream, :system),
-          level: Map.get(event_spec, :level, :info),
-          payload: Map.fetch!(event_spec, :payload),
-          trace: %{trace_id: spec.context.observability[:trace_id]},
-          target_id: nil,
-          runtime_ref_id: spec.endpoint_descriptor && spec.endpoint_descriptor.source_runtime_ref
-        })
-      end)
+    with {:ok, events} <- build_events(run, attempt, spec, start_seq) do
+      event_store.append_events(events,
+        aggregator_id: attempt.aggregator_id,
+        aggregator_epoch: attempt.aggregator_epoch
+      )
+    end
+  end
 
-    event_store.append_events(events,
-      aggregator_id: attempt.aggregator_id,
-      aggregator_epoch: attempt.aggregator_epoch
-    )
+  defp build_events(run, attempt, spec, start_seq) do
+    spec
+    |> event_specs()
+    |> Enum.with_index(start_seq)
+    |> Enum.reduce_while({:ok, []}, fn {event_spec, seq}, {:ok, acc} ->
+      case stage_payload(
+             Map.fetch!(event_spec, :payload),
+             payload_kind: "event:#{event_spec.type}",
+             trace_id: trace_id(spec),
+             redaction_class: "inference_event_payload"
+           ) do
+        {:ok, staged_payload} ->
+          event =
+            Event.new!(%{
+              event_id: Contracts.event_id(run.run_id, attempt.attempt_id, seq),
+              run_id: run.run_id,
+              attempt: attempt.attempt,
+              attempt_id: attempt.attempt_id,
+              seq: seq,
+              type: event_spec.type,
+              stream: Map.get(event_spec, :stream, :system),
+              level: Map.get(event_spec, :level, :info),
+              payload: staged_payload.payload,
+              payload_ref: staged_payload.payload_ref,
+              trace: %{trace_id: trace_id(spec)},
+              target_id: nil,
+              runtime_ref_id:
+                spec.endpoint_descriptor && spec.endpoint_descriptor.source_runtime_ref
+            })
+
+          {:cont, {:ok, acc ++ [event]}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
+    end)
   end
 
   defp event_specs(spec) do
@@ -382,7 +428,12 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
   end
 
   defp inference_payload?(%{} = payload) do
-    Contracts.get(payload, :contract_version) == Contracts.inference_contract_version()
+    Contracts.get(payload, :contract_version) == Contracts.inference_contract_version() or
+      (ClaimCheck.claim_checked?(payload) and
+         payload
+         |> Contracts.get(ClaimCheck.metadata_key(), %{})
+         |> Contracts.get(:preview, %{})
+         |> Contracts.get(:contract_version) == Contracts.inference_contract_version())
   end
 
   defp inference_payload?(_value), do: false
@@ -608,6 +659,27 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
     (spec.lease_ref && spec.lease_ref.lease_ref) ||
       (spec.endpoint_descriptor && spec.endpoint_descriptor.lease_ref)
   end
+
+  defp stage_payload(payload, opts) do
+    ClaimCheck.prepare_json(payload, opts)
+  end
+
+  defp resolved_payload(payload, payload_ref) do
+    case ClaimCheck.resolve_json(payload || %{}, payload_ref) do
+      {:ok, resolved} -> resolved
+      {:error, _reason} -> payload || %{}
+    end
+  end
+
+  defp output_source(run, attempt) do
+    if is_nil(attempt.output) and is_nil(Map.get(attempt, :output_payload_ref)) do
+      {run.result || %{}, Map.get(run, :result_payload_ref)}
+    else
+      {attempt.output || %{}, Map.get(attempt, :output_payload_ref)}
+    end
+  end
+
+  defp trace_id(spec), do: spec.context.observability[:trace_id]
 
   defp maybe_dump(nil), do: nil
   defp maybe_dump(%BackendManifest{} = manifest), do: BackendManifest.dump(manifest)

@@ -1,13 +1,14 @@
-defmodule Jido.Integration.V2.StorePostgres.Schemas.SubmissionRecord do
+defmodule Jido.Integration.V2.StorePostgres.Schemas.ExpiredSubmissionRecord do
   @moduledoc false
 
   use Ecto.Schema
   import Ecto.Changeset
 
-  @primary_key {:submission_key, :string, autogenerate: false}
+  @primary_key {:id, :id, autogenerate: true}
   @timestamps_opts [type: :utc_datetime_usec]
 
-  schema "submission_records" do
+  schema "expired_submission_records" do
+    field(:submission_key, :string)
     field(:tenant_id, :string)
     field(:submission_dedupe_key, :string)
     field(:identity_checksum, :string)
@@ -15,7 +16,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.SubmissionRecord do
     field(:acceptance_json, :map)
     field(:rejection_json, :map)
     field(:last_seen_at, :utc_datetime_usec)
-    field(:expires_at, :utc_datetime_usec)
+    field(:expired_at, :utc_datetime_usec)
 
     timestamps()
   end
@@ -31,7 +32,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.SubmissionRecord do
       :acceptance_json,
       :rejection_json,
       :last_seen_at,
-      :expires_at,
+      :expired_at,
       :inserted_at,
       :updated_at
     ])
@@ -42,11 +43,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.SubmissionRecord do
       :identity_checksum,
       :status,
       :last_seen_at,
-      :expires_at
+      :expired_at
     ])
-    |> unique_constraint(:submission_key, name: :submission_records_pkey)
-    |> unique_constraint(:submission_dedupe_key,
-      name: :submission_records_tenant_dedupe_live_index
-    )
   end
 end

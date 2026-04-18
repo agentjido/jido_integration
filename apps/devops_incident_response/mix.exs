@@ -33,7 +33,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponse.MixProject do
       {:jido, "~> 2.2"},
       DependencyResolver.jido_integration_v2(),
       DependencyResolver.jido_integration_v2_auth(),
-      DependencyResolver.jido_integration_v2_contracts(),
+      DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_consumer_surfaces(),
       DependencyResolver.jido_integration_v2_ingress(),
       DependencyResolver.jido_integration_v2_dispatch_runtime(),

@@ -4,7 +4,7 @@ These examples exercise the shared inference contract seam without depending on
 live runtime integrations.
 
 They now sit beside, not instead of, the Wave 1 lower-boundary packet carried
-through the Spine:
+through the lower acceptance gateway:
 
 - `BoundarySessionDescriptor.v1`
 - `ExecutionIntentEnvelope.v1`

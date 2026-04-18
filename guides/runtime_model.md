@@ -101,11 +101,13 @@ runtime families:
 - `ExecutionOutcome.v1`
 
 In this repo, those contracts are carried and interpreted through durable
-Spine ownership. They are not exposed as raw lower-package APIs.
+lower-gateway ownership. They are not exposed as raw lower-package APIs.
 
 The detailed family-facing minimal-lane payload interiors are still
 provisional until Wave 3 prove-out. The ownership split is already frozen:
 
 - Brain decides policy and topology direction
-- Spine persists durable meaning
+- `mezzanine` owns substrate truth, orchestration state, and recovery posture
+- the lower acceptance gateway persists lower acceptance, route, and callback
+  records
 - Execution Plane emits raw execution facts

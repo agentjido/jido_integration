@@ -41,7 +41,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.MixProject do
     [
       {:jido, "~> 2.2"},
       {:jido_action, "~> 2.2"},
-      WorkspaceDependencyResolver.jido_integration_v2_contracts(),
+      WorkspaceDependencyResolver.jido_integration_contracts(),
       WorkspaceDependencyResolver.jido_integration_v2_consumer_surfaces(),
       WorkspaceDependencyResolver.jido_integration_v2_direct_runtime(),
       WorkspaceDependencyResolver.jido_integration_v2_conformance(only: :test, runtime: false),

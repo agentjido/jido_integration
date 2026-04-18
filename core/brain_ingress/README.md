@@ -1,11 +1,11 @@
 # Jido Integration V2 Brain Ingress
 
-`core/brain_ingress` owns the durable Brain-to-Spine intake seam.
+`core/brain_ingress` owns the durable brain-to-lower-gateway intake seam.
 
 It is responsible for:
 
 - validating the Brain submission packet
-- verifying Spine-owned governance shadows
+- verifying lower-gateway-owned governance shadows
 - resolving logical workspace scope into concrete runtime paths
 - recording durable submission acceptance or typed rejection
 - exposing durable submission acceptance lookup for lower receipt readback

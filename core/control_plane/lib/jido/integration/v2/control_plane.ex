@@ -11,6 +11,7 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.ControlPlane.ClaimCheck
   alias Jido.Integration.V2.ControlPlane.Inference
   alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.ControlPlane.Registry
@@ -238,6 +239,7 @@ defmodule Jido.Integration.V2.ControlPlane do
   def reset! do
     assert_started!()
     Registry.reset!()
+    reset_store(Stores.claim_check_store())
     reset_store(Stores.target_store())
     reset_store(Stores.artifact_store())
     reset_store(Stores.event_store())
@@ -301,9 +303,8 @@ defmodule Jido.Integration.V2.ControlPlane do
   end
 
   defp continue_execute_run(capability, run, attempt_number, opts) do
-    input = runtime_replay_input(run.input)
-
-    with :ok <- validate_execution_status(run),
+    with {:ok, input} <- runtime_replay_input(run),
+         :ok <- validate_execution_status(run),
          :ok <- validate_target_selection(run, capability),
          {:ok, auth_binding} <- resolve_run_auth(run),
          %PolicyDecision{status: :allowed} = policy_decision <-
@@ -337,9 +338,15 @@ defmodule Jido.Integration.V2.ControlPlane do
     end
   end
 
-  defp runtime_replay_input(value) when is_map(value) do
+  defp runtime_replay_input(%Run{} = run) do
+    with {:ok, payload} <- ClaimCheck.resolve_json(run.input, Map.get(run, :input_payload_ref)) do
+      {:ok, runtime_replay_value(payload)}
+    end
+  end
+
+  defp runtime_replay_value(value) when is_map(value) do
     Enum.reduce(value, %{}, fn {key, nested_value}, acc ->
-      nested_value = runtime_replay_input(nested_value)
+      nested_value = runtime_replay_value(nested_value)
 
       case key do
         key when is_binary(key) ->
@@ -358,11 +365,11 @@ defmodule Jido.Integration.V2.ControlPlane do
     end)
   end
 
-  defp runtime_replay_input(value) when is_list(value) do
-    Enum.map(value, &runtime_replay_input/1)
+  defp runtime_replay_value(value) when is_list(value) do
+    Enum.map(value, &runtime_replay_value/1)
   end
 
-  defp runtime_replay_input(value), do: value
+  defp runtime_replay_value(value), do: value
 
   defp maybe_put_existing_atom_alias(map, key, value) when is_binary(key) do
     case existing_atom(key) do

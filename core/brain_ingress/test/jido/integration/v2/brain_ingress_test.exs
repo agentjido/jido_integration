@@ -13,12 +13,12 @@ defmodule Jido.Integration.V2.BrainIngressTest do
   defmodule Ledger do
     @behaviour Jido.Integration.V2.BrainIngress.SubmissionLedger
 
-    def accept_submission(_invocation, opts) do
+    def accept_submission(invocation, opts) do
       agent = Keyword.fetch!(opts, :agent)
-      invocation = Keyword.fetch!(opts, :invocation)
+      dedupe_key = invocation.extensions["submission_dedupe_key"]
 
       Agent.get_and_update(agent, fn state ->
-        case Map.get(state, invocation.submission_key) do
+        case Map.get(state, {invocation.tenant_id, dedupe_key}) do
           nil ->
             acceptance =
               SubmissionAcceptance.new!(%{
@@ -28,7 +28,7 @@ defmodule Jido.Integration.V2.BrainIngressTest do
                 ledger_version: 1
               })
 
-            {{:ok, acceptance}, Map.put(state, invocation.submission_key, acceptance)}
+            {{:ok, acceptance}, Map.put(state, {invocation.tenant_id, dedupe_key}, acceptance)}
 
           acceptance ->
             duplicate =
@@ -42,22 +42,43 @@ defmodule Jido.Integration.V2.BrainIngressTest do
       end)
     end
 
-    def fetch_acceptance(submission_key, opts) do
+    def lookup_submission(submission_dedupe_key, tenant_id, opts) do
       agent = Keyword.fetch!(opts, :agent)
 
       Agent.get(agent, fn state ->
-        case Map.fetch(state, submission_key) do
-          {:ok, acceptance} -> {:ok, acceptance}
-          :error -> :error
+        case Map.fetch(state, {tenant_id, submission_dedupe_key}) do
+          {:ok, acceptance} -> {:accepted, acceptance}
+          :error -> :never_seen
         end
       end)
     end
 
-    def record_rejection(submission_key, rejection, opts) do
+    def fetch_acceptance(submission_key, opts) do
       agent = Keyword.fetch!(opts, :agent)
-      Agent.update(agent, &Map.put(&1, {:rejection, submission_key}, rejection))
+
+      Agent.get(agent, fn state ->
+        case Enum.find_value(state, fn
+               {{_tenant_id, _dedupe_key}, %SubmissionAcceptance{submission_key: ^submission_key} = acceptance} ->
+                 {:ok, acceptance}
+
+               _other ->
+                 nil
+             end) do
+          {:ok, acceptance} -> {:ok, acceptance}
+          :error -> :error
+          nil -> :error
+        end
+      end)
+    end
+
+    def record_rejection(invocation, rejection, opts) do
+      agent = Keyword.fetch!(opts, :agent)
+      dedupe_key = invocation.extensions["submission_dedupe_key"]
+      Agent.update(agent, &Map.put(&1, {:rejection, invocation.tenant_id, dedupe_key}, rejection))
       :ok
     end
+
+    def expire_submissions(_opts), do: 0
   end
 
   defmodule Resolver do
@@ -106,7 +127,7 @@ defmodule Jido.Integration.V2.BrainIngressTest do
     assert {:ok, %SubmissionAcceptance{} = acceptance, _gateway, _runtime_inputs} =
              BrainIngress.accept_invocation(
                invocation,
-               submission_ledger_opts: [agent: agent, invocation: invocation],
+               submission_ledger_opts: [agent: agent],
                scope_resolver: Resolver,
                scope_resolver_opts: [
                  mapping: %{
@@ -129,7 +150,7 @@ defmodule Jido.Integration.V2.BrainIngressTest do
              BrainIngress.accept_invocation(
                invocation,
                submission_ledger: Ledger,
-               submission_ledger_opts: [agent: agent, invocation: invocation],
+               submission_ledger_opts: [agent: agent],
                scope_resolver: Resolver,
                scope_resolver_opts: [
                  mapping: %{
@@ -150,7 +171,7 @@ defmodule Jido.Integration.V2.BrainIngressTest do
              BrainIngress.accept_invocation(
                invocation,
                submission_ledger: Ledger,
-               submission_ledger_opts: [agent: agent, invocation: invocation],
+               submission_ledger_opts: [agent: agent],
                scope_resolver: Resolver,
                scope_resolver_opts: [mapping: %{}]
              )
@@ -180,7 +201,7 @@ defmodule Jido.Integration.V2.BrainIngressTest do
 
       assert rejection.rejection_family == :scope_unresolvable
 
-      assert Agent.get(agent, &Map.fetch(&1, {:rejection, invocation.submission_key})) ==
+      assert Agent.get(agent, &Map.fetch(&1, {:rejection, invocation.tenant_id, "dedupe-1"})) ==
                {:ok, rejection}
     after
       :code.purge(ledger)
@@ -200,7 +221,7 @@ defmodule Jido.Integration.V2.BrainIngressTest do
              BrainIngress.accept_invocation(
                invocation,
                submission_ledger: Ledger,
-               submission_ledger_opts: [agent: agent, invocation: invocation],
+               submission_ledger_opts: [agent: agent],
                scope_resolver: Resolver,
                scope_resolver_opts: [
                  mapping: %{
@@ -327,7 +348,7 @@ defmodule Jido.Integration.V2.BrainIngressTest do
       boundary_request: shadows.boundary_request,
       execution_intent_family: "process",
       execution_intent: %{"argv" => ["echo", "hello"]},
-      extensions: %{}
+      extensions: %{"submission_dedupe_key" => "dedupe-1"}
     })
   end
 
@@ -356,11 +377,16 @@ defmodule Jido.Integration.V2.BrainIngressTest do
 
         def fetch_acceptance(_submission_key, _opts), do: :error
 
-        def record_rejection(submission_key, rejection, opts) do
+        def lookup_submission(_submission_dedupe_key, _tenant_id, _opts), do: :never_seen
+
+        def record_rejection(invocation, rejection, opts) do
           agent = Keyword.fetch!(opts, :agent)
-          Agent.update(agent, &Map.put(&1, {:rejection, submission_key}, rejection))
+          dedupe_key = invocation.extensions["submission_dedupe_key"]
+          Agent.update(agent, &Map.put(&1, {:rejection, invocation.tenant_id, dedupe_key}, rejection))
           :ok
         end
+
+        def expire_submissions(_opts), do: 0
       end
       """
     )

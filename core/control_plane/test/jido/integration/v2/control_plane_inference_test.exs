@@ -1,3 +1,18 @@
+defmodule Jido.Integration.V2.ControlPlaneInferenceTest.FailingClaimCheckStore do
+  @behaviour Jido.Integration.V2.ControlPlane.ClaimCheckStore
+
+  def stage_blob(_payload_ref, _encoded, _metadata), do: {:error, :claim_check_unavailable}
+  def fetch_blob(_payload_ref), do: :error
+  def register_reference(_payload_ref, _attrs), do: :ok
+  def fetch_blob_metadata(_payload_ref), do: :error
+  def count_live_references(_payload_ref), do: 0
+  def sweep_staged_payloads(_opts \\ []), do: {:ok, %{deleted_count: 0}}
+
+  def garbage_collect(_opts \\ []) do
+    {:ok, %{deleted_count: 0, skipped_live_reference_count: 0}}
+  end
+end
+
 defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
   use ExUnit.Case
 
@@ -5,6 +20,10 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
   alias Jido.Integration.V2.CompatibilityResult
   alias Jido.Integration.V2.ConsumerManifest
   alias Jido.Integration.V2.ControlPlane
+  alias Jido.Integration.V2.ControlPlane.ClaimCheck
+  alias Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry
+  alias Jido.Integration.V2.ControlPlane.InferenceRecorder
+  alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.InferenceExecutionContext
@@ -43,35 +62,35 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
            ] = ControlPlane.events(recorded.run.run_id)
 
     assert admitted_payload == %{
-             request_id: spec.request.request_id,
-             operation: :generate_text,
-             stream?: false,
-             target_class: :cloud_provider
+             "request_id" => spec.request.request_id,
+             "operation" => "generate_text",
+             "stream?" => false,
+             "target_class" => "cloud_provider"
            }
 
     assert started_payload == %{
-             attempt_id: recorded.attempt.attempt_id,
-             runtime_kind: :client,
-             management_mode: :provider_managed
+             "attempt_id" => recorded.attempt.attempt_id,
+             "runtime_kind" => "client",
+             "management_mode" => "provider_managed"
            }
 
     assert compatibility_payload == %{
-             compatible?: true,
-             reason: :protocol_match,
-             consumer: :jido_integration_req_llm,
-             backend: nil
+             "compatible?" => true,
+             "reason" => "protocol_match",
+             "consumer" => "jido_integration_req_llm",
+             "backend" => nil
            }
 
     assert target_payload == %{
-             endpoint_id: nil,
-             target_class: :cloud_provider,
-             protocol: nil,
-             source_runtime: :req_llm,
-             lease_ref: nil
+             "endpoint_id" => nil,
+             "target_class" => "cloud_provider",
+             "protocol" => nil,
+             "source_runtime" => "req_llm",
+             "lease_ref" => nil
            }
 
-    assert terminal_payload.status == :ok
-    assert terminal_payload.finish_reason == :stop
+    assert terminal_payload["status"] == "ok"
+    assert terminal_payload["finish_reason"] == "stop"
   end
 
   test "rejects stream checkpoint policy drift from the admitted execution context" do
@@ -101,34 +120,34 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
              %Event{type: "inference.attempt_completed", payload: terminal_payload}
            ] = ControlPlane.events(recorded.run.run_id)
 
-    assert target_payload.endpoint_id == "endpoint-llama-1"
-    assert target_payload.target_class == :self_hosted_endpoint
-    assert target_payload.protocol == :openai_chat_completions
-    assert target_payload.source_runtime == :llama_cpp_sdk
-    assert target_payload.lease_ref == "lease-inference-1"
+    assert target_payload["endpoint_id"] == "endpoint-llama-1"
+    assert target_payload["target_class"] == "self_hosted_endpoint"
+    assert target_payload["protocol"] == "openai_chat_completions"
+    assert target_payload["source_runtime"] == "llama_cpp_sdk"
+    assert target_payload["lease_ref"] == "lease-inference-1"
 
     assert opened_payload == %{
-             stream_id: "stream-inference-1",
-             protocol: :openai_chat_completions,
-             checkpoint_policy: :summary
+             "stream_id" => "stream-inference-1",
+             "protocol" => "openai_chat_completions",
+             "checkpoint_policy" => "summary"
            }
 
     assert checkpoint_payload == %{
-             stream_id: "stream-inference-1",
-             chunk_count: 3,
-             byte_count: 144,
-             content_artifact_id: "artifact-stream-summary-1"
+             "stream_id" => "stream-inference-1",
+             "chunk_count" => 3,
+             "byte_count" => 144,
+             "content_artifact_id" => "artifact-stream-summary-1"
            }
 
     assert closed_payload == %{
-             stream_id: "stream-inference-1",
-             finish_reason: :stop,
-             chunk_count: 3,
-             byte_count: 144
+             "stream_id" => "stream-inference-1",
+             "finish_reason" => "stop",
+             "chunk_count" => 3,
+             "byte_count" => 144
            }
 
-    assert terminal_payload.status == :ok
-    assert terminal_payload.usage == %{input_tokens: 12, output_tokens: 34}
+    assert terminal_payload["status"] == "ok"
+    assert terminal_payload["usage"] == %{"input_tokens" => 12, "output_tokens" => 34}
   end
 
   test "records CLI-backed inference cancellation explicitly" do
@@ -146,12 +165,12 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
              %Event{type: "inference.attempt_cancelled", payload: terminal_payload}
            ] = ControlPlane.events(recorded.run.run_id)
 
-    assert started_payload.runtime_kind == :task
-    assert started_payload.management_mode == :jido_managed
-    assert compatibility_payload.backend == :asm_inference_endpoint
-    assert target_payload.target_class == :cli_endpoint
-    assert terminal_payload.status == :cancelled
-    assert terminal_payload.finish_reason == :cancelled
+    assert started_payload["runtime_kind"] == "task"
+    assert started_payload["management_mode"] == "jido_managed"
+    assert compatibility_payload["backend"] == "asm_inference_endpoint"
+    assert target_payload["target_class"] == "cli_endpoint"
+    assert terminal_payload["status"] == "cancelled"
+    assert terminal_payload["finish_reason"] == "cancelled"
   end
 
   test "records inference failures explicitly" do
@@ -167,8 +186,180 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
              %Event{type: "inference.attempt_failed", payload: terminal_payload}
            ] = ControlPlane.events(recorded.run.run_id)
 
-    assert terminal_payload.status == :error
-    assert terminal_payload.error == %{message: "provider timeout", reason: :timeout}
+    assert terminal_payload["status"] == "error"
+    assert terminal_payload["error"] == %{"message" => "provider timeout", "reason" => "timeout"}
+  end
+
+  test "claim-checks oversized inference payloads and resolves them for review" do
+    attach_claim_check_telemetry([:stage])
+
+    large_text = large_text()
+    spec = oversized_failed_cloud_spec(large_text)
+
+    assert {:ok, recorded} = ControlPlane.record_inference_attempt(spec)
+    assert {:ok, stored_run} = ControlPlane.fetch_run(recorded.run.run_id)
+    assert {:ok, stored_attempt} = ControlPlane.fetch_attempt(recorded.attempt.attempt_id)
+    events = ControlPlane.events(recorded.run.run_id)
+    terminal_event = List.last(events)
+
+    assert ClaimCheck.claim_checked?(stored_run.input)
+    assert ClaimCheck.claim_checked?(stored_run.result)
+    assert ClaimCheck.claim_checked?(stored_attempt.output)
+    assert ClaimCheck.claim_checked?(terminal_event.payload)
+
+    assert stored_run.input_payload_ref.store == "claim_check_hot"
+    assert stored_run.result_payload_ref.store == "claim_check_hot"
+    assert stored_attempt.output_payload_ref.store == "claim_check_hot"
+    assert terminal_event.payload_ref.store == "claim_check_hot"
+
+    assert String.starts_with?(stored_run.input_payload_ref.key, "sha256/")
+    assert String.starts_with?(terminal_event.payload_ref.key, "sha256/")
+
+    refute Map.has_key?(stored_run.input, "request")
+    refute Map.has_key?(stored_run.result, "inference_result")
+    refute Map.has_key?(stored_attempt.output, "inference_result")
+
+    assert terminal_event.payload == %{
+             "status" => "error",
+             "__claim_check__" => terminal_event.payload["__claim_check__"]
+           }
+
+    assert Enum.count(events, &is_nil(&1.payload_ref)) == 4
+    assert Enum.count(events, &(not is_nil(&1.payload_ref))) == 1
+
+    assert {:ok, resolved_input} =
+             ClaimCheck.resolve_json(stored_run.input, stored_run.input_payload_ref)
+
+    assert {:ok, resolved_terminal_payload} =
+             ClaimCheck.resolve_json(terminal_event.payload, terminal_event.payload_ref)
+
+    assert get_in(resolved_input, ["request", "messages", Access.at(0), "content"]) == large_text
+    assert get_in(resolved_terminal_payload, ["error", "message"]) == large_text
+
+    assert {:ok, summary} = InferenceRecorder.inference_review_summary(stored_run, stored_attempt)
+    assert summary.capability.runtime.runtime_kind == :client
+    assert summary.capability.runtime.management_mode == :provider_managed
+    assert summary.capability.runtime.target_class == :cloud_provider
+
+    assert_claim_check_events(:stage, 4, fn measurements, metadata ->
+      assert measurements.count == 1
+      assert measurements.payload_bytes > 64 * 1024
+      assert is_integer(measurements.latency_ms)
+      assert measurements.latency_ms >= 0
+      assert metadata.trace_id == "trace-cloud-1"
+      assert metadata.source_component == :claim_check
+      assert metadata.store_backend == "claim_check_hot"
+      assert String.starts_with?(metadata.payload_ref.key, "sha256/")
+    end)
+  end
+
+  test "abandons ledger writes when oversized claim-check staging fails" do
+    attach_claim_check_telemetry([:stage_failure])
+
+    previous_claim_check_store =
+      Application.get_env(
+        :jido_integration_v2_control_plane,
+        :claim_check_store,
+        :__missing__
+      )
+
+    on_exit(fn ->
+      case previous_claim_check_store do
+        :__missing__ ->
+          Application.delete_env(:jido_integration_v2_control_plane, :claim_check_store)
+
+        store ->
+          Application.put_env(:jido_integration_v2_control_plane, :claim_check_store, store)
+      end
+    end)
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :claim_check_store,
+      Jido.Integration.V2.ControlPlaneInferenceTest.FailingClaimCheckStore
+    )
+
+    spec = oversized_failed_cloud_spec(large_text())
+
+    assert {:error, :claim_check_unavailable} = ControlPlane.record_inference_attempt(spec)
+    assert ControlPlane.runs() == []
+
+    assert_claim_check_events(:stage_failure, 1, fn measurements, metadata ->
+      assert measurements.count == 1
+      assert measurements.payload_bytes > 64 * 1024
+      assert is_integer(measurements.latency_ms)
+      assert measurements.latency_ms >= 0
+      assert metadata.trace_id == "trace-cloud-1"
+      assert metadata.reason == "claim_check_unavailable"
+      assert metadata.source_component == :claim_check
+      assert metadata.store_backend == "claim_check_hot"
+      assert String.starts_with?(metadata.payload_ref.key, "sha256/")
+    end)
+  end
+
+  test "run ledger claim-check cleanup emits orphan and live-reference GC telemetry" do
+    attach_claim_check_telemetry([:orphaned_staged_payload, :blob_gc_skipped_live_reference])
+
+    assert {:ok, orphaned} =
+             ClaimCheck.prepare_json(
+               %{
+                 "contract_version" => "test",
+                 "messages" => [%{"role" => "user", "content" => large_text()}]
+               },
+               payload_kind: :test_payload,
+               trace_id: "trace-run-ledger-orphan",
+               redaction_class: "test_payload"
+             )
+
+    assert {:ok, %{deleted_count: 1}} = Stores.claim_check_store().sweep_staged_payloads(older_than_s: 0)
+
+    assert_claim_check_events(:orphaned_staged_payload, 1, fn measurements, metadata ->
+      assert measurements.count == 1
+      assert measurements.payload_bytes > 64 * 1024
+      assert metadata.trace_id == "trace-run-ledger-orphan"
+      assert metadata.source_component == :run_ledger
+      assert metadata.store_backend == :run_ledger
+      assert metadata.payload_kind == "test_payload"
+      assert metadata.payload_ref.store == orphaned.payload_ref.store
+      assert metadata.payload_ref.key == orphaned.payload_ref.key
+      assert metadata.payload_ref.checksum == orphaned.payload_ref.checksum
+      assert metadata.payload_ref.size_bytes == orphaned.payload_ref.size_bytes
+    end)
+
+    assert {:ok, referenced} =
+             ClaimCheck.prepare_json(
+               %{
+                 "contract_version" => "test",
+                 "messages" => [%{"role" => "user", "content" => large_text()}]
+               },
+               payload_kind: :test_payload,
+               trace_id: "trace-run-ledger-live",
+               redaction_class: "test_payload"
+             )
+
+    assert :ok =
+             Stores.claim_check_store().register_reference(referenced.payload_ref, %{
+               ledger_kind: "run",
+               ledger_id: "run-live-1",
+               payload_field: "input",
+               trace_id: "trace-run-ledger-live"
+             })
+
+    assert {:ok, %{deleted_count: 0, skipped_live_reference_count: 1}} =
+             Stores.claim_check_store().garbage_collect(older_than_s: 0)
+
+    assert_claim_check_events(:blob_gc_skipped_live_reference, 1, fn measurements, metadata ->
+      assert measurements.count == 1
+      assert measurements.payload_bytes > 64 * 1024
+      assert metadata.trace_id == "trace-run-ledger-live"
+      assert metadata.source_component == :run_ledger
+      assert metadata.store_backend == :run_ledger
+      assert metadata.live_reference_count == 1
+      assert metadata.payload_ref.store == referenced.payload_ref.store
+      assert metadata.payload_ref.key == referenced.payload_ref.key
+      assert metadata.payload_ref.checksum == referenced.payload_ref.checksum
+      assert metadata.payload_ref.size_bytes == referenced.payload_ref.size_bytes
+    end)
   end
 
   defp cloud_spec do
@@ -246,6 +437,16 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
         metadata: %{provider: "openai"}
       })
     )
+  end
+
+  defp oversized_failed_cloud_spec(large_text) do
+    failed_cloud_spec()
+    |> Map.update!(:request, fn request ->
+      %{request | messages: [%{role: "user", content: large_text}]}
+    end)
+    |> Map.update!(:result, fn result ->
+      %{result | error: %{message: large_text, reason: :timeout}}
+    end)
   end
 
   defp self_hosted_streaming_spec do
@@ -499,5 +700,35 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
   defp assert_json_safe(value) when is_map(value) do
     assert Enum.all?(Map.keys(value), &is_binary/1)
     Enum.each(value, fn {_key, nested} -> assert_json_safe(nested) end)
+  end
+
+  defp attach_claim_check_telemetry(event_keys) do
+    handler_id = "claim-check-telemetry-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach_many(
+      handler_id,
+      Enum.map(event_keys, &ClaimCheckTelemetry.event/1),
+      &__MODULE__.handle_claim_check_telemetry/4,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+  end
+
+  def handle_claim_check_telemetry(event, measurements, metadata, pid) do
+    send(pid, {:claim_check_telemetry, event, measurements, metadata})
+  end
+
+  defp assert_claim_check_events(event_key, expected_count, assertion_fun) do
+    event = ClaimCheckTelemetry.event(event_key)
+
+    Enum.each(1..expected_count, fn _index ->
+      assert_receive {:claim_check_telemetry, ^event, measurements, metadata}, 1_000
+      assertion_fun.(measurements, metadata)
+    end)
+  end
+
+  defp large_text do
+    String.duplicate("oversized-inference-payload-", 3_000)
   end
 end

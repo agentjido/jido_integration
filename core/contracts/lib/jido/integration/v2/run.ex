@@ -22,12 +22,20 @@ defmodule Jido.Integration.V2.Run do
                 Contracts.enumish_schema([:direct, :session, :stream], "run.runtime"),
               status: Contracts.enumish_schema(@statuses, "run.status") |> Zoi.default(:accepted),
               input: Contracts.any_map_schema(),
+              input_payload_ref:
+                Contracts.payload_ref_schema("run.input_payload_ref")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
               credential_ref: Contracts.struct_schema(CredentialRef, "run.credential_ref"),
               target_id:
                 Contracts.non_empty_string_schema("run.target_id")
                 |> Zoi.nullish()
                 |> Zoi.optional(),
               result: Contracts.any_map_schema() |> Zoi.nullish() |> Zoi.optional(),
+              result_payload_ref:
+                Contracts.payload_ref_schema("run.result_payload_ref")
+                |> Zoi.nullish()
+                |> Zoi.optional(),
               inserted_at:
                 Contracts.datetime_schema("run.inserted_at") |> Zoi.nullish() |> Zoi.optional(),
               updated_at:

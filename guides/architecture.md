@@ -18,7 +18,7 @@ runtime behavior lives.
 
 - `core/contracts` defines the public IR, behaviours, projection rules, and
   the shared inference contract seam.
-- `core/brain_ingress` owns the durable Brain-to-Spine intake seam, including
+- `core/brain_ingress` owns the durable brain-to-lower-gateway intake seam, including
   submission acceptance, governance-shadow verification, and logical scope
   resolution before runtime execution.
 - `core/platform` exposes the stable public facade `Jido.Integration.V2`,
@@ -84,7 +84,7 @@ For self-hosted execution, endpoint publication remains below the control plane:
 The lower-boundary contract packet is now frozen above this repo even though
 the broad runtime extraction is not yet complete.
 
-`jido_integration` stays the Spine:
+`jido_integration` stays the lower acceptance gateway:
 
 - it carries `AuthorityDecision.v1` as Brain-authored direction
 - it owns durable `BoundarySessionDescriptor.v1`
@@ -105,7 +105,7 @@ boundary-session, attach-grant, auth, target, retry, and review truth, while
 continuing to use `execution_plane` for hot-path attach, PTY, and transport
 mechanics.
 
-Durable Brain-to-Spine carriage also stays on that same ownership split:
+Durable brain-to-lower-gateway carriage also stays on that same ownership split:
 
 - `core/contracts` owns the canonical JSON, audit envelope, submission
   identity, and governance projection contracts

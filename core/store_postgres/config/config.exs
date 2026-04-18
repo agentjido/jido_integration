@@ -21,7 +21,12 @@ db_name =
   end
 
 config :jido_integration_v2_store_postgres,
-  ecto_repos: [Jido.Integration.V2.StorePostgres.Repo]
+  ecto_repos: [Jido.Integration.V2.StorePostgres.Repo],
+  claim_check_root:
+    System.get_env(
+      "JIDO_INTEGRATION_V2_CLAIM_CHECK_ROOT",
+      Path.join(System.tmp_dir!(), "jido_integration_v2_claim_check")
+    )
 
 config :jido_integration_v2_store_postgres, Jido.Integration.V2.StorePostgres.Repo,
   username: System.get_env("JIDO_INTEGRATION_V2_DB_USER", "postgres"),

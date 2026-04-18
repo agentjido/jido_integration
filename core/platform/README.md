@@ -14,7 +14,7 @@ packages directly.
 - public connector and capability discovery
 - public auth lifecycle delegation
 - durable review and target lookup delegation
-- durable Brain-to-Spine intake delegation
+- durable brain-to-lower-gateway intake delegation
 - higher-order derived-state attachment delegation
 - public inference invocation plus review projection over durable control-plane
   truth
@@ -97,7 +97,7 @@ summary normalizes runtime classification back into the typed platform shape.
 
 For higher-order repos such as `mezzanine`, `derived_state_attachment/2`
 provides the stable subject, evidence, and governance refs that let them anchor
-their own durable derived state without copying Spine-owned truth.
+their own durable derived state without copying lower-gateway-owned truth.
 
 For northbound operator surfaces such as Switchyard, `runs/1`,
 `boundary_sessions/1`, and `attach_grants/1` are the stable durable read seam,
@@ -105,7 +105,7 @@ while `issue_attach_grant/2` is the durable attachability seam. Live bytes and
 terminal/session mechanics still belong to `execution_plane`.
 
 For Brain-side orchestration, `accept_brain_invocation/2` exposes the durable
-Brain-to-Spine intake seam without requiring consumers to reach into
+brain-to-lower-gateway intake seam without requiring consumers to reach into
 `core/brain_ingress` directly.
 
 Substrate-facing lower facts:

@@ -18,7 +18,7 @@ Use it when:
 - you are proving end-to-end behavior locally
 - you want a simple local file-backed durability story
 - you want the first durable submission-ledger backend for local
-  Brain-to-Spine intake proofs
+  brain-to-lower-gateway intake proofs
 
 ## Postgres Durability
 
@@ -31,7 +31,7 @@ Use it when:
 - you need the operational model that the reference apps and root validation
   expect
 - you need the canonical durable submission-ledger backend for shared
-  Brain-to-Spine intake
+  brain-to-lower-gateway intake
 
 ## Inference Baseline
 
@@ -53,6 +53,6 @@ Do not promote durability into the facade by default.
 Choose the tier explicitly from the host application and keep the contract
 surface stable.
 
-That same rule now applies to durable Brain-to-Spine intake. Submission
+That same rule now applies to durable brain-to-lower-gateway intake. Submission
 acceptance is owned by `core/brain_ingress`, while `core/store_local` and
 `core/store_postgres` provide the concrete ledger backends.

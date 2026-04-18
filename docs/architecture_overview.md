@@ -14,7 +14,7 @@ Public facade and shared model:
 - `core/contracts`
   - shared public structs and behaviours
 - `core/brain_ingress`
-  - durable Brain-to-Spine submission intake, scope resolution, and typed
+  - durable brain-to-lower-gateway submission intake, scope resolution, and typed
     acceptance or rejection above the runtime path
 
 Core runtime graph:
@@ -83,7 +83,7 @@ Cross-repo Brain handoff also enters on an explicit seam:
 
 `Brain -> core/brain_ingress -> Gateway/runtime inputs -> {policy | runtime}`
 
-`core/brain_ingress` verifies Spine-owned governance projections, resolves
+`core/brain_ingress` verifies lower-gateway-owned governance projections, resolves
 logical file-scope references before `Gateway.new!/1`, and records durable
 submission acceptance or typed rejection through the selected store package.
 

@@ -121,7 +121,7 @@ defmodule Jido.Integration.V2.DurableSubmissionContractsTest do
         boundary_request: shadows.boundary_request,
         execution_intent_family: "process",
         execution_intent: %{"argv" => ["echo", "hello"]},
-        extensions: %{}
+        extensions: %{"submission_dedupe_key" => "dedupe-1"}
       })
 
     assert invocation.submission_key == SubmissionIdentity.submission_key(identity)
