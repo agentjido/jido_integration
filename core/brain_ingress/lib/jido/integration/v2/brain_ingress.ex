@@ -68,7 +68,9 @@ defmodule Jido.Integration.V2.BrainIngress do
   caller overrides it via `:submission_ledger`.
   """
   @spec fetch_acceptance(String.t(), keyword()) ::
-          {:ok, Jido.Integration.V2.SubmissionAcceptance.t()} | :error
+          {:ok, Jido.Integration.V2.SubmissionAcceptance.t()}
+          | {:error, :tenant_mismatch}
+          | :error
   def fetch_acceptance(submission_key, opts \\ []) when is_binary(submission_key) do
     ledger_opts = Keyword.get(opts, :submission_ledger_opts, [])
     ledger = submission_ledger!(opts)

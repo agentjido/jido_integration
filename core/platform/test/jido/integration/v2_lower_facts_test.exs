@@ -12,6 +12,8 @@ defmodule Jido.Integration.V2LowerFactsTest do
   alias Jido.Integration.V2.LowerFacts
   alias Jido.Integration.V2.SubmissionAcceptance
   alias Jido.Integration.V2.SubmissionIdentity
+  alias Jido.Integration.V2.SubstrateReadSlice
+  alias Jido.Integration.V2.TenantScope
 
   defmodule CloudHTTP do
   end
@@ -51,17 +53,32 @@ defmodule Jido.Integration.V2LowerFactsTest do
              :fetch_attempt,
              :events,
              :fetch_artifact,
-             :run_artifacts
+             :run_artifacts,
+             :resolve_trace
            ]
 
     assert LowerFacts.operation_supported?(:fetch_run)
     assert LowerFacts.operation_supported?(:run_artifacts)
+    assert LowerFacts.operation_supported?(:resolve_trace)
     refute LowerFacts.operation_supported?(:review_packet)
     refute LowerFacts.operation_supported?(:derived_state_attachment)
   end
 
+  test "lower-facts boundary requires typed tenant scope" do
+    refute function_exported?(LowerFacts, :fetch_run, 1)
+    refute function_exported?(SubstrateReadSlice, :fetch_run, 1)
+
+    assert {:error, {:invalid_scope, :typed_tenant_scope_required}} =
+             LowerFacts.fetch_run(%{}, "run-platform-lower-facts-missing-scope")
+
+    assert {:error, {:invalid_scope, :typed_tenant_scope_required}} =
+             SubstrateReadSlice.fetch_run(%{}, "run-platform-lower-facts-missing-scope")
+  end
+
   test "submission receipt lookup stays stable across duplicate acceptance" do
     invocation = brain_invocation_fixture()
+    scope = tenant_scope("tenant-1")
+    wrong_scope = tenant_scope("tenant-2")
 
     assert {:ok, %SubmissionAcceptance{} = first_receipt, _gateway, _runtime_inputs} =
              V2.accept_brain_invocation(
@@ -88,15 +105,29 @@ defmodule Jido.Integration.V2LowerFactsTest do
     assert duplicate_receipt.status == :duplicate
     assert duplicate_receipt.submission_receipt_ref == first_receipt.submission_receipt_ref
 
-    assert {:ok, fetched_receipt} = LowerFacts.fetch_submission_receipt(invocation.submission_key)
+    assert {:ok, fetched_receipt} =
+             LowerFacts.fetch_submission_receipt(scope, invocation.submission_key)
+
     assert fetched_receipt.status == :accepted
     assert fetched_receipt.submission_key == first_receipt.submission_key
     assert fetched_receipt.submission_receipt_ref == first_receipt.submission_receipt_ref
     assert fetched_receipt.ledger_version == first_receipt.ledger_version
+
+    assert {:error, :tenant_mismatch} =
+             LowerFacts.fetch_submission_receipt(wrong_scope, invocation.submission_key)
   end
 
   test "returns the typed generic lower-facts surface without review aggregation" do
     invocation = brain_invocation_fixture()
+    submission_scope = tenant_scope("tenant-1")
+
+    lower_scope =
+      tenant_scope("tenant-platform-lower-facts-1",
+        installation_id: "install-platform-lower-facts-1",
+        trace_id: "trace-platform-lower-facts-1"
+      )
+
+    wrong_scope = tenant_scope("tenant-platform-lower-facts-2")
 
     assert {:ok, %SubmissionAcceptance{} = receipt, _gateway, _runtime_inputs} =
              V2.accept_brain_invocation(
@@ -109,7 +140,9 @@ defmodule Jido.Integration.V2LowerFactsTest do
                ]
              )
 
-    assert {:ok, fetched_receipt} = LowerFacts.fetch_submission_receipt(invocation.submission_key)
+    assert {:ok, fetched_receipt} =
+             LowerFacts.fetch_submission_receipt(submission_scope, invocation.submission_key)
+
     assert fetched_receipt.submission_key == receipt.submission_key
     assert fetched_receipt.submission_receipt_ref == receipt.submission_receipt_ref
     assert fetched_receipt.status == receipt.status
@@ -126,7 +159,11 @@ defmodule Jido.Integration.V2LowerFactsTest do
         stream?: false,
         tool_policy: %{},
         output_constraints: %{},
-        metadata: %{tenant_id: "tenant-platform-lower-facts-1"}
+        metadata: %{
+          tenant_id: "tenant-platform-lower-facts-1",
+          installation_id: "install-platform-lower-facts-1",
+          trace_id: "trace-platform-lower-facts-1"
+        }
       })
 
     assert {:ok, result} =
@@ -142,18 +179,21 @@ defmodule Jido.Integration.V2LowerFactsTest do
     artifact = artifact_fixture(result.run.run_id, result.attempt.attempt_id)
     assert :ok = V2.record_artifact(artifact)
 
-    assert {:ok, stored_run} = LowerFacts.fetch_run(result.run.run_id)
+    assert {:ok, stored_run} = LowerFacts.fetch_run(lower_scope, result.run.run_id)
     assert stored_run.run_id == result.run.run_id
     assert stored_run.capability_id == "inference.execute"
 
-    assert [stored_attempt] = LowerFacts.attempts(result.run.run_id)
+    assert {:ok, [stored_attempt]} = LowerFacts.attempts(lower_scope, result.run.run_id)
     assert stored_attempt.attempt_id == result.attempt.attempt_id
 
-    assert {:ok, fetched_attempt} = LowerFacts.fetch_attempt(result.attempt.attempt_id)
+    assert {:ok, fetched_attempt} =
+             LowerFacts.fetch_attempt(lower_scope, result.attempt.attempt_id)
+
     assert fetched_attempt.attempt_id == result.attempt.attempt_id
     assert fetched_attempt.output["inference_result"]["status"] == "ok"
 
-    assert events = LowerFacts.events(result.run.run_id)
+    assert {:ok, events} = LowerFacts.events(lower_scope, result.run.run_id)
+    assert {:ok, ^events} = LowerFacts.events(lower_scope, result.attempt.attempt_id)
 
     assert Enum.map(events, & &1.type) == [
              "inference.request_admitted",
@@ -163,9 +203,38 @@ defmodule Jido.Integration.V2LowerFactsTest do
              "inference.attempt_completed"
            ]
 
-    assert {:ok, stored_artifact} = LowerFacts.fetch_artifact(artifact.artifact_id)
+    assert {:ok, stored_artifact} = LowerFacts.fetch_artifact(lower_scope, artifact.artifact_id)
     assert stored_artifact == artifact
-    assert LowerFacts.run_artifacts(result.run.run_id) == [artifact]
+    assert {:ok, [^artifact]} = LowerFacts.run_artifacts(lower_scope, result.run.run_id)
+
+    assert {:ok, trace_resolution} = LowerFacts.resolve_trace(lower_scope, result.run.run_id)
+    assert trace_resolution.run.run_id == result.run.run_id
+    assert Enum.map(trace_resolution.attempts, & &1.attempt_id) == [result.attempt.attempt_id]
+    assert Enum.map(trace_resolution.artifacts, & &1.artifact_id) == [artifact.artifact_id]
+
+    assert {:error, :tenant_mismatch} = LowerFacts.fetch_run(wrong_scope, result.run.run_id)
+    assert {:error, :tenant_mismatch} = LowerFacts.attempts(wrong_scope, result.run.run_id)
+
+    assert {:error, :tenant_mismatch} =
+             LowerFacts.fetch_attempt(wrong_scope, result.attempt.attempt_id)
+
+    assert {:error, :tenant_mismatch} = LowerFacts.events(wrong_scope, result.run.run_id)
+
+    assert {:error, :tenant_mismatch} =
+             LowerFacts.fetch_artifact(wrong_scope, artifact.artifact_id)
+
+    assert {:error, :tenant_mismatch} = LowerFacts.run_artifacts(wrong_scope, result.run.run_id)
+    assert {:error, :tenant_mismatch} = LowerFacts.resolve_trace(wrong_scope, result.run.run_id)
+  end
+
+  defp tenant_scope(tenant_id, attrs \\ []) do
+    attrs
+    |> Keyword.merge(
+      tenant_id: tenant_id,
+      actor_ref: %{id: "actor-lower-facts-test", kind: "test"},
+      authorized_at: DateTime.utc_now()
+    )
+    |> TenantScope.new!()
   end
 
   defmodule Resolver do

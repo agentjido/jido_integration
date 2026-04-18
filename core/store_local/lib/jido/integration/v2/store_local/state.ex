@@ -624,14 +624,33 @@ defmodule Jido.Integration.V2.StoreLocal.State do
     end
   end
 
-  @spec fetch_submission_acceptance(t(), String.t()) ::
-          {:ok, SubmissionAcceptance.t()} | :error
-  def fetch_submission_acceptance(%__MODULE__{} = state, submission_key) do
-    case Map.get(state.submission_acceptances, submission_key) do
-      %SubmissionAcceptance{} = acceptance -> {:ok, acceptance}
-      _other -> :error
+  @spec fetch_submission_acceptance(t(), String.t(), String.t() | nil) ::
+          {:ok, SubmissionAcceptance.t()} | {:error, :tenant_mismatch} | :error
+  def fetch_submission_acceptance(%__MODULE__{} = state, submission_key, authorized_tenant_id) do
+    state.submissions
+    |> Enum.find_value(fn
+      {{tenant_id, _submission_dedupe_key},
+       %{submission_key: ^submission_key, acceptance: acceptance}} ->
+        {tenant_id, acceptance}
+
+      _other ->
+        nil
+    end)
+    |> case do
+      {tenant_id, %SubmissionAcceptance{} = acceptance} ->
+        with :ok <- authorize_submission_tenant(tenant_id, authorized_tenant_id),
+             do: {:ok, acceptance}
+
+      _other ->
+        :error
     end
   end
+
+  defp authorize_submission_tenant(_tenant_id, nil), do: :ok
+  defp authorize_submission_tenant(tenant_id, tenant_id), do: :ok
+
+  defp authorize_submission_tenant(_tenant_id, _authorized_tenant_id),
+    do: {:error, :tenant_mismatch}
 
   @spec record_submission_rejection(t(), BrainInvocation.t(), SubmissionRejection.t()) ::
           {:ok, t()}

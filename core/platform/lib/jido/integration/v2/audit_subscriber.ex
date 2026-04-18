@@ -11,9 +11,9 @@ defmodule Jido.Integration.V2.AuditSubscriber do
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.AuditExportEnvelope
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.ControlPlane.ClaimCheck
   alias Jido.Integration.V2.Event
-  alias Jido.Integration.V2.LowerFacts
   alias Jido.Integration.V2.Run
 
   @export_kinds AuditExportEnvelope.export_kinds()
@@ -41,20 +41,20 @@ defmodule Jido.Integration.V2.AuditSubscriber do
           {:ok, [AuditExportEnvelope.t()]} | {:error, :unknown_run | export_filter_error()}
   def replay(run_id, opts) when is_binary(run_id) do
     with {:ok, selected_kinds} <- normalize_event_types(Keyword.get(opts, :event_types)),
-         {:ok, %Run{} = run} <- LowerFacts.fetch_run(run_id) do
+         {:ok, %Run{} = run} <- ControlPlane.fetch_run(run_id) do
       attempts =
         run_id
-        |> LowerFacts.attempts()
+        |> ControlPlane.attempts()
         |> Enum.sort_by(& &1.attempt)
 
       events =
         run_id
-        |> LowerFacts.events()
+        |> ControlPlane.events()
         |> Enum.sort_by(&{&1.attempt || 0, &1.seq, &1.event_id})
 
       artifacts =
         run_id
-        |> LowerFacts.run_artifacts()
+        |> ControlPlane.run_artifacts()
         |> Enum.sort_by(&{&1.attempt_id, &1.artifact_id})
 
       scope = scope_metadata(run, events)

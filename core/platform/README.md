@@ -112,18 +112,23 @@ Substrate-facing lower facts:
 
 - `Jido.Integration.V2.LowerFacts.operations/0`
 - `Jido.Integration.V2.LowerFacts.fetch_submission_receipt/2`
-- `Jido.Integration.V2.LowerFacts.fetch_run/1`
-- `Jido.Integration.V2.LowerFacts.attempts/1`
-- `Jido.Integration.V2.LowerFacts.fetch_attempt/1`
-- `Jido.Integration.V2.LowerFacts.events/1`
-- `Jido.Integration.V2.LowerFacts.fetch_artifact/1`
-- `Jido.Integration.V2.LowerFacts.run_artifacts/1`
+- `Jido.Integration.V2.LowerFacts.fetch_run/2`
+- `Jido.Integration.V2.LowerFacts.attempts/2`
+- `Jido.Integration.V2.LowerFacts.fetch_attempt/2`
+- `Jido.Integration.V2.LowerFacts.events/2`
+- `Jido.Integration.V2.LowerFacts.fetch_artifact/2`
+- `Jido.Integration.V2.LowerFacts.run_artifacts/2`
+- `Jido.Integration.V2.LowerFacts.resolve_trace/2`
 
 Higher-order substrate bridges should treat `Jido.Integration.V2.LowerFacts`
-as the explicit lower-read contract. The top-level `Jido.Integration.V2`
+as the explicit lower-read contract. Every active lower-facts read requires a
+`Jido.Integration.V2.TenantScope` as the first argument and fails closed when
+the scope is missing or does not match the durable lower record. The dedicated
+`Jido.Integration.V2.SubstrateReadSlice` owns that enforcement and the
+`LowerFacts` facade delegates to it. The top-level `Jido.Integration.V2`
 facade may continue to expose convenience read helpers for general consumers,
-but lower-stack integrations should freeze against the bounded `LowerFacts`
-surface instead.
+but lower-stack integrations should freeze against the bounded, tenant-scoped
+`LowerFacts` surface instead.
 
 ## Design Boundary
 

@@ -91,20 +91,32 @@ defmodule Jido.Integration.V2.StorePostgres.SubmissionLedger do
   end
 
   @impl true
-  def fetch_acceptance(submission_key, _opts) do
+  def fetch_acceptance(submission_key, opts) do
+    authorized_tenant_id = Keyword.get(opts, :tenant_id)
+
     submission_key
     |> fetch_record_by_submission_key()
     |> case do
-      %SubmissionRecord{acceptance_json: acceptance_json} when is_map(acceptance_json) ->
-        {:ok, acceptance_json |> Serialization.load_json() |> SubmissionAcceptance.new!()}
+      %SubmissionRecord{tenant_id: tenant_id, acceptance_json: acceptance_json}
+      when is_map(acceptance_json) ->
+        with :ok <- authorize_tenant(tenant_id, authorized_tenant_id) do
+          {:ok, acceptance_json |> Serialization.load_json() |> SubmissionAcceptance.new!()}
+        end
 
-      %ExpiredSubmissionRecord{acceptance_json: acceptance_json} when is_map(acceptance_json) ->
-        {:ok, acceptance_json |> Serialization.load_json() |> SubmissionAcceptance.new!()}
+      %ExpiredSubmissionRecord{tenant_id: tenant_id, acceptance_json: acceptance_json}
+      when is_map(acceptance_json) ->
+        with :ok <- authorize_tenant(tenant_id, authorized_tenant_id) do
+          {:ok, acceptance_json |> Serialization.load_json() |> SubmissionAcceptance.new!()}
+        end
 
       _other ->
         :error
     end
   end
+
+  defp authorize_tenant(_record_tenant_id, nil), do: :ok
+  defp authorize_tenant(tenant_id, tenant_id), do: :ok
+  defp authorize_tenant(_record_tenant_id, _authorized_tenant_id), do: {:error, :tenant_mismatch}
 
   @impl true
   def record_rejection(%BrainInvocation{} = invocation, %SubmissionRejection{} = rejection, opts) do

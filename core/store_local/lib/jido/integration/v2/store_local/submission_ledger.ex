@@ -19,8 +19,10 @@ defmodule Jido.Integration.V2.StoreLocal.SubmissionLedger do
   end
 
   @impl true
-  def fetch_acceptance(submission_key, _opts) do
-    Storage.read(&State.fetch_submission_acceptance(&1, submission_key))
+  def fetch_acceptance(submission_key, opts) do
+    Storage.read(
+      &State.fetch_submission_acceptance(&1, submission_key, Keyword.get(opts, :tenant_id))
+    )
   end
 
   @impl true

@@ -208,6 +208,11 @@ The current surface also proves:
     acceptance or typed rejection before runtime policy continues
   - `core/store_local` and `core/store_postgres` provide the concrete
     submission-ledger backends
+- substrate-facing lower-facts reads are no longer an unscoped convenience
+  path: `Jido.Integration.V2.TenantScope` is mandatory for submission, run,
+  attempt, event, artifact, and trace reads, and
+  `Jido.Integration.V2.SubstrateReadSlice` fails closed on tenant or
+  installation mismatch
 - the Postgres auth tier carries a forward-only expansion migration,
   `20260403000000_expand_phase_0_auth_truth_columns.exs`, so existing dev/test
   databases can adopt the richer auth lineage shape without rewriting prior

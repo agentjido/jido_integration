@@ -17,7 +17,7 @@ defmodule Jido.Integration.V2.BrainIngress.SubmissionLedger do
               | {:expired, DateTime.t()}
 
   @callback fetch_acceptance(String.t(), keyword()) ::
-              {:ok, SubmissionAcceptance.t()} | :error
+              {:ok, SubmissionAcceptance.t()} | {:error, :tenant_mismatch} | :error
 
   @callback record_rejection(BrainInvocation.t(), SubmissionRejection.t(), keyword()) ::
               :ok | {:error, term()}
