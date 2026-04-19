@@ -381,3 +381,19 @@ repo still supports the other two durability tiers in parallel:
 Temporal CLI is expected to be available as `temporal` on this developer workstation for local durable-workflow development. Current provisioning is machine-level dotfiles setup, not a repo-local dependency.
 
 TODO: make Temporal ergonomics explicit for developers by adding repo-local setup scripts, version expectations, and fallback instructions so the tool is not silently assumed from the workstation.
+
+## Native Temporal development substrate
+
+Temporal runtime development is managed from `/home/home/p/g/j/jido_brainstorm` through the repo-owned `just` workflow, not by manually starting ad hoc Temporal processes.
+
+Use:
+
+```bash
+cd /home/home/p/g/j/jido_brainstorm
+just dev-up
+just dev-status
+just dev-logs
+just temporal-ui
+```
+
+Expected local contract: `127.0.0.1:7233`, UI `http://127.0.0.1:8233`, namespace `default`, native service `temporal-dev.service`, persistent state `~/.local/share/temporal/dev-server.db`.
