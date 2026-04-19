@@ -424,6 +424,16 @@ The contract rules are the same as the rest of this package:
 `ReqLLMCallSpec` is intentionally not part of this package. It remains a local
 `jido_integration` adapter shape rather than shared durable truth.
 
+## Connector Admission
+
+`Jido.Integration.V2.ConnectorAdmission` is the Phase 4 formal evidence
+contract for `Platform.ConnectorAdmission.v1`. It records connector admission
+and duplicate-rejection decisions with tenant, installation, workspace, project,
+environment, authority, idempotency, trace, release-manifest, connector, pack,
+signature, schema, and admission idempotency scope. Duplicate rejections must
+carry `duplicate_of_ref`; admitted connectors and signature/schema rejections
+must still preserve the same authority and trace scope.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be
