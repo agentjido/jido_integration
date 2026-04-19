@@ -56,6 +56,7 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `ClaimCheckLifecycle`
 - `InstallationRevisionEpoch`
 - `LeaseRevocation`
+- `RetryPosture`
 
 ## Core Guarantees
 
@@ -171,6 +172,9 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
   expose append position evidence, claim-check quarantine state, revision/epoch
   fence evidence, and lease revocation propagation without exporting lower
   store internals or raw payloads.
+- `RetryPosture` mirrors `Platform.RetryPosture.v1` for lower integration
+  consumers so retry, backoff, idempotency scope, safe action, and dead-letter
+  refs stay explicit at the lower boundary.
 
 ## Public Object Notes
 
@@ -221,6 +225,18 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
   revocation ref, revocation timestamp, non-empty lease scope, cache
   invalidation ref, post-revocation attempt ref, and lease status
 - accepts only `:revoked` or `:rejected_after_revocation`
+
+`Platform.RetryPosture.v1`
+
+- mirrors platform retry posture evidence for lower integration consumers
+- requires tenant, installation, workspace, project, environment, actor,
+  resource, authority, idempotency, trace, release-manifest, operation, owner,
+  producer, consumer, retry class, failure class, max attempts, backoff policy,
+  idempotency scope, dead-letter ref, and safe action
+- accepts only bounded retry classes: `:never`, `:safe_idempotent`,
+  `:after_input_change`, `:after_redecision`, or `:manual_operator`
+- requires zero attempts for `:never` and at least one attempt for retryable
+  classes
 
 ## Execution Plane Packet Alignment
 

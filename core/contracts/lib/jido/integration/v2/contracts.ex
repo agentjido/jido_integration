@@ -46,6 +46,9 @@ defmodule Jido.Integration.V2.Contracts do
     "Platform.InstallationRevisionEpoch.v1",
     "Platform.LeaseRevocation.v1"
   ]
+  @retry_posture_contracts [
+    "Platform.RetryPosture.v1"
+  ]
 
   @type runtime_class :: :direct | :session | :stream
   @type runtime_kind :: :client | :task | :service
@@ -113,6 +116,9 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec lower_truth_integrity_contracts() :: [String.t(), ...]
   def lower_truth_integrity_contracts, do: @lower_truth_integrity_contracts
+
+  @spec retry_posture_contracts() :: [String.t(), ...]
+  def retry_posture_contracts, do: @retry_posture_contracts
 
   @spec now() :: DateTime.t()
   def now do
