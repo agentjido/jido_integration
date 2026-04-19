@@ -384,12 +384,13 @@ TODO: make Temporal ergonomics explicit for developers by adding repo-local setu
 
 ## Native Temporal development substrate
 
-Temporal runtime development is managed from `/home/home/p/g/n/mezzanine` through the repo-owned `just` workflow, not by manually starting ad hoc Temporal processes.
+Temporal runtime development is managed from the Mezzanine checkout through its
+repo-owned `just` workflow, not by manually starting ad hoc Temporal processes.
 
 Use:
 
 ```bash
-cd /home/home/p/g/n/mezzanine
+cd "$MEZZANINE_ROOT"
 just dev-up
 just dev-status
 just dev-logs
