@@ -375,3 +375,9 @@ repo still supports the other two durability tiers in parallel:
 - in-memory defaults in `core/auth` and `core/control_plane`
 - `core/store_local` for restart-safe local durability
 - `core/store_postgres` for the shared database-backed tier
+
+## Temporal developer environment
+
+Temporal CLI is expected to be available as `temporal` on this developer workstation for local durable-workflow development. Current provisioning is machine-level dotfiles setup, not a repo-local dependency.
+
+TODO: make Temporal ergonomics explicit for developers by adding repo-local setup scripts, version expectations, and fallback instructions so the tool is not silently assumed from the workstation.
