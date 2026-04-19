@@ -175,6 +175,11 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `RetryPosture` mirrors `Platform.RetryPosture.v1` for lower integration
   consumers so retry, backoff, idempotency scope, safe action, and dead-letter
   refs stay explicit at the lower boundary.
+- `LowerSubmissionActivity` implements
+  `JidoIntegration.LowerSubmissionActivity.v1` for Phase 4 durable workflow
+  activity retries. It binds tenant, actor, resource, workflow, activity,
+  authority, trace, lower scope, lease evidence, and payload hash while
+  declaring the retry idempotency scope as `tenant_ref + submission_dedupe_key`.
 
 ## Public Object Notes
 
