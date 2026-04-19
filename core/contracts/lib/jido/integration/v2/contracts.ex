@@ -42,7 +42,9 @@ defmodule Jido.Integration.V2.Contracts do
   ]
   @lower_truth_integrity_contracts [
     "JidoIntegration.LowerEventPosition.v1",
-    "JidoIntegration.ClaimCheckLifecycle.v1"
+    "JidoIntegration.ClaimCheckLifecycle.v1",
+    "Platform.InstallationRevisionEpoch.v1",
+    "Platform.LeaseRevocation.v1"
   ]
 
   @type runtime_class :: :direct | :session | :stream

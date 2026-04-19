@@ -54,6 +54,8 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `BrainInvocation`
 - `LowerEventPosition`
 - `ClaimCheckLifecycle`
+- `InstallationRevisionEpoch`
+- `LeaseRevocation`
 
 ## Core Guarantees
 
@@ -164,9 +166,11 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
   dependencies
 - `ReviewProjection` is the contracts-only `review_packet/2` metadata shape
   meant for northbound consumers such as `jido_composer`
-- `LowerEventPosition` and `ClaimCheckLifecycle` are the Phase 4 lower truth
-  integrity contracts. They expose append position evidence and claim-check
-  quarantine state without exporting lower store internals or raw payloads.
+- `LowerEventPosition`, `ClaimCheckLifecycle`, `InstallationRevisionEpoch`,
+  and `LeaseRevocation` are the Phase 4 lower truth integrity contracts. They
+  expose append position evidence, claim-check quarantine state, revision/epoch
+  fence evidence, and lease revocation propagation without exporting lower
+  store internals or raw payloads.
 
 ## Public Object Notes
 
@@ -193,6 +197,30 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - requires `sha256:<hex>` payload hashes
 - requires an explicit quarantine reason when the lifecycle state is
   `:quarantined`
+
+`Platform.InstallationRevisionEpoch.v1`
+
+- mirrors Citadel-owned revision and epoch fence evidence for lower truth
+  consumers
+- requires tenant, installation, workspace, project, environment, actor,
+  resource, authority, idempotency, trace, release-manifest, current
+  installation revision, activation epoch, lease epoch, node id, fence decision
+  ref, fence status, and stale reason
+- accepts only `:accepted` or `:rejected`
+- requires `stale_reason: "none"` and no stale attempted values for accepted
+  fences
+- requires explicit stale attempted revision, activation, or lease epoch
+  evidence for rejected fences
+
+`Platform.LeaseRevocation.v1`
+
+- mirrors Citadel-owned lease revocation propagation evidence for lower truth
+  consumers
+- requires tenant, installation, workspace, project, environment, actor,
+  resource, authority, idempotency, trace, release-manifest, lease ref,
+  revocation ref, revocation timestamp, non-empty lease scope, cache
+  invalidation ref, post-revocation attempt ref, and lease status
+- accepts only `:revoked` or `:rejected_after_revocation`
 
 ## Execution Plane Packet Alignment
 
