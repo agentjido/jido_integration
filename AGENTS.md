@@ -191,7 +191,7 @@ Temporal CLI is implicitly available on this workstation as `temporal` for local
 
 ## Native Temporal development substrate
 
-When Temporal runtime behavior is required, use the stack substrate in `/home/home/p/g/j/jido_brainstorm`:
+When Temporal runtime behavior is required, use the stack substrate in `/home/home/p/g/n/mezzanine`:
 
 ```bash
 just dev-up

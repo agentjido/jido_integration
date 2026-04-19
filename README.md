@@ -384,16 +384,16 @@ TODO: make Temporal ergonomics explicit for developers by adding repo-local setu
 
 ## Native Temporal development substrate
 
-Temporal runtime development is managed from `/home/home/p/g/j/jido_brainstorm` through the repo-owned `just` workflow, not by manually starting ad hoc Temporal processes.
+Temporal runtime development is managed from `/home/home/p/g/n/mezzanine` through the repo-owned `just` workflow, not by manually starting ad hoc Temporal processes.
 
 Use:
 
 ```bash
-cd /home/home/p/g/j/jido_brainstorm
+cd /home/home/p/g/n/mezzanine
 just dev-up
 just dev-status
 just dev-logs
 just temporal-ui
 ```
 
-Expected local contract: `127.0.0.1:7233`, UI `http://127.0.0.1:8233`, namespace `default`, native service `temporal-dev.service`, persistent state `~/.local/share/temporal/dev-server.db`.
+Expected local contract: `127.0.0.1:7233`, UI `http://127.0.0.1:8233`, namespace `default`, native service `mezzanine-temporal-dev.service`, persistent state `~/.local/share/temporal/dev-server.db`.
