@@ -52,6 +52,8 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `SubmissionAcceptance`
 - `SubmissionRejection`
 - `BrainInvocation`
+- `LowerEventPosition`
+- `ClaimCheckLifecycle`
 
 ## Core Guarantees
 
@@ -162,8 +164,35 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
   dependencies
 - `ReviewProjection` is the contracts-only `review_packet/2` metadata shape
   meant for northbound consumers such as `jido_composer`
+- `LowerEventPosition` and `ClaimCheckLifecycle` are the Phase 4 lower truth
+  integrity contracts. They expose append position evidence and claim-check
+  quarantine state without exporting lower store internals or raw payloads.
 
 ## Public Object Notes
+
+## Phase 4 Lower Truth Integrity Contracts
+
+`JidoIntegration.LowerEventPosition.v1`
+
+- stores tenant, installation, workspace, project, environment, actor,
+  resource, authority, idempotency, trace, release-manifest, lower-scope,
+  stream, event, expected-position, actual-position, dedupe, status, and
+  optional conflict evidence
+- accepts only `:accepted`, `:duplicate`, or `:conflict` status values
+- requires matching expected and actual positions for accepted or duplicate
+  evidence
+- requires a conflict ref and differing positions for conflict evidence
+
+`JidoIntegration.ClaimCheckLifecycle.v1`
+
+- stores tenant, installation, workspace, project, environment, actor,
+  resource, authority, idempotency, trace, release-manifest, claim-check ref,
+  payload hash, schema ref, size, retention class, lifecycle state, quarantine
+  reason, GC timestamp, and metadata
+- accepts only bounded lifecycle states and retention classes
+- requires `sha256:<hex>` payload hashes
+- requires an explicit quarantine reason when the lifecycle state is
+  `:quarantined`
 
 ## Execution Plane Packet Alignment
 

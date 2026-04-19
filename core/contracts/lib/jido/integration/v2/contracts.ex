@@ -40,6 +40,10 @@ defmodule Jido.Integration.V2.Contracts do
     "ReviewProjection.v1",
     "ReviewBundle.v1"
   ]
+  @lower_truth_integrity_contracts [
+    "JidoIntegration.LowerEventPosition.v1",
+    "JidoIntegration.ClaimCheckLifecycle.v1"
+  ]
 
   @type runtime_class :: :direct | :session | :stream
   @type runtime_kind :: :client | :task | :service
@@ -104,6 +108,9 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec operator_read_contracts() :: [String.t(), ...]
   def operator_read_contracts, do: @operator_read_contracts
+
+  @spec lower_truth_integrity_contracts() :: [String.t(), ...]
+  def lower_truth_integrity_contracts, do: @lower_truth_integrity_contracts
 
   @spec now() :: DateTime.t()
   def now do
