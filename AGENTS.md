@@ -1,3 +1,33 @@
+# Monorepo Project Map
+
+- `./apps/devops_incident_response/mix.exs`: Async webhook proof app above the greenfield platform
+- `./apps/inference_ops/mix.exs`: Reference proof app for cloud and self-hosted inference execution
+- `./apps/trading_ops/mix.exs`: Reference operator app slice above the greenfield platform
+- `./connectors/codex_cli/mix.exs`: Example session connector package for the greenfield platform
+- `./connectors/github/mix.exs`: Thin direct GitHub connector package backed by github_ex
+- `./connectors/linear/mix.exs`: Thin direct Linear connector package backed by linear_sdk
+- `./connectors/market_data/mix.exs`: Example stream connector package using the authored Runtime Control `asm` driver
+- `./connectors/notion/mix.exs`: Thin direct Notion connector package backed by notion_sdk
+- `./core/asm_runtime_bridge/mix.exs`: Integration-owned `asm` adapter into the shared runtime-control seam
+- `./core/auth/mix.exs`: Credential storage and resolution for the greenfield platform
+- `./core/brain_ingress/mix.exs`: Durable brain-to-lower-gateway submission intake and scope resolution
+- `./core/conformance/mix.exs`: Reusable v2-native connector conformance engine and report surface
+- `./core/consumer_surfaces/mix.exs`: Runtime support for generated Jido-native consumer surfaces
+- `./core/contracts/mix.exs`: Greenfield public contracts for runs, attempts, capabilities, and credentials
+- `./core/control_plane/mix.exs`: Capability registry and run ledger for the greenfield platform
+- `./core/direct_runtime/mix.exs`: Direct execution runtime for stateless and request/response capabilities
+- `./core/dispatch_runtime/mix.exs`: Async trigger dispatch runtime with retry, replay, and recovery
+- `./core/ingress/mix.exs`: Webhook and polling trigger admission for the greenfield platform
+- `./core/platform/mix.exs`: Public facade package for the Jido Integration platform
+- `./core/policy/mix.exs`: Admission policy evaluation for capabilities
+- `./core/runtime_control/mix.exs`: Shared runtime-control facade, IR, and driver contract layer
+- `./core/runtime_router/mix.exs`: Integration-owned router for session and stream runtime lanes
+- `./core/session_runtime/mix.exs`: Integration-owned internal `jido_session` runtime-control runtime
+- `./core/store_local/mix.exs`: Restart-safe local durability adapters for auth and control-plane truth
+- `./core/store_postgres/mix.exs`: Postgres durability package owning Repo, migrations, and sandbox posture
+- `./core/webhook_router/mix.exs`: Hosted webhook route registration and dispatch bridging above ingress
+- `./mix.exs`: Tooling root for the Jido Integration non-umbrella monorepo
+
 # AGENTS.md
 
 This file defines the working contract for `/home/home/p/g/n/jido_integration`.
