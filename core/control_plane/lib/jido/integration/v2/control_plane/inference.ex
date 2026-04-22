@@ -65,6 +65,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          {:ok, context} <- build_context(durable_request, opts),
          {:ok, consumer_manifest} <- build_consumer_manifest(durable_request, opts),
          {:ok, route} <- resolve_route(execution_request, context, consumer_manifest, opts),
+         :ok <- enforce_required_descriptor_refs(route, opts),
          {:ok, execution} <- execute_route(execution_request, context, route, opts),
          {:ok, recorded} <-
            ControlPlane.record_inference_attempt(%{
@@ -254,6 +255,33 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       :cli_endpoint ->
         resolve_cli_route(request, context, consumer_manifest)
     end
+  end
+
+  defp enforce_required_descriptor_refs(route, opts) do
+    if Keyword.get(opts, :require_descriptor_refs?, false) do
+      route
+      |> Map.get(:endpoint_descriptor)
+      |> missing_descriptor_refs()
+      |> case do
+        [] -> :ok
+        missing -> {:error, {:missing_required_inference_descriptor_refs, missing}}
+      end
+    else
+      :ok
+    end
+  end
+
+  defp missing_descriptor_refs(%EndpointDescriptor{} = endpoint_descriptor) do
+    metadata = map_or_empty(endpoint_descriptor.metadata)
+
+    []
+    |> missing_ref("endpoint_id", endpoint_descriptor.endpoint_id)
+    |> missing_ref("model_identity", endpoint_descriptor.model_identity)
+    |> missing_ref("model_version", Contracts.get(metadata, :model_version))
+  end
+
+  defp missing_descriptor_refs(_endpoint_descriptor) do
+    ["endpoint_id", "model_identity", "model_version"]
   end
 
   defp resolve_cloud_route(%InferenceRequest{} = request, %InferenceExecutionContext{} = context) do
@@ -728,6 +756,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp missing_ref(missing, _field, value) when is_binary(value) and value != "", do: missing
+  defp missing_ref(missing, field, _value), do: [field | missing]
 
   defp map_or_empty(nil), do: %{}
   defp map_or_empty(%{} = value), do: Map.new(value)

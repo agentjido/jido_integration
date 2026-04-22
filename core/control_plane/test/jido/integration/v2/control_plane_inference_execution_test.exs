@@ -379,6 +379,32 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     :ok
   end
 
+  test "invoke_inference/2 rejects missing descriptor refs when required by a touched path" do
+    request =
+      InferenceRequest.new!(%{
+        request_id: "req-missing-descriptor-refs-1",
+        operation: :generate_text,
+        messages: [%{role: "user", content: "Require the M8 descriptor guard"}],
+        prompt: nil,
+        model_preference: %{provider: "openai", id: "gpt-local"},
+        target_preference: %{target_class: "cloud_provider"},
+        stream?: false,
+        tool_policy: %{},
+        output_constraints: %{},
+        metadata: %{tenant_id: "tenant-missing-descriptor-refs-1"}
+      })
+
+    assert {:error, {:missing_required_inference_descriptor_refs, missing}} =
+             ControlPlane.invoke_inference(
+               request,
+               run_id: "run-missing-descriptor-refs-1",
+               trace_id: "trace-missing-descriptor-refs-1",
+               require_descriptor_refs?: true
+             )
+
+    assert Enum.sort(missing) == ["endpoint_id", "model_identity", "model_version"]
+  end
+
   test "builds an endpoint-shaped ReqLLM call spec from an endpoint descriptor" do
     request =
       InferenceRequest.new!(%{
@@ -676,6 +702,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
                decision_ref: "decision-live-ollama-attach-1",
                trace_id: "trace-live-ollama-attach-1",
                ttl_ms: 5_000,
+               require_descriptor_refs?: true,
                req_http_options: FakeOllamaAttachFixture.req_http_options(fixture)
              )
 
@@ -701,6 +728,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
 
     assert {:ok, attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
     assert attempt.output["endpoint_descriptor"]["provider_identity"] == "ollama"
+    assert attempt.output["endpoint_descriptor"]["metadata"]["model_version"] == "v1"
     assert attempt.output["endpoint_descriptor"]["management_mode"] == "externally_managed"
     assert attempt.output["backend_manifest"]["backend"] == "ollama"
 
