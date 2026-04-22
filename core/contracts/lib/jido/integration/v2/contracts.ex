@@ -92,6 +92,48 @@ defmodule Jido.Integration.V2.Contracts do
         }
 
   @checksum_regex ~r/\Asha256:[0-9a-f]{64}\z/
+  @known_atomish_values [
+    :acme,
+    :action,
+    :agent_session_manager,
+    :asm_inference_endpoint,
+    :async_trigger,
+    :cancelled,
+    :checkpoint_resume,
+    :cli,
+    :codex_cli,
+    :error,
+    :gemini,
+    :github,
+    :guest_bridge,
+    :jido_integration_req_llm,
+    :linear,
+    :llama_cpp_sdk,
+    :local_subprocess,
+    :market_data,
+    :market_feed,
+    :notion,
+    :object_store,
+    :ollama,
+    :openai,
+    :openai_chat_completions,
+    :operation,
+    :poll,
+    :protocol_match,
+    :req_llm,
+    :sdk,
+    :session_resume,
+    :ssh_exec,
+    :stdio,
+    :stop,
+    :trigger,
+    :user_cancelled,
+    :warmup_pending,
+    :webhook
+  ]
+  @known_atomish_values_by_string Map.new(@known_atomish_values, fn atom ->
+                                    {Atom.to_string(atom), atom}
+                                  end)
 
   @spec schema_version() :: String.t()
   def schema_version, do: @schema_version
@@ -928,9 +970,15 @@ defmodule Jido.Integration.V2.Contracts do
   def normalize_atomish!(value, _field_name) when is_atom(value), do: value
 
   def normalize_atomish!(value, field_name) when is_binary(value) do
-    value
-    |> validate_non_empty_string!(field_name)
-    |> String.to_atom()
+    value = validate_non_empty_string!(value, field_name)
+
+    case Map.fetch(@known_atomish_values_by_string, value) do
+      {:ok, atom} ->
+        atom
+
+      :error ->
+        raise ArgumentError, "#{field_name} must be a known atom string, got: #{inspect(value)}"
+    end
   end
 
   def normalize_atomish!(value, field_name) do
