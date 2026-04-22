@@ -405,6 +405,30 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     assert Enum.sort(missing) == ["endpoint_id", "model_identity", "model_version"]
   end
 
+  test "invoke_inference/2 rejects raw prompt recording without artifact refs when required" do
+    request =
+      InferenceRequest.new!(%{
+        request_id: "req-missing-prompt-artifact-ref-1",
+        operation: :generate_text,
+        messages: [%{role: "user", content: "Require the M8 artifact boundary"}],
+        prompt: nil,
+        model_preference: %{provider: "openai", id: "gpt-local"},
+        target_preference: %{target_class: "cloud_provider"},
+        stream?: false,
+        tool_policy: %{},
+        output_constraints: %{},
+        metadata: %{tenant_id: "tenant-missing-prompt-artifact-ref-1"}
+      })
+
+    assert {:error, {:missing_required_artifact_ref, :prompt_or_messages}} =
+             ControlPlane.invoke_inference(
+               request,
+               run_id: "run-missing-prompt-artifact-ref-1",
+               trace_id: "trace-missing-prompt-artifact-ref-1",
+               require_artifact_refs?: true
+             )
+  end
+
   test "builds an endpoint-shaped ReqLLM call spec from an endpoint descriptor" do
     request =
       InferenceRequest.new!(%{
@@ -692,7 +716,10 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         stream?: false,
         tool_policy: %{},
         output_constraints: %{temperature: 0.1},
-        metadata: %{tenant_id: "tenant-live-ollama-attach-1"}
+        metadata: %{
+          tenant_id: "tenant-live-ollama-attach-1",
+          prompt_artifact_ref: "artifact://phase5/m8/ollama-attach-prompt"
+        }
       })
 
     assert {:ok, result} =
@@ -703,6 +730,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
                trace_id: "trace-live-ollama-attach-1",
                ttl_ms: 5_000,
                require_descriptor_refs?: true,
+               require_artifact_refs?: true,
                req_http_options: FakeOllamaAttachFixture.req_http_options(fixture)
              )
 
@@ -727,10 +755,22 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
            ]
 
     assert {:ok, attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
+    assert {:ok, run} = ControlPlane.fetch_run(result.run.run_id)
+
+    assert run.input["request"]["messages"] == []
+    assert run.input["request"]["prompt"] == nil
+
+    assert run.input["request"]["metadata"]["prompt_artifact_ref"] ==
+             "artifact://phase5/m8/ollama-attach-prompt"
+
     assert attempt.output["endpoint_descriptor"]["provider_identity"] == "ollama"
     assert attempt.output["endpoint_descriptor"]["metadata"]["model_version"] == "v1"
     assert attempt.output["endpoint_descriptor"]["management_mode"] == "externally_managed"
     assert attempt.output["backend_manifest"]["backend"] == "ollama"
+    refute Map.has_key?(attempt.output["inference_result"]["metadata"], "text")
+
+    assert attempt.output["inference_result"]["metadata"]["text_artifact_ref"]["content_hash"] =~
+             ~r/\Asha256:[0-9a-f]{64}\z/i
 
     assert attempt.output["compatibility_result"]["resolved_management_mode"] ==
              "externally_managed"
