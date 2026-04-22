@@ -51,7 +51,8 @@ defmodule Jido.Integration.V2.StoreLocal.Case do
           :event_store,
           :artifact_store,
           :target_store,
-          :ingress_store
+          :ingress_store,
+          :profile_registry_store
         ]),
       store_local: snapshot_keys(:jido_integration_v2_store_local, [:storage_dir])
     }

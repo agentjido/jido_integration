@@ -28,6 +28,8 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.PolicyDecision
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.RuntimeResult
+  alias Jido.Integration.V2.ServiceSimulationProfile
+  alias Jido.Integration.V2.SimulationProfileRegistryEntry
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
@@ -213,6 +215,47 @@ defmodule Jido.Integration.V2.ControlPlane do
   def targets(filters \\ %{}) when is_map(filters) do
     Stores.target_store().list_target_descriptors()
     |> filter_records(filters)
+  end
+
+  @spec install_simulation_profile(
+          ServiceSimulationProfile.t() | map() | keyword(),
+          [map()],
+          map()
+        ) ::
+          {:ok, SimulationProfileRegistryEntry.t()} | {:error, atom()}
+  def install_simulation_profile(profile, installed_scenarios, attrs \\ %{}) do
+    Stores.profile_registry_store().install_profile(profile, installed_scenarios, attrs)
+  end
+
+  @spec update_simulation_profile(
+          ServiceSimulationProfile.t() | map() | keyword(),
+          [map()],
+          map()
+        ) ::
+          {:ok, SimulationProfileRegistryEntry.t()} | {:error, atom()}
+  def update_simulation_profile(profile, installed_scenarios, attrs \\ %{}) do
+    Stores.profile_registry_store().update_profile(profile, installed_scenarios, attrs)
+  end
+
+  @spec remove_simulation_profile(String.t(), map()) ::
+          {:ok, SimulationProfileRegistryEntry.t()} | {:error, atom()}
+  def remove_simulation_profile(profile_id, attrs \\ %{}) do
+    Stores.profile_registry_store().remove_profile(profile_id, attrs)
+  end
+
+  @spec fetch_simulation_profile(String.t()) :: {:ok, SimulationProfileRegistryEntry.t()} | :error
+  def fetch_simulation_profile(profile_id),
+    do: Stores.profile_registry_store().fetch_profile(profile_id)
+
+  @spec select_simulation_profile(String.t(), String.t(), String.t()) ::
+          {:ok, SimulationProfileRegistryEntry.t()} | {:error, atom()} | :error
+  def select_simulation_profile(profile_id, environment_scope, owner_ref) do
+    Stores.profile_registry_store().select_profile(profile_id, environment_scope, owner_ref)
+  end
+
+  @spec simulation_profiles(map()) :: [SimulationProfileRegistryEntry.t()]
+  def simulation_profiles(filters \\ %{}) when is_map(filters) do
+    Stores.profile_registry_store().list_profiles(filters)
   end
 
   @spec run_triggers(String.t()) :: [TriggerRecord.t()]

@@ -16,6 +16,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   alias Jido.Integration.V2.StorePostgres.Schemas.EventRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.InstallRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord
+  alias Jido.Integration.V2.StorePostgres.Schemas.ProfileRegistryEntryRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.RunRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.SubmissionRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.TargetRecord
@@ -64,6 +65,12 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
       :jido_integration_v2_control_plane,
       :ingress_store,
       Jido.Integration.V2.StorePostgres.IngressStore
+    )
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :profile_registry_store,
+      Jido.Integration.V2.StorePostgres.ProfileRegistryStore
     )
 
     Application.put_env(
@@ -156,6 +163,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   @spec reset_database!() :: :ok
   def reset_database! do
     Repo.delete_all(SubmissionRecord)
+    Repo.delete_all(ProfileRegistryEntryRecord)
     Repo.delete_all(TargetRecord)
     Repo.delete_all(ArtifactRecord)
     Repo.delete_all(ClaimCheckReferenceRecord)

@@ -14,7 +14,8 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
     :artifact_store,
     :claim_check_store,
     :target_store,
-    :ingress_store
+    :ingress_store,
+    :profile_registry_store
   ]
   @auth_keys [
     :credential_store,
