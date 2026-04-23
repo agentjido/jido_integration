@@ -13,6 +13,7 @@ defmodule Jido.Integration.V2.MemoryFragmentTest do
       MemoryFragment.new!(%{
         fragment_id: "fragment-private-1",
         tenant_ref: "tenant-1",
+        source_node_ref: "node://ji_1@127.0.0.1/node-a",
         tier: :private,
         t_epoch: 7,
         creating_user_ref: "user-1",
@@ -48,6 +49,7 @@ defmodule Jido.Integration.V2.MemoryFragmentTest do
              contract_version: "1.0.0",
              fragment_id: "fragment-private-1",
              tenant_ref: "tenant-1",
+             source_node_ref: "node://ji_1@127.0.0.1/node-a",
              tier: :private,
              t_epoch: 7,
              creating_user_ref: "user-1",
@@ -166,6 +168,7 @@ defmodule Jido.Integration.V2.MemoryFragmentTest do
     %{
       fragment_id: "fragment-#{tier}-1",
       tenant_ref: "tenant-1",
+      source_node_ref: "node://ji_1@127.0.0.1/node-a",
       tier: tier,
       t_epoch: 9,
       creating_user_ref: "user-1",

@@ -29,6 +29,10 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
     assert {:ok, %MemoryFragment{tier: :governed} = governed} =
              MemoryTierStore.insert_governed_fragment(governed_attrs)
 
+    assert private.source_node_ref == "node://ji_1@127.0.0.1/node-a"
+    assert shared.source_node_ref == "node://ji_1@127.0.0.1/node-a"
+    assert governed.source_node_ref == "node://ji_1@127.0.0.1/node-a"
+
     assert Enum.map(MemoryTierStore.private_fragments("tenant-1", "user-1"), & &1.fragment_id) ==
              [private.fragment_id]
 
@@ -90,7 +94,9 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
                  ~r/memory_private immutable provenance fields cannot be updated/,
                  fn ->
                    record
-                   |> MemoryPrivateRecord.changeset(%{source_agents: ["agent-2"]})
+                   |> MemoryPrivateRecord.changeset(%{
+                     source_node_ref: "node://ji_2@127.0.0.1/node-b"
+                   })
                    |> Repo.update!()
                  end
   end
@@ -133,6 +139,7 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
     %{
       fragment_id: fragment_id,
       tenant_ref: "tenant-1",
+      source_node_ref: "node://ji_1@127.0.0.1/node-a",
       tier: tier,
       t_epoch: 11,
       source_agents: ["agent-1"],

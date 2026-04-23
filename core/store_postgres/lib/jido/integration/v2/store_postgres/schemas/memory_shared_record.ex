@@ -9,6 +9,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.MemorySharedRecord do
 
   schema "memory_shared" do
     field(:tenant_ref, :string)
+    field(:source_node_ref, :string)
     field(:scope_ref, :string)
     field(:t_epoch, :integer)
     field(:source_agents, {:array, :string}, default: [])
@@ -57,12 +58,14 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.MemorySharedRecord do
     |> check_constraint(:embedding_model_ref,
       name: :memory_shared_embedding_model_dimension_pair_check
     )
+    |> check_constraint(:source_node_ref, name: :memory_shared_source_node_ref_non_empty_check)
   end
 
   def fields do
     [
       :fragment_id,
       :tenant_ref,
+      :source_node_ref,
       :scope_ref,
       :t_epoch,
       :source_agents,
@@ -99,6 +102,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.MemorySharedRecord do
     [
       :fragment_id,
       :tenant_ref,
+      :source_node_ref,
       :scope_ref,
       :t_epoch,
       :source_agents,

@@ -236,6 +236,7 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     %{
       fragment_id: record.fragment_id,
       tenant_ref: record.tenant_ref,
+      source_node_ref: record.source_node_ref,
       tier: tier,
       t_epoch: record.t_epoch,
       source_agents: list_or_empty(record.source_agents),

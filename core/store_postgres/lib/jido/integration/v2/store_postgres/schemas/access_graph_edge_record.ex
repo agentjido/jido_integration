@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.AccessGraphEdgeRecord do
     field(:head_ref, :string)
     field(:tail_ref, :string)
     field(:tenant_ref, :string)
+    field(:source_node_ref, :string)
     field(:epoch_start, :integer)
     field(:epoch_end, :integer)
     field(:granting_authority_ref, :map)
@@ -31,6 +32,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.AccessGraphEdgeRecord do
       :head_ref,
       :tail_ref,
       :tenant_ref,
+      :source_node_ref,
       :epoch_start,
       :epoch_end,
       :granting_authority_ref,
@@ -47,11 +49,15 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.AccessGraphEdgeRecord do
       :head_ref,
       :tail_ref,
       :tenant_ref,
+      :source_node_ref,
       :epoch_start,
       :granting_authority_ref
     ])
     |> unique_constraint(:edge_id, name: :access_graph_edges_pkey)
     |> check_constraint(:edge_type, name: :access_graph_edges_edge_type_check)
+    |> check_constraint(:source_node_ref,
+      name: :access_graph_edges_source_node_ref_non_empty_check
+    )
     |> check_constraint(:epoch_start, name: :access_graph_edges_epoch_start_positive_check)
     |> check_constraint(:epoch_end, name: :access_graph_edges_epoch_end_after_start_check)
     |> check_constraint(:revoking_authority_ref,

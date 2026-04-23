@@ -87,6 +87,7 @@ defmodule Jido.Integration.V2.AccessGraph do
     scope_refs = required_string_list!(opts, :scope_refs)
     policy_refs = required_string_list!(opts, :policy_refs)
     authority_ref = Keyword.fetch!(opts, :granting_authority_ref)
+    source_node_ref = Keyword.fetch!(opts, :source_node_ref)
     evidence_refs = Keyword.get(opts, :evidence_refs, [])
     epoch_start = Keyword.get(opts, :epoch_start, 1)
 
@@ -98,6 +99,7 @@ defmodule Jido.Integration.V2.AccessGraph do
       scope_refs: scope_refs,
       policy_refs: policy_refs,
       authority_ref: authority_ref,
+      source_node_ref: source_node_ref,
       evidence_refs: evidence_refs,
       epoch_start: epoch_start
     })
@@ -111,6 +113,7 @@ defmodule Jido.Integration.V2.AccessGraph do
          scope_refs: scope_refs,
          policy_refs: policy_refs,
          authority_ref: authority_ref,
+         source_node_ref: source_node_ref,
          evidence_refs: evidence_refs,
          epoch_start: epoch_start
        }) do
@@ -137,6 +140,7 @@ defmodule Jido.Integration.V2.AccessGraph do
         head_ref: head_ref,
         tail_ref: tail_ref,
         tenant_ref: tenant_ref,
+        source_node_ref: source_node_ref,
         epoch_start: epoch_start,
         granting_authority_ref: authority_ref,
         evidence_refs: evidence_refs,

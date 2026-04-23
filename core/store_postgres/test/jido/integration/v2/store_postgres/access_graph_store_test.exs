@@ -23,10 +23,26 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
                ],
                cause: "installation_activation",
                trace_id: "trace-1",
-               committed_at: committed_at
+               committed_at: committed_at,
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
              )
 
     assert Enum.map(edges, & &1.epoch_start) == [1, 1, 1]
+
+    assert Enum.map(edges, & &1.source_node_ref) ==
+             [
+               "node://ji_1@127.0.0.1/node-a",
+               "node://ji_1@127.0.0.1/node-a",
+               "node://ji_1@127.0.0.1/node-a"
+             ]
+
+    epoch_record = Repo.get_by!(AccessGraphEpochRecord, tenant_ref: "tenant-1", epoch: 1)
+    assert epoch_record.source_node_ref == "node://ji_1@127.0.0.1/node-a"
+    assert is_binary(epoch_record.commit_lsn)
+
+    assert %{"w" => _, "l" => _, "n" => "node://ji_1@127.0.0.1/node-a"} =
+             epoch_record.commit_hlc
+
     assert AccessGraphStore.current_epoch("tenant-1") == 1
     assert AccessGraphStore.epoch_at("tenant-1", committed_at) == 1
     assert AccessGraphStore.a_of("tenant-1", "user-1", 1) == MapSet.new(["agent-1"])
@@ -46,7 +62,8 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
                "tenant-1",
                [edge_attrs(:up, "user-1", "policy-1")],
                cause: "policy_activation",
-               committed_at: DateTime.add(committed_at, 1, :second)
+               committed_at: DateTime.add(committed_at, 1, :second),
+               source_node_ref: "node://ji_2@127.0.0.1/node-b"
              )
 
     assert AccessGraphStore.current_epoch("tenant-1") == 2
@@ -58,14 +75,16 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
              AccessGraphStore.insert_edges(
                "tenant-1",
                [edge_attrs(:ua, "user-1", "agent-1")],
-               cause: "grant"
+               cause: "grant",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
              )
 
     assert AccessGraphStore.a_of("tenant-1", "user-1", 1) == MapSet.new(["agent-1"])
 
     assert {:ok, revoked} =
              AccessGraphStore.revoke_edge(edge.edge_id, governance_ref("revoke-1"),
-               cause: "lease_revoked"
+               cause: "lease_revoked",
+               source_node_ref: "node://ji_2@127.0.0.1/node-b"
              )
 
     assert revoked.epoch_start == 1
@@ -80,7 +99,8 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
              AccessGraphStore.insert_edges(
                "tenant-1",
                [edge_attrs(:ua, "user-1", "agent-1") |> Map.delete(:granting_authority_ref)],
-               cause: "missing_authority"
+               cause: "missing_authority",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
              )
 
     assert message =~ "granting_authority_ref is required"
@@ -90,6 +110,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
                "tenant-1",
                [edge_attrs(:us, "user-1", "scope-a")],
                cause: "cycle",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a",
                scope_hierarchy_edges: [{"scope-a", "scope-b"}, {"scope-b", "scope-a"}]
              )
 
@@ -99,7 +120,8 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
              AccessGraphStore.insert_edges(
                "tenant-1",
                [edge_attrs(:ua, "user-1", "agent-1")],
-               cause: "grant"
+               cause: "grant",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
              )
 
     assert {:error, changeset} =
@@ -108,6 +130,13 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
                tenant_ref: "tenant-1",
                epoch: 1,
                cause: "manual_duplicate",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a",
+               commit_lsn: "16/B374D848",
+               commit_hlc: %{
+                 "w" => 1_776_947_200_000_000_000,
+                 "l" => 0,
+                 "n" => "node://ji_1@127.0.0.1/node-a"
+               },
                committed_at: ~U[2026-04-23 10:00:00Z]
              })
              |> Repo.insert()
@@ -121,6 +150,66 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
       |> AccessGraphEdgeRecord.changeset(%{edge_type: "ar"})
       |> Repo.update!()
     end
+
+    assert_raise Postgrex.Error, ~r/immutable identity fields/, fn ->
+      record
+      |> AccessGraphEdgeRecord.changeset(%{source_node_ref: "node://ji_2@127.0.0.1/node-b"})
+      |> Repo.update!()
+    end
+  end
+
+  test "store rejects graph writes without source node refs and pins snapshot in repeatable-read helper" do
+    assert {:error, %ArgumentError{message: message}} =
+             AccessGraphStore.insert_edges(
+               "tenant-1",
+               [edge_attrs(:ua, "user-1", "agent-1") |> Map.delete(:source_node_ref)],
+               cause: "missing_node"
+             )
+
+    assert message =~ "source_node_ref"
+
+    assert {:ok, %{epoch: 1}} =
+             AccessGraphStore.insert_edges(
+               "tenant-1",
+               [edge_attrs(:ua, "user-1", "agent-1")],
+               cause: "grant",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
+             )
+
+    assert {:ok, snapshot} = AccessGraphStore.current_epoch_for_tenant("tenant-1")
+    assert snapshot.snapshot_epoch == 1
+    assert snapshot.tenant_ref == "tenant-1"
+  end
+
+  test "concurrent multi-node graph transactions produce distinct tenant epochs" do
+    node_refs = [
+      "node://ji_1@127.0.0.1/node-a",
+      "node://ji_2@127.0.0.1/node-b"
+    ]
+
+    results =
+      1..20
+      |> Task.async_stream(
+        fn index ->
+          node_ref = Enum.at(node_refs, rem(index, 2))
+
+          AccessGraphStore.insert_edges(
+            "tenant-concurrent",
+            [edge_attrs(:ua, "user-#{index}", "agent-#{index}")],
+            cause: "concurrent-grant",
+            source_node_ref: node_ref
+          )
+        end,
+        max_concurrency: 4,
+        timeout: 30_000
+      )
+      |> Enum.map(fn {:ok, {:ok, %{epoch: epoch, edges: [edge]}}} ->
+        {epoch, edge.source_node_ref}
+      end)
+
+    epochs = Enum.map(results, &elem(&1, 0))
+    assert Enum.sort(epochs) == Enum.to_list(1..20)
+    assert MapSet.new(Enum.map(results, &elem(&1, 1))) == MapSet.new(node_refs)
   end
 
   test "backfill builder materializes TenantScope-style rows into initial edges" do
@@ -135,6 +224,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
         resource_refs: ["resource-1"],
         scope_refs: ["scope-1"],
         policy_refs: ["policy-1"],
+        source_node_ref: "node://ji_1@127.0.0.1/node-a",
         granting_authority_ref: governance_ref("backfill-grant"),
         evidence_refs: [evidence_ref("backfill-evidence")]
       )
@@ -148,6 +238,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
         edge_type: edge_type,
         head_ref: head_ref,
         tail_ref: tail_ref,
+        source_node_ref: "node://ji_1@127.0.0.1/node-a",
         granting_authority_ref: governance_ref("grant-#{edge_type}-#{head_ref}-#{tail_ref}"),
         evidence_refs: [evidence_ref("evidence-#{edge_type}-#{head_ref}-#{tail_ref}")],
         policy_refs: ["policy://phase7/#{edge_type}"],

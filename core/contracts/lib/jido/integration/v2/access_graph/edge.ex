@@ -21,6 +21,7 @@ defmodule Jido.Integration.V2.AccessGraph.Edge do
     :head_ref,
     :tail_ref,
     :tenant_ref,
+    :source_node_ref,
     :epoch_start,
     :epoch_end,
     :granting_authority_ref,
@@ -42,6 +43,7 @@ defmodule Jido.Integration.V2.AccessGraph.Edge do
           head_ref: String.t(),
           tail_ref: String.t(),
           tenant_ref: String.t(),
+          source_node_ref: String.t(),
           epoch_start: pos_integer(),
           epoch_end: pos_integer() | nil,
           granting_authority_ref: GovernanceRef.t(),
@@ -68,6 +70,7 @@ defmodule Jido.Integration.V2.AccessGraph.Edge do
       :head_ref,
       :tail_ref,
       :tenant_ref,
+      :source_node_ref,
       :epoch_start,
       :granting_authority_ref
     ]
@@ -107,6 +110,7 @@ defmodule Jido.Integration.V2.AccessGraph.Edge do
       head_ref: edge.head_ref,
       tail_ref: edge.tail_ref,
       tenant_ref: edge.tenant_ref,
+      source_node_ref: edge.source_node_ref,
       epoch_start: edge.epoch_start,
       epoch_end: edge.epoch_end,
       granting_authority_ref: GovernanceRef.dump(edge.granting_authority_ref),
@@ -143,6 +147,10 @@ defmodule Jido.Integration.V2.AccessGraph.Edge do
         attrs |> Contracts.fetch_required!(:tail_ref, field(:tail_ref)) |> ref!(:tail_ref),
       tenant_ref:
         attrs |> Contracts.fetch_required!(:tenant_ref, field(:tenant_ref)) |> ref!(:tenant_ref),
+      source_node_ref:
+        attrs
+        |> Contracts.fetch_required!(:source_node_ref, field(:source_node_ref))
+        |> ref!(:source_node_ref),
       epoch_start:
         attrs
         |> Contracts.fetch_required!(:epoch_start, field(:epoch_start))

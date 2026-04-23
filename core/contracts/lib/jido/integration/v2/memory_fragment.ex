@@ -18,6 +18,7 @@ defmodule Jido.Integration.V2.MemoryFragment do
     :contract_version,
     :fragment_id,
     :tenant_ref,
+    :source_node_ref,
     :tier,
     :t_epoch,
     :creating_user_ref,
@@ -83,6 +84,7 @@ defmodule Jido.Integration.V2.MemoryFragment do
           contract_version: String.t(),
           fragment_id: String.t(),
           tenant_ref: String.t(),
+          source_node_ref: String.t(),
           tier: tier(),
           t_epoch: pos_integer(),
           creating_user_ref: String.t() | nil,
@@ -133,6 +135,7 @@ defmodule Jido.Integration.V2.MemoryFragment do
   def provenance_fields do
     [
       :t_epoch,
+      :source_node_ref,
       :creating_user_ref,
       :source_agents,
       :source_resources,
@@ -183,6 +186,7 @@ defmodule Jido.Integration.V2.MemoryFragment do
       contract_version: fragment.contract_version,
       fragment_id: fragment.fragment_id,
       tenant_ref: fragment.tenant_ref,
+      source_node_ref: fragment.source_node_ref,
       tier: fragment.tier,
       t_epoch: fragment.t_epoch,
       creating_user_ref: fragment.creating_user_ref,
@@ -239,6 +243,10 @@ defmodule Jido.Integration.V2.MemoryFragment do
         |> required_string(:fragment_id),
       tenant_ref:
         attrs |> Contracts.fetch_required!(:tenant_ref, field(:tenant_ref)) |> ref!(:tenant_ref),
+      source_node_ref:
+        attrs
+        |> Contracts.fetch_required!(:source_node_ref, field(:source_node_ref))
+        |> ref!(:source_node_ref),
       tier:
         attrs
         |> Contracts.fetch_required!(:tier, field(:tier))

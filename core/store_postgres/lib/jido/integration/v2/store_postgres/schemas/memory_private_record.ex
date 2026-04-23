@@ -9,6 +9,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.MemoryPrivateRecord do
 
   schema "memory_private" do
     field(:tenant_ref, :string)
+    field(:source_node_ref, :string)
     field(:user_ref, :string)
     field(:creating_user_ref, :string)
     field(:t_epoch, :integer)
@@ -53,12 +54,14 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.MemoryPrivateRecord do
     |> check_constraint(:embedding_model_ref,
       name: :memory_private_embedding_model_dimension_pair_check
     )
+    |> check_constraint(:source_node_ref, name: :memory_private_source_node_ref_non_empty_check)
   end
 
   def fields do
     [
       :fragment_id,
       :tenant_ref,
+      :source_node_ref,
       :user_ref,
       :creating_user_ref,
       :t_epoch,
@@ -93,6 +96,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.MemoryPrivateRecord do
     [
       :fragment_id,
       :tenant_ref,
+      :source_node_ref,
       :user_ref,
       :creating_user_ref,
       :t_epoch,

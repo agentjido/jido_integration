@@ -7,8 +7,10 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
 
   alias Jido.Integration.V2.AccessGraph
   alias Jido.Integration.V2.AccessGraph.Edge
+  alias Jido.Integration.V2.ClockOrdering.HLC
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.GovernanceRef
+  alias Jido.Integration.V2.Memory.SnapshotContext
   alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.AccessGraphEdgeRecord
@@ -22,7 +24,8 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
 
     Repo.transaction(fn ->
       AccessGraph.validate_scope_hierarchy!(Keyword.get(opts, :scope_hierarchy_edges, []))
-      epoch = allocate_epoch!(tenant_ref, opts)
+      epoch_record = allocate_epoch!(tenant_ref, opts)
+      epoch = epoch_record.epoch
 
       edges =
         Enum.map(edge_attrs, fn attrs ->
@@ -30,6 +33,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
           |> Map.new()
           |> Map.put(:tenant_ref, tenant_ref)
           |> Map.put(:epoch_start, epoch)
+          |> Map.put(:source_node_ref, epoch_record.source_node_ref)
           |> Map.put_new(:edge_id, Contracts.next_id("access_graph_edge"))
           |> Edge.new!()
           |> insert_edge!()
@@ -63,12 +67,12 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
           Repo.rollback(:access_graph_edge_already_revoked)
 
         %AccessGraphEdgeRecord{} = record ->
-          epoch = allocate_epoch!(record.tenant_ref, opts)
+          epoch_record = allocate_epoch!(record.tenant_ref, opts)
           revoking = normalize_revoking_authority!(revoking_authority_ref)
 
           record
           |> AccessGraphEdgeRecord.changeset(%{
-            epoch_end: epoch,
+            epoch_end: epoch_record.epoch,
             revoking_authority_ref: GovernanceRef.dump(revoking)
           })
           |> Repo.update!()
@@ -91,6 +95,61 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
     |> case do
       nil -> 0
       epoch -> epoch
+    end
+  end
+
+  @spec current_epoch_for_tenant(String.t(), keyword()) ::
+          {:ok, SnapshotContext.t()} | {:error, :snapshot_pin_timeout | term()}
+  def current_epoch_for_tenant(tenant_ref, opts \\ [])
+      when is_binary(tenant_ref) and is_list(opts) do
+    StorePostgres.assert_started!()
+
+    timeout_ms = Keyword.get(opts, :timeout_ms, 5_000)
+    started = System.monotonic_time(:microsecond)
+
+    task =
+      Task.async(fn ->
+        Repo.transaction(
+          fn ->
+            epoch_record =
+              AccessGraphEpochRecord
+              |> where([epoch], epoch.tenant_ref == ^tenant_ref)
+              |> order_by([epoch],
+                desc: epoch.epoch,
+                desc: epoch.commit_lsn,
+                desc: fragment("(?->>'w')::bigint", epoch.commit_hlc),
+                desc: fragment("(?->>'l')::bigint", epoch.commit_hlc),
+                desc: epoch.source_node_ref
+              )
+              |> limit(1)
+              |> Repo.one()
+
+            snapshot_from_epoch_record(tenant_ref, epoch_record)
+          end,
+          isolation: :repeatable_read,
+          timeout: timeout_ms
+        )
+      end)
+
+    case Task.yield(task, timeout_ms) || Task.shutdown(task, :brutal_kill) do
+      {:ok, {:ok, %SnapshotContext{} = snapshot}} ->
+        snapshot = %{snapshot | latency_us: elapsed_us(started)}
+        emit_snapshot_pin_telemetry(snapshot, :ok)
+        {:ok, snapshot}
+
+      {:ok, {:error, reason}} ->
+        {:error, reason}
+
+      nil ->
+        latency_us = elapsed_us(started)
+
+        :telemetry.execute(
+          [:memsim, :recall, :snapshot_pin, :latency],
+          %{duration: latency_us},
+          %{tenant_ref: tenant_ref, status: :timeout}
+        )
+
+        {:error, :snapshot_pin_timeout}
     end
   end
 
@@ -132,9 +191,21 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
   end
 
   defp allocate_epoch!(tenant_ref, opts) do
+    source_node_ref =
+      opts
+      |> Keyword.get(:source_node_ref)
+      |> Contracts.validate_non_empty_string!("access_graph_epoch.source_node_ref")
+
+    commit_hlc =
+      opts
+      |> Keyword.get(:commit_hlc, HLC.local_event(nil, source_node_ref))
+      |> HLC.new!()
+      |> HLC.dump()
+
     Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", ["access_graph:" <> tenant_ref])
 
     epoch = current_epoch_in_transaction(tenant_ref) + 1
+    commit_lsn = current_wal_lsn!()
 
     %AccessGraphEpochRecord{}
     |> AccessGraphEpochRecord.changeset(%{
@@ -144,11 +215,17 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
         Keyword.get(opts, :committed_at, DateTime.utc_now() |> DateTime.truncate(:microsecond)),
       cause: Keyword.get(opts, :cause, "graph_change"),
       trace_id: Keyword.get(opts, :trace_id),
+      source_node_ref: source_node_ref,
+      commit_lsn: commit_lsn,
+      commit_hlc: commit_hlc,
       metadata: Keyword.get(opts, :metadata, %{})
     })
     |> Repo.insert!()
+  end
 
-    epoch
+  defp current_wal_lsn! do
+    %{rows: [[commit_lsn]]} = Repo.query!("SELECT pg_current_wal_lsn()::text", [])
+    commit_lsn
   end
 
   defp current_epoch_in_transaction(tenant_ref) do
@@ -215,6 +292,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
       head_ref: edge.head_ref,
       tail_ref: edge.tail_ref,
       tenant_ref: edge.tenant_ref,
+      source_node_ref: edge.source_node_ref,
       epoch_start: edge.epoch_start,
       epoch_end: edge.epoch_end,
       granting_authority_ref:
@@ -238,6 +316,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
       head_ref: record.head_ref,
       tail_ref: record.tail_ref,
       tenant_ref: record.tenant_ref,
+      source_node_ref: record.source_node_ref,
       epoch_start: record.epoch_start,
       epoch_end: record.epoch_end,
       granting_authority_ref: record.granting_authority_ref,
@@ -255,6 +334,39 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
 
   defp maybe_dump_governance(nil), do: nil
   defp maybe_dump_governance(%GovernanceRef{} = ref), do: GovernanceRef.dump(ref)
+
+  defp snapshot_from_epoch_record(tenant_ref, nil) do
+    SnapshotContext.new!(%{
+      tenant_ref: tenant_ref,
+      snapshot_epoch: 0,
+      pinned_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
+    })
+  end
+
+  defp snapshot_from_epoch_record(tenant_ref, %AccessGraphEpochRecord{} = epoch_record) do
+    SnapshotContext.new!(%{
+      tenant_ref: tenant_ref,
+      snapshot_epoch: epoch_record.epoch,
+      pinned_at: DateTime.utc_now() |> DateTime.truncate(:microsecond),
+      source_node_ref: epoch_record.source_node_ref,
+      commit_lsn: epoch_record.commit_lsn,
+      commit_hlc: epoch_record.commit_hlc
+    })
+  end
+
+  defp emit_snapshot_pin_telemetry(%SnapshotContext{} = snapshot, status) do
+    :telemetry.execute(
+      [:memsim, :recall, :snapshot_pin, :latency],
+      %{duration: snapshot.latency_us},
+      %{
+        tenant_ref: snapshot.tenant_ref,
+        snapshot_epoch: snapshot.snapshot_epoch,
+        status: status
+      }
+    )
+  end
+
+  defp elapsed_us(started), do: System.monotonic_time(:microsecond) - started
 
   defp unwrap_transaction({:ok, result}), do: {:ok, result}
   defp unwrap_transaction({:error, reason}), do: {:error, reason}
