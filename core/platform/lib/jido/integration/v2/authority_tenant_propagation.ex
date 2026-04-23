@@ -16,10 +16,11 @@ defmodule Jido.Integration.V2.AuthorityTenantPropagation do
   @contract_id "AuthorityTenantPropagation.v1"
   @tenant_id "tenant-phase6-m8"
   @installation_id "installation-phase6-m8"
+  @execution_id "exec-phase6-m8"
   @run_id "run-phase6-m8"
   @trace_id "trace-phase6-m8"
   @authority_decision_ref "authority-decision:phase6-m8"
-  @authorization_scope_ref "authorization-scope://tenant-phase6-m8/exec-phase6-m8"
+  @authorization_scope_ref "authorization-scope://tenant-phase6-m8/#{@execution_id}"
   @tenant_scope_ref "tenant-scope://tenant-phase6-m8/run-phase6-m8"
   @budget_ref "budget://phase6/m8/local-no-spend"
   @no_bypass_scope_ref "no-bypass://phase6/m8/authority-tenant-budget"
@@ -70,7 +71,7 @@ defmodule Jido.Integration.V2.AuthorityTenantPropagation do
       authorization_scope_ref: @authorization_scope_ref,
       budget_ref: @budget_ref,
       no_bypass_scope_ref: @no_bypass_scope_ref,
-      lineage_ref: "lineage://phase6/m8/#{@run_id}",
+      lineage_ref: "lineage://phase6/m8/#{@execution_id}",
       causation_ref: "causation://phase6/m8/request-phase6-m8",
       idempotency_ref: "idempotency://phase6/m8/#{@tenant_id}/request-phase6-m8",
       lower_facts_propagation_ref: @lower_facts_propagation_ref,
