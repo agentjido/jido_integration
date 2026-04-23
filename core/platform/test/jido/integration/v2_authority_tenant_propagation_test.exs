@@ -34,6 +34,9 @@ defmodule Jido.Integration.V2AuthorityTenantPropagationTest do
     assert evidence.tenant_scope.installation_id == "installation-phase6-m8"
     assert evidence.tenant_scope_ref == "tenant-scope://tenant-phase6-m8/run-phase6-m8"
 
+    assert evidence.authorization_scope_ref ==
+             "authorization-scope://tenant-phase6-m8/exec-phase6-m8"
+
     assert %LowerSubmissionActivity{} = evidence.lower_submission_activity
     assert evidence.lower_submission_activity.tenant_ref == "tenant-phase6-m8"
     assert evidence.lower_submission_activity.lower_scope_ref == evidence.tenant_scope_ref

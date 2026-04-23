@@ -19,7 +19,7 @@ defmodule Jido.Integration.V2.AuthorityTenantPropagation do
   @run_id "run-phase6-m8"
   @trace_id "trace-phase6-m8"
   @authority_decision_ref "authority-decision:phase6-m8"
-  @authorization_scope_ref "authorization-scope://tenant-phase6-m8/run-phase6-m8"
+  @authorization_scope_ref "authorization-scope://tenant-phase6-m8/exec-phase6-m8"
   @tenant_scope_ref "tenant-scope://tenant-phase6-m8/run-phase6-m8"
   @budget_ref "budget://phase6/m8/local-no-spend"
   @no_bypass_scope_ref "no-bypass://phase6/m8/authority-tenant-budget"
