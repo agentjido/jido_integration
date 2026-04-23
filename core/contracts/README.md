@@ -57,6 +57,8 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `InstallationRevisionEpoch`
 - `LeaseRevocation`
 - `RetryPosture`
+- `AccessGraph.Edge`
+- `AccessGraph`
 
 ## Core Guarantees
 
@@ -175,6 +177,11 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `RetryPosture` mirrors `Platform.RetryPosture.v1` for lower integration
   consumers so retry, backoff, idempotency scope, safe action, and dead-letter
   refs stay explicit at the lower boundary.
+- `AccessGraph.Edge` and `AccessGraph` implement the
+  `Platform.AccessGraph.Edge.v1` / graph-only `Platform.AccessGraph.v1`
+  contract surface for epoch-stamped authorization, derived views, and
+  graph-only recall admissibility. Durable storage lives in
+  `core/store_postgres`.
 - `LowerSubmissionActivity` implements
   `JidoIntegration.LowerSubmissionActivity.v1` for Phase 4 durable workflow
   activity retries. It binds tenant, actor, resource, workflow, activity,

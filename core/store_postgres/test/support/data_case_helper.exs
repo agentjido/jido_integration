@@ -69,6 +69,15 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
     Map.get(map, key, Map.get(map, Atom.to_string(key)))
   end
 
+  @spec errors_on(Ecto.Changeset.t()) :: map()
+  def errors_on(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
+      Enum.reduce(opts, message, fn {key, value}, acc ->
+        String.replace(acc, "%{#{key}}", to_string(value))
+      end)
+    end)
+  end
+
   defp snapshot_env do
     %{
       control_plane: snapshot_keys(:jido_integration_v2_control_plane, @control_plane_keys),

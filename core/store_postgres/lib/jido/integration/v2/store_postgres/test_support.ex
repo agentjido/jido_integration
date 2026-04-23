@@ -6,6 +6,8 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   alias Ecto.Migrator
   alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
+  alias Jido.Integration.V2.StorePostgres.Schemas.AccessGraphEdgeRecord
+  alias Jido.Integration.V2.StorePostgres.Schemas.AccessGraphEpochRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.ArtifactRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.AttemptRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.ClaimCheckBlobRecord
@@ -162,6 +164,8 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
 
   @spec reset_database!() :: :ok
   def reset_database! do
+    Repo.delete_all(AccessGraphEdgeRecord)
+    Repo.delete_all(AccessGraphEpochRecord)
     Repo.delete_all(SubmissionRecord)
     Repo.delete_all(ProfileRegistryEntryRecord)
     Repo.delete_all(TargetRecord)
