@@ -51,7 +51,8 @@ defmodule Jido.Integration.V2.Contracts do
   ]
   @memory_foundation_contracts [
     "Platform.AccessGraph.Edge.v1",
-    "Platform.AccessGraph.v1"
+    "Platform.AccessGraph.v1",
+    "Platform.MemoryFragment.V1"
   ]
 
   @type runtime_class :: :direct | :session | :stream
