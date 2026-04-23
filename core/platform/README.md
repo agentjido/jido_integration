@@ -130,6 +130,14 @@ facade may continue to expose convenience read helpers for general consumers,
 but lower-stack integrations should freeze against the bounded, tenant-scoped
 `LowerFacts` surface instead.
 
+`Jido.Integration.V2.AuthorityTenantPropagation` is the Phase 6 M8 owner
+evidence surface for `AuthorityTenantPropagation.v1`. It requires propagated
+tenant, authority decision, Mezzanine authorization-scope, budget, no-bypass,
+lineage, causation, idempotency, and lower-facts propagation refs; builds real
+`TenantScope` and `LowerSubmissionActivity` structs; and rejects missing
+authority, missing budget, cross-tenant scope, lower-facts mismatch,
+unsupported lower-facts operations, and direct lower shortcuts.
+
 ## Design Boundary
 
 This package is the public facade, not the place where every runtime concern
