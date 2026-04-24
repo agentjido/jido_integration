@@ -282,6 +282,46 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
     :telemetry.detach(telemetry_id)
   end
 
+  test "fetches replay fragments in proof order with access projection and parent lineage" do
+    assert {:ok, %MemoryFragment{fragment_id: root_id}} =
+             MemoryTierStore.insert_private_fragment(
+               private_fragment_attrs("fragment-replay-root")
+             )
+
+    assert {:ok, %MemoryFragment{fragment_id: child_id}} =
+             MemoryTierStore.insert_shared_fragment(
+               shared_fragment_attrs("fragment-replay-child")
+               |> Map.put(:parent_fragment_id, root_id)
+             )
+
+    assert {:ok, %MemoryFragment{fragment_id: grandchild_id}} =
+             MemoryTierStore.insert_governed_fragment(
+               governed_fragment_attrs("fragment-replay-grandchild")
+               |> Map.put(:parent_fragment_id, child_id)
+             )
+
+    assert [^grandchild_id, ^root_id] =
+             MemoryTierStore.fragments_by_id("tenant-1", [grandchild_id, root_id],
+               snapshot_epoch: 11
+             )
+             |> Enum.map(& &1.fragment_id)
+
+    assert {:ok, [^root_id, ^child_id]} =
+             MemoryTierStore.source_lineage_parent_chain("tenant-1", grandchild_id,
+               snapshot_epoch: 11
+             )
+
+    assert [
+             %{
+               fragment_id: ^grandchild_id,
+               access_projection_hash: "sha256:" <> _hash,
+               parent_chain: [^root_id, ^child_id],
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
+             }
+           ] =
+             MemoryTierStore.replay_projection("tenant-1", [grandchild_id], snapshot_epoch: 11)
+  end
+
   test "database constraints reject invalid private, shared, and governed tier records" do
     assert {:error, changeset} =
              %MemoryPrivateRecord{}

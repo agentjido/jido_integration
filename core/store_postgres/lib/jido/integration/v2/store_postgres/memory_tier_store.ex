@@ -269,6 +269,66 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     |> Repo.exists?()
   end
 
+  @spec fragments_by_id(String.t(), [String.t()], keyword()) :: [MemoryFragment.t()]
+  def fragments_by_id(tenant_ref, fragment_ids, opts \\ [])
+      when is_binary(tenant_ref) and is_list(fragment_ids) and is_list(opts) do
+    StorePostgres.assert_started!()
+
+    by_id =
+      tenant_ref
+      |> fragment_records_by_ids(fragment_ids)
+      |> filter_snapshot_visible(opts)
+      |> Enum.map(&to_fragment/1)
+      |> Map.new(&{&1.fragment_id, &1})
+
+    fragment_ids
+    |> Enum.map(&Map.get(by_id, &1))
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @spec source_lineage_parent_chain(String.t(), String.t(), keyword()) ::
+          {:ok, [String.t()]} | {:error, :missing_fragment}
+  def source_lineage_parent_chain(tenant_ref, fragment_id, opts \\ [])
+      when is_binary(tenant_ref) and is_binary(fragment_id) and is_list(opts) do
+    StorePostgres.assert_started!()
+
+    case fragments_by_id(tenant_ref, [fragment_id], opts) do
+      [] ->
+        {:error, :missing_fragment}
+
+      [_fragment] ->
+        fragments = all_fragment_summaries(tenant_ref)
+        by_id = Map.new(fragments, &{&1.fragment_id, &1})
+        fragment = Map.fetch!(by_id, fragment_id)
+        {:ok, parent_chain(fragment.parent_fragment_id, by_id)}
+    end
+  end
+
+  @spec replay_projection(String.t(), [String.t()], keyword()) :: [map()]
+  def replay_projection(tenant_ref, fragment_ids, opts \\ [])
+      when is_binary(tenant_ref) and is_list(fragment_ids) and is_list(opts) do
+    tenant_ref
+    |> fragments_by_id(fragment_ids, opts)
+    |> Enum.map(fn fragment ->
+      {:ok, parent_chain} = source_lineage_parent_chain(tenant_ref, fragment.fragment_id, opts)
+
+      %{
+        fragment_id: fragment.fragment_id,
+        tenant_ref: fragment.tenant_ref,
+        source_node_ref: fragment.source_node_ref,
+        t_epoch: fragment.t_epoch,
+        access_agents: fragment.access_agents,
+        access_resources: fragment.access_resources,
+        access_scopes: fragment.access_scopes,
+        access_projection_hash: fragment.access_projection_hash,
+        parent_fragment_id: fragment.parent_fragment_id,
+        parent_chain: parent_chain,
+        applied_policies: fragment.applied_policies,
+        transform_pipeline: fragment.transform_pipeline || []
+      }
+    end)
+  end
+
   defp insert_fragment(%MemoryFragment{tier: :private} = fragment, MemoryPrivateRecord) do
     StorePostgres.assert_started!()
 
@@ -325,6 +385,23 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
 
     MemoryPrivateRecord
     |> where([fragment], fragment.tenant_ref == ^tenant_ref and fragment.user_ref == ^user_ref)
+    |> Repo.all()
+  end
+
+  defp fragment_records_by_ids(tenant_ref, fragment_ids) do
+    private = fragment_records_by_ids(MemoryPrivateRecord, tenant_ref, fragment_ids)
+    shared = fragment_records_by_ids(MemorySharedRecord, tenant_ref, fragment_ids)
+    governed = fragment_records_by_ids(MemoryGovernedRecord, tenant_ref, fragment_ids)
+
+    private ++ shared ++ governed
+  end
+
+  defp fragment_records_by_ids(record_module, tenant_ref, fragment_ids) do
+    record_module
+    |> where(
+      [fragment],
+      fragment.tenant_ref == ^tenant_ref and fragment.fragment_id in ^fragment_ids
+    )
     |> Repo.all()
   end
 

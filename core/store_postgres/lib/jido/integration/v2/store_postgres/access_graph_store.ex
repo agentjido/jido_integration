@@ -257,6 +257,80 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
     }
   end
 
+  @spec replay_views(
+          String.t(),
+          String.t(),
+          String.t(),
+          pos_integer(),
+          AccessGraph.effective_access_tuple()
+        ) :: %{
+          snapshot_epoch: pos_integer(),
+          access_agents: MapSet.t(String.t()),
+          access_resources: MapSet.t(String.t()),
+          access_scopes: MapSet.t(String.t()),
+          graph_admissible?: boolean()
+        }
+  def replay_views(tenant_ref, user_ref, agent_ref, epoch, effective_access_tuple \\ %{})
+      when is_binary(tenant_ref) and is_binary(user_ref) and is_binary(agent_ref) and
+             is_integer(epoch) do
+    %{
+      snapshot_epoch: epoch,
+      access_agents: a_of(tenant_ref, user_ref, epoch),
+      access_resources: r_of(tenant_ref, agent_ref, epoch),
+      access_scopes: s_of(tenant_ref, user_ref, epoch),
+      graph_admissible?:
+        graph_admissible?(tenant_ref, effective_access_tuple, user_ref, agent_ref, epoch)
+    }
+  end
+
+  @spec list_epoch_events_by_trace(String.t()) :: [map()]
+  def list_epoch_events_by_trace(trace_id) when is_binary(trace_id) do
+    StorePostgres.assert_started!()
+
+    AccessGraphEpochRecord
+    |> where([epoch], epoch.trace_id == ^trace_id)
+    |> order_by_commit()
+    |> Repo.all()
+    |> Enum.map(&to_epoch_event/1)
+  end
+
+  @spec list_epoch_events_by_tenant(String.t(), keyword()) :: [map()]
+  def list_epoch_events_by_tenant(tenant_ref, opts \\ [])
+      when is_binary(tenant_ref) and is_list(opts) do
+    StorePostgres.assert_started!()
+
+    AccessGraphEpochRecord
+    |> where([epoch], epoch.tenant_ref == ^tenant_ref)
+    |> maybe_filter_epoch(Keyword.get(opts, :epoch))
+    |> maybe_filter_source_node(Keyword.get(opts, :source_node_ref))
+    |> order_by_commit()
+    |> Repo.all()
+    |> Enum.map(&to_epoch_event/1)
+  end
+
+  @spec wall_clock_inversions(String.t()) :: [map()]
+  def wall_clock_inversions(trace_id) when is_binary(trace_id) do
+    trace_id
+    |> list_epoch_events_by_trace()
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.filter(fn [previous, current] ->
+      DateTime.compare(current.committed_at, previous.committed_at) == :lt
+    end)
+    |> Enum.map(fn [previous, current] ->
+      %{
+        previous_tenant_ref: previous.tenant_ref,
+        previous_epoch: previous.epoch,
+        previous_committed_at: previous.committed_at,
+        previous_commit_hlc: previous.commit_hlc,
+        current_tenant_ref: current.tenant_ref,
+        current_epoch: current.epoch,
+        current_committed_at: current.committed_at,
+        current_commit_hlc: current.commit_hlc,
+        resolved_by: :commit_hlc
+      }
+    end)
+  end
+
   defp allocate_epoch!(tenant_ref, opts) do
     source_node_ref =
       opts
@@ -428,6 +502,42 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
       [edge],
       edge.epoch_start <= ^epoch and (is_nil(edge.epoch_end) or edge.epoch_end > ^epoch)
     )
+  end
+
+  defp maybe_filter_epoch(query, nil), do: query
+
+  defp maybe_filter_epoch(query, epoch) when is_integer(epoch),
+    do: where(query, [row], row.epoch == ^epoch)
+
+  defp maybe_filter_source_node(query, nil), do: query
+
+  defp maybe_filter_source_node(query, source_node_ref) when is_binary(source_node_ref) do
+    where(query, [row], row.source_node_ref == ^source_node_ref)
+  end
+
+  defp order_by_commit(query) do
+    order_by(query, [epoch],
+      asc: fragment("(?->>'w')::bigint", epoch.commit_hlc),
+      asc: fragment("(?->>'l')::bigint", epoch.commit_hlc),
+      asc: epoch.source_node_ref,
+      asc: epoch.commit_lsn,
+      asc: epoch.tenant_ref,
+      asc: epoch.epoch
+    )
+  end
+
+  defp to_epoch_event(%AccessGraphEpochRecord{} = record) do
+    %{
+      tenant_ref: record.tenant_ref,
+      epoch: record.epoch,
+      committed_at: record.committed_at,
+      source_node_ref: record.source_node_ref,
+      commit_lsn: record.commit_lsn,
+      commit_hlc: record.commit_hlc,
+      cause: record.cause,
+      trace_id: record.trace_id,
+      metadata: record.metadata || %{}
+    }
   end
 
   defp to_record_attrs(%Edge{} = edge) do

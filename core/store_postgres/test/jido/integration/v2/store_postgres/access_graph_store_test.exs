@@ -374,6 +374,57 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
     assert MapSet.new(Enum.map(results, &elem(&1, 1))) == MapSet.new(node_refs)
   end
 
+  test "lists node-aware graph events by trace and detects HLC-resolved wall-clock inversions" do
+    assert {:ok, %{epoch: 1}} =
+             AccessGraphStore.insert_edges(
+               "tenant-order",
+               [edge_attrs(:ua, "user-order", "agent-order")],
+               cause: "grant-a",
+               trace_id: "trace-order",
+               committed_at: ~U[2026-04-23 10:00:02Z],
+               commit_hlc: %{
+                 "w" => 1_776_954_000_000_000_001,
+                 "l" => 0,
+                 "n" => "node://ji_1@127.0.0.1/node-a"
+               },
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
+             )
+
+    assert {:ok, %{epoch: 2}} =
+             AccessGraphStore.insert_edges(
+               "tenant-order",
+               [edge_attrs(:ar, "agent-order", "resource-order")],
+               cause: "grant-b",
+               trace_id: "trace-order",
+               committed_at: ~U[2026-04-23 10:00:01Z],
+               commit_hlc: %{
+                 "w" => 1_776_954_000_000_000_002,
+                 "l" => 0,
+                 "n" => "node://ji_2@127.0.0.1/node-b"
+               },
+               source_node_ref: "node://ji_2@127.0.0.1/node-b"
+             )
+
+    assert [
+             %{epoch: 1, source_node_ref: "node://ji_1@127.0.0.1/node-a"},
+             %{epoch: 2, source_node_ref: "node://ji_2@127.0.0.1/node-b"}
+           ] = AccessGraphStore.list_epoch_events_by_trace("trace-order")
+
+    assert [%{epoch: 2, cause: "grant-b"}] =
+             AccessGraphStore.list_epoch_events_by_tenant("tenant-order",
+               epoch: 2,
+               source_node_ref: "node://ji_2@127.0.0.1/node-b"
+             )
+
+    assert [
+             %{
+               previous_epoch: 1,
+               current_epoch: 2,
+               resolved_by: :commit_hlc
+             }
+           ] = AccessGraphStore.wall_clock_inversions("trace-order")
+  end
+
   test "backfill builder materializes TenantScope-style rows into initial edges" do
     edges =
       AccessGraph.backfill_from_tenant_scope!(
