@@ -5,13 +5,17 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
 
   import Ecto.Query
 
+  alias Jido.Integration.V2.ClockOrdering.HLC
+  alias Jido.Integration.V2.ClusterInvalidation
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.MemoryFragment
   alias Jido.Integration.V2.StorePostgres
+  alias Jido.Integration.V2.StorePostgres.ClusterInvalidationPublisher
   alias Jido.Integration.V2.StorePostgres.Repo
 
   alias Jido.Integration.V2.StorePostgres.Schemas.{
     MemoryGovernedRecord,
+    MemoryInvalidationRecord,
     MemoryPrivateRecord,
     MemorySharedRecord
   }
@@ -46,33 +50,52 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     error in ArgumentError -> {:error, error}
   end
 
-  @spec private_fragments(String.t(), String.t()) :: [MemoryFragment.t()]
-  def private_fragments(tenant_ref, user_ref)
-      when is_binary(tenant_ref) and is_binary(user_ref) do
+  @type invalidation :: %{
+          invalidation_id: String.t(),
+          tenant_ref: String.t(),
+          fragment_id: String.t(),
+          tier: String.t(),
+          effective_at: DateTime.t(),
+          effective_at_epoch: pos_integer(),
+          source_node_ref: String.t(),
+          commit_lsn: String.t(),
+          commit_hlc: map(),
+          invalidate_policy_ref: String.t(),
+          authority_ref: map(),
+          evidence_refs: [map()],
+          reason: String.t(),
+          metadata: map()
+        }
+
+  @spec private_fragments(String.t(), String.t(), keyword()) :: [MemoryFragment.t()]
+  def private_fragments(tenant_ref, user_ref, opts \\ [])
+      when is_binary(tenant_ref) and is_binary(user_ref) and is_list(opts) do
     StorePostgres.assert_started!()
 
     MemoryPrivateRecord
     |> where([fragment], fragment.tenant_ref == ^tenant_ref and fragment.user_ref == ^user_ref)
     |> order_by([fragment], asc: fragment.inserted_at, asc: fragment.fragment_id)
     |> Repo.all()
+    |> filter_snapshot_visible(opts)
     |> Enum.map(&to_fragment/1)
   end
 
-  @spec shared_fragments(String.t(), String.t()) :: [MemoryFragment.t()]
-  def shared_fragments(tenant_ref, scope_ref)
-      when is_binary(tenant_ref) and is_binary(scope_ref) do
+  @spec shared_fragments(String.t(), String.t(), keyword()) :: [MemoryFragment.t()]
+  def shared_fragments(tenant_ref, scope_ref, opts \\ [])
+      when is_binary(tenant_ref) and is_binary(scope_ref) and is_list(opts) do
     StorePostgres.assert_started!()
 
     MemorySharedRecord
     |> where([fragment], fragment.tenant_ref == ^tenant_ref and fragment.scope_ref == ^scope_ref)
     |> order_by([fragment], asc: fragment.inserted_at, asc: fragment.fragment_id)
     |> Repo.all()
+    |> filter_snapshot_visible(opts)
     |> Enum.map(&to_fragment/1)
   end
 
-  @spec governed_fragments(String.t(), String.t()) :: [MemoryFragment.t()]
-  def governed_fragments(tenant_ref, installation_ref)
-      when is_binary(tenant_ref) and is_binary(installation_ref) do
+  @spec governed_fragments(String.t(), String.t(), keyword()) :: [MemoryFragment.t()]
+  def governed_fragments(tenant_ref, installation_ref, opts \\ [])
+      when is_binary(tenant_ref) and is_binary(installation_ref) and is_list(opts) do
     StorePostgres.assert_started!()
 
     MemoryGovernedRecord
@@ -82,6 +105,7 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     )
     |> order_by([fragment], asc: fragment.inserted_at, asc: fragment.fragment_id)
     |> Repo.all()
+    |> filter_snapshot_visible(opts)
     |> Enum.map(&to_fragment/1)
   end
 
@@ -98,6 +122,45 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     |> Enum.sort_by(&squared_distance(&1.embedding, normalized_query))
     |> Enum.take(limit)
     |> Enum.map(&to_fragment/1)
+  end
+
+  @spec insert_invalidation(map() | keyword()) :: {:ok, invalidation()} | {:error, term()}
+  def insert_invalidation(attrs) when is_map(attrs) or is_list(attrs) do
+    StorePostgres.assert_started!()
+
+    Repo.transaction(fn ->
+      attrs =
+        attrs
+        |> normalize_invalidation_attrs!()
+        |> Map.put_new(:commit_lsn, current_wal_lsn!())
+
+      record =
+        %MemoryInvalidationRecord{}
+        |> MemoryInvalidationRecord.changeset(attrs)
+        |> Repo.insert!()
+
+      invalidation = to_invalidation(record)
+      publish_memory_invalidations!(invalidation)
+      invalidation
+    end)
+    |> unwrap_transaction()
+  rescue
+    error in ArgumentError -> {:error, error}
+  end
+
+  @spec fragment_invalidated_at_epoch?(String.t(), String.t(), pos_integer()) :: boolean()
+  def fragment_invalidated_at_epoch?(tenant_ref, fragment_id, snapshot_epoch)
+      when is_binary(tenant_ref) and is_binary(fragment_id) and is_integer(snapshot_epoch) do
+    StorePostgres.assert_started!()
+
+    MemoryInvalidationRecord
+    |> where(
+      [invalidation],
+      invalidation.tenant_ref == ^tenant_ref and invalidation.fragment_id == ^fragment_id and
+        invalidation.effective_at_epoch <= ^snapshot_epoch
+    )
+    |> limit(1)
+    |> Repo.exists?()
   end
 
   defp insert_fragment(%MemoryFragment{tier: :private} = fragment, MemoryPrivateRecord) do
@@ -158,6 +221,155 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     |> where([fragment], fragment.tenant_ref == ^tenant_ref and fragment.user_ref == ^user_ref)
     |> Repo.all()
   end
+
+  defp filter_snapshot_visible(records, opts) do
+    case Keyword.get(opts, :snapshot_epoch) do
+      nil ->
+        records
+
+      snapshot_epoch when is_integer(snapshot_epoch) and snapshot_epoch > 0 ->
+        Enum.reject(records, fn record ->
+          fragment_invalidated_at_epoch?(record.tenant_ref, record.fragment_id, snapshot_epoch)
+        end)
+
+      snapshot_epoch ->
+        raise ArgumentError,
+              "memory_tier_store.snapshot_epoch must be a positive integer, got: #{inspect(snapshot_epoch)}"
+    end
+  end
+
+  defp normalize_invalidation_attrs!(attrs) do
+    attrs = Map.new(attrs)
+
+    source_node_ref =
+      required_string(attrs, :source_node_ref, "memory_invalidation.source_node_ref")
+
+    attrs
+    |> Map.put_new(:invalidation_id, Contracts.next_id("memory_invalidation"))
+    |> Map.update(:tier, nil, &normalize_tier!/1)
+    |> Map.update(:effective_at, Contracts.now(), &normalize_datetime!/1)
+    |> Map.update(
+      :effective_at_epoch,
+      nil,
+      &positive_integer!(&1, "memory_invalidation.effective_at_epoch")
+    )
+    |> Map.put(:source_node_ref, source_node_ref)
+    |> Map.put_new(:commit_hlc, HLC.local_event(nil, source_node_ref) |> HLC.dump())
+    |> Map.update(:commit_hlc, nil, &HLC.dump/1)
+    |> Map.update(:authority_ref, nil, &Contracts.dump_json_safe!/1)
+    |> Map.update(:evidence_refs, [], fn evidence_refs ->
+      Enum.map(evidence_refs, &Contracts.dump_json_safe!/1)
+    end)
+    |> Map.update(:metadata, %{}, &Contracts.dump_json_safe!/1)
+  end
+
+  defp publish_memory_invalidations!(invalidation) do
+    messages = [
+      memory_invalidation_message(invalidation, :fragment),
+      memory_invalidation_message(invalidation, :invalidation)
+    ]
+
+    case ClusterInvalidationPublisher.publish_all(messages) do
+      :ok -> :ok
+      {:error, reason} -> Repo.rollback({:cluster_invalidation_publish_failed, reason})
+    end
+  end
+
+  defp memory_invalidation_message(invalidation, :fragment) do
+    build_memory_invalidation_message(
+      invalidation,
+      ClusterInvalidation.fragment_topic!(invalidation.tenant_ref, invalidation.fragment_id)
+    )
+  end
+
+  defp memory_invalidation_message(invalidation, :invalidation) do
+    build_memory_invalidation_message(
+      invalidation,
+      ClusterInvalidation.invalidation_topic!(
+        invalidation.tenant_ref,
+        invalidation.invalidation_id
+      )
+    )
+  end
+
+  defp build_memory_invalidation_message(invalidation, topic) do
+    ClusterInvalidation.new!(%{
+      invalidation_id: invalidation.invalidation_id,
+      tenant_ref: invalidation.tenant_ref,
+      topic: topic,
+      source_node_ref: invalidation.source_node_ref,
+      commit_lsn: invalidation.commit_lsn,
+      commit_hlc: invalidation.commit_hlc,
+      published_at: invalidation.effective_at,
+      metadata: %{
+        fragment_id: invalidation.fragment_id,
+        tier: invalidation.tier,
+        effective_at_epoch: invalidation.effective_at_epoch,
+        reason: invalidation.reason
+      }
+    })
+  end
+
+  defp to_invalidation(%MemoryInvalidationRecord{} = record) do
+    %{
+      invalidation_id: record.invalidation_id,
+      tenant_ref: record.tenant_ref,
+      fragment_id: record.fragment_id,
+      tier: record.tier,
+      effective_at: record.effective_at,
+      effective_at_epoch: record.effective_at_epoch,
+      source_node_ref: record.source_node_ref,
+      commit_lsn: record.commit_lsn,
+      commit_hlc: record.commit_hlc,
+      invalidate_policy_ref: record.invalidate_policy_ref,
+      authority_ref: record.authority_ref,
+      evidence_refs: record.evidence_refs || [],
+      reason: record.reason,
+      metadata: record.metadata || %{}
+    }
+  end
+
+  defp current_wal_lsn! do
+    %{rows: [[commit_lsn]]} = Repo.query!("SELECT pg_current_wal_lsn()::text", [])
+    commit_lsn
+  end
+
+  defp normalize_tier!(tier) when tier in [:private, :shared, :governed], do: Atom.to_string(tier)
+  defp normalize_tier!(tier) when tier in ["private", "shared", "governed"], do: tier
+
+  defp normalize_tier!(tier) do
+    raise ArgumentError,
+          "memory_invalidation.tier must be private, shared, or governed, got: #{inspect(tier)}"
+  end
+
+  defp normalize_datetime!(%DateTime{} = value), do: value
+
+  defp normalize_datetime!(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} -> datetime
+      _error -> raise ArgumentError, "memory_invalidation.effective_at must be a DateTime"
+    end
+  end
+
+  defp normalize_datetime!(value) do
+    raise ArgumentError,
+          "memory_invalidation.effective_at must be a DateTime, got: #{inspect(value)}"
+  end
+
+  defp positive_integer!(value, _field) when is_integer(value) and value > 0, do: value
+
+  defp positive_integer!(value, field) do
+    raise ArgumentError, "#{field} must be a positive integer, got: #{inspect(value)}"
+  end
+
+  defp required_string(attrs, key, field) do
+    attrs
+    |> Contracts.get(key)
+    |> Contracts.validate_non_empty_string!(field)
+  end
+
+  defp unwrap_transaction({:ok, value}), do: {:ok, value}
+  defp unwrap_transaction({:error, reason}), do: {:error, reason}
 
   defp normalize_query_embedding!(values) do
     Enum.map(values, fn

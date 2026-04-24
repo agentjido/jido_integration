@@ -8,10 +8,12 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
   alias Jido.Integration.V2.AccessGraph
   alias Jido.Integration.V2.AccessGraph.Edge
   alias Jido.Integration.V2.ClockOrdering.HLC
+  alias Jido.Integration.V2.ClusterInvalidation
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.GovernanceRef
   alias Jido.Integration.V2.Memory.SnapshotContext
   alias Jido.Integration.V2.StorePostgres
+  alias Jido.Integration.V2.StorePostgres.ClusterInvalidationPublisher
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.AccessGraphEdgeRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.AccessGraphEpochRecord
@@ -39,6 +41,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
           |> insert_edge!()
         end)
 
+      publish_graph_invalidation!(epoch_record)
       %{epoch: epoch, edges: edges}
     end)
     |> unwrap_transaction()
@@ -59,25 +62,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
         |> lock("FOR UPDATE")
         |> Repo.one()
 
-      case edge_record do
-        nil ->
-          Repo.rollback(:unknown_access_graph_edge)
-
-        %AccessGraphEdgeRecord{epoch_end: epoch_end} when not is_nil(epoch_end) ->
-          Repo.rollback(:access_graph_edge_already_revoked)
-
-        %AccessGraphEdgeRecord{} = record ->
-          epoch_record = allocate_epoch!(record.tenant_ref, opts)
-          revoking = normalize_revoking_authority!(revoking_authority_ref)
-
-          record
-          |> AccessGraphEdgeRecord.changeset(%{
-            epoch_end: epoch_record.epoch,
-            revoking_authority_ref: GovernanceRef.dump(revoking)
-          })
-          |> Repo.update!()
-          |> to_edge()
-      end
+      revoke_edge_record!(edge_record, revoking_authority_ref, opts)
     end)
     |> unwrap_transaction()
   rescue
@@ -228,6 +213,29 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
     commit_lsn
   end
 
+  defp publish_graph_invalidation!(%AccessGraphEpochRecord{} = epoch_record) do
+    message =
+      ClusterInvalidation.new!(%{
+        invalidation_id: "graph-invalidation://#{epoch_record.tenant_ref}/#{epoch_record.epoch}",
+        tenant_ref: epoch_record.tenant_ref,
+        topic: ClusterInvalidation.graph_topic!(epoch_record.tenant_ref, epoch_record.epoch),
+        source_node_ref: epoch_record.source_node_ref,
+        commit_lsn: epoch_record.commit_lsn,
+        commit_hlc: epoch_record.commit_hlc,
+        published_at: epoch_record.committed_at,
+        metadata: %{
+          cause: epoch_record.cause,
+          trace_id: epoch_record.trace_id,
+          epoch: epoch_record.epoch
+        }
+      })
+
+    case ClusterInvalidationPublisher.publish(message) do
+      :ok -> :ok
+      {:error, reason} -> Repo.rollback({:cluster_invalidation_publish_failed, reason})
+    end
+  end
+
   defp current_epoch_in_transaction(tenant_ref) do
     AccessGraphEpochRecord
     |> where([epoch], epoch.tenant_ref == ^tenant_ref)
@@ -244,6 +252,33 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
     |> AccessGraphEdgeRecord.changeset(to_record_attrs(edge))
     |> Repo.insert!()
     |> to_edge()
+  end
+
+  defp revoke_edge_record!(nil, _revoking_authority_ref, _opts) do
+    Repo.rollback(:unknown_access_graph_edge)
+  end
+
+  defp revoke_edge_record!(
+         %AccessGraphEdgeRecord{epoch_end: epoch_end},
+         _revoking_authority_ref,
+         _opts
+       )
+       when not is_nil(epoch_end) do
+    Repo.rollback(:access_graph_edge_already_revoked)
+  end
+
+  defp revoke_edge_record!(%AccessGraphEdgeRecord{} = record, revoking_authority_ref, opts) do
+    epoch_record = allocate_epoch!(record.tenant_ref, opts)
+    revoking = normalize_revoking_authority!(revoking_authority_ref)
+
+    record
+    |> AccessGraphEdgeRecord.changeset(%{
+      epoch_end: epoch_record.epoch,
+      revoking_authority_ref: GovernanceRef.dump(revoking)
+    })
+    |> Repo.update!()
+    |> to_edge()
+    |> tap(fn _edge -> publish_graph_invalidation!(epoch_record) end)
   end
 
   defp active_tails(tenant_ref, edge_type, head_ref, epoch) do

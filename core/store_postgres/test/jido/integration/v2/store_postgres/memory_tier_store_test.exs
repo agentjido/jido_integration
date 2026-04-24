@@ -1,6 +1,7 @@
 defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
   use Jido.Integration.V2.StorePostgres.DataCase
 
+  alias Jido.Integration.V2.ClusterInvalidation
   alias Jido.Integration.V2.EvidenceRef
   alias Jido.Integration.V2.GovernanceRef
   alias Jido.Integration.V2.MemoryFragment
@@ -48,6 +49,59 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
              MemoryTierStore.nearest_private_fragments("tenant-1", "user-1", [1.0, 0.0, 0.0],
                limit: 1
              )
+  end
+
+  test "records memory invalidations, publishes fragment and durable topics, and filters by snapshot epoch" do
+    telemetry_id = attach_invalidation_telemetry()
+
+    assert {:ok, %MemoryFragment{fragment_id: fragment_id}} =
+             MemoryTierStore.insert_private_fragment(
+               private_fragment_attrs("fragment-private-epoch")
+             )
+
+    assert [%MemoryFragment{fragment_id: ^fragment_id}] =
+             MemoryTierStore.private_fragments("tenant-1", "user-1", snapshot_epoch: 11)
+
+    assert {:ok, invalidation} =
+             MemoryTierStore.insert_invalidation(%{
+               invalidation_id: "invalidation://memory/private-epoch",
+               tenant_ref: "tenant-1",
+               fragment_id: fragment_id,
+               tier: :private,
+               effective_at: ~U[2026-04-23 12:00:00Z],
+               effective_at_epoch: 12,
+               source_node_ref: "node://ji_2@127.0.0.1/node-b",
+               invalidate_policy_ref: "policy://invalidate/v1",
+               authority_ref: governance_ref("invalidate-fragment-private-epoch"),
+               evidence_refs: [evidence_ref("invalidate-fragment-private-epoch")],
+               reason: "user_deletion",
+               metadata: %{cascade_depth: 0}
+             })
+
+    assert invalidation.commit_lsn
+    assert %{"n" => "node://ji_2@127.0.0.1/node-b"} = invalidation.commit_hlc
+
+    assert [%MemoryFragment{fragment_id: ^fragment_id}] =
+             MemoryTierStore.private_fragments("tenant-1", "user-1", snapshot_epoch: 11)
+
+    assert [] = MemoryTierStore.private_fragments("tenant-1", "user-1", snapshot_epoch: 12)
+    refute MemoryTierStore.fragment_invalidated_at_epoch?("tenant-1", fragment_id, 11)
+    assert MemoryTierStore.fragment_invalidated_at_epoch?("tenant-1", fragment_id, 12)
+
+    assert_receive {:cluster_invalidation, %{message: fragment_message}}
+    assert fragment_message.invalidation_id == "invalidation://memory/private-epoch"
+    assert fragment_message.topic == ClusterInvalidation.fragment_topic!("tenant-1", fragment_id)
+    assert fragment_message.commit_lsn == invalidation.commit_lsn
+
+    assert_receive {:cluster_invalidation, %{message: durable_message}}
+
+    assert durable_message.topic ==
+             ClusterInvalidation.invalidation_topic!(
+               "tenant-1",
+               "invalidation://memory/private-epoch"
+             )
+
+    :telemetry.detach(telemetry_id)
   end
 
   test "database constraints reject invalid private, shared, and governed tier records" do
@@ -188,5 +242,22 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
 
   defp subject_ref do
     SubjectRef.new!(%{kind: :run, id: "run-1", metadata: %{tenant_ref: "tenant-1"}})
+  end
+
+  defp attach_invalidation_telemetry do
+    handler_id = {__MODULE__, self(), make_ref()}
+
+    :telemetry.attach(
+      handler_id,
+      [:jido_integration, :cluster_invalidation, :publish],
+      fn _event, _measurements, metadata, _config ->
+        send(self(), {:cluster_invalidation, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    handler_id
   end
 end

@@ -11,6 +11,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
+  alias Jido.Integration.V2.ControlPlane.RunLedger
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Manifest
@@ -442,6 +443,21 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
 
     assert Process.whereis(SessionStore) == nil
     assert :ok = ControlPlane.reset!()
+  end
+
+  test "run ledger ignores stale run and attempt completions after reset" do
+    assert :ok = ControlPlane.reset!()
+
+    assert :ok = RunLedger.update_run("missing-run", :completed, %{ok: true})
+
+    assert :ok =
+             RunLedger.update_attempt("missing-attempt", :completed, %{}, "runtime-ref",
+               aggregator_id: "late-dispatch",
+               aggregator_epoch: 1
+             )
+
+    assert RunLedger.fetch_run("missing-run") == :error
+    assert RunLedger.fetch_attempt("missing-attempt") == :error
   end
 
   test "asm resolves to the target Runtime Router driver" do

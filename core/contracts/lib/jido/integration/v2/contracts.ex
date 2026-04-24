@@ -53,6 +53,7 @@ defmodule Jido.Integration.V2.Contracts do
     "Platform.AccessGraph.Edge.v1",
     "Platform.AccessGraph.v1",
     "Platform.ClockOrdering.HLC.V1",
+    "Platform.ClusterInvalidation.V1",
     "Platform.Memory.SnapshotContext.V1",
     "Platform.NodeIdentity.V1",
     "Platform.MemoryFragment.V1"

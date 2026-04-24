@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
   use Jido.Integration.V2.StorePostgres.DataCase
 
   alias Jido.Integration.V2.AccessGraph
+  alias Jido.Integration.V2.ClusterInvalidation
   alias Jido.Integration.V2.EvidenceRef
   alias Jido.Integration.V2.GovernanceRef
   alias Jido.Integration.V2.StorePostgres.AccessGraphStore
@@ -11,6 +12,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
   alias Jido.Integration.V2.SubjectRef
 
   test "allocates one monotonic epoch per committed graph transaction and derives graph views" do
+    telemetry_id = attach_invalidation_telemetry()
     committed_at = ~U[2026-04-23 10:00:00Z]
 
     assert {:ok, %{epoch: 1, edges: edges}} =
@@ -43,6 +45,14 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
     assert %{"w" => _, "l" => _, "n" => "node://ji_1@127.0.0.1/node-a"} =
              epoch_record.commit_hlc
 
+    assert_receive {:cluster_invalidation, %{message: message}}
+    assert message.invalidation_id == "graph-invalidation://tenant-1/1"
+    assert message.tenant_ref == "tenant-1"
+    assert message.source_node_ref == epoch_record.source_node_ref
+    assert message.commit_lsn == epoch_record.commit_lsn
+    assert message.commit_hlc == epoch_record.commit_hlc
+    assert message.topic == ClusterInvalidation.graph_topic!("tenant-1", 1)
+
     assert AccessGraphStore.current_epoch("tenant-1") == 1
     assert AccessGraphStore.epoch_at("tenant-1", committed_at) == 1
     assert AccessGraphStore.a_of("tenant-1", "user-1", 1) == MapSet.new(["agent-1"])
@@ -68,9 +78,16 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
 
     assert AccessGraphStore.current_epoch("tenant-1") == 2
     assert AccessGraphStore.epoch_at("tenant-1", committed_at) == 1
+
+    assert_receive {:cluster_invalidation, %{message: %{topic: topic}}}
+    assert topic == ClusterInvalidation.graph_topic!("tenant-1", 2)
+
+    :telemetry.detach(telemetry_id)
   end
 
   test "controlled revocation closes an edge at a fresh epoch without mutating identity fields" do
+    telemetry_id = attach_invalidation_telemetry()
+
     assert {:ok, %{edges: [edge]}} =
              AccessGraphStore.insert_edges(
                "tenant-1",
@@ -92,6 +109,14 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
     assert revoked.revoking_authority_ref.ref == "jido://v2/governance/policy_decision/revoke-1"
     assert AccessGraphStore.a_of("tenant-1", "user-1", 1) == MapSet.new(["agent-1"])
     assert AccessGraphStore.a_of("tenant-1", "user-1", 2) == MapSet.new()
+
+    assert_receive {:cluster_invalidation, %{message: %{topic: topic}}}
+    assert topic == ClusterInvalidation.graph_topic!("tenant-1", 1)
+
+    assert_receive {:cluster_invalidation, %{message: %{topic: topic}}}
+    assert topic == ClusterInvalidation.graph_topic!("tenant-1", 2)
+
+    :telemetry.detach(telemetry_id)
   end
 
   test "store rejects missing authority, duplicate epoch, scope cycles, and direct identity mutation" do
@@ -270,5 +295,22 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
 
   defp subject_ref do
     SubjectRef.new!(%{kind: :run, id: "run-1", metadata: %{tenant_ref: "tenant-1"}})
+  end
+
+  defp attach_invalidation_telemetry do
+    handler_id = {__MODULE__, self(), make_ref()}
+
+    :telemetry.attach(
+      handler_id,
+      [:jido_integration, :cluster_invalidation, :publish],
+      fn _event, _measurements, metadata, _config ->
+        send(self(), {:cluster_invalidation, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    handler_id
   end
 end

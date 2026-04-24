@@ -38,6 +38,7 @@ defmodule Jido.Integration.V2.StorePostgres.MixProject do
       {:ecto, "~> 3.13.4"},
       {:ecto_sql, "~> 3.13.4"},
       {:postgrex, "~> 0.22"},
+      {:phoenix_pubsub, "~> 2.2"},
       {:telemetry, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

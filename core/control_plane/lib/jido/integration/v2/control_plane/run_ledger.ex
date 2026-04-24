@@ -140,26 +140,39 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
   @impl Jido.Integration.V2.ControlPlane.RunStore
   def update_run(run_id, status, result) do
     Agent.update(__MODULE__, fn state ->
-      update_in(state, [:runs, run_id], fn run ->
-        %{run | status: status, result: Redaction.redact(result), updated_at: Contracts.now()}
-      end)
+      case Map.fetch(state.runs, run_id) do
+        {:ok, run} ->
+          put_in(state, [:runs, run_id], %{
+            run
+            | status: status,
+              result: Redaction.redact(result),
+              updated_at: Contracts.now()
+          })
+
+        :error ->
+          state
+      end
     end)
   end
 
   @impl Jido.Integration.V2.ControlPlane.AttemptStore
   def update_attempt(attempt_id, status, output, runtime_ref_id, opts \\ []) do
     Agent.update(__MODULE__, fn state ->
-      update_in(state, [:attempts, attempt_id], fn attempt ->
-        %{
-          attempt
-          | status: status,
-            output: Redaction.redact(output),
-            runtime_ref_id: runtime_ref_id,
-            aggregator_id: Keyword.get(opts, :aggregator_id, attempt.aggregator_id),
-            aggregator_epoch: Keyword.get(opts, :aggregator_epoch, attempt.aggregator_epoch),
-            updated_at: Contracts.now()
-        }
-      end)
+      case Map.fetch(state.attempts, attempt_id) do
+        {:ok, attempt} ->
+          put_in(state, [:attempts, attempt_id], %{
+            attempt
+            | status: status,
+              output: Redaction.redact(output),
+              runtime_ref_id: runtime_ref_id,
+              aggregator_id: Keyword.get(opts, :aggregator_id, attempt.aggregator_id),
+              aggregator_epoch: Keyword.get(opts, :aggregator_epoch, attempt.aggregator_epoch),
+              updated_at: Contracts.now()
+          })
+
+        :error ->
+          state
+      end
     end)
   end
 
