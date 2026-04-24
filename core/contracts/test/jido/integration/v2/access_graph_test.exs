@@ -108,6 +108,43 @@ defmodule Jido.Integration.V2.AccessGraphTest do
            )
   end
 
+  test "authority compile views expose user agents, agent resources, scopes, and policies" do
+    edges = [
+      Edge.new!(edge_attrs(:ua, "user-1", "agent-1")),
+      Edge.new!(edge_attrs(:ar, "agent-1", "resource-1")),
+      Edge.new!(edge_attrs(:us, "user-1", "scope-1")),
+      Edge.new!(edge_attrs(:sr, "scope-1", "resource-1")),
+      Edge.new!(edge_attrs(:up, "user-1", "policy-v1"))
+    ]
+
+    assert AccessGraph.up_of(edges, "user-1", 1) == MapSet.new(["policy-v1"])
+    assert AccessGraph.sr_of(edges, "scope-1", 1) == MapSet.new(["resource-1"])
+
+    assert view =
+             AccessGraph.authority_compile_view(edges, "user-1", "agent-1", 1, %{
+               access_agents: ["agent-1"],
+               access_resources: ["resource-1"],
+               access_scopes: ["scope-1"],
+               policy_refs: ["policy-v1"]
+             })
+
+    assert view.snapshot_epoch == 1
+    assert view.access_agents == MapSet.new(["agent-1"])
+    assert view.access_resources == MapSet.new(["resource-1"])
+    assert view.access_scopes == MapSet.new(["scope-1"])
+    assert view.scope_resources == MapSet.new(["resource-1"])
+    assert view.policy_refs == MapSet.new(["policy-v1"])
+    assert view.graph_admissible?
+
+    refute AccessGraph.graph_admissible?(
+             edges,
+             %{access_agents: ["agent-1"], access_resources: ["resource-1"], policy_refs: []},
+             "user-1",
+             "agent-1",
+             1
+           )
+  end
+
   test "scope hierarchy validation rejects cycles before graph writes" do
     assert :ok = AccessGraph.validate_scope_hierarchy!([{"scope-a", "scope-b"}])
 

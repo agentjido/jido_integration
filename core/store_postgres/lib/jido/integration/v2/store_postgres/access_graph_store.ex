@@ -207,6 +207,12 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
   @spec s_of(String.t(), String.t(), pos_integer()) :: MapSet.t(String.t())
   def s_of(tenant_ref, user_ref, epoch), do: active_tails(tenant_ref, :us, user_ref, epoch)
 
+  @spec sr_of(String.t(), String.t(), pos_integer()) :: MapSet.t(String.t())
+  def sr_of(tenant_ref, scope_ref, epoch), do: active_tails(tenant_ref, :sr, scope_ref, epoch)
+
+  @spec up_of(String.t(), String.t(), pos_integer()) :: MapSet.t(String.t())
+  def up_of(tenant_ref, user_ref, epoch), do: active_tails(tenant_ref, :up, user_ref, epoch)
+
   @spec graph_admissible?(
           String.t(),
           AccessGraph.effective_access_tuple(),
@@ -219,6 +225,38 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
     tenant_ref
     |> active_edges(epoch)
     |> AccessGraph.graph_admissible?(effective_access_tuple, user_ref, agent_ref, epoch)
+  end
+
+  @spec authority_compile_view(
+          String.t(),
+          String.t(),
+          String.t(),
+          pos_integer(),
+          AccessGraph.effective_access_tuple(),
+          keyword()
+        ) :: {:ok, AccessGraph.authority_compile_view()} | {:error, {:stale_epoch, map()}}
+  def authority_compile_view(
+        tenant_ref,
+        user_ref,
+        agent_ref,
+        epoch,
+        effective_access_tuple \\ %{},
+        opts \\ []
+      )
+      when is_binary(tenant_ref) and is_binary(user_ref) and is_binary(agent_ref) and
+             is_integer(epoch) and is_list(opts) do
+    current_epoch = current_epoch(tenant_ref)
+
+    if Keyword.get(opts, :allow_stale?, false) or epoch >= current_epoch do
+      view =
+        tenant_ref
+        |> active_edges(epoch)
+        |> AccessGraph.authority_compile_view(user_ref, agent_ref, epoch, effective_access_tuple)
+
+      {:ok, view}
+    else
+      {:error, {:stale_epoch, %{requested_epoch: epoch, current_epoch: current_epoch}}}
+    end
   end
 
   @spec snapshot_views(
@@ -281,6 +319,20 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
       graph_admissible?:
         graph_admissible?(tenant_ref, effective_access_tuple, user_ref, agent_ref, epoch)
     }
+  end
+
+  @spec advance_epoch(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  def advance_epoch(tenant_ref, opts \\ []) when is_binary(tenant_ref) and is_list(opts) do
+    StorePostgres.assert_started!()
+
+    Repo.transaction(fn ->
+      epoch_record = allocate_epoch!(tenant_ref, opts)
+      publish_graph_invalidation!(epoch_record)
+      to_epoch_event(epoch_record)
+    end)
+    |> unwrap_transaction()
+  rescue
+    error in ArgumentError -> {:error, error}
   end
 
   @spec list_epoch_events_by_trace(String.t()) :: [map()]

@@ -65,6 +65,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
     assert AccessGraphStore.a_of("tenant-1", "user-1", 1) == MapSet.new(["agent-1"])
     assert AccessGraphStore.r_of("tenant-1", "agent-1", 1) == MapSet.new(["resource-1"])
     assert AccessGraphStore.s_of("tenant-1", "user-1", 1) == MapSet.new(["scope-1"])
+    assert AccessGraphStore.sr_of("tenant-1", "scope-1", 1) == MapSet.new()
 
     tuple = %{
       access_agents: ["agent-1"],
@@ -88,6 +89,106 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
 
     assert_receive {:cluster_invalidation, %{message: %{topic: topic}}}
     assert topic == ClusterInvalidation.graph_topic!("tenant-1", 2)
+
+    :telemetry.detach(telemetry_id)
+  end
+
+  test "authority compile view reads graph policy edges and rejects stale epochs by default" do
+    assert {:ok, %{epoch: 1}} =
+             AccessGraphStore.insert_edges(
+               "tenant-auth",
+               [
+                 edge_attrs(:ua, "user-auth", "agent-auth"),
+                 edge_attrs(:ar, "agent-auth", "resource-auth"),
+                 edge_attrs(:us, "user-auth", "scope-auth"),
+                 edge_attrs(:sr, "scope-auth", "resource-auth"),
+                 edge_attrs(:up, "user-auth", "policy-auth")
+               ],
+               cause: "installation_activation",
+               trace_id: "trace-auth",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
+             )
+
+    tuple = %{
+      access_agents: ["agent-auth"],
+      access_resources: ["resource-auth"],
+      access_scopes: ["scope-auth"],
+      policy_refs: ["policy-auth"]
+    }
+
+    assert {:ok, view} =
+             AccessGraphStore.authority_compile_view(
+               "tenant-auth",
+               "user-auth",
+               "agent-auth",
+               1,
+               tuple
+             )
+
+    assert view.snapshot_epoch == 1
+    assert view.access_agents == MapSet.new(["agent-auth"])
+    assert view.access_resources == MapSet.new(["resource-auth"])
+    assert view.access_scopes == MapSet.new(["scope-auth"])
+    assert view.scope_resources == MapSet.new(["resource-auth"])
+    assert view.policy_refs == MapSet.new(["policy-auth"])
+    assert view.graph_admissible?
+
+    assert {:ok, %{epoch: 2}} =
+             AccessGraphStore.insert_edges(
+               "tenant-auth",
+               [edge_attrs(:up, "user-auth", "policy-new")],
+               cause: "policy_compilation_change",
+               source_node_ref: "node://ji_2@127.0.0.1/node-b"
+             )
+
+    assert {:error, {:stale_epoch, %{requested_epoch: 1, current_epoch: 2}}} =
+             AccessGraphStore.authority_compile_view(
+               "tenant-auth",
+               "user-auth",
+               "agent-auth",
+               1,
+               tuple
+             )
+
+    assert {:ok, stale_allowed_view} =
+             AccessGraphStore.authority_compile_view(
+               "tenant-auth",
+               "user-auth",
+               "agent-auth",
+               1,
+               tuple,
+               allow_stale?: true
+             )
+
+    assert stale_allowed_view.snapshot_epoch == 1
+    assert stale_allowed_view.policy_refs == MapSet.new(["policy-auth"])
+  end
+
+  test "explicit epoch advancement publishes graph invalidation with commit evidence" do
+    telemetry_id = attach_invalidation_telemetry()
+    source_node_ref = "node://ji_2@127.0.0.1/node-b"
+
+    assert {:ok,
+            %{
+              tenant_ref: "tenant-advance",
+              epoch: 1,
+              source_node_ref: ^source_node_ref,
+              commit_lsn: commit_lsn,
+              commit_hlc: %{"n" => ^source_node_ref}
+            }} =
+             AccessGraphStore.advance_epoch("tenant-advance",
+               cause: "policy_compilation_change",
+               trace_id: "trace-policy-change",
+               source_node_ref: source_node_ref
+             )
+
+    assert is_binary(commit_lsn)
+
+    assert_receive {:cluster_invalidation, %{message: message}}
+    assert message.topic == ClusterInvalidation.graph_topic!("tenant-advance", 1)
+    assert message.metadata["cause"] == "policy_compilation_change"
+    assert message.metadata["commit_lsn"] == commit_lsn
+    assert message.metadata["commit_hlc"]["n"] == source_node_ref
 
     :telemetry.detach(telemetry_id)
   end

@@ -11,7 +11,18 @@ defmodule Jido.Integration.V2.AccessGraph do
           optional(:access_agents) => [String.t()],
           optional(:access_resources) => [String.t()],
           optional(:access_scopes) => [String.t()],
+          optional(:policy_refs) => [String.t()],
           optional(String.t()) => [String.t()]
+        }
+
+  @type authority_compile_view :: %{
+          snapshot_epoch: pos_integer(),
+          access_agents: MapSet.t(String.t()),
+          access_resources: MapSet.t(String.t()),
+          access_scopes: MapSet.t(String.t()),
+          scope_resources: MapSet.t(String.t()),
+          policy_refs: MapSet.t(String.t()),
+          graph_admissible?: boolean()
         }
 
   @spec a_of([Edge.t()], String.t(), pos_integer()) :: MapSet.t(String.t())
@@ -22,6 +33,39 @@ defmodule Jido.Integration.V2.AccessGraph do
 
   @spec s_of([Edge.t()], String.t(), pos_integer()) :: MapSet.t(String.t())
   def s_of(edges, user_ref, epoch), do: tails_for(edges, :us, user_ref, epoch)
+
+  @spec sr_of([Edge.t()], String.t(), pos_integer()) :: MapSet.t(String.t())
+  def sr_of(edges, scope_ref, epoch), do: tails_for(edges, :sr, scope_ref, epoch)
+
+  @spec up_of([Edge.t()], String.t(), pos_integer()) :: MapSet.t(String.t())
+  def up_of(edges, user_ref, epoch), do: tails_for(edges, :up, user_ref, epoch)
+
+  @spec authority_compile_view(
+          [Edge.t()],
+          String.t(),
+          String.t(),
+          pos_integer(),
+          effective_access_tuple()
+        ) :: authority_compile_view()
+  def authority_compile_view(edges, user_ref, agent_ref, epoch, effective_access_tuple \\ %{}) do
+    user_scopes = s_of(edges, user_ref, epoch)
+
+    scope_resources =
+      user_scopes
+      |> Enum.flat_map(fn scope_ref -> sr_of(edges, scope_ref, epoch) end)
+      |> MapSet.new()
+
+    %{
+      snapshot_epoch: epoch,
+      access_agents: a_of(edges, user_ref, epoch),
+      access_resources: r_of(edges, agent_ref, epoch),
+      access_scopes: user_scopes,
+      scope_resources: scope_resources,
+      policy_refs: up_of(edges, user_ref, epoch),
+      graph_admissible?:
+        graph_admissible?(edges, effective_access_tuple, user_ref, agent_ref, epoch)
+    }
+  end
 
   @spec graph_admissible?(
           [Edge.t()],
@@ -35,16 +79,19 @@ defmodule Jido.Integration.V2.AccessGraph do
     agents = access_set(effective_access_tuple, :access_agents)
     resources = access_set(effective_access_tuple, :access_resources)
     scopes = access_set(effective_access_tuple, :access_scopes)
+    policies = access_set(effective_access_tuple, :policy_refs)
 
     user_agents = a_of(edges, user_ref, epoch)
     agent_resources = r_of(edges, agent_ref, epoch)
     user_scopes = s_of(edges, user_ref, epoch)
+    user_policies = up_of(edges, user_ref, epoch)
 
     MapSet.member?(user_agents, agent_ref) and
       MapSet.subset?(agents, user_agents) and
       MapSet.member?(agents, agent_ref) and
       MapSet.subset?(resources, agent_resources) and
-      MapSet.size(MapSet.intersection(scopes, user_scopes)) > 0
+      MapSet.size(MapSet.intersection(scopes, user_scopes)) > 0 and
+      policy_refs_admissible?(effective_access_tuple, policies, user_policies)
   end
 
   @spec current_epoch(module(), String.t()) :: non_neg_integer()
@@ -169,6 +216,14 @@ defmodule Jido.Integration.V2.AccessGraph do
     |> Contracts.get(key, [])
     |> Contracts.normalize_string_list!("effective_access_tuple.#{key}")
     |> MapSet.new()
+  end
+
+  defp policy_refs_admissible?(tuple, policies, user_policies) do
+    if Map.has_key?(tuple, :policy_refs) or Map.has_key?(tuple, "policy_refs") do
+      MapSet.size(policies) > 0 and MapSet.subset?(policies, user_policies)
+    else
+      true
+    end
   end
 
   defp user_ref!(%TenantScope{actor_ref: actor_ref}, opts) do
