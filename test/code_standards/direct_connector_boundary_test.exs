@@ -13,7 +13,8 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           __DIR__
         ),
       sdk_resolver_call: "ConnectorDependencyResolver.github_ex()",
-      sdk_hex_dep: "{:github_ex, \"~> 0.1.0\", opts}",
+      sdk_hex_dep: "{:github_ex, \"~> 0.1.1\", opts}",
+      sdk_local_path: "../../../github_ex",
       forbidden_sdk_fallbacks: ["GITHUB_EX_PATH", "nshkrdotcom/github_ex"]
     },
     %{
@@ -27,7 +28,8 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           __DIR__
         ),
       sdk_resolver_call: "ConnectorDependencyResolver.notion_sdk()",
-      sdk_hex_dep: "{:notion_sdk, \"~> 0.2.0\", opts}",
+      sdk_hex_dep: "{:notion_sdk, \"~> 0.2.1\", opts}",
+      sdk_local_path: "../../../notion_sdk",
       forbidden_sdk_fallbacks: ["NOTION_SDK_PATH", "nshkrdotcom/notion_sdk"]
     },
     %{
@@ -42,6 +44,7 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         ),
       sdk_resolver_call: "ConnectorDependencyResolver.linear_sdk()",
       sdk_hex_dep: "{:linear_sdk, \"~> 0.2.0\", opts}",
+      sdk_local_path: "../../../linear_sdk",
       forbidden_sdk_fallbacks: ["LINEAR_SDK_PATH", "nshkrdotcom/linear_sdk"]
     }
   ]
@@ -91,6 +94,7 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
            mix_path: mix_path,
            resolver_path: resolver_path,
            sdk_hex_dep: sdk_hex_dep,
+           sdk_local_path: sdk_local_path,
            forbidden_sdk_fallbacks: forbidden_sdk_fallbacks
          } ->
         mix_exs = File.read!(mix_path)
@@ -113,6 +117,9 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
 
         assert resolver =~ sdk_hex_dep,
                "#{resolver_path} must fall back to a Hex dependency for its provider SDK"
+
+        assert resolver =~ sdk_local_path,
+               "#{resolver_path} must prefer the sibling provider SDK path when present"
 
         Enum.each(forbidden_sdk_fallbacks, fn forbidden_sdk_fallback ->
           refute resolver =~ forbidden_sdk_fallback,

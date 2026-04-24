@@ -1,5 +1,49 @@
 unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
-  Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+  resolver_path = Path.expand("../../build_support/dependency_resolver.exs", __DIR__)
+
+  if File.regular?(resolver_path) do
+    Code.require_file(resolver_path)
+  else
+    defmodule Jido.Integration.Build.DependencyResolver do
+      @moduledoc false
+
+      @repo_root Path.expand("../..", __DIR__)
+
+      def jido_integration_contracts(opts \\ []),
+        do: git_dep(:jido_integration_contracts, "core/contracts", opts)
+
+      def jido_integration_v2_auth(opts \\ []),
+        do: git_dep(:jido_integration_v2_auth, "core/auth", opts)
+
+      def jido_integration_v2_brain_ingress(opts \\ []),
+        do: git_dep(:jido_integration_v2_brain_ingress, "core/brain_ingress", opts)
+
+      def jido_integration_v2_control_plane(opts \\ []),
+        do: git_dep(:jido_integration_v2_control_plane, "core/control_plane", opts)
+
+      def jido_integration_v2_runtime_router(opts \\ []),
+        do: git_dep(:jido_integration_v2_runtime_router, "core/runtime_router", opts)
+
+      def jido_integration_v2_store_postgres(opts \\ []),
+        do: git_dep(:jido_integration_v2_store_postgres, "core/store_postgres", opts)
+
+      def jido_integration_v2_github(opts \\ []),
+        do: git_dep(:jido_integration_v2_github, "connectors/github", opts)
+
+      def jido_integration_v2_codex_cli(opts \\ []),
+        do: git_dep(:jido_integration_v2_codex_cli, "connectors/codex_cli", opts)
+
+      def jido_integration_v2_market_data(opts \\ []),
+        do: git_dep(:jido_integration_v2_market_data, "connectors/market_data", opts)
+
+      def req_llm(opts \\ []), do: {:req_llm, "~> 1.9", opts}
+
+      def splode(opts \\ []), do: {:splode, "~> 0.3.0", opts}
+
+      defp git_dep(app, subdir, opts),
+        do: {app, Keyword.merge([git: @repo_root, subdir: subdir], opts)}
+    end
+  end
 end
 
 defmodule Jido.Integration.V2.Platform.MixProject do

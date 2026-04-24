@@ -39,7 +39,7 @@ defmodule Jido.Integration.Workspace.MixProject do
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_contracts(),
       DependencyResolver.req_llm(runtime: false),
-      {:weld, "~> 0.7.1", runtime: false},
+      {:weld, "~> 0.7.2", runtime: false},
       {:jason, "~> 1.4", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

@@ -57,10 +57,10 @@ defmodule Jido.Integration.Build.WeldContract do
   ]
 
   @dependencies [
-    agent_session_manager: [requirement: "~> 0.9.1"],
-    github_ex: [requirement: "~> 0.1.0"],
+    agent_session_manager: [requirement: "~> 0.9.2"],
+    github_ex: [requirement: "~> 0.1.1"],
     linear_sdk: [requirement: "~> 0.2.0"],
-    notion_sdk: [requirement: "~> 0.2.0"],
+    notion_sdk: [requirement: "~> 0.2.1"],
     req_llm: [requirement: "~> 1.9"]
   ]
 
