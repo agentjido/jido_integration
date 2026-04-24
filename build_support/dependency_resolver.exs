@@ -89,7 +89,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
 
   def agent_session_manager(opts \\ []) do
     case local_root_path("AGENT_SESSION_MANAGER_PATH", "../agent_session_manager") do
-      nil -> {:agent_session_manager, "~> 0.9.1", opts}
+      nil -> {:agent_session_manager, "~> 0.9.2", opts}
       path -> {:agent_session_manager, Keyword.merge([path: path], opts)}
     end
   end
@@ -117,7 +117,10 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def pristine(opts \\ []) do
-    {:pristine, "~> 0.2.1", opts}
+    case local_root_path("PRISTINE_PATH", "../pristine/apps/pristine_runtime") do
+      nil -> {:pristine, "~> 0.2.1", opts}
+      path -> {:pristine, Keyword.merge([path: path], opts)}
+    end
   end
 
   def self_hosted_inference_core(opts \\ []) do

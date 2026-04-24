@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.ControlPlane.Stores do
   @default_claim_check_store Jido.Integration.V2.ControlPlane.RunLedger
   @default_target_store Jido.Integration.V2.ControlPlane.RunLedger
   @default_ingress_store Jido.Integration.V2.ControlPlane.RunLedger
+  @default_profile_registry_store Jido.Integration.V2.ControlPlane.RunLedger
 
   @spec run_store() :: module()
   def run_store do
@@ -57,6 +58,15 @@ defmodule Jido.Integration.V2.ControlPlane.Stores do
       :jido_integration_v2_control_plane,
       :ingress_store,
       @default_ingress_store
+    )
+  end
+
+  @spec profile_registry_store() :: module()
+  def profile_registry_store do
+    Application.get_env(
+      :jido_integration_v2_control_plane,
+      :profile_registry_store,
+      @default_profile_registry_store
     )
   end
 end

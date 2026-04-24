@@ -9,6 +9,11 @@ Canonical Postgres durability surface for the platform.
 - SQL sandbox helpers for durability tests
 - Postgres adapters for `control_plane` and `auth` behaviours
 - durable tables for `ArtifactRef` and `TargetDescriptor`
+- durable `access_graph_edges` and `access_graph_epochs` tables for
+  `Platform.AccessGraph.v1`
+- durable `memory_private`, `memory_shared`, `memory_governed`, and
+  `memory_invalidations` tables for the Phase 7 governed-memory tier
+  foundation
 - encrypted durable credential rows plus safe connection/install/lease rows
   for auth lifecycle truth
 - the canonical durable submission ledger used by `core/brain_ingress`
@@ -38,8 +43,13 @@ database-backed operational guarantees.
     current-credential lineage fields
   - versioned credential lineage through `credential_ref_id`, `version`,
     source/source-ref metadata, and supersession links
-  - lease records that persist only bounded metadata, not raw lease payloads,
-    including `credential_id` and `profile_id`
+- lease records that persist only bounded metadata, not raw lease payloads,
+  including `credential_id` and `profile_id`
+- access graph rows with immutable edge identity, controlled revocation close,
+  and per-tenant monotonic epochs allocated once per graph transaction
+- physically separate memory tier rows with immutable provenance triggers,
+  explicit embedding model/dimension metadata, private/shared/governed
+  CHECK constraints, and tier-scoped query helpers
 
 The auth tables now also carry a forward-only expansion migration,
 `20260403000000_expand_phase_0_auth_truth_columns.exs`, which repairs already

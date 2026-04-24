@@ -27,6 +27,7 @@ defmodule Jido.Integration.V2.Contracts.MixProject do
       {:jido, "~> 2.2"},
       {:jido_action, "~> 2.2"},
       {:jido_signal, "~> 2.1"},
+      {:jason, "~> 1.4"},
       {:jcs, "~> 0.2.0"},
       {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

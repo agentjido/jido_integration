@@ -61,10 +61,11 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   def invoke(request_or_attrs, opts \\ []) do
     with {:ok, request} <- normalize_request(request_or_attrs),
          execution_request = prepare_execution_request(request, opts),
-         durable_request = sanitize_request_for_recording(execution_request),
+         {:ok, durable_request} <- sanitize_request_for_recording(execution_request, opts),
          {:ok, context} <- build_context(durable_request, opts),
          {:ok, consumer_manifest} <- build_consumer_manifest(durable_request, opts),
          {:ok, route} <- resolve_route(execution_request, context, consumer_manifest, opts),
+         :ok <- enforce_required_descriptor_refs(route, opts),
          {:ok, execution} <- execute_route(execution_request, context, route, opts),
          {:ok, recorded} <-
            ControlPlane.record_inference_attempt(%{
@@ -111,7 +112,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     |> merge_target_backend_options(Keyword.get(opts, :target_backend_options, %{}))
   end
 
-  defp sanitize_request_for_recording(%InferenceRequest{} = request) do
+  defp sanitize_request_for_recording(%InferenceRequest{} = request, opts) do
     target_preference = map_or_empty(request.target_preference)
 
     durable_target_preference =
@@ -127,7 +128,39 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
           )
       end
 
-    %InferenceRequest{request | target_preference: durable_target_preference}
+    request = %InferenceRequest{request | target_preference: durable_target_preference}
+
+    if Keyword.get(opts, :require_artifact_refs?, false) do
+      enforce_prompt_artifact_ref(request)
+    else
+      {:ok, request}
+    end
+  end
+
+  defp enforce_prompt_artifact_ref(%InferenceRequest{} = request) do
+    metadata = map_or_empty(request.metadata)
+    artifact_ref = Contracts.get(metadata, :prompt_artifact_ref)
+
+    cond do
+      not raw_prompt_present?(request) ->
+        {:ok, request}
+
+      not (is_binary(artifact_ref) and artifact_ref != "") ->
+        {:error, {:missing_required_artifact_ref, :prompt_or_messages}}
+
+      true ->
+        {:ok,
+         %InferenceRequest{
+           request
+           | messages: [],
+             prompt: nil,
+             metadata: put_normalized_field(metadata, :prompt_artifact_ref, artifact_ref)
+         }}
+    end
+  end
+
+  defp raw_prompt_present?(%InferenceRequest{} = request) do
+    request.prompt not in [nil, ""] or request.messages != []
   end
 
   defp normalize_model_provider(%InferenceRequest{} = request) do
@@ -254,6 +287,33 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       :cli_endpoint ->
         resolve_cli_route(request, context, consumer_manifest)
     end
+  end
+
+  defp enforce_required_descriptor_refs(route, opts) do
+    if Keyword.get(opts, :require_descriptor_refs?, false) do
+      route
+      |> Map.get(:endpoint_descriptor)
+      |> missing_descriptor_refs()
+      |> case do
+        [] -> :ok
+        missing -> {:error, {:missing_required_inference_descriptor_refs, missing}}
+      end
+    else
+      :ok
+    end
+  end
+
+  defp missing_descriptor_refs(%EndpointDescriptor{} = endpoint_descriptor) do
+    metadata = map_or_empty(endpoint_descriptor.metadata)
+
+    []
+    |> missing_ref("endpoint_id", endpoint_descriptor.endpoint_id)
+    |> missing_ref("model_identity", endpoint_descriptor.model_identity)
+    |> missing_ref("model_version", Contracts.get(metadata, :model_version))
+  end
+
+  defp missing_descriptor_refs(_endpoint_descriptor) do
+    ["endpoint_id", "model_identity", "model_version"]
   end
 
   defp resolve_cloud_route(%InferenceRequest{} = request, %InferenceExecutionContext{} = context) do
@@ -387,14 +447,14 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
     case call_spec.operation do
       :generate_text ->
-        execute_generate_text(input, context, route, call_spec.model_spec, call_opts)
+        execute_generate_text(input, context, route, call_spec.model_spec, call_opts, opts)
 
       :stream_text ->
-        execute_stream_text(input, context, route, call_spec.model_spec, call_opts, request)
+        execute_stream_text(input, context, route, call_spec.model_spec, call_opts, request, opts)
     end
   end
 
-  defp execute_generate_text(input, context, route, model_spec, call_opts) do
+  defp execute_generate_text(input, context, route, model_spec, call_opts, opts) do
     with {:ok, response} <- ReqLLM.generate_text(model_spec, input, call_opts) do
       response_text = Response.text(response)
 
@@ -418,9 +478,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
                %{
                  route: route.target_class,
                  response_id: response.id,
-                 model: response.model,
-                 text: response_text
+                 model: response.model
                }
+               |> put_response_text_ref(response_text, opts)
                |> maybe_put(:provider, cloud_provider(route))
                |> Contracts.dump_json_safe!()
            })
@@ -428,7 +488,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     end
   end
 
-  defp execute_stream_text(input, context, route, model_spec, call_opts, request) do
+  defp execute_stream_text(input, context, route, model_spec, call_opts, request, opts) do
     with {:ok, stream_response} <- ReqLLM.stream_text(model_spec, input, call_opts) do
       chunks = Enum.to_list(stream_response.stream)
       summary = ResponseStream.summarize(chunks)
@@ -471,13 +531,13 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
              metadata:
                %{
                  route: route.target_class,
-                 text: summary.text,
                  thinking: summary.thinking,
                  tool_calls: summary.tool_calls,
                  chunk_count: chunk_count,
                  byte_count: byte_count,
                  request_stream?: request.stream?
                }
+               |> put_response_text_ref(summary.text, opts)
                |> maybe_put(:provider, cloud_provider(route))
                |> Contracts.dump_json_safe!()
            })
@@ -686,6 +746,35 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     end
   end
 
+  defp put_response_text_ref(metadata, response_text, opts) do
+    if Keyword.get(opts, :require_artifact_refs?, false) do
+      Map.put(metadata, :text_artifact_ref, response_artifact_ref(response_text))
+    else
+      Map.put(metadata, :text, response_text)
+    end
+  end
+
+  defp response_artifact_ref(response_text) when is_binary(response_text) do
+    content_hash = sha256_ref(response_text)
+    "sha256:" <> digest = content_hash
+
+    %{
+      artifact_id: "jido.integration.inference.response:#{binary_part(digest, 0, 16)}",
+      artifact_type: :inference_response_text,
+      content_hash: content_hash,
+      content_hash_alg: :sha256,
+      byte_size: byte_size(response_text),
+      media_type: "text/plain; charset=utf-8",
+      retrieval_owner: :jido_integration_control_plane,
+      release_manifest_ref: "phase5-v7-m8-ai-native-runtime-guardrails",
+      safe_action: :quarantine_on_digest_mismatch
+    }
+  end
+
+  defp sha256_ref(value) when is_binary(value) do
+    "sha256:" <> Base.encode16(:crypto.hash(:sha256, value), case: :lower)
+  end
+
   defp response_summary(%Response{} = response, response_text) do
     %{
       id: response.id,
@@ -728,6 +817,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp missing_ref(missing, _field, value) when is_binary(value) and value != "", do: missing
+  defp missing_ref(missing, field, _value), do: [field | missing]
 
   defp map_or_empty(nil), do: %{}
   defp map_or_empty(%{} = value), do: Map.new(value)

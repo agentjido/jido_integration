@@ -14,7 +14,8 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
     :artifact_store,
     :claim_check_store,
     :target_store,
-    :ingress_store
+    :ingress_store,
+    :profile_registry_store
   ]
   @auth_keys [
     :credential_store,
@@ -66,6 +67,15 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
   @spec fetch_map_value(map(), atom()) :: term()
   def fetch_map_value(map, key) when is_map(map) do
     Map.get(map, key, Map.get(map, Atom.to_string(key)))
+  end
+
+  @spec errors_on(Ecto.Changeset.t()) :: map()
+  def errors_on(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
+      Enum.reduce(opts, message, fn {key, value}, acc ->
+        String.replace(acc, "%{#{key}}", to_string(value))
+      end)
+    end)
   end
 
   defp snapshot_env do

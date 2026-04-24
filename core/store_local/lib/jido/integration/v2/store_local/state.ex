@@ -14,6 +14,8 @@ defmodule Jido.Integration.V2.StoreLocal.State do
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.Run
+  alias Jido.Integration.V2.ServiceSimulationProfile
+  alias Jido.Integration.V2.SimulationProfileRegistryEntry
   alias Jido.Integration.V2.SubmissionAcceptance
   alias Jido.Integration.V2.SubmissionIdentity
   alias Jido.Integration.V2.SubmissionRejection
@@ -57,7 +59,8 @@ defmodule Jido.Integration.V2.StoreLocal.State do
             submissions: %{},
             expired_submissions: %{},
             submission_acceptances: %{},
-            submission_rejections: %{}
+            submission_rejections: %{},
+            profile_registry_entries: %{}
 
   @type t :: %__MODULE__{
           credentials: %{optional(String.t()) => persisted_credential()},
@@ -94,7 +97,10 @@ defmodule Jido.Integration.V2.StoreLocal.State do
             }
           },
           submission_acceptances: %{optional(String.t()) => SubmissionAcceptance.t()},
-          submission_rejections: %{optional(String.t()) => SubmissionRejection.t()}
+          submission_rejections: %{optional(String.t()) => SubmissionRejection.t()},
+          profile_registry_entries: %{
+            optional(String.t()) => SimulationProfileRegistryEntry.t()
+          }
         }
 
   @spec new() :: t()
@@ -146,6 +152,11 @@ defmodule Jido.Integration.V2.StoreLocal.State do
          submission_acceptances: %{},
          submission_rejections: %{}
      }}
+  end
+
+  @spec reset_profile_registry(t()) :: {:ok, t()}
+  def reset_profile_registry(%__MODULE__{} = state) do
+    {:ok, %{state | profile_registry_entries: %{}}}
   end
 
   @spec store_credential(t(), Credential.t()) :: {:ok, t()}
@@ -429,6 +440,78 @@ defmodule Jido.Integration.V2.StoreLocal.State do
     state.targets
     |> Map.values()
     |> Enum.sort_by(& &1.target_id)
+  end
+
+  @spec install_profile_registry_entry(
+          t(),
+          map() | keyword() | ServiceSimulationProfile.t(),
+          [map()],
+          map()
+        ) ::
+          {{:ok, SimulationProfileRegistryEntry.t()} | {:error, atom()}, t()}
+  def install_profile_registry_entry(%__MODULE__{} = state, profile, installed_scenarios, attrs) do
+    case SimulationProfileRegistryEntry.install(profile, installed_scenarios, attrs) do
+      {:ok, entry} -> install_profile_registry_entry(state, entry)
+      {:error, reason} -> {{:error, reason}, state}
+    end
+  end
+
+  @spec update_profile_registry_entry(
+          t(),
+          map() | keyword() | ServiceSimulationProfile.t(),
+          [map()],
+          map()
+        ) ::
+          {{:ok, SimulationProfileRegistryEntry.t()} | {:error, atom()}, t()}
+  def update_profile_registry_entry(%__MODULE__{} = state, profile, installed_scenarios, attrs) do
+    case profile_id_from(profile) do
+      nil ->
+        {{:error, :unknown_profile}, state}
+
+      profile_id ->
+        update_profile_registry_entry(state, profile_id, profile, installed_scenarios, attrs)
+    end
+  end
+
+  @spec remove_profile_registry_entry(t(), String.t(), map()) ::
+          {{:ok, SimulationProfileRegistryEntry.t()} | {:error, atom()}, t()}
+  def remove_profile_registry_entry(%__MODULE__{} = state, profile_id, attrs) do
+    remove_profile_registry_entry(
+      state,
+      profile_id,
+      Map.fetch(state.profile_registry_entries, profile_id),
+      attrs
+    )
+  end
+
+  @spec fetch_profile_registry_entry(t(), String.t()) ::
+          {:ok, SimulationProfileRegistryEntry.t()} | :error
+  def fetch_profile_registry_entry(%__MODULE__{} = state, profile_id) do
+    case Map.fetch(state.profile_registry_entries, profile_id) do
+      {:ok, entry} -> {:ok, entry}
+      :error -> :error
+    end
+  end
+
+  @spec select_profile_registry_entry(t(), String.t(), String.t(), String.t()) ::
+          {:ok, SimulationProfileRegistryEntry.t()} | {:error, atom()} | :error
+  def select_profile_registry_entry(
+        %__MODULE__{} = state,
+        profile_id,
+        environment_scope,
+        owner_ref
+      ) do
+    with {:ok, entry} <- fetch_profile_registry_entry(state, profile_id) do
+      SimulationProfileRegistryEntry.select(entry, environment_scope, owner_ref)
+    end
+  end
+
+  @spec list_profile_registry_entries(t(), map()) :: [SimulationProfileRegistryEntry.t()]
+  def list_profile_registry_entries(%__MODULE__{} = state, filters \\ %{}) do
+    state.profile_registry_entries
+    |> Map.values()
+    |> filter_records(filters)
+    |> Enum.sort_by(&{&1.audit_install_timestamp, &1.profile_id})
   end
 
   @spec reserve_dedupe(t(), String.t(), String.t(), String.t(), String.t(), DateTime.t()) ::
@@ -829,6 +912,95 @@ defmodule Jido.Integration.V2.StoreLocal.State do
   defp sanitize_event(%Event{} = event) do
     %{event | payload: Redaction.redact(event.payload)}
   end
+
+  defp install_profile_registry_entry(state, entry) do
+    case Map.fetch(state.profile_registry_entries, entry.profile_id) do
+      {:ok, existing} when existing.profile_version != entry.profile_version ->
+        {{:error, :concurrent_install_same_id_different_version}, state}
+
+      {:ok, existing} ->
+        {{:ok, existing}, state}
+
+      :error ->
+        {{:ok, entry}, put_profile_registry_entry(state, entry)}
+    end
+  end
+
+  defp update_profile_registry_entry(state, profile_id, profile, installed_scenarios, attrs) do
+    case Map.fetch(state.profile_registry_entries, profile_id) do
+      {:ok, current} ->
+        current
+        |> SimulationProfileRegistryEntry.update(profile, installed_scenarios, attrs)
+        |> put_updated_profile_registry_entry(state)
+
+      :error ->
+        {{:error, :unknown_profile}, state}
+    end
+  end
+
+  defp put_updated_profile_registry_entry({:ok, updated}, state) do
+    {{:ok, updated}, put_profile_registry_entry(state, updated)}
+  end
+
+  defp put_updated_profile_registry_entry({:error, reason}, state), do: {{:error, reason}, state}
+
+  defp remove_profile_registry_entry(state, profile_id, {:ok, current}, attrs) do
+    current
+    |> remove_registry_entry(attrs)
+    |> put_removed_profile_registry_entry(state, profile_id)
+  end
+
+  defp remove_profile_registry_entry(state, _profile_id, :error, _attrs) do
+    {{:error, :unknown_profile}, state}
+  end
+
+  defp put_removed_profile_registry_entry({:ok, removed, reply}, state, profile_id) do
+    {reply, put_profile_registry_entry(state, profile_id, removed)}
+  end
+
+  defp put_removed_profile_registry_entry({:error, reason}, state, _profile_id) do
+    {{:error, reason}, state}
+  end
+
+  defp put_profile_registry_entry(state, entry) do
+    put_profile_registry_entry(state, entry.profile_id, entry)
+  end
+
+  defp put_profile_registry_entry(state, profile_id, entry) do
+    %{
+      state
+      | profile_registry_entries: Map.put(state.profile_registry_entries, profile_id, entry)
+    }
+  end
+
+  defp remove_registry_entry(%SimulationProfileRegistryEntry{} = current, attrs) do
+    removed = SimulationProfileRegistryEntry.remove!(current, attrs)
+
+    reply =
+      case removed.cleanup_status do
+        :cleanup_failed -> {:error, :cleanup_failure}
+        :removed -> {:ok, removed}
+      end
+
+    {:ok, removed, reply}
+  rescue
+    error in ArgumentError ->
+      {:error, registry_failure_reason(error)}
+  end
+
+  defp registry_failure_reason(%ArgumentError{message: message}) do
+    if String.contains?(message, "cleanup"), do: :cleanup_failure, else: :invalid_registry_entry
+  end
+
+  defp profile_id_from(%ServiceSimulationProfile{} = profile), do: profile.profile_id
+
+  defp profile_id_from(profile) when is_map(profile) or is_list(profile) do
+    profile
+    |> Map.new()
+    |> Contracts.get(:profile_id)
+  end
+
+  defp profile_id_from(_profile), do: nil
 
   defp filter_records(records, filters) when is_map(filters) do
     Enum.filter(records, fn record ->

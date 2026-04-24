@@ -11,6 +11,7 @@ defmodule Jido.Integration.V2.StoreLocal do
   alias Jido.Integration.V2.StoreLocal.IngressStore
   alias Jido.Integration.V2.StoreLocal.InstallStore
   alias Jido.Integration.V2.StoreLocal.LeaseStore
+  alias Jido.Integration.V2.StoreLocal.ProfileRegistryStore
   alias Jido.Integration.V2.StoreLocal.RunStore
   alias Jido.Integration.V2.StoreLocal.Server
   alias Jido.Integration.V2.StoreLocal.TargetStore
@@ -39,6 +40,12 @@ defmodule Jido.Integration.V2.StoreLocal do
     Application.put_env(:jido_integration_v2_control_plane, :artifact_store, ArtifactStore)
     Application.put_env(:jido_integration_v2_control_plane, :target_store, TargetStore)
     Application.put_env(:jido_integration_v2_control_plane, :ingress_store, IngressStore)
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :profile_registry_store,
+      ProfileRegistryStore
+    )
 
     Application.put_env(
       :jido_integration_v2_brain_ingress,

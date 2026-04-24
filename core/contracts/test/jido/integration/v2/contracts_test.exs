@@ -210,6 +210,20 @@ defmodule Jido.Integration.V2.ContractsTest do
                  end
   end
 
+  test "atomish string normalization uses the bounded contract vocabulary" do
+    assert Contracts.normalize_atomish!("llama_cpp_sdk", "provider_identity") ==
+             :llama_cpp_sdk
+
+    assert_raise ArgumentError,
+                 ~r/provider_identity must be a known atom string/,
+                 fn ->
+                   Contracts.normalize_atomish!(
+                     "unregistered_runtime_atom",
+                     "provider_identity"
+                   )
+                 end
+  end
+
   test "the execution-plane contract packet and boundary metadata vocabulary stay explicit" do
     assert Contracts.execution_plane_contract_packet() == [
              "AuthorityDecision.v1",

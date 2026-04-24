@@ -8,8 +8,11 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane.ClaimCheckStore
   alias Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry
+  alias Jido.Integration.V2.ControlPlane.ProfileRegistryStore
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Redaction
+  alias Jido.Integration.V2.ServiceSimulationProfile
+  alias Jido.Integration.V2.SimulationProfileRegistryEntry
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
@@ -21,6 +24,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
   @behaviour ClaimCheckStore
   @behaviour Jido.Integration.V2.ControlPlane.TargetStore
   @behaviour Jido.Integration.V2.ControlPlane.IngressStore
+  @behaviour ProfileRegistryStore
 
   def start_link(_opts) do
     Agent.start_link(
@@ -34,6 +38,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
           claim_check_blobs: %{},
           claim_check_references: %{},
           targets: %{},
+          profile_registry_entries: %{},
           triggers: %{},
           run_triggers: %{},
           checkpoints: %{},
@@ -271,6 +276,64 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
     end)
   end
 
+  @impl ProfileRegistryStore
+  def install_profile(profile, installed_scenarios, attrs) do
+    case SimulationProfileRegistryEntry.install(profile, installed_scenarios, attrs) do
+      {:ok, entry} ->
+        Agent.get_and_update(__MODULE__, &install_profile_entry(&1, entry))
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @impl ProfileRegistryStore
+  def update_profile(profile, installed_scenarios, attrs) do
+    case profile_id_from(profile) do
+      nil ->
+        {:error, :unknown_profile}
+
+      profile_id ->
+        Agent.get_and_update(__MODULE__, fn state ->
+          update_profile_entry(state, profile_id, profile, installed_scenarios, attrs)
+        end)
+    end
+  end
+
+  @impl ProfileRegistryStore
+  def remove_profile(profile_id, attrs) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      remove_profile_entry(state, profile_id, attrs)
+    end)
+  end
+
+  @impl ProfileRegistryStore
+  def fetch_profile(profile_id) do
+    Agent.get(__MODULE__, fn state ->
+      case Map.fetch(state.profile_registry_entries, profile_id) do
+        {:ok, entry} -> {:ok, entry}
+        :error -> :error
+      end
+    end)
+  end
+
+  @impl ProfileRegistryStore
+  def select_profile(profile_id, environment_scope, owner_ref) do
+    with {:ok, entry} <- fetch_profile(profile_id) do
+      SimulationProfileRegistryEntry.select(entry, environment_scope, owner_ref)
+    end
+  end
+
+  @impl ProfileRegistryStore
+  def list_profiles(filters \\ %{}) do
+    Agent.get(__MODULE__, fn state ->
+      state.profile_registry_entries
+      |> Map.values()
+      |> filter_records(filters)
+      |> Enum.sort_by(&{&1.audit_install_timestamp, &1.profile_id})
+    end)
+  end
+
   def events(run_id) do
     list_events(run_id)
   end
@@ -392,6 +455,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
         claim_check_blobs: %{},
         claim_check_references: %{},
         targets: %{},
+        profile_registry_entries: %{},
         triggers: %{},
         run_triggers: %{},
         checkpoints: %{},
@@ -575,6 +639,92 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
   defp older_than_cutoff?(%DateTime{} = value, %DateTime{} = cutoff) do
     DateTime.compare(value, cutoff) != :gt
   end
+
+  defp install_profile_entry(state, entry) do
+    case Map.fetch(state.profile_registry_entries, entry.profile_id) do
+      {:ok, existing} when existing.profile_version != entry.profile_version ->
+        {{:error, :concurrent_install_same_id_different_version}, state}
+
+      {:ok, existing} ->
+        {{:ok, existing}, state}
+
+      :error ->
+        {{:ok, entry}, put_in(state, [:profile_registry_entries, entry.profile_id], entry)}
+    end
+  end
+
+  defp update_profile_entry(state, profile_id, profile, installed_scenarios, attrs) do
+    case Map.fetch(state.profile_registry_entries, profile_id) do
+      {:ok, current} ->
+        current
+        |> SimulationProfileRegistryEntry.update(profile, installed_scenarios, attrs)
+        |> persist_updated_profile_entry(state)
+
+      :error ->
+        {{:error, :unknown_profile}, state}
+    end
+  end
+
+  defp persist_updated_profile_entry({:ok, updated}, state) do
+    {{:ok, updated}, put_in(state, [:profile_registry_entries, updated.profile_id], updated)}
+  end
+
+  defp persist_updated_profile_entry({:error, reason}, state), do: {{:error, reason}, state}
+
+  defp remove_profile_entry(state, profile_id, attrs) do
+    case Map.fetch(state.profile_registry_entries, profile_id) do
+      {:ok, current} ->
+        current
+        |> remove_registry_entry(attrs)
+        |> persist_removed_profile_entry(state, profile_id)
+
+      :error ->
+        {{:error, :unknown_profile}, state}
+    end
+  end
+
+  defp persist_removed_profile_entry({:ok, removed, reply}, state, profile_id) do
+    {reply, put_in(state, [:profile_registry_entries, profile_id], removed)}
+  end
+
+  defp persist_removed_profile_entry({:error, reason}, state, _profile_id) do
+    {{:error, reason}, state}
+  end
+
+  defp remove_registry_entry(%SimulationProfileRegistryEntry{} = current, attrs) do
+    removed = SimulationProfileRegistryEntry.remove!(current, attrs)
+
+    reply =
+      case removed.cleanup_status do
+        :cleanup_failed -> {:error, :cleanup_failure}
+        :removed -> {:ok, removed}
+      end
+
+    {:ok, removed, reply}
+  rescue
+    error in ArgumentError ->
+      {:error, registry_failure_reason(error)}
+  end
+
+  defp registry_failure_reason(%ArgumentError{message: message}) do
+    if String.contains?(message, "cleanup"), do: :cleanup_failure, else: :invalid_registry_entry
+  end
+
+  defp filter_records(records, filters) when is_map(filters) do
+    Enum.filter(records, fn record ->
+      Enum.all?(filters, fn {key, value} -> Map.get(record, key) == value end)
+    end)
+  end
+
+  defp profile_id_from(%ServiceSimulationProfile{} = profile), do: profile.profile_id
+
+  defp profile_id_from(profile) when is_map(profile) or is_list(profile) do
+    profile
+    |> Map.new()
+    |> Contracts.get(:profile_id)
+  end
+
+  defp profile_id_from(_profile), do: nil
 
   defp target_id(%Attempt{target_id: target_id}), do: target_id
   defp target_id(nil), do: nil

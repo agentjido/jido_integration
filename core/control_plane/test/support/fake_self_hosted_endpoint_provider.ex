@@ -82,7 +82,11 @@ defmodule Jido.Integration.V2.ControlPlane.TestSupport.FakeSelfHostedEndpointPro
           health_ref: "health-llama_cpp_sdk-1",
           boundary_ref: nil,
           capabilities: %{streaming?: true, tool_calling?: false},
-          metadata: %{consumer: consumer_manifest.consumer}
+          metadata: %{
+            consumer: consumer_manifest.consumer,
+            model_descriptor_ref: "model://phase5/llama_cpp_sdk/#{model_id}",
+            model_version: "v1"
+          }
         }),
       compatibility_result:
         CompatibilityResult.new!(%{
@@ -142,7 +146,11 @@ defmodule Jido.Integration.V2.ControlPlane.TestSupport.FakeSelfHostedEndpointPro
           health_ref: "health-ollama-1",
           boundary_ref: nil,
           capabilities: %{streaming?: true, tool_calling?: false},
-          metadata: %{consumer: consumer_manifest.consumer}
+          metadata: %{
+            consumer: consumer_manifest.consumer,
+            model_descriptor_ref: "model://phase5/ollama/#{model_id}",
+            model_version: "v1"
+          }
         }),
       compatibility_result:
         CompatibilityResult.new!(%{
