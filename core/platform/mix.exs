@@ -40,8 +40,48 @@ unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
 
       def splode(opts \\ []), do: {:splode, "~> 0.3.0", opts}
 
-      defp git_dep(app, subdir, opts),
-        do: {app, Keyword.merge([git: @repo_root, subdir: subdir], opts)}
+      defp git_dep(app, subdir, opts) do
+        source_opts =
+          [git: repo_source(), subdir: subdir]
+          |> maybe_put_branch(repo_branch())
+
+        {app, Keyword.merge(source_opts, opts)}
+      end
+
+      defp repo_source do
+        case git_config("remote.origin.url") do
+          nil -> @repo_root
+          "" -> @repo_root
+          value -> value
+        end
+      end
+
+      defp repo_branch do
+        case git_config("branch.#{current_branch()}.merge") do
+          "refs/heads/" <> branch -> branch
+          _ -> current_branch()
+        end
+      end
+
+      defp current_branch do
+        case git(["rev-parse", "--abbrev-ref", "HEAD"]) do
+          "HEAD" -> nil
+          branch -> branch
+        end
+      end
+
+      defp maybe_put_branch(opts, nil), do: opts
+      defp maybe_put_branch(opts, ""), do: opts
+      defp maybe_put_branch(opts, branch), do: Keyword.put(opts, :branch, branch)
+
+      defp git_config(key), do: git(["config", "--get", key])
+
+      defp git(args) do
+        case System.cmd("git", ["-C", @repo_root] ++ args, stderr_to_stdout: true) do
+          {value, 0} -> String.trim(value)
+          _ -> nil
+        end
+      end
     end
   end
 end
