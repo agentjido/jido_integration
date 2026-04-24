@@ -420,24 +420,13 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     purge_scaffold_project_build!(build_path, project_root)
 
     env = [
-      {"MIX_DEPS_PATH", Path.join(repo_root, "deps")},
       {"MIX_BUILD_PATH", build_path},
       {"MIX_LOCKFILE", lockfile_path},
       {"MIX_ENV", Atom.to_string(mix_env)},
       {"HEX_HOME", hex_home},
       {"HEX_API_KEY", nil},
       {"MIX_OS_CONCURRENCY_LOCK", "0"},
-      {"SSLKEYLOGFILE", nil},
-      {"JIDO_INTEGRATION_PATH", repo_root},
-      {"JIDO_HARNESS_PATH", sibling_repo_path(repo_root, "../jido_runtime_control")},
-      {"JIDO_VFS_PATH", Path.expand("../jido_vfs", repo_root)},
-      {"REQ_LLM_PATH", "disabled"},
-      {"AGENT_SESSION_MANAGER_PATH", Path.expand("../agent_session_manager", repo_root)},
-      {"EXECUTION_PLANE_PATH", Path.expand("../execution_plane", repo_root)},
-      {"CLI_SUBPROCESS_CORE_PATH", Path.expand("../cli_subprocess_core", repo_root)},
-      {"SELF_HOSTED_INFERENCE_CORE_PATH",
-       Path.expand("../self_hosted_inference_core", repo_root)},
-      {"LLAMA_CPP_SDK_PATH", Path.expand("../llama_cpp_sdk", repo_root)}
+      {"SSLKEYLOGFILE", nil}
     ]
 
     label = "mix #{Enum.join(args, " ")} in #{Path.relative_to(project_root, workspace_root)}"
@@ -515,16 +504,6 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     if not File.exists?(packages_path) and File.exists?(Path.join(source_hex_home, "packages")) do
       File.ln_s!(Path.join(source_hex_home, "packages"), packages_path)
-    end
-  end
-
-  defp sibling_repo_path(repo_root, relative_path) do
-    resolved_path = Path.expand(relative_path, repo_root)
-
-    if File.dir?(resolved_path) do
-      resolved_path
-    else
-      "disabled"
     end
   end
 

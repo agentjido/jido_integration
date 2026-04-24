@@ -15,7 +15,6 @@ defmodule Jido.Integration.V2.ServiceSimulationProfileLowerBinding do
   @evidence_contract_version "ExecutionPlane.LowerSimulationEvidence.v1"
   @lower_owner_repos [
     "execution_plane",
-    "external_runtime_transport",
     "cli_subprocess_core",
     "pristine",
     "prismatic",

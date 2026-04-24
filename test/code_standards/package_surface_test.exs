@@ -147,40 +147,34 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            "blitz workspace isolation must unset SSLKEYLOGFILE so Req-backed tasks do not fail on read-only home mounts"
   end
 
-  test "workspace root resolves Pristine from the sibling runtime checkout before Hex" do
+  test "workspace root resolves Pristine from the deterministic sibling runtime checkout before Hex" do
     resolver_source =
       repo_root()
       |> Path.join("build_support/dependency_resolver.exs")
       |> File.read!()
 
-    assert resolver_source =~
-             ~S[local_root_path("PRISTINE_PATH", "../pristine/apps/pristine_runtime")],
+    assert resolver_source =~ ~S[local_root_path("../pristine/apps/pristine_runtime")],
            "root Pristine resolver must prefer the sibling Pristine runtime checkout"
+
+    refute resolver_source =~ ~S[System.get_env],
+           "root Pristine resolver must not depend on environment-variable path selectors"
 
     assert resolver_source =~ ~s({:pristine, "~> 0.2.1", opts}),
            "root Pristine resolver must keep a Hex fallback for publishable contexts"
 
-    with_env("PRISTINE_PATH", nil, fn ->
-      pristine_runtime_path = Path.expand("../pristine/apps/pristine_runtime", repo_root())
+    pristine_runtime_path = Path.expand("../pristine/apps/pristine_runtime", repo_root())
 
-      case DependencyResolver.pristine(runtime: false) do
-        {:pristine, opts} ->
-          assert Keyword.fetch!(opts, :path) == pristine_runtime_path
-          assert Keyword.fetch!(opts, :runtime) == false
+    case DependencyResolver.pristine(runtime: false) do
+      {:pristine, opts} ->
+        assert Keyword.fetch!(opts, :path) == pristine_runtime_path
+        assert Keyword.fetch!(opts, :runtime) == false
 
-        {:pristine, "~> 0.2.1", opts} ->
-          refute File.dir?(pristine_runtime_path),
-                 "expected sibling Pristine runtime path to exist at #{pristine_runtime_path}"
+      {:pristine, "~> 0.2.1", opts} ->
+        refute File.dir?(pristine_runtime_path),
+               "expected sibling Pristine runtime path to exist at #{pristine_runtime_path}"
 
-          assert Keyword.fetch!(opts, :runtime) == false
-      end
-    end)
-
-    with_env("PRISTINE_PATH", "disabled", fn ->
-      assert {:pristine, "~> 0.2.1", opts} = DependencyResolver.pristine(runtime: false)
-
-      assert Keyword.fetch!(opts, :runtime) == false
-    end)
+        assert Keyword.fetch!(opts, :runtime) == false
+    end
   end
 
   test "workspace commands prefer the repo-local mix wrapper on PATH" do
@@ -318,24 +312,4 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   defp repo_root, do: Path.expand("../..", __DIR__)
 
   defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
-
-  defp with_env(key, value, fun) do
-    original_value = System.get_env(key)
-
-    try do
-      if is_nil(value) do
-        System.delete_env(key)
-      else
-        System.put_env(key, value)
-      end
-
-      fun.()
-    after
-      if is_nil(original_value) do
-        System.delete_env(key)
-      else
-        System.put_env(key, original_value)
-      end
-    end
-  end
 end

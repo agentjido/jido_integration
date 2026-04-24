@@ -96,21 +96,21 @@ defmodule Jido.Integration.Build.DependencyResolver do
     do: resolve_internal(:jido_integration_v2_inference_ops, "apps/inference_ops", opts)
 
   def agent_session_manager(opts \\ []) do
-    case local_root_path("AGENT_SESSION_MANAGER_PATH", "../agent_session_manager") do
+    case local_root_path("../agent_session_manager") do
       nil -> {:agent_session_manager, "~> 0.9.2", opts}
       path -> {:agent_session_manager, Keyword.merge([path: path], opts)}
     end
   end
 
   def cli_subprocess_core(opts \\ []) do
-    case local_root_path("CLI_SUBPROCESS_CORE_PATH", "../cli_subprocess_core") do
+    case local_root_path("../cli_subprocess_core") do
       nil -> {:cli_subprocess_core, "~> 0.1.0", opts}
       path -> {:cli_subprocess_core, Keyword.merge([path: path, override: true], opts)}
     end
   end
 
   def jido_action(opts \\ []) do
-    case local_root_path("JIDO_ACTION_PATH", "../jido_action") do
+    case local_root_path("../jido_action") do
       nil -> {:jido_action, "~> 2.2", opts}
       path -> {:jido_action, Keyword.merge([path: path], opts)}
     end
@@ -125,21 +125,21 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def pristine(opts \\ []) do
-    case local_root_path("PRISTINE_PATH", "../pristine/apps/pristine_runtime") do
+    case local_root_path("../pristine/apps/pristine_runtime") do
       nil -> {:pristine, "~> 0.2.1", opts}
       path -> {:pristine, Keyword.merge([path: path], opts)}
     end
   end
 
   def self_hosted_inference_core(opts \\ []) do
-    case local_root_path("SELF_HOSTED_INFERENCE_CORE_PATH", "../self_hosted_inference_core") do
+    case local_root_path("../self_hosted_inference_core") do
       nil -> {:self_hosted_inference_core, "~> 0.1.0", opts}
       path -> {:self_hosted_inference_core, Keyword.merge([path: path, override: true], opts)}
     end
   end
 
   def llama_cpp_sdk(opts \\ []) do
-    case local_root_path("LLAMA_CPP_SDK_PATH", "../llama_cpp_sdk") do
+    case local_root_path("../llama_cpp_sdk") do
       nil -> {:llama_cpp_sdk, "~> 0.1.0", opts}
       path -> {:llama_cpp_sdk, Keyword.merge([path: path, override: true], opts)}
     end
@@ -161,45 +161,16 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   defp internal_workspace_path(subdir) do
-    cond do
-      root = env_root_path("JIDO_INTEGRATION_PATH") ->
-        existing_path(Path.join(root, subdir))
-
-      prefer_workspace_internal_paths?() ->
-        existing_path(Path.join(@repo_root, subdir))
-
-      true ->
-        nil
+    if prefer_workspace_internal_paths?() do
+      existing_path(Path.join(@repo_root, subdir))
     end
   end
 
-  defp local_root_path(env_var, default_relative_path) do
-    case System.get_env(env_var) do
-      nil ->
-        case default_relative_path do
-          nil ->
-            nil
-
-          path ->
-            path
-            |> Path.expand(@repo_root)
-            |> existing_path()
-        end
-
-      value when value in ["", "0", "false", "disabled"] ->
-        nil
-
-      value ->
-        value
-        |> Path.expand(@repo_root)
-        |> existing_path()
-    end
-  end
-
-  defp env_root_path(env_var) do
-    case System.get_env(env_var) do
-      nil -> nil
-      value -> value |> Path.expand(@repo_root) |> existing_path()
+  defp local_root_path(default_relative_path) do
+    if prefer_workspace_internal_paths?() do
+      default_relative_path
+      |> Path.expand(@repo_root)
+      |> existing_path()
     end
   end
 
