@@ -21,6 +21,17 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     MemorySharedRecord
   }
 
+  @invalidation_reasons ~w(
+    user_deletion
+    source_correction
+    source_deletion
+    policy_change
+    tenant_offboarding
+    operator_suppression
+    semantic_quarantine
+    retention_expiry
+  )
+
   @spec insert_private_fragment(map() | keyword() | MemoryFragment.t()) ::
           {:ok, MemoryFragment.t()} | {:error, term()}
   def insert_private_fragment(attrs) do
@@ -178,18 +189,69 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
         |> normalize_invalidation_attrs!()
         |> Map.put_new(:commit_lsn, current_wal_lsn!())
 
-      record =
-        %MemoryInvalidationRecord{}
-        |> MemoryInvalidationRecord.changeset(attrs)
-        |> Repo.insert!()
-
-      invalidation = to_invalidation(record)
+      invalidation = insert_invalidation_record!(attrs)
       publish_memory_invalidations!(invalidation)
       invalidation
     end)
     |> unwrap_transaction()
   rescue
     error in ArgumentError -> {:error, error}
+  end
+
+  @spec insert_invalidation_cascade(map() | keyword()) ::
+          {:ok, [invalidation()]} | {:error, term()}
+  def insert_invalidation_cascade(attrs) when is_map(attrs) or is_list(attrs) do
+    StorePostgres.assert_started!()
+
+    Repo.transaction(fn ->
+      attrs =
+        attrs
+        |> normalize_invalidation_attrs!()
+        |> Map.put_new(:commit_lsn, current_wal_lsn!())
+
+      family = fragment_family!(attrs.tenant_ref, attrs.fragment_id)
+
+      Enum.map(family, fn fragment ->
+        invalidation =
+          attrs
+          |> cascade_invalidation_attrs(fragment)
+          |> insert_invalidation_record!()
+
+        publish_memory_invalidations!(invalidation)
+        invalidation
+      end)
+    end)
+    |> unwrap_transaction()
+  rescue
+    error in ArgumentError -> {:error, error}
+  end
+
+  @spec invalidations_after(String.t(), non_neg_integer(), keyword()) :: [invalidation()]
+  def invalidations_after(tenant_ref, after_epoch, opts \\ [])
+      when is_binary(tenant_ref) and is_integer(after_epoch) and after_epoch >= 0 and
+             is_list(opts) do
+    StorePostgres.assert_started!()
+
+    query =
+      MemoryInvalidationRecord
+      |> where(
+        [invalidation],
+        invalidation.tenant_ref == ^tenant_ref and invalidation.effective_at_epoch > ^after_epoch
+      )
+      |> order_by([invalidation],
+        asc: invalidation.effective_at_epoch,
+        asc: invalidation.invalidation_id
+      )
+
+    query =
+      case Keyword.get(opts, :limit) do
+        nil -> query
+        limit when is_integer(limit) and limit > 0 -> limit(query, ^limit)
+      end
+
+    query
+    |> Repo.all()
+    |> Enum.map(&to_invalidation/1)
   end
 
   @spec fragment_invalidated_at_epoch?(String.t(), String.t(), pos_integer()) :: boolean()
@@ -318,7 +380,110 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     |> Map.update(:evidence_refs, [], fn evidence_refs ->
       Enum.map(evidence_refs, &Contracts.dump_json_safe!/1)
     end)
+    |> Map.update(:reason, nil, &normalize_invalidation_reason!/1)
     |> Map.update(:metadata, %{}, &Contracts.dump_json_safe!/1)
+  end
+
+  defp insert_invalidation_record!(attrs) do
+    %MemoryInvalidationRecord{}
+    |> MemoryInvalidationRecord.changeset(attrs)
+    |> Repo.insert!()
+    |> to_invalidation()
+  end
+
+  defp fragment_family!(tenant_ref, root_fragment_id) do
+    fragments = all_fragment_summaries(tenant_ref)
+    by_id = Map.new(fragments, &{&1.fragment_id, &1})
+
+    unless Map.has_key?(by_id, root_fragment_id) do
+      raise ArgumentError,
+            "memory_invalidation.fragment_id is unknown: #{inspect(root_fragment_id)}"
+    end
+
+    fragments
+    |> Enum.map(fn fragment ->
+      Map.put(fragment, :parent_chain, parent_chain(fragment.parent_fragment_id, by_id))
+    end)
+    |> Enum.filter(fn fragment ->
+      fragment.fragment_id == root_fragment_id or root_fragment_id in fragment.parent_chain
+    end)
+    |> Enum.sort_by(fn fragment ->
+      {length(fragment.parent_chain), tier_rank(fragment.tier), fragment.fragment_id}
+    end)
+  end
+
+  defp all_fragment_summaries(tenant_ref) do
+    private = fragment_summaries(MemoryPrivateRecord, tenant_ref, "private")
+    shared = fragment_summaries(MemorySharedRecord, tenant_ref, "shared")
+    governed = fragment_summaries(MemoryGovernedRecord, tenant_ref, "governed")
+
+    private ++ shared ++ governed
+  end
+
+  defp fragment_summaries(record_module, tenant_ref, tier) do
+    record_module
+    |> where([fragment], fragment.tenant_ref == ^tenant_ref)
+    |> select([fragment], %{
+      fragment_id: fragment.fragment_id,
+      tier: ^tier,
+      parent_fragment_id: fragment.parent_fragment_id
+    })
+    |> Repo.all()
+  end
+
+  defp parent_chain(nil, _fragments_by_id), do: []
+
+  defp parent_chain(parent_fragment_id, fragments_by_id) do
+    parent_chain(parent_fragment_id, fragments_by_id, [])
+  end
+
+  defp parent_chain(nil, _fragments_by_id, _seen), do: []
+
+  defp parent_chain(parent_fragment_id, fragments_by_id, seen) do
+    if parent_fragment_id in seen do
+      raise ArgumentError, "memory fragment parent chain cycle at #{inspect(parent_fragment_id)}"
+    end
+
+    case Map.get(fragments_by_id, parent_fragment_id) do
+      nil ->
+        [parent_fragment_id]
+
+      parent ->
+        parent_chain(
+          parent.parent_fragment_id,
+          fragments_by_id,
+          [parent_fragment_id | seen]
+        ) ++
+          [parent_fragment_id]
+    end
+  end
+
+  defp cascade_invalidation_attrs(attrs, fragment) do
+    root_invalidation_id = attrs.invalidation_id
+    cascade_depth = length(fragment.parent_chain)
+
+    metadata =
+      Map.merge(attrs.metadata, %{
+        "root_fragment_id" => attrs.fragment_id,
+        "root_invalidation_id" => root_invalidation_id,
+        "parent_chain" => fragment.parent_chain,
+        "cascade_depth" => cascade_depth
+      })
+
+    attrs
+    |> Map.put(:fragment_id, fragment.fragment_id)
+    |> Map.put(:tier, fragment.tier)
+    |> Map.put(:metadata, metadata)
+    |> Map.put(
+      :invalidation_id,
+      cascade_invalidation_id(root_invalidation_id, fragment, cascade_depth)
+    )
+  end
+
+  defp cascade_invalidation_id(root_invalidation_id, _fragment, 0), do: root_invalidation_id
+
+  defp cascade_invalidation_id(root_invalidation_id, fragment, _cascade_depth) do
+    root_invalidation_id <> "/cascade/" <> ClusterInvalidation.hash_segment(fragment.fragment_id)
   end
 
   defp publish_memory_invalidations!(invalidation) do
@@ -359,12 +524,16 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
       commit_lsn: invalidation.commit_lsn,
       commit_hlc: invalidation.commit_hlc,
       published_at: invalidation.effective_at,
-      metadata: %{
-        fragment_id: invalidation.fragment_id,
-        tier: invalidation.tier,
-        effective_at_epoch: invalidation.effective_at_epoch,
-        reason: invalidation.reason
-      }
+      metadata:
+        Map.merge(invalidation.metadata || %{}, %{
+          "invalidation_id" => invalidation.invalidation_id,
+          "tenant_ref" => invalidation.tenant_ref,
+          "fragment_id" => invalidation.fragment_id,
+          "tier" => invalidation.tier,
+          "effective_at_epoch" => invalidation.effective_at_epoch,
+          "reason" => invalidation.reason,
+          "parent_chain" => Map.get(invalidation.metadata || %{}, "parent_chain", [])
+        })
     })
   end
 
@@ -398,6 +567,24 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
   defp normalize_tier!(tier) do
     raise ArgumentError,
           "memory_invalidation.tier must be private, shared, or governed, got: #{inspect(tier)}"
+  end
+
+  defp tier_rank("private"), do: 0
+  defp tier_rank("shared"), do: 1
+  defp tier_rank("governed"), do: 2
+  defp tier_rank(_tier), do: 3
+
+  defp normalize_invalidation_reason!(reason) when is_atom(reason) do
+    reason
+    |> Atom.to_string()
+    |> normalize_invalidation_reason!()
+  end
+
+  defp normalize_invalidation_reason!(reason) when reason in @invalidation_reasons, do: reason
+
+  defp normalize_invalidation_reason!(reason) do
+    raise ArgumentError,
+          "memory_invalidation.reason must be one of #{inspect(@invalidation_reasons)}, got: #{inspect(reason)}"
   end
 
   defp normalize_datetime!(%DateTime{} = value), do: value

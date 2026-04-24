@@ -69,6 +69,52 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
     error in ArgumentError -> {:error, error}
   end
 
+  @spec revoke_subject_edges(String.t(), String.t(), GovernanceRef.t() | map(), keyword()) ::
+          {:ok, %{epoch: non_neg_integer(), revoked_edges: [Edge.t()]}} | {:error, term()}
+  def revoke_subject_edges(tenant_ref, subject_ref, revoking_authority_ref, opts \\ [])
+      when is_binary(tenant_ref) and is_binary(subject_ref) and is_list(opts) do
+    StorePostgres.assert_started!()
+
+    Repo.transaction(fn ->
+      records =
+        AccessGraphEdgeRecord
+        |> where(
+          [edge],
+          edge.tenant_ref == ^tenant_ref and is_nil(edge.epoch_end) and
+            (edge.head_ref == ^subject_ref or edge.tail_ref == ^subject_ref)
+        )
+        |> order_by([edge], asc: edge.epoch_start, asc: edge.edge_id)
+        |> lock("FOR UPDATE")
+        |> Repo.all()
+
+      revoke_edge_records!(tenant_ref, records, revoking_authority_ref, opts)
+    end)
+    |> unwrap_transaction()
+  rescue
+    error in ArgumentError -> {:error, error}
+  end
+
+  @spec revoke_tenant_edges(String.t(), GovernanceRef.t() | map(), keyword()) ::
+          {:ok, %{epoch: non_neg_integer(), revoked_edges: [Edge.t()]}} | {:error, term()}
+  def revoke_tenant_edges(tenant_ref, revoking_authority_ref, opts \\ [])
+      when is_binary(tenant_ref) and is_list(opts) do
+    StorePostgres.assert_started!()
+
+    Repo.transaction(fn ->
+      records =
+        AccessGraphEdgeRecord
+        |> where([edge], edge.tenant_ref == ^tenant_ref and is_nil(edge.epoch_end))
+        |> order_by([edge], asc: edge.epoch_start, asc: edge.edge_id)
+        |> lock("FOR UPDATE")
+        |> Repo.all()
+
+      revoke_edge_records!(tenant_ref, records, revoking_authority_ref, opts)
+    end)
+    |> unwrap_transaction()
+  rescue
+    error in ArgumentError -> {:error, error}
+  end
+
   @spec current_epoch(String.t()) :: non_neg_integer()
   def current_epoch(tenant_ref) when is_binary(tenant_ref) do
     StorePostgres.assert_started!()
@@ -260,9 +306,14 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
         commit_hlc: epoch_record.commit_hlc,
         published_at: epoch_record.committed_at,
         metadata: %{
-          cause: epoch_record.cause,
-          trace_id: epoch_record.trace_id,
-          epoch: epoch_record.epoch
+          "tenant_ref" => epoch_record.tenant_ref,
+          "cause" => epoch_record.cause,
+          "trace_id" => epoch_record.trace_id,
+          "epoch" => epoch_record.epoch,
+          "new_epoch" => epoch_record.epoch,
+          "source_node_ref" => epoch_record.source_node_ref,
+          "commit_lsn" => epoch_record.commit_lsn,
+          "commit_hlc" => epoch_record.commit_hlc
         }
       })
 
@@ -315,6 +366,29 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
     |> Repo.update!()
     |> to_edge()
     |> tap(fn _edge -> publish_graph_invalidation!(epoch_record) end)
+  end
+
+  defp revoke_edge_records!(tenant_ref, [], _revoking_authority_ref, _opts) do
+    %{epoch: current_epoch_in_transaction(tenant_ref), revoked_edges: []}
+  end
+
+  defp revoke_edge_records!(tenant_ref, records, revoking_authority_ref, opts) do
+    epoch_record = allocate_epoch!(tenant_ref, opts)
+    revoking = normalize_revoking_authority!(revoking_authority_ref)
+
+    revoked_edges =
+      Enum.map(records, fn record ->
+        record
+        |> AccessGraphEdgeRecord.changeset(%{
+          epoch_end: epoch_record.epoch,
+          revoking_authority_ref: GovernanceRef.dump(revoking)
+        })
+        |> Repo.update!()
+        |> to_edge()
+      end)
+
+    publish_graph_invalidation!(epoch_record)
+    %{epoch: epoch_record.epoch, revoked_edges: revoked_edges}
   end
 
   defp active_tails(tenant_ref, edge_type, head_ref, epoch) do

@@ -11,11 +11,23 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
 
   alias Jido.Integration.V2.StorePostgres.Schemas.{
     MemoryGovernedRecord,
+    MemoryInvalidationRecord,
     MemoryPrivateRecord,
     MemorySharedRecord
   }
 
   alias Jido.Integration.V2.SubjectRef
+
+  @invalidation_reasons ~w(
+    user_deletion
+    source_correction
+    source_deletion
+    policy_change
+    tenant_offboarding
+    operator_suppression
+    semantic_quarantine
+    retention_expiry
+  )
 
   test "inserts and queries private, shared, and governed fragments through separate tier stores" do
     private_attrs = private_fragment_attrs("fragment-private-1", [0.9, 0.1, 0.0])
@@ -145,6 +157,131 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
     :telemetry.detach(telemetry_id)
   end
 
+  test "validates every supported invalidation reason and rejects unknown reasons" do
+    for {reason, index} <- Enum.with_index(@invalidation_reasons, 1) do
+      fragment_id = "fragment-private-reason-#{index}"
+
+      assert {:ok, %MemoryFragment{fragment_id: ^fragment_id}} =
+               MemoryTierStore.insert_private_fragment(private_fragment_attrs(fragment_id))
+
+      assert {:ok, %{reason: ^reason}} =
+               MemoryTierStore.insert_invalidation(
+                 invalidation_attrs(fragment_id, %{
+                   invalidation_id: "invalidation://memory/reason-#{index}",
+                   reason: reason,
+                   effective_at_epoch: 20 + index
+                 })
+               )
+    end
+
+    assert {:ok, %MemoryFragment{fragment_id: fragment_id}} =
+             MemoryTierStore.insert_private_fragment(
+               private_fragment_attrs("fragment-private-unknown-reason")
+             )
+
+    assert {:error, %ArgumentError{message: message}} =
+             MemoryTierStore.insert_invalidation(
+               invalidation_attrs(fragment_id, %{
+                 invalidation_id: "invalidation://memory/reason-unknown",
+                 reason: "unknown_reason",
+                 effective_at_epoch: 99
+               })
+             )
+
+    assert message =~ "memory_invalidation.reason"
+  end
+
+  test "cascades invalidations through parent chains and exposes durable rows for reconciliation" do
+    telemetry_id = attach_invalidation_telemetry()
+
+    assert {:ok, %MemoryFragment{fragment_id: root_id}} =
+             MemoryTierStore.insert_private_fragment(
+               private_fragment_attrs("fragment-cascade-root")
+             )
+
+    assert {:ok, %MemoryFragment{fragment_id: child_id}} =
+             MemoryTierStore.insert_shared_fragment(
+               shared_fragment_attrs("fragment-cascade-child")
+               |> Map.put(:parent_fragment_id, root_id)
+             )
+
+    assert {:ok, %MemoryFragment{fragment_id: grandchild_id}} =
+             MemoryTierStore.insert_governed_fragment(
+               governed_fragment_attrs("fragment-cascade-grandchild")
+               |> Map.put(:parent_fragment_id, child_id)
+             )
+
+    assert {:ok, %MemoryFragment{fragment_id: unrelated_id}} =
+             MemoryTierStore.insert_shared_fragment(
+               shared_fragment_attrs("fragment-cascade-unrelated")
+               |> Map.put(:parent_fragment_id, "fragment-other-root")
+             )
+
+    assert {:ok, invalidations} =
+             MemoryTierStore.insert_invalidation_cascade(
+               invalidation_attrs(root_id, %{
+                 invalidation_id: "invalidation://memory/cascade-root",
+                 reason: "source_deletion",
+                 effective_at_epoch: 44,
+                 metadata: %{source_event_ref: "event://source-deleted/root"}
+               })
+             )
+
+    assert Enum.map(invalidations, & &1.fragment_id) == [root_id, child_id, grandchild_id]
+    assert Enum.map(invalidations, & &1.tier) == ["private", "shared", "governed"]
+
+    assert [
+             %{metadata: %{"parent_chain" => [], "cascade_depth" => 0}},
+             %{metadata: %{"parent_chain" => [^root_id], "cascade_depth" => 1}},
+             %{metadata: %{"parent_chain" => [^root_id, ^child_id], "cascade_depth" => 2}}
+           ] = invalidations
+
+    assert MemoryTierStore.fragment_invalidated_at_epoch?("tenant-1", root_id, 44)
+    assert MemoryTierStore.fragment_invalidated_at_epoch?("tenant-1", child_id, 44)
+    assert MemoryTierStore.fragment_invalidated_at_epoch?("tenant-1", grandchild_id, 44)
+    refute MemoryTierStore.fragment_invalidated_at_epoch?("tenant-1", unrelated_id, 44)
+
+    assert [] = MemoryTierStore.private_fragments("tenant-1", "user-1", snapshot_epoch: 44)
+
+    assert [^unrelated_id] =
+             MemoryTierStore.shared_fragments("tenant-1", "scope-1", snapshot_epoch: 44)
+             |> Enum.map(& &1.fragment_id)
+
+    assert [] =
+             MemoryTierStore.governed_fragments("tenant-1", "installation-1", snapshot_epoch: 44)
+
+    durable_rows = MemoryTierStore.invalidations_after("tenant-1", 43)
+    assert Enum.map(durable_rows, & &1.fragment_id) == [root_id, child_id, grandchild_id]
+    assert Enum.all?(durable_rows, &(&1.effective_at_epoch == 44))
+
+    records =
+      MemoryInvalidationRecord
+      |> where([record], record.tenant_ref == "tenant-1")
+      |> where([record], record.effective_at_epoch == 44)
+      |> order_by([record], asc: record.fragment_id)
+      |> Repo.all()
+
+    assert length(records) == 3
+    assert Enum.all?(records, &(&1.metadata["root_fragment_id"] == root_id))
+
+    messages = collect_cluster_messages(6)
+    assert length(messages) == 6
+
+    fragment_messages =
+      Enum.filter(messages, &String.starts_with?(&1.topic, "memory.fragment."))
+
+    assert Enum.map(fragment_messages, & &1.metadata["fragment_id"]) == [
+             root_id,
+             child_id,
+             grandchild_id
+           ]
+
+    assert Enum.all?(fragment_messages, &(&1.metadata["invalidation_id"] == &1.invalidation_id))
+    assert Enum.all?(fragment_messages, &Map.has_key?(&1.metadata, "parent_chain"))
+
+    :telemetry.detach(telemetry_id)
+  end
+
   test "database constraints reject invalid private, shared, and governed tier records" do
     assert {:error, changeset} =
              %MemoryPrivateRecord{}
@@ -259,6 +396,26 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
     }
   end
 
+  defp invalidation_attrs(fragment_id, overrides) do
+    Map.merge(
+      %{
+        invalidation_id: "invalidation://memory/#{fragment_id}",
+        tenant_ref: "tenant-1",
+        fragment_id: fragment_id,
+        tier: :private,
+        effective_at: ~U[2026-04-23 12:00:00Z],
+        effective_at_epoch: 12,
+        source_node_ref: "node://ji_2@127.0.0.1/node-b",
+        invalidate_policy_ref: "policy://invalidate/v1",
+        authority_ref: governance_ref("invalidate-#{fragment_id}"),
+        evidence_refs: [evidence_ref("invalidate-#{fragment_id}")],
+        reason: "user_deletion",
+        metadata: %{cascade_depth: 0}
+      },
+      overrides
+    )
+  end
+
   defp governance_ref(id) do
     GovernanceRef.new!(%{
       kind: :policy_decision,
@@ -300,5 +457,12 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
     on_exit(fn -> :telemetry.detach(handler_id) end)
 
     handler_id
+  end
+
+  defp collect_cluster_messages(count) do
+    Enum.map(1..count, fn _index ->
+      assert_receive {:cluster_invalidation, %{message: message}}
+      message
+    end)
   end
 end

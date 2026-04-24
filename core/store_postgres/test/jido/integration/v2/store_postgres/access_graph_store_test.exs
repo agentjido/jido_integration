@@ -54,6 +54,11 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
     assert message.commit_lsn == epoch_record.commit_lsn
     assert message.commit_hlc == epoch_record.commit_hlc
     assert message.topic == ClusterInvalidation.graph_topic!("tenant-1", 1)
+    assert message.metadata["tenant_ref"] == "tenant-1"
+    assert message.metadata["new_epoch"] == 1
+    assert message.metadata["source_node_ref"] == epoch_record.source_node_ref
+    assert message.metadata["commit_lsn"] == epoch_record.commit_lsn
+    assert message.metadata["commit_hlc"] == epoch_record.commit_hlc
 
     assert AccessGraphStore.current_epoch("tenant-1") == 1
     assert AccessGraphStore.epoch_at("tenant-1", committed_at) == 1
@@ -117,6 +122,90 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
 
     assert_receive {:cluster_invalidation, %{message: %{topic: topic}}}
     assert topic == ClusterInvalidation.graph_topic!("tenant-1", 2)
+
+    :telemetry.detach(telemetry_id)
+  end
+
+  test "revokes user and tenant edges with access graph invalidation metadata" do
+    telemetry_id = attach_invalidation_telemetry()
+
+    assert {:ok, %{epoch: 1}} =
+             AccessGraphStore.insert_edges(
+               "tenant-1",
+               [
+                 edge_attrs(:ua, "user-delete", "agent-1"),
+                 edge_attrs(:us, "user-delete", "scope-1"),
+                 edge_attrs(:ar, "agent-1", "resource-1")
+               ],
+               cause: "grant",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
+             )
+
+    assert {:ok, %{epoch: 2, revoked_edges: revoked_edges}} =
+             AccessGraphStore.revoke_subject_edges(
+               "tenant-1",
+               "user-delete",
+               governance_ref("delete-user"),
+               cause: "user_deletion",
+               trace_id: "trace-delete-user",
+               source_node_ref: "node://ji_2@127.0.0.1/node-b"
+             )
+
+    assert Enum.map(revoked_edges, &{&1.edge_type, &1.head_ref, &1.epoch_end}) == [
+             {:ua, "user-delete", 2},
+             {:us, "user-delete", 2}
+           ]
+
+    assert AccessGraphStore.a_of("tenant-1", "user-delete", 2) == MapSet.new()
+    assert AccessGraphStore.s_of("tenant-1", "user-delete", 2) == MapSet.new()
+    assert AccessGraphStore.r_of("tenant-1", "agent-1", 2) == MapSet.new(["resource-1"])
+
+    assert_receive {:cluster_invalidation, %{message: %{topic: initial_topic}}}
+    assert initial_topic == ClusterInvalidation.graph_topic!("tenant-1", 1)
+
+    assert_receive {:cluster_invalidation, %{message: user_delete_message}}
+    assert user_delete_message.topic == ClusterInvalidation.graph_topic!("tenant-1", 2)
+    assert user_delete_message.source_node_ref == "node://ji_2@127.0.0.1/node-b"
+    assert is_binary(user_delete_message.commit_lsn)
+    assert %{"n" => "node://ji_2@127.0.0.1/node-b"} = user_delete_message.commit_hlc
+    assert user_delete_message.metadata["tenant_ref"] == "tenant-1"
+    assert user_delete_message.metadata["new_epoch"] == 2
+    assert user_delete_message.metadata["source_node_ref"] == user_delete_message.source_node_ref
+    assert user_delete_message.metadata["commit_lsn"] == user_delete_message.commit_lsn
+    assert user_delete_message.metadata["commit_hlc"] == user_delete_message.commit_hlc
+    assert user_delete_message.metadata["cause"] == "user_deletion"
+
+    assert {:ok, %{epoch: 1}} =
+             AccessGraphStore.insert_edges(
+               "tenant-offboard",
+               [
+                 edge_attrs(:ua, "user-tenant", "agent-tenant"),
+                 edge_attrs(:ar, "agent-tenant", "resource-tenant")
+               ],
+               cause: "grant",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
+             )
+
+    assert {:ok, %{epoch: 2, revoked_edges: tenant_revoked_edges}} =
+             AccessGraphStore.revoke_tenant_edges(
+               "tenant-offboard",
+               governance_ref("offboard-tenant"),
+               cause: "tenant_offboarding",
+               source_node_ref: "node://ji_2@127.0.0.1/node-b"
+             )
+
+    assert Enum.map(tenant_revoked_edges, & &1.epoch_end) == [2, 2]
+    assert AccessGraphStore.a_of("tenant-offboard", "user-tenant", 2) == MapSet.new()
+    assert AccessGraphStore.r_of("tenant-offboard", "agent-tenant", 2) == MapSet.new()
+
+    assert_receive {:cluster_invalidation, %{message: %{topic: tenant_initial_topic}}}
+    assert tenant_initial_topic == ClusterInvalidation.graph_topic!("tenant-offboard", 1)
+
+    assert_receive {:cluster_invalidation, %{message: tenant_message}}
+    assert tenant_message.topic == ClusterInvalidation.graph_topic!("tenant-offboard", 2)
+    assert tenant_message.metadata["tenant_ref"] == "tenant-offboard"
+    assert tenant_message.metadata["new_epoch"] == 2
+    assert tenant_message.metadata["cause"] == "tenant_offboarding"
 
     :telemetry.detach(telemetry_id)
   end
