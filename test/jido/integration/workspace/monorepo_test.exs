@@ -17,6 +17,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "core/dispatch_runtime",
              "core/ingress",
              "core/platform",
+             "core/platform_cluster_runtime",
              "core/policy",
              "core/runtime_control",
              "core/runtime_router",

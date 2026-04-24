@@ -40,6 +40,14 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_policy(opts \\ []),
     do: resolve_internal(:jido_integration_v2_policy, "core/policy", opts)
 
+  def jido_integration_v2_platform_cluster_runtime(opts \\ []),
+    do:
+      resolve_internal(
+        :jido_integration_v2_platform_cluster_runtime,
+        "core/platform_cluster_runtime",
+        opts
+      )
+
   def jido_integration_v2_asm_runtime_bridge(opts \\ []),
     do: resolve_internal(:jido_integration_v2_asm_runtime_bridge, "core/asm_runtime_bridge", opts)
 
