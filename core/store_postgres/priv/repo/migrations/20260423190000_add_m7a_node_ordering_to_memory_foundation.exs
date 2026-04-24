@@ -1,8 +1,8 @@
 defmodule Jido.Integration.V2.StorePostgres.Repo.Migrations.AddM7ANodeOrderingToMemoryFoundation do
   use Ecto.Migration
 
-  @legacy_node_ref "node://migration@m7a/legacy"
-  @legacy_hlc %{"w" => 0, "l" => 0, "n" => @legacy_node_ref}
+  @migration_deployment_uuid "5c91c53b-4c41-4e49-9d78-5d8bc9f1e7a1"
+  @migration_node_ref "node://migration@m7a/#{@migration_deployment_uuid}"
 
   def up do
     alter table(:access_graph_epochs) do
@@ -12,11 +12,31 @@ defmodule Jido.Integration.V2.StorePostgres.Repo.Migrations.AddM7ANodeOrderingTo
     end
 
     execute("""
+    WITH migration_context AS (
+      SELECT
+        '#{@migration_node_ref}'::text AS migration_node_ref,
+        (EXTRACT(EPOCH FROM clock_timestamp()) * 1000000000)::bigint AS migration_start_ns,
+        pg_current_wal_lsn()::text AS commit_lsn
+    ),
+    candidate_rows AS (
+      SELECT
+        tenant_ref,
+        epoch,
+        row_number() OVER (ORDER BY tenant_ref, epoch) - 1 AS row_batch_index
+      FROM access_graph_epochs
+      WHERE source_node_ref IS NULL
+    )
     UPDATE access_graph_epochs
-    SET source_node_ref = '#{@legacy_node_ref}',
-        commit_lsn = '0/0',
-        commit_hlc = '#{Jason.encode!(@legacy_hlc)}'::jsonb
-    WHERE source_node_ref IS NULL
+    SET source_node_ref = migration_context.migration_node_ref,
+        commit_lsn = migration_context.commit_lsn,
+        commit_hlc = jsonb_build_object('w', migration_context.migration_start_ns,
+          'l', candidate_rows.row_batch_index,
+          'n', migration_context.migration_node_ref
+        )
+    FROM migration_context, candidate_rows
+    WHERE access_graph_epochs.tenant_ref = candidate_rows.tenant_ref
+      AND access_graph_epochs.epoch = candidate_rows.epoch
+      AND access_graph_epochs.source_node_ref IS NULL
     """)
 
     alter table(:access_graph_epochs) do
@@ -39,7 +59,7 @@ defmodule Jido.Integration.V2.StorePostgres.Repo.Migrations.AddM7ANodeOrderingTo
 
     execute("""
     UPDATE access_graph_edges
-    SET source_node_ref = '#{@legacy_node_ref}'
+    SET source_node_ref = '#{@migration_node_ref}'
     WHERE source_node_ref IS NULL
     """)
 
@@ -84,12 +104,32 @@ defmodule Jido.Integration.V2.StorePostgres.Repo.Migrations.AddM7ANodeOrderingTo
     end
 
     execute("""
+    WITH migration_context AS (
+      SELECT
+        '#{@migration_node_ref}'::text AS migration_node_ref,
+        (EXTRACT(EPOCH FROM clock_timestamp()) * 1000000000)::bigint AS migration_start_ns,
+        pg_current_wal_lsn()::text AS commit_lsn
+    ),
+    candidate_rows AS (
+      SELECT
+        invalidation_id,
+        row_number() OVER (
+          ORDER BY tenant_ref, fragment_id, effective_at, invalidation_id
+        ) - 1 AS row_batch_index
+      FROM memory_invalidations
+      WHERE source_node_ref IS NULL
+    )
     UPDATE memory_invalidations
-    SET source_node_ref = '#{@legacy_node_ref}',
-        commit_lsn = '0/0',
-        commit_hlc = '#{Jason.encode!(@legacy_hlc)}'::jsonb,
-        effective_at_epoch = 1
-    WHERE source_node_ref IS NULL
+    SET source_node_ref = migration_context.migration_node_ref,
+        commit_lsn = migration_context.commit_lsn,
+        commit_hlc = jsonb_build_object('w', migration_context.migration_start_ns,
+          'l', candidate_rows.row_batch_index,
+          'n', migration_context.migration_node_ref
+        ),
+        effective_at_epoch = COALESCE(effective_at_epoch, 1)
+    FROM migration_context, candidate_rows
+    WHERE memory_invalidations.invalidation_id = candidate_rows.invalidation_id
+      AND memory_invalidations.source_node_ref IS NULL
     """)
 
     alter table(:memory_invalidations) do
@@ -169,7 +209,7 @@ defmodule Jido.Integration.V2.StorePostgres.Repo.Migrations.AddM7ANodeOrderingTo
 
     execute("""
     UPDATE #{table}
-    SET source_node_ref = '#{@legacy_node_ref}'
+    SET source_node_ref = '#{@migration_node_ref}'
     WHERE source_node_ref IS NULL
     """)
 
