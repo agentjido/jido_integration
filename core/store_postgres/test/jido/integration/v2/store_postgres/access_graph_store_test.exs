@@ -1,6 +1,8 @@
 defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
   use Jido.Integration.V2.StorePostgres.DataCase
 
+  import Ecto.Query
+
   alias Jido.Integration.V2.AccessGraph
   alias Jido.Integration.V2.ClusterInvalidation
   alias Jido.Integration.V2.EvidenceRef
@@ -204,6 +206,52 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
     assert {:ok, snapshot} = AccessGraphStore.current_epoch_for_tenant("tenant-1")
     assert snapshot.snapshot_epoch == 1
     assert snapshot.tenant_ref == "tenant-1"
+  end
+
+  test "snapshot-bound graph views keep one pinned epoch through revocation" do
+    assert {:ok, %{epoch: 1}} =
+             AccessGraphStore.insert_edges(
+               "tenant-1",
+               [
+                 edge_attrs(:ua, "user-1", "agent-1"),
+                 edge_attrs(:ar, "agent-1", "resource-1"),
+                 edge_attrs(:us, "user-1", "scope-1")
+               ],
+               cause: "grant",
+               source_node_ref: "node://ji_1@127.0.0.1/node-a"
+             )
+
+    assert {:ok, snapshot} = AccessGraphStore.current_epoch_for_tenant("tenant-1")
+
+    [edge] =
+      AccessGraphEdgeRecord
+      |> where([edge], edge.edge_type == "ua")
+      |> Repo.all()
+
+    assert {:ok, _revoked} =
+             AccessGraphStore.revoke_edge(edge.edge_id, governance_ref("revoke-snapshot"),
+               cause: "lease_revoked",
+               source_node_ref: "node://ji_2@127.0.0.1/node-b"
+             )
+
+    tuple = %{
+      access_agents: ["agent-1"],
+      access_resources: ["resource-1"],
+      access_scopes: ["scope-1"]
+    }
+
+    assert %{
+             snapshot_epoch: 1,
+             access_agents: access_agents,
+             access_resources: access_resources,
+             access_scopes: access_scopes,
+             graph_admissible?: true
+           } = AccessGraphStore.snapshot_views(snapshot, "user-1", "agent-1", tuple)
+
+    assert access_agents == MapSet.new(["agent-1"])
+    assert access_resources == MapSet.new(["resource-1"])
+    assert access_scopes == MapSet.new(["scope-1"])
+    assert AccessGraphStore.a_of("tenant-1", "user-1", 2) == MapSet.new()
   end
 
   test "concurrent multi-node graph transactions produce distinct tenant epochs" do

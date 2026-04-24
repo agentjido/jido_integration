@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
   alias Jido.Integration.V2.ClockOrdering.HLC
   alias Jido.Integration.V2.ClusterInvalidation
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.Memory.SnapshotContext
   alias Jido.Integration.V2.MemoryFragment
   alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.ClusterInvalidationPublisher
@@ -80,6 +81,13 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     |> Enum.map(&to_fragment/1)
   end
 
+  @spec private_fragments_for_snapshot(SnapshotContext.t(), String.t(), keyword()) ::
+          [MemoryFragment.t()]
+  def private_fragments_for_snapshot(%SnapshotContext{} = snapshot, user_ref, opts \\ [])
+      when is_binary(user_ref) and is_list(opts) do
+    private_fragments(snapshot.tenant_ref, user_ref, snapshot_opts!(snapshot, opts))
+  end
+
   @spec shared_fragments(String.t(), String.t(), keyword()) :: [MemoryFragment.t()]
   def shared_fragments(tenant_ref, scope_ref, opts \\ [])
       when is_binary(tenant_ref) and is_binary(scope_ref) and is_list(opts) do
@@ -91,6 +99,13 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     |> Repo.all()
     |> filter_snapshot_visible(opts)
     |> Enum.map(&to_fragment/1)
+  end
+
+  @spec shared_fragments_for_snapshot(SnapshotContext.t(), String.t(), keyword()) ::
+          [MemoryFragment.t()]
+  def shared_fragments_for_snapshot(%SnapshotContext{} = snapshot, scope_ref, opts \\ [])
+      when is_binary(scope_ref) and is_list(opts) do
+    shared_fragments(snapshot.tenant_ref, scope_ref, snapshot_opts!(snapshot, opts))
   end
 
   @spec governed_fragments(String.t(), String.t(), keyword()) :: [MemoryFragment.t()]
@@ -109,6 +124,13 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
     |> Enum.map(&to_fragment/1)
   end
 
+  @spec governed_fragments_for_snapshot(SnapshotContext.t(), String.t(), keyword()) ::
+          [MemoryFragment.t()]
+  def governed_fragments_for_snapshot(%SnapshotContext{} = snapshot, installation_ref, opts \\ [])
+      when is_binary(installation_ref) and is_list(opts) do
+    governed_fragments(snapshot.tenant_ref, installation_ref, snapshot_opts!(snapshot, opts))
+  end
+
   @spec nearest_private_fragments(String.t(), String.t(), [number()], keyword()) ::
           [MemoryFragment.t()]
   def nearest_private_fragments(tenant_ref, user_ref, query_embedding, opts \\ [])
@@ -118,10 +140,32 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
 
     tenant_ref
     |> private_records(user_ref)
+    |> filter_snapshot_visible(opts)
     |> Enum.filter(&same_dimension?(&1.embedding, normalized_query))
     |> Enum.sort_by(&squared_distance(&1.embedding, normalized_query))
     |> Enum.take(limit)
     |> Enum.map(&to_fragment/1)
+  end
+
+  @spec nearest_private_fragments_for_snapshot(
+          SnapshotContext.t(),
+          String.t(),
+          [number()],
+          keyword()
+        ) :: [MemoryFragment.t()]
+  def nearest_private_fragments_for_snapshot(
+        %SnapshotContext{} = snapshot,
+        user_ref,
+        query_embedding,
+        opts \\ []
+      )
+      when is_binary(user_ref) and is_list(query_embedding) and is_list(opts) do
+    nearest_private_fragments(
+      snapshot.tenant_ref,
+      user_ref,
+      query_embedding,
+      snapshot_opts!(snapshot, opts)
+    )
   end
 
   @spec insert_invalidation(map() | keyword()) :: {:ok, invalidation()} | {:error, term()}
@@ -227,14 +271,28 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStore do
       nil ->
         records
 
-      snapshot_epoch when is_integer(snapshot_epoch) and snapshot_epoch > 0 ->
+      snapshot_epoch when is_integer(snapshot_epoch) and snapshot_epoch >= 0 ->
         Enum.reject(records, fn record ->
           fragment_invalidated_at_epoch?(record.tenant_ref, record.fragment_id, snapshot_epoch)
         end)
 
       snapshot_epoch ->
         raise ArgumentError,
-              "memory_tier_store.snapshot_epoch must be a positive integer, got: #{inspect(snapshot_epoch)}"
+              "memory_tier_store.snapshot_epoch must be a non-negative integer, got: #{inspect(snapshot_epoch)}"
+    end
+  end
+
+  defp snapshot_opts!(%SnapshotContext{snapshot_epoch: snapshot_epoch}, opts) do
+    case Keyword.fetch(opts, :snapshot_epoch) do
+      {:ok, ^snapshot_epoch} ->
+        opts
+
+      {:ok, other_epoch} ->
+        raise ArgumentError,
+              "memory_tier_store.snapshot_epoch mismatch: bound #{snapshot_epoch}, got: #{inspect(other_epoch)}"
+
+      :error ->
+        Keyword.put(opts, :snapshot_epoch, snapshot_epoch)
     end
   end
 

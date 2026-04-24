@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
   alias Jido.Integration.V2.ClusterInvalidation
   alias Jido.Integration.V2.EvidenceRef
   alias Jido.Integration.V2.GovernanceRef
+  alias Jido.Integration.V2.Memory.SnapshotContext
   alias Jido.Integration.V2.MemoryFragment
   alias Jido.Integration.V2.StorePostgres.MemoryTierStore
   alias Jido.Integration.V2.StorePostgres.Repo
@@ -62,6 +63,26 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
     assert [%MemoryFragment{fragment_id: ^fragment_id}] =
              MemoryTierStore.private_fragments("tenant-1", "user-1", snapshot_epoch: 11)
 
+    before_invalidation_snapshot =
+      SnapshotContext.new!(%{
+        tenant_ref: "tenant-1",
+        snapshot_epoch: 11,
+        pinned_at: ~U[2026-04-23 12:00:00Z]
+      })
+
+    after_invalidation_snapshot =
+      SnapshotContext.new!(%{
+        tenant_ref: "tenant-1",
+        snapshot_epoch: 12,
+        pinned_at: ~U[2026-04-23 12:00:01Z]
+      })
+
+    assert [%MemoryFragment{fragment_id: ^fragment_id}] =
+             MemoryTierStore.private_fragments_for_snapshot(
+               before_invalidation_snapshot,
+               "user-1"
+             )
+
     assert {:ok, invalidation} =
              MemoryTierStore.insert_invalidation(%{
                invalidation_id: "invalidation://memory/private-epoch",
@@ -85,6 +106,26 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
              MemoryTierStore.private_fragments("tenant-1", "user-1", snapshot_epoch: 11)
 
     assert [] = MemoryTierStore.private_fragments("tenant-1", "user-1", snapshot_epoch: 12)
+
+    assert [%MemoryFragment{fragment_id: ^fragment_id}] =
+             MemoryTierStore.nearest_private_fragments_for_snapshot(
+               before_invalidation_snapshot,
+               "user-1",
+               [0.3, 0.2, 0.1],
+               limit: 1
+             )
+
+    assert [] =
+             MemoryTierStore.private_fragments_for_snapshot(after_invalidation_snapshot, "user-1")
+
+    assert [] =
+             MemoryTierStore.nearest_private_fragments_for_snapshot(
+               after_invalidation_snapshot,
+               "user-1",
+               [0.3, 0.2, 0.1],
+               limit: 1
+             )
+
     refute MemoryTierStore.fragment_invalidated_at_epoch?("tenant-1", fragment_id, 11)
     assert MemoryTierStore.fragment_invalidated_at_epoch?("tenant-1", fragment_id, 12)
 

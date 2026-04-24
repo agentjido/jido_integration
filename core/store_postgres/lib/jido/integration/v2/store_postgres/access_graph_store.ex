@@ -175,6 +175,42 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
     |> AccessGraph.graph_admissible?(effective_access_tuple, user_ref, agent_ref, epoch)
   end
 
+  @spec snapshot_views(
+          SnapshotContext.t(),
+          String.t(),
+          String.t(),
+          AccessGraph.effective_access_tuple()
+        ) :: %{
+          snapshot_epoch: non_neg_integer(),
+          access_agents: MapSet.t(String.t()),
+          access_resources: MapSet.t(String.t()),
+          access_scopes: MapSet.t(String.t()),
+          graph_admissible?: boolean()
+        }
+  def snapshot_views(
+        %SnapshotContext{tenant_ref: tenant_ref, snapshot_epoch: snapshot_epoch},
+        user_ref,
+        agent_ref,
+        effective_access_tuple \\ %{}
+      )
+      when is_binary(tenant_ref) and is_integer(snapshot_epoch) and is_binary(user_ref) and
+             is_binary(agent_ref) do
+    %{
+      snapshot_epoch: snapshot_epoch,
+      access_agents: a_of(tenant_ref, user_ref, snapshot_epoch),
+      access_resources: r_of(tenant_ref, agent_ref, snapshot_epoch),
+      access_scopes: s_of(tenant_ref, user_ref, snapshot_epoch),
+      graph_admissible?:
+        graph_admissible?(
+          tenant_ref,
+          effective_access_tuple,
+          user_ref,
+          agent_ref,
+          snapshot_epoch
+        )
+    }
+  end
+
   defp allocate_epoch!(tenant_ref, opts) do
     source_node_ref =
       opts
