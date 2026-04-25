@@ -121,7 +121,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
   end
 
   def execution_plane(opts \\ []) do
-    case local_root_path("../execution_plane") do
+    case local_root_path("../execution_plane/core/execution_plane") do
       nil -> {:execution_plane, "~> 0.1.0", opts}
       path -> {:execution_plane, Keyword.merge([path: path], opts)}
     end
