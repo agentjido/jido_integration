@@ -9,8 +9,12 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     ExecutionResult,
     RunHandle,
     RunRequest,
-    RuntimeDescriptor
+    RuntimeDescriptor,
+    SessionHandle
   }
+
+  alias ASM.{Event, HostTool}
+  alias Jido.Integration.V2.AsmRuntimeBridge.Normalizer
 
   setup do
     ensure_asm_runtime_bridge_started!()
@@ -131,6 +135,118 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
              },
              %ExecutionEvent{type: :result, provider: :claude}
            ] = events
+  end
+
+  test "stream_run/3 passes host tools and continuation into the ASM run" do
+    assert {:ok, session} = RuntimeControlDriver.start_session(provider: :codex)
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request =
+      RunRequest.new!(%{
+        prompt: "use echo_json",
+        host_tools: [
+          %{
+            "name" => "echo_json",
+            "inputSchema" => %{"type" => "object"}
+          }
+        ],
+        continuation: %{
+          strategy: :exact,
+          provider_session_id: "codex-thread-1"
+        },
+        metadata: %{}
+      })
+
+    assert {:ok, _run, stream} =
+             RuntimeControlDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               driver_opts: [test_pid: self()],
+               app_server: true,
+               tools: %{"echo_json" => fn args -> {:ok, args} end},
+               run_id: "bridge-run-host-tools"
+             )
+
+    assert Enum.to_list(stream) != []
+
+    assert_receive {:stream_scripted_driver_context, context}
+    assert context.continuation == %{strategy: :exact, provider_session_id: "codex-thread-1"}
+    assert Keyword.fetch!(context.provider_opts, :app_server) == true
+    assert [%{"name" => "echo_json"}] = Keyword.fetch!(context.provider_opts, :host_tools)
+    assert is_function(context.tools["echo_json"], 1)
+  end
+
+  test "stream_run/3 rejects host tools for unsupported providers with a Jido-facing error" do
+    assert {:ok, session} = RuntimeControlDriver.start_session(provider: :gemini)
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request =
+      RunRequest.new!(%{
+        prompt: "use echo_json",
+        host_tools: [%{"name" => "echo_json", "inputSchema" => %{"type" => "object"}}],
+        metadata: %{}
+      })
+
+    assert {:error, error} =
+             RuntimeControlDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               run_id: "bridge-run-host-tools-rejected"
+             )
+
+    assert Exception.message(error) =~ "host_tools"
+    assert Exception.message(error) =~ "gemini"
+  end
+
+  test "normalizer projects host tool events and redacts raw provider evidence" do
+    session =
+      SessionHandle.new!(%{
+        session_id: "session-1",
+        runtime_id: :asm,
+        provider: :codex,
+        metadata: %{}
+      })
+
+    request =
+      HostTool.Request.new!(
+        id: "jsonrpc-1",
+        session_id: "session-1",
+        run_id: "run-1",
+        provider: :codex,
+        provider_session_id: "codex-thread-1",
+        provider_turn_id: "codex-turn-1",
+        tool_name: "echo_json",
+        arguments: %{"access_token" => "secret-token"},
+        raw: %{access_token: "secret-token"},
+        metadata: %{call_id: "call-1"}
+      )
+
+    event =
+      Event.new(:host_tool_requested, request,
+        run_id: "run-1",
+        session_id: "session-1",
+        provider: :codex,
+        provider_session_id: "codex-thread-1",
+        metadata: %{
+          provider_turn_id: "codex-turn-1",
+          tool_name: "echo_json",
+          access_token: "secret-token"
+        }
+      )
+
+    projected = Normalizer.to_execution_event(event, session)
+
+    assert projected.type == :host_tool_requested
+    assert projected.provider_session_id == "codex-thread-1"
+    assert projected.provider_turn_id == "codex-turn-1"
+    assert projected.tool_name == "echo_json"
+    refute Map.has_key?(projected.payload, "raw")
+    assert projected.payload["arguments"]["access_token"] == "[REDACTED]"
+    assert projected.raw["metadata"]["access_token"] == "[REDACTED]"
   end
 
   test "run/3 maps asm results to runtime-control execution results" do

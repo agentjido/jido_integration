@@ -124,8 +124,8 @@ defmodule Jido.Integration.V2.OperationSpecTest do
         },
         consumer_surface: %{
           mode: :common,
-          normalized_id: "codex.exec.session",
-          action_name: "codex_exec_session"
+          normalized_id: "codex.session.turn",
+          action_name: "codex_session_turn"
         },
         schema_policy: %{input: :defined, output: :defined},
         metadata: %{
@@ -172,8 +172,8 @@ defmodule Jido.Integration.V2.OperationSpecTest do
                      runtime: %{driver: "asm"},
                      consumer_surface: %{
                        mode: :common,
-                       normalized_id: "codex.exec.session",
-                       action_name: "codex_exec_session"
+                       normalized_id: "codex.session.turn",
+                       action_name: "codex_session_turn"
                      },
                      schema_policy: %{input: :defined, output: :defined},
                      metadata: %{}

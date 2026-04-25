@@ -67,16 +67,26 @@ defmodule Jido.RuntimeControl.SessionControlIRTest do
                run_id: "run-1",
                runtime_id: :asm,
                provider: :claude,
-               timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+               timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
+               provider_session_id: "provider-session-1",
+               provider_turn_id: "provider-turn-1",
+               tool_name: "echo_json",
+               approval_id: "approval-1"
              })
 
-    assert {:ok, %ExecutionResult{run_id: "run-1", status: :completed}} =
+    assert {:ok,
+            %ExecutionResult{
+              run_id: "run-1",
+              status: :completed,
+              provider_session_id: "provider-session-1"
+            }} =
              ExecutionResult.new(%{
                run_id: "run-1",
                session_id: "session-1",
                runtime_id: :asm,
                provider: :claude,
-               status: :completed
+               status: :completed,
+               provider_session_id: "provider-session-1"
              })
 
     assert {:ok, %RuntimeDescriptor{runtime_id: :asm, provider: :claude}} =
@@ -173,14 +183,26 @@ defmodule Jido.RuntimeControl.SessionControlIRTest do
              [:metadata, :provider, :runtime_id, :schema_version, :session_id, :status]
 
     assert run |> Map.from_struct() |> Map.keys() |> Enum.sort() ==
-             [:metadata, :provider, :run_id, :runtime_id, :schema_version, :session_id, :started_at, :status]
+             [
+               :metadata,
+               :provider,
+               :run_id,
+               :runtime_id,
+               :schema_version,
+               :session_id,
+               :started_at,
+               :status
+             ]
 
     assert event |> Map.from_struct() |> Map.keys() |> Enum.sort() ==
              [
+               :approval_id,
                :event_id,
                :metadata,
                :payload,
                :provider,
+               :provider_session_id,
+               :provider_turn_id,
                :raw,
                :run_id,
                :runtime_id,
@@ -189,6 +211,7 @@ defmodule Jido.RuntimeControl.SessionControlIRTest do
                :session_id,
                :status,
                :timestamp,
+               :tool_name,
                :type
              ]
 
@@ -200,6 +223,7 @@ defmodule Jido.RuntimeControl.SessionControlIRTest do
                :messages,
                :metadata,
                :provider,
+               :provider_session_id,
                :run_id,
                :runtime_id,
                :schema_version,

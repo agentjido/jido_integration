@@ -387,8 +387,8 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
             upstream: %{transport: :stdio},
             consumer_surface: %{
               mode: :common,
-              normalized_id: "codex.exec.session",
-              action_name: "codex_exec_session"
+              normalized_id: "codex.session.turn",
+              action_name: "codex_session_turn"
             },
             schema_policy: %{input: :defined, output: :defined},
             jido: %{},
@@ -586,7 +586,7 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
 
     assert projection.actions == [
              CrossRuntimeProjectedConnector.Generated.Actions.WorkItemFetch,
-             CrossRuntimeProjectedConnector.Generated.Actions.CodexExecSession,
+             CrossRuntimeProjectedConnector.Generated.Actions.CodexSessionTurn,
              CrossRuntimeProjectedConnector.Generated.Actions.MarketTicksPull
            ]
 

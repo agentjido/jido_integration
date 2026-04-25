@@ -64,6 +64,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     :debug,
     :driver_opts,
     :execution_mode,
+    :lane,
     :stream_timeout_ms,
     :queue_timeout_ms,
     :transport_call_timeout_ms,
@@ -72,9 +73,10 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     :tools,
     :tool_executor,
     :pipeline,
-    :pipeline_ctx
+    :pipeline_ctx,
+    :backend_opts
   ]
-  @asm_run_option_keys @asm_session_option_keys ++ [:run_id]
+  @asm_run_option_keys @asm_session_option_keys ++ [:run_id, :continuation]
 
   @spec reuse_key(map(), map(), map(), map()) :: map()
   def reuse_key(capability, _input, context, runtime_config) do
@@ -175,7 +177,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
   def stream_run(%SessionHandle{} = session, %RunRequest{} = request, opts) when is_list(opts) do
     assert_runtime_started!()
 
-    with {:ok, provider} <- fetch_session_provider(session, opts) do
+    with {:ok, provider} <- fetch_session_provider(session, opts),
+         :ok <- validate_runtime_request(provider, request, opts) do
       run_id = Keyword.get_lazy(opts, :run_id, &Event.generate_id/0)
       asm_opts = stream_run_opts(request, provider, opts, run_id)
 
@@ -206,7 +209,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
   def run(%SessionHandle{} = session, %RunRequest{} = request, opts) when is_list(opts) do
     assert_runtime_started!()
 
-    with {:ok, provider} <- fetch_session_provider(session, opts) do
+    with {:ok, provider} <- fetch_session_provider(session, opts),
+         :ok <- validate_runtime_request(provider, request, opts) do
       result =
         session
         |> session_ref!()
@@ -462,6 +466,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
         max_turns: request.max_turns,
         system_prompt: request.system_prompt
       ]
+      |> Keyword.merge(provider_metadata_opts(request.provider_metadata))
+      |> maybe_put(:host_tools, non_empty_list_or_nil(request.host_tools))
       |> Enum.reject(fn {_key, value} -> is_nil(value) end)
       |> Keyword.take(allowed_keys)
 
@@ -470,9 +476,109 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
       |> maybe_put(:stream_timeout_ms, request.timeout_ms)
       |> maybe_put(:cwd, request.cwd)
       |> maybe_put(:allowed_tools, request.allowed_tools)
+      |> maybe_put(:continuation, normalize_continuation(request.continuation))
 
     provider_opts ++ stream_opts
   end
+
+  defp validate_runtime_request(provider, %RunRequest{} = request, opts) do
+    cond do
+      host_tools_requested?(request, opts) and provider.name != :codex ->
+        {:error,
+         Error.validation_error(
+           "host_tools are unsupported for #{provider.name}; Codex app-server is the only native host-tool lane",
+           %{
+             field: :host_tools,
+             value: provider.name,
+             details: %{provider: provider.name, capability: :host_tools}
+           }
+         )}
+
+      app_server_requested?(request, opts) and provider.name != :codex ->
+        {:error,
+         Error.validation_error(
+           "app_server is unsupported for #{provider.name}; Codex app-server is the only promoted app-server lane",
+           %{
+             field: :app_server,
+             value: provider.name,
+             details: %{provider: provider.name, capability: :app_server}
+           }
+         )}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp host_tools_requested?(%RunRequest{} = request, opts) do
+    non_empty_list?(request.host_tools) or non_empty_list?(Keyword.get(opts, :host_tools))
+  end
+
+  defp app_server_requested?(%RunRequest{} = request, opts) do
+    Keyword.get(opts, :app_server) == true or
+      metadata_value(request.provider_metadata, :app_server) == true
+  end
+
+  defp provider_metadata_opts(metadata) when is_map(metadata) do
+    Enum.reduce(metadata, [], fn {key, value}, acc ->
+      case normalize_known_option_key(key) do
+        nil -> acc
+        normalized -> Keyword.put(acc, normalized, value)
+      end
+    end)
+  end
+
+  defp provider_metadata_opts(_metadata), do: []
+
+  defp normalize_known_option_key(key) when is_atom(key), do: key
+
+  defp normalize_known_option_key(key) when is_binary(key) do
+    key
+    |> String.trim()
+    |> case do
+      "app_server" -> :app_server
+      "host_tools" -> :host_tools
+      "dynamic_tools" -> :dynamic_tools
+      "system_prompt" -> :system_prompt
+      "model" -> :model
+      "max_turns" -> :max_turns
+      _other -> nil
+    end
+  end
+
+  defp normalize_known_option_key(_key), do: nil
+
+  defp normalize_continuation(nil), do: nil
+
+  defp normalize_continuation(%{} = continuation) do
+    strategy = metadata_value(continuation, :strategy)
+    provider_session_id = metadata_value(continuation, :provider_session_id)
+
+    cond do
+      strategy in [:exact, "exact"] and is_binary(provider_session_id) and
+          provider_session_id != "" ->
+        %{strategy: :exact, provider_session_id: provider_session_id}
+
+      strategy in [:latest, "latest"] ->
+        %{strategy: :latest}
+
+      true ->
+        continuation
+    end
+  end
+
+  defp normalize_continuation(other), do: other
+
+  defp metadata_value(%{} = map, key) when is_atom(key) do
+    Map.get(map, key) || Map.get(map, Atom.to_string(key))
+  end
+
+  defp metadata_value(_map, _key), do: nil
+
+  defp non_empty_list_or_nil(value) when is_list(value) and value != [], do: value
+  defp non_empty_list_or_nil(_value), do: nil
+
+  defp non_empty_list?(value), do: is_list(value) and value != []
 
   defp author_execution_inputs(opts) when is_list(opts) do
     context = Keyword.get(opts, :context, %{})

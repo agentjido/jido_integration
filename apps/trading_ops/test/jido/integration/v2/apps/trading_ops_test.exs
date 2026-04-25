@@ -112,7 +112,7 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
     assert packet.targets.market_data.extensions == %{"runtime" => %{"driver" => "asm"}}
 
     assert Enum.sort(packet.targets.analyst.features.feature_ids) ==
-             ["asm", "codex.exec.session"]
+             ["asm", "codex.session.turn"]
 
     assert packet.targets.analyst.extensions == %{"runtime" => %{"driver" => "asm"}}
 
@@ -154,7 +154,7 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
              packet.connections.operator.connection_id
 
     assert packet.runs.market_pull.capability.capability_id == "market.ticks.pull"
-    assert packet.runs.analyst_session.capability.capability_id == "codex.exec.session"
+    assert packet.runs.analyst_session.capability.capability_id == "codex.session.turn"
     assert packet.runs.escalation_issue.capability.capability_id == "github.issue.create"
     assert packet.runs.market_pull.connector.connector_id == "market_data"
     assert packet.runs.analyst_session.connector.connector_id == "codex_cli"
@@ -216,11 +216,11 @@ defmodule Jido.Integration.V2.Apps.TradingOpsTest do
              V2.announce_target(
                TargetDescriptor.new!(%{
                  target_id: "a-target-trading-ops-analyst-session-jido",
-                 capability_id: "codex.exec.session",
+                 capability_id: "codex.session.turn",
                  runtime_class: :session,
                  version: "1.0.0",
                  features: %{
-                   feature_ids: ["jido_session", "codex.exec.session"],
+                   feature_ids: ["jido_session", "codex.session.turn"],
                    runspec_versions: ["1.0.0"],
                    event_schema_versions: ["1.0.0"]
                  },

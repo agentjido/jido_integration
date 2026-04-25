@@ -8,7 +8,7 @@ runtime families.
 
 Its session proof now tracks the accepted Phase 4 session seam: the analyst
 target announces the authored Runtime Control driver `asm`, the common consumer
-surface stays `codex.exec.session`, and runtime session state remains below the
+surface stays `codex.session.turn`, and runtime session state remains below the
 durable integration layer.
 
 ## Current Scope

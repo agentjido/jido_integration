@@ -17,6 +17,7 @@ defmodule Jido.RuntimeControl.ExecutionResult do
               session_id: Zoi.string(),
               runtime_id: Zoi.atom(),
               provider: Zoi.atom() |> Zoi.nullish(),
+              provider_session_id: Zoi.string() |> Zoi.nullish(),
               status: Zoi.atom(),
               text: Zoi.string() |> Zoi.nullish(),
               messages: Zoi.array(Zoi.any()) |> Zoi.default([]),

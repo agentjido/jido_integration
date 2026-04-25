@@ -13,6 +13,9 @@ defmodule Jido.RuntimeControl.RunRequest do
               timeout_ms: Zoi.integer() |> Zoi.nullish(),
               system_prompt: Zoi.string() |> Zoi.nullish(),
               allowed_tools: Zoi.array(Zoi.string()) |> Zoi.nullish(),
+              host_tools: Zoi.array(Zoi.any()) |> Zoi.default([]),
+              continuation: Zoi.map(Zoi.any(), Zoi.any()) |> Zoi.nullish(),
+              provider_metadata: Zoi.map(Zoi.any(), Zoi.any()) |> Zoi.default(%{}),
               attachments: Zoi.array(Zoi.string()) |> Zoi.default([]),
               metadata: Zoi.map(Zoi.string(), Zoi.any()) |> Zoi.default(%{})
             },

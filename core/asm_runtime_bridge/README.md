@@ -13,6 +13,7 @@ while `jido_integration` itself stays at the Runtime Control seam.
 - publish the `asm` Runtime Control driver used by the control plane
 - normalize ASM events and results into Runtime Control IR structs
 - preserve external-runtime session reuse without leaking kernel-private refs
+- pass Codex app-server host-tool specs and provider continuations into ASM
 - author generic execution-surface input from runtime, target, policy, and
   lease context without exposing adapter-module identity
 - localize the `agent_session_manager` dependency so
@@ -54,6 +55,33 @@ does not branch on transport-family internals. Session handles and status
 details now also carry the Wave 5 boundary packet groups under
 `metadata["boundary"]` / `details["boundary"]` so downstream session-bearing
 lanes receive attach and descriptor carriage without rebuilding it locally.
+
+## Codex App-Server Lane
+
+The bridge promotes Codex app-server execution through the normal Runtime
+Control seam:
+
+- callers request the SDK lane with `provider: :codex`, `lane: :sdk`, and
+  `app_server: true`
+- `RunRequest.host_tools` is forwarded to ASM as Codex app-server dynamic tools
+- `RunRequest.continuation` is forwarded as provider-native resume intent
+- run-level `tools` executors are passed through for automatic host-tool
+  responses
+- non-Codex providers receive explicit validation errors for `host_tools` or
+  `app_server` requests rather than silently falling back
+
+ASM host-tool events are projected into `ExecutionEvent` values with
+`provider_session_id`, `provider_turn_id`, `tool_name`, and `approval_id` where
+available. Raw provider payloads are reduced to redacted evidence envelopes
+before crossing into Runtime Control.
+
+Live acceptance:
+
+```bash
+cd core/asm_runtime_bridge
+JIDO_INTEGRATION_WORKSPACE="${JIDO_INTEGRATION_WORKSPACE:-$PWD/../..}"
+/home/home/scripts/with_bash_secrets mix run examples/live_codex_app_server_acceptance.exs -- --cwd "$JIDO_INTEGRATION_WORKSPACE"
+```
 
 ## Runtime Scope
 

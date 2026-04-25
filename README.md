@@ -145,8 +145,14 @@ Runtime families proved in-tree:
   - Linear user, issue, and comment operations
   - Notion user, search, page, block, data-source, and comment operations
 - `:session`
-  - `codex.exec.session`
+  - `codex.session.start`
+  - `codex.session.turn`
+  - `codex.session.cancel`
+  - `codex.session.status`
+  - `codex.session.approve`
+  - `codex.session.tool.respond`
 - `:stream`
+  - `codex.session.stream`
   - `market.ticks.pull`
 - `:inference`
   - cloud provider execution through `req_llm`

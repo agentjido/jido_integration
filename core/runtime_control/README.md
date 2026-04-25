@@ -44,6 +44,9 @@ config :jido_runtime_control, :default_runtime_driver, :jido_session
 request =
   Jido.RuntimeControl.RunRequest.new!(%{
     prompt: "fix the bug",
+    host_tools: [],
+    continuation: nil,
+    provider_metadata: %{},
     metadata: %{}
   })
 
@@ -85,6 +88,26 @@ optional `run/3` callback. `Jido.RuntimeControl.RuntimeDriver` also defines
 optional `subscribe/2` and `resume/3` callbacks; drivers advertise those
 capabilities through `RuntimeDescriptor.subscribe?` and
 `RuntimeDescriptor.resume?`.
+
+## Provider-Native Session Fields
+
+`RunRequest` carries provider-neutral execution input plus optional
+provider-native session controls:
+
+- `host_tools` publishes host-provided tool specs to runtimes that support
+  native host tools. The ASM bridge accepts this for the Codex app-server SDK
+  lane and rejects unsupported providers with a Runtime Control validation
+  error.
+- `continuation` carries provider session resume intent, for example
+  `%{strategy: :exact, provider_session_id: "thread-id"}`.
+- `provider_metadata` carries whitelisted provider option intent such as
+  `%{app_server: true}` without widening the common Runtime Control schema for
+  every provider-specific switch.
+
+`ExecutionEvent` and `ExecutionResult` include `provider_session_id`; streamed
+events can also carry `provider_turn_id`, `tool_name`, and `approval_id`.
+Drivers should redact raw provider evidence before storing it under event
+metadata or `raw`.
 
 ## Boundary Metadata Carriage
 

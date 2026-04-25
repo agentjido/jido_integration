@@ -1,45 +1,55 @@
 # Jido Integration V2 Codex CLI Connector
 
-Example external session connector package using the authored `Jido.RuntimeControl`
-`asm` driver.
+Example external session connector package using the authored
+`Jido.RuntimeControl` `asm` driver and the Codex app-server SDK lane.
 
 This package publishes the canonical session-family authored shape on the
 shared common consumer-surface spine.
 
 ## Runtime And Auth Posture
 
-- runtime family: `:session`
+- runtime families: `:session`, `:stream`
 - stable runtime contract seam: `jido_runtime_control` via `Jido.RuntimeControl`
 - public auth binding is `connection_id`
 - the authored session routing contract is explicit:
   `runtime.driver: "asm"`, `runtime.provider: :codex`, and
-  `runtime.options: %{}`
+  `runtime.options: %{app_server: true}`
 - the `asm` driver resolves through
   `Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver` into
-  `agent_session_manager`, with `cli_subprocess_core` below that lane
-- richer Codex-native APIs still live below this connector boundary in
-  `agent_session_manager` and `codex_sdk`
+  `agent_session_manager`, with `codex_sdk` owning app-server protocol details
 - this connector package depends on `jido_runtime_control` for the
   shared seam; it does not take direct
   `agent_session_manager` or `cli_subprocess_core` package deps
 - the package mints short-lived credential leases with `access_token` payloads
   for deterministic session execution
-- scope-gated admission is explicit through `session:execute`
+- scope-gated admission is explicit through `session:execute`,
+  `session:control`, and `session:tools`
 
 ## Capability Surface
 
-The package publishes one authored session capability:
+The package publishes the promoted Codex app-server session family:
 
-- `codex.exec.session`
+- `codex.session.start`
+- `codex.session.turn`
+- `codex.session.stream`
+- `codex.session.cancel`
+- `codex.session.status`
+- `codex.session.approve`
+- `codex.session.tool.respond`
 
-Its common-surface projection is also explicit:
+The primary executable turn is `codex.session.turn`:
 
 - `consumer_surface.mode: :common`
-- `consumer_surface.normalized_id: "codex.exec.session"`
-- `consumer_surface.action_name: "codex_exec_session"`
+- `consumer_surface.normalized_id: "codex.session.turn"`
+- `consumer_surface.action_name: "codex_session_turn"`
+- `metadata.codex_app_server.primary?: true`
+- `metadata.codex_app_server.host_tools: :native`
 - canonical `metadata.runtime_family` for connection affinity, resumability,
   approval posture, stream capability, lifecycle ownership, and the stable
   Runtime Control runtime reference
+
+The old `codex.exec.session` shape is removed from this connector. It was the
+pre-promotion stdio placeholder and is no longer the primary contract.
 
 For this package, `metadata.runtime_family.runtime_ref: :session` names the
 public Runtime Control handle shape. It does not claim ownership of ASM's internal
@@ -61,6 +71,8 @@ Proves:
 - session reuse keyed by the stable Runtime Control session handle returned by the
   authored `asm` driver while durable review truth keeps only the runtime
   reference id
+- Codex app-server host tools and provider session ids carried by Runtime
+  Control events/results
 
 ## Package Verification
 
@@ -83,8 +95,18 @@ mix ci
 
 ## Live Proof Status
 
-No package-local live proof exists yet. The accepted baseline for this package
-is deterministic package tests plus root conformance.
+No package-local live proof exists yet.
+
+The live app-server acceptance lives at the ASM bridge boundary because that is
+where `agent_session_manager` and `codex_sdk` are both present:
+
+```bash
+cd core/asm_runtime_bridge
+JIDO_INTEGRATION_WORKSPACE="${JIDO_INTEGRATION_WORKSPACE:-$PWD/../..}"
+/home/home/scripts/with_bash_secrets mix run examples/live_codex_app_server_acceptance.exs -- --cwd "$JIDO_INTEGRATION_WORKSPACE"
+```
+
+Default package tests and conformance stay credential-free.
 
 ## Package Boundary
 

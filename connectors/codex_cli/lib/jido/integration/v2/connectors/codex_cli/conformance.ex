@@ -9,12 +9,13 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.Conformance do
   @subject "operator"
   @access_token "codex-demo-token"
   @prompt "Summarize Open Risk"
+  @provider_session_id "codex-thread-conformance"
 
   @spec fixtures() :: [map()]
   def fixtures do
     [
       %{
-        capability_id: "codex.exec.session",
+        capability_id: "codex.session.turn",
         input: %{prompt: @prompt},
         credential_ref: credential_ref(),
         credential_lease: credential_lease(),
@@ -24,11 +25,11 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.Conformance do
         },
         expect: %{
           output: %{
-            reply: "codex(#{@subject}) turn 1: #{String.downcase(@prompt)}",
-            turn: 1,
-            workspace: "/workspaces/codex_cli",
+            text: "codex(#{@subject}) turn 1: #{String.downcase(@prompt)}",
+            provider_session_id: @provider_session_id,
+            status: :completed,
             auth_binding: ArtifactBuilder.digest(@access_token),
-            approval_mode: :manual
+            events: []
           },
           event_types: [
             "session.started",

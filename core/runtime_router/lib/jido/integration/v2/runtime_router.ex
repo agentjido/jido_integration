@@ -258,7 +258,7 @@ defmodule Jido.Integration.V2.RuntimeRouter do
   end
 
   defp build_run_request(%Capability{} = capability, input, context) do
-    RunRequest.new!(%{
+    %{
       prompt: request_prompt(capability, input),
       cwd: workspace_root(context),
       allowed_tools: allowed_tools(context),
@@ -270,7 +270,32 @@ defmodule Jido.Integration.V2.RuntimeRouter do
         "target_id" => context[:target_descriptor] && context.target_descriptor.target_id,
         "input" => input
       }
-    })
+    }
+    |> maybe_put_map(:host_tools, request_host_tools(input))
+    |> maybe_put_map(:continuation, request_continuation(input))
+    |> maybe_put_map(:provider_metadata, request_provider_metadata(input))
+    |> RunRequest.new!()
+  end
+
+  defp request_host_tools(input) do
+    case Contracts.get(input, :host_tools, []) do
+      tools when is_list(tools) -> tools
+      _other -> []
+    end
+  end
+
+  defp request_continuation(input) do
+    case Contracts.get(input, :continuation) do
+      %{} = continuation -> continuation
+      _other -> nil
+    end
+  end
+
+  defp request_provider_metadata(input) do
+    case Contracts.get(input, :provider_metadata, %{}) do
+      %{} = metadata -> metadata
+      _other -> %{}
+    end
   end
 
   defp finalize_execution(

@@ -28,7 +28,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     egress: :restricted,
     approvals: :manual,
     file_scope: "/workspaces/codex_cli",
-    allowed_tools: ["codex.exec.session"]
+    allowed_tools: ["codex.session.turn"]
   }
 
   @ops_sandbox %{
@@ -154,7 +154,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
 
     with {:ok, trigger} <- Ingress.admit_poll(trigger_request, trigger_definition),
          {:ok, market_target} <- choose_target("market.ticks.pull"),
-         {:ok, analyst_target} <- choose_target("codex.exec.session"),
+         {:ok, analyst_target} <- choose_target("codex.session.turn"),
          {:ok, ops_target} <- choose_target("github.issue.create"),
          {:ok, market_pull} <-
            V2.invoke(
@@ -175,13 +175,13 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
            ),
          {:ok, analyst_session} <-
            V2.invoke(
-             "codex.exec.session",
+             "codex.session.turn",
              %{prompt: analyst_prompt(trigger, market_pull.output, attrs)},
              invoke_opts(
                stack.connections.analyst.connection.connection_id,
                tenant_id,
                actor_id,
-               "codex.exec.session",
+               "codex.session.turn",
                @analyst_sandbox,
                analyst_target.target_id
              )
@@ -268,7 +268,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
       analyst:
         target_descriptor(
           @analyst_target_id,
-          "codex.exec.session",
+          "codex.session.turn",
           :session,
           "asm",
           "/srv/trading_ops/analyst"
@@ -421,7 +421,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     - items: #{length(market_output.items)}
 
     Analyst reply:
-    #{analyst_output.reply}
+    #{analyst_output.text}
     """
     |> String.trim()
   end

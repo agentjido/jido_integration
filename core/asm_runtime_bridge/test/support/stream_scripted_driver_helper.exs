@@ -44,6 +44,29 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.TestSupport.StreamScriptedDriver 
     if is_pid(context.subscriber) do
       send(context.subscriber, {:asm_run_done, context.run_id})
     end
+
+    maybe_send_context(context)
+  end
+
+  defp maybe_send_context(context) do
+    case context_test_pid(context) do
+      pid when is_pid(pid) ->
+        send(pid, {:stream_scripted_driver_context, context})
+        :ok
+
+      _other ->
+        :ok
+    end
+  end
+
+  defp context_test_pid(context) do
+    case Map.get(context, :driver_opts) do
+      driver_opts when is_list(driver_opts) ->
+        Keyword.get(driver_opts, :test_pid) || Map.get(context, :test_pid)
+
+      _other ->
+        Map.get(context, :test_pid)
+    end
   end
 
   defp notify_subscriber(context, kind, payload) when is_pid(context.subscriber) do

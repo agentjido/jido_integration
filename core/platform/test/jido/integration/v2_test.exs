@@ -110,7 +110,7 @@ defmodule Jido.Integration.V2Test do
   @codex_cli %{
     connector: CodexCli,
     connector_id: "codex_cli",
-    capability_id: "codex.exec.session",
+    capability_id: "codex.session.turn",
     tenant_id: "tenant-codex",
     environment: :prod,
     sandbox: %{
@@ -118,7 +118,7 @@ defmodule Jido.Integration.V2Test do
       egress: :restricted,
       approvals: :manual,
       file_scope: "/workspaces/codex_cli",
-      allowed_tools: ["codex.exec.session"]
+      allowed_tools: ["codex.session.turn"]
     },
     event_type: "connector.codex_cli.turn.completed",
     artifact_type: :event_log
@@ -197,7 +197,8 @@ defmodule Jido.Integration.V2Test do
       |> Enum.map(&{&1.id, &1.runtime_class})
       |> Enum.sort()
 
-    assert {"codex.exec.session", :session} in capability_ids
+    assert {"codex.session.turn", :session} in capability_ids
+    assert {"codex.session.stream", :stream} in capability_ids
 
     Enum.each(@github_capability_ids, fn capability_id ->
       assert {capability_id, :direct} in capability_ids
@@ -271,11 +272,11 @@ defmodule Jido.Integration.V2Test do
              V2.announce_target(
                TargetDescriptor.new!(%{
                  target_id: "target-operator-session",
-                 capability_id: "codex.exec.session",
+                 capability_id: "codex.session.turn",
                  runtime_class: :session,
                  version: "1.0.0",
                  features: %{
-                   feature_ids: ["asm", "codex.exec.session"],
+                   feature_ids: ["asm", "codex.session.turn"],
                    runspec_versions: ["1.0.0"],
                    event_schema_versions: ["1.0.0"]
                  },
@@ -303,10 +304,22 @@ defmodule Jido.Integration.V2Test do
 
     assert %{
              connector_id: "codex_cli",
-             runtime_families: [:session],
-             capability_ids: ["codex.exec.session"],
-             capabilities: [%{capability_id: "codex.exec.session", runtime_class: :session}]
+             runtime_families: [:session, :stream],
+             capability_ids: capability_ids,
+             capabilities: capabilities
            } = Enum.find(catalog_entries, &(&1.connector_id == "codex_cli"))
+
+    assert "codex.session.turn" in capability_ids
+
+    assert Enum.any?(
+             capabilities,
+             &match?(%{capability_id: "codex.session.turn", runtime_class: :session}, &1)
+           )
+
+    assert Enum.any?(
+             capabilities,
+             &match?(%{capability_id: "codex.session.stream", runtime_class: :stream}, &1)
+           )
 
     assert %{
              connector_id: "github",
@@ -324,11 +337,11 @@ defmodule Jido.Integration.V2Test do
              V2.announce_target(
                TargetDescriptor.new!(%{
                  target_id: "target-authored-asm-session",
-                 capability_id: "codex.exec.session",
+                 capability_id: "codex.session.turn",
                  runtime_class: :session,
                  version: "1.0.0",
                  features: %{
-                   feature_ids: ["asm", "codex.exec.session"],
+                   feature_ids: ["asm", "codex.session.turn"],
                    runspec_versions: ["1.0.0"],
                    event_schema_versions: ["1.0.0"]
                  },
@@ -343,11 +356,11 @@ defmodule Jido.Integration.V2Test do
              V2.announce_target(
                TargetDescriptor.new!(%{
                  target_id: "target-mismatched-session-driver",
-                 capability_id: "codex.exec.session",
+                 capability_id: "codex.session.turn",
                  runtime_class: :session,
                  version: "1.0.0",
                  features: %{
-                   feature_ids: ["jido_session", "codex.exec.session"],
+                   feature_ids: ["jido_session", "codex.session.turn"],
                    runspec_versions: ["1.0.0"],
                    event_schema_versions: ["1.0.0"]
                  },
@@ -363,7 +376,7 @@ defmodule Jido.Integration.V2Test do
              )
 
     assert {:ok, [match]} =
-             V2.compatible_targets_for("codex.exec.session", %{
+             V2.compatible_targets_for("codex.session.turn", %{
                version_requirement: "~> 1.0",
                accepted_runspec_versions: ["1.0.0"],
                accepted_event_schema_versions: ["1.0.0"]
@@ -376,7 +389,7 @@ defmodule Jido.Integration.V2Test do
              event_schema_version: "1.0.0"
            }
 
-    assert match.capability.capability_id == "codex.exec.session"
+    assert match.capability.capability_id == "codex.session.turn"
     assert match.connector.connector_id == "codex_cli"
   end
 
@@ -551,15 +564,15 @@ defmodule Jido.Integration.V2Test do
     assert capability.metadata.runtime == %{
              driver: "asm",
              provider: :codex,
-             options: %{}
+             options: %{app_server: true}
            }
 
     assert capability.metadata.runtime.driver in RuntimeRouter.target_driver_ids()
 
     assert capability.metadata.consumer_surface == %{
              mode: :common,
-             normalized_id: "codex.exec.session",
-             action_name: "codex_exec_session"
+             normalized_id: "codex.session.turn",
+             action_name: "codex_session_turn"
            }
 
     assert capability.metadata.runtime_family == %{
@@ -764,10 +777,10 @@ defmodule Jido.Integration.V2Test do
 
     assert first.run.runtime_class == :session
     assert first.attempt.runtime_ref_id == second.attempt.runtime_ref_id
-    assert first.output.turn == 1
-    assert second.output.turn == 2
-    assert second.output.workspace == "/workspaces/codex_cli"
-    assert second.output.approval_mode == :manual
+    assert first.output.text =~ "turn 1"
+    assert second.output.text =~ "turn 2"
+    assert second.output.provider_session_id == "codex-thread-conformance"
+    assert second.output.status == :completed
 
     assert Enum.any?(V2.events(second.run.run_id), fn event ->
              event.session_id == second.attempt.runtime_ref_id and
@@ -849,7 +862,7 @@ defmodule Jido.Integration.V2Test do
 
     assert "sandbox level standard is weaker than required strict" in error.policy_decision.reasons
 
-    assert "sandbox tool allowlist is missing: codex.exec.session" in error.policy_decision.reasons
+    assert "sandbox tool allowlist is missing: codex.session.turn" in error.policy_decision.reasons
   end
 
   test "stream connector reuses stream state per connection and symbol" do

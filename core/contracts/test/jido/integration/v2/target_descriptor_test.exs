@@ -8,7 +8,7 @@ defmodule Jido.Integration.V2.TargetDescriptorTest do
   test "derives compatibility requirements from authored capability posture" do
     capability =
       Capability.new!(%{
-        id: "codex.exec.session",
+        id: "codex.session.turn",
         connector: "codex_cli",
         runtime_class: :session,
         kind: :operation,
@@ -31,7 +31,7 @@ defmodule Jido.Integration.V2.TargetDescriptorTest do
              accepted_runspec_versions: ["1.0.0"],
              accepted_event_schema_versions: ["1.0.0"]
            }) == %{
-             capability_id: "codex.exec.session",
+             capability_id: "codex.session.turn",
              runtime_class: :session,
              version_requirement: "~> 1.0",
              required_features: ["asm", "tenant_isolated"],
@@ -114,11 +114,11 @@ defmodule Jido.Integration.V2.TargetDescriptorTest do
     descriptor =
       TargetDescriptor.new!(%{
         target_id: "target-runtime",
-        capability_id: "codex.exec.session",
+        capability_id: "codex.session.turn",
         runtime_class: :session,
         version: "1.0.0",
         features: %{
-          feature_ids: ["asm", "codex.exec.session"],
+          feature_ids: ["asm", "codex.session.turn"],
           runspec_versions: ["1.0.0"],
           event_schema_versions: ["1.0.0"]
         },
@@ -131,7 +131,7 @@ defmodule Jido.Integration.V2.TargetDescriptorTest do
                  ~r/target compatibility requirements must not declare runtime override keys/,
                  fn ->
                    TargetDescriptor.compatibility(descriptor, %{
-                     capability_id: "codex.exec.session",
+                     capability_id: "codex.session.turn",
                      runtime_class: :session,
                      runtime: %{driver: "override_driver"}
                    })
@@ -163,11 +163,11 @@ defmodule Jido.Integration.V2.TargetDescriptorTest do
     descriptor =
       TargetDescriptor.new!(%{
         target_id: "target-boundary-authored",
-        capability_id: "codex.exec.session",
+        capability_id: "codex.session.turn",
         runtime_class: :session,
         version: "1.0.0",
         features: %{
-          feature_ids: ["asm", "codex.exec.session"],
+          feature_ids: ["asm", "codex.session.turn"],
           runspec_versions: ["1.0.0"],
           event_schema_versions: ["1.0.0"]
         },
@@ -197,11 +197,11 @@ defmodule Jido.Integration.V2.TargetDescriptorTest do
     descriptor =
       TargetDescriptor.new!(%{
         target_id: "target-boundary-live",
-        capability_id: "codex.exec.session",
+        capability_id: "codex.session.turn",
         runtime_class: :session,
         version: "1.0.0",
         features: %{
-          feature_ids: ["asm", "codex.exec.session"],
+          feature_ids: ["asm", "codex.session.turn"],
           runspec_versions: ["1.0.0"],
           event_schema_versions: ["1.0.0"]
         },

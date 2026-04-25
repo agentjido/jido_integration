@@ -7,6 +7,8 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDrive
   alias Jido.Integration.V2.RuntimeResult
   alias Jido.RuntimeControl.{ExecutionResult, RunRequest, SessionHandle}
 
+  @provider_session_id "codex-thread-conformance"
+
   @spec reset!() :: :ok
   def reset! do
     ensure_table!()
@@ -58,7 +60,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDrive
     workspace = request.cwd
     tool = opts |> Keyword.get(:allowed_tools, []) |> List.first()
     auth_binding = ArtifactBuilder.digest(credential_value(context.credential_lease.payload))
-    reply = "codex(#{context.credential_lease.subject}) turn #{turn}: #{String.downcase(prompt)}"
+    text = "codex(#{context.credential_lease.subject}) turn #{turn}: #{String.downcase(prompt)}"
 
     artifact =
       ArtifactBuilder.build!(
@@ -68,7 +70,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDrive
         key: "codex_cli/#{context.run_id}/#{context.attempt_id}/turn_#{turn}.term",
         content: %{
           prompt: prompt,
-          reply: reply,
+          text: text,
           turn: turn,
           workspace: workspace,
           tool: tool
@@ -84,11 +86,11 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDrive
     runtime_result =
       RuntimeResult.new!(%{
         output: %{
-          reply: reply,
-          turn: turn,
-          workspace: workspace,
+          text: text,
+          provider_session_id: @provider_session_id,
+          status: :completed,
           auth_binding: auth_binding,
-          approval_mode: context.policy_inputs.execution.sandbox.approvals
+          events: []
         },
         runtime_ref_id: session.session_id,
         events: [
@@ -105,7 +107,8 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDrive
               turn: turn,
               workspace: workspace,
               tool: tool,
-              auth_binding: auth_binding
+              auth_binding: auth_binding,
+              provider_session_id: @provider_session_id
             },
             session_id: session.session_id,
             runtime_ref_id: session.session_id
@@ -114,7 +117,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDrive
         artifacts: [artifact]
       })
 
-    execution_result(session, context, reply, runtime_result, opts)
+    execution_result(session, context, text, runtime_result, opts)
   end
 
   defp run_market_data(%SessionHandle{} = session, %RunRequest{} = _request, opts) do
@@ -203,6 +206,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDrive
        session_id: session.session_id,
        runtime_id: :asm,
        provider: session.provider,
+       provider_session_id: @provider_session_id,
        status: :completed,
        text: text,
        messages: [],

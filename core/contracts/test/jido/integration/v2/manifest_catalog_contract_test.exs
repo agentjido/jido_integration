@@ -389,8 +389,8 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
             upstream: %{transport: :stdio},
             consumer_surface: %{
               mode: :common,
-              normalized_id: "codex.exec.session",
-              action_name: "codex_exec_session"
+              normalized_id: "codex.session.turn",
+              action_name: "codex_session_turn"
             },
             schema_policy: %{input: :defined, output: :defined},
             jido: %{},
