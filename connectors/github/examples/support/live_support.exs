@@ -245,7 +245,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
 
     {:ok, result} =
       V2.invoke(capability_id, input,
-        credential_ref: auth.credential_ref,
+        connection_id: auth.connection.connection_id,
         actor_id: auth.connection.actor_id,
         tenant_id: auth.connection.tenant_id,
         environment: :prod,
