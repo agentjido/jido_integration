@@ -19,6 +19,7 @@
 - `./core/dispatch_runtime/mix.exs`: Async trigger dispatch runtime with retry, replay, and recovery
 - `./core/ingress/mix.exs`: Webhook and polling trigger admission for the greenfield platform
 - `./core/platform/mix.exs`: Public facade package for the Jido Integration platform
+- `./core/platform_cluster_runtime/mix.exs`: Cluster-runtime shim for platform-owned package/runtime wiring
 - `./core/policy/mix.exs`: Admission policy evaluation for capabilities
 - `./core/runtime_control/mix.exs`: Shared runtime-control facade, IR, and driver contract layer
 - `./core/runtime_router/mix.exs`: Integration-owned router for session and stream runtime lanes
@@ -54,22 +55,25 @@ jido_integration/
 
 Current core packages:
 
-- `core/platform`
+- `core/asm_runtime_bridge`
+- `core/auth`
 - `core/brain_ingress`
 - `core/conformance`
 - `core/consumer_surfaces`
 - `core/contracts`
 - `core/control_plane`
-- `core/dispatch_runtime`
-- `core/webhook_router`
-- `core/auth`
-- `core/ingress`
-- `core/policy`
 - `core/direct_runtime`
-- `core/asm_runtime_bridge`
+- `core/dispatch_runtime`
+- `core/ingress`
+- `core/platform`
+- `core/platform_cluster_runtime`
+- `core/policy`
+- `core/runtime_control`
+- `core/runtime_router`
 - `core/session_runtime`
 - `core/store_local`
 - `core/store_postgres`
+- `core/webhook_router`
 
 Current connector packages:
 
@@ -112,6 +116,9 @@ Keep documentation aligned to the permanent V2 layout:
 - Treat `platform` as the public facade package. The root workspace must not
   reclaim app identity `:jido_integration_v2`.
 - Treat connector packages as isolated deliverables. Each connector should compile, test, lint, type-check, and document cleanly on its own.
+- `DependencyResolver.execution_plane/1` resolves local sibling development to
+  `../execution_plane/core/execution_plane`. Do not point `:execution_plane` at
+  the sibling repo root; that root is the non-published Blitz workspace project.
 - Use the root `mix jido.integration.new` scaffold for new connector packages
   so they start with explicit child-package deps, runtime-fit handlers, and
   package-local conformance coverage.
