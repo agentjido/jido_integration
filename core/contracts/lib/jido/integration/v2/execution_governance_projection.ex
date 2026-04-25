@@ -167,6 +167,8 @@ defmodule Jido.Integration.V2.ExecutionGovernanceProjection do
       "level" => required_enum!(normalized, "level", @sandbox_levels, "sandbox"),
       "egress" => required_enum!(normalized, "egress", @egress_policies, "sandbox"),
       "approvals" => required_enum!(normalized, "approvals", @approval_modes, "sandbox"),
+      "acceptable_attestation" =>
+        required_non_empty_string_list!(normalized, "acceptable_attestation", "sandbox"),
       "allowed_tools" => required_string_list!(normalized, "allowed_tools", "sandbox"),
       "file_scope_ref" => required_object_string!(normalized, "file_scope_ref", "sandbox"),
       "file_scope_hint" => optional_object_string(normalized, "file_scope_hint", "sandbox")

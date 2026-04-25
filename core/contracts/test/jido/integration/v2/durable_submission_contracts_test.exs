@@ -53,6 +53,10 @@ defmodule Jido.Integration.V2.DurableSubmissionContractsTest do
              "sandbox" => %{
                "allowed_tools" => ["bash", "git"],
                "approvals" => :manual,
+               "acceptable_attestation" => [
+                 "spiffe://prod/microvm-strict@v1",
+                 "local-erlexec-weak"
+               ],
                "egress" => :restricted,
                "file_scope_hint" => "/srv/workspaces/tenant-1",
                "file_scope_ref" => "workspace://tenant-1/root",
@@ -65,6 +69,10 @@ defmodule Jido.Integration.V2.DurableSubmissionContractsTest do
              "execution_family" => "process",
              "logical_workspace_ref" => "workspace://tenant-1/root",
              "placement_intent" => "host_local",
+             "acceptable_attestation" => [
+               "spiffe://prod/microvm-strict@v1",
+               "local-erlexec-weak"
+             ],
              "routing_hints" => %{
                "runtime_driver" => "asm",
                "runtime_provider" => "codex"
@@ -245,6 +253,10 @@ defmodule Jido.Integration.V2.DurableSubmissionContractsTest do
         "level" => "strict",
         "egress" => "restricted",
         "approvals" => "manual",
+        "acceptable_attestation" => [
+          "spiffe://prod/microvm-strict@v1",
+          "local-erlexec-weak"
+        ],
         "allowed_tools" => ["bash", "git"],
         "file_scope_ref" => "workspace://tenant-1/root",
         "file_scope_hint" => "/srv/workspaces/tenant-1"

@@ -53,6 +53,9 @@ In this repo specifically:
   reconciliation-input record
 - durable service descriptors, lease lineage, and attachability remain
   lower-gateway or family-kit records above lower process state
+- governance projections require `sandbox.acceptable_attestation`; the list is
+  carried into gateway/runtime shadows and then into Execution Plane admission
+  requests
 - attach grants, approval lineage, callback truth, and credential-handle
   carriage remain lower-gateway concerns
 - `ExecutionEvent.v1` and `ExecutionOutcome.v1` are consumed as raw lower
@@ -78,6 +81,16 @@ raw `execution_plane` package names into the public platform API.
 That rule also applies to self-hosted service runtime work: higher layers may
 carry durable service descriptors and attach grants, but they must not expose
 raw `ExecutionPlane.Process.Transport` state as the product boundary.
+
+`core/runtime_router` may depend on the root `execution_plane` contracts to
+build `ExecutionPlane.Admission.Request` values and to call an injected
+`ExecutionPlane.Runtime.Client`. It must not expose lane packages as the
+public `Jido.Integration.V2` API.
+
+Fallback ladders are owned here, not inside the node. A multi-attestation
+policy is executed as separate runtime-client calls, one acceptable-attestation
+rung at a time, so each rejection and final success remains durable and
+auditable.
 
 ## Provisional Minimal-Lane Shapes
 

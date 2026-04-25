@@ -196,6 +196,7 @@ defmodule Jido.Integration.V2BrainIngressFacadeTest do
           "level" => "strict",
           "egress" => "restricted",
           "approvals" => "manual",
+          "acceptable_attestation" => ["local-erlexec-weak"],
           "allowed_tools" => ["bash", "git"],
           "file_scope_ref" => "workspace://tenant-1/root",
           "file_scope_hint" => "/srv/workspaces/tenant-1"

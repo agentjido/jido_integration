@@ -204,8 +204,15 @@ The current surface also proves:
 - durable brain-to-lower-gateway acceptance now stays on an explicit seam:
   - `core/contracts` owns canonical JSON, submission identity, audit payload,
     and governance-projection contracts
+  - governance projections require
+    `sandbox.acceptable_attestation` and carry that list into gateway and
+    runtime shadows instead of inventing an implicit local fallback
   - `core/brain_ingress` owns verification, scope resolution, and durable
     acceptance or typed rejection before runtime policy continues
+  - `core/runtime_router` maps accepted governance into
+    `ExecutionPlane.Admission.Request` values and owns fallback ladders by
+    calling the runtime-client execute callback once per acceptable-attestation
+    rung
   - `core/store_local` and `core/store_postgres` provide the concrete
     submission-ledger backends
 - substrate-facing lower-facts reads are no longer an unscoped convenience

@@ -106,8 +106,6 @@ unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
 
       def llama_cpp_sdk(opts \\ []), do: {:llama_cpp_sdk, "~> 0.1.0", opts}
 
-      def erlexec(opts \\ []), do: {:erlexec, "~> 2.2", opts}
-
       defp git_dep(app, subdir, opts) do
         source_opts =
           [git: repo_source(), subdir: subdir]

@@ -114,6 +114,7 @@ defmodule Jido.Integration.V2.StoreLocal.SubmissionLedgerContractTest do
           "level" => "strict",
           "egress" => "restricted",
           "approvals" => "manual",
+          "acceptable_attestation" => ["local-erlexec-weak"],
           "allowed_tools" => ["bash", "git"],
           "file_scope_ref" => "/srv/workspaces/tenant-1",
           "file_scope_hint" => "/srv/workspaces/tenant-1"

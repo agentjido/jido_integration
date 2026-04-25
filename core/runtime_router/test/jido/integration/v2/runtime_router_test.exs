@@ -3,7 +3,9 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
 
   alias Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver
   alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.ExecutionGovernanceProjection
   alias Jido.Integration.V2.RuntimeRouter
+  alias Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.RuntimeControl.{ExecutionResult, SessionHandle}
 
@@ -79,6 +81,51 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     end
 
     def stop_session(%SessionHandle{}), do: :ok
+  end
+
+  defmodule FallbackRuntimeClient do
+    @behaviour ExecutionPlane.Runtime.Client
+
+    alias ExecutionPlane.Admission.Rejection
+    alias ExecutionPlane.ExecutionResult, as: PlaneExecutionResult
+    alias ExecutionPlane.Runtime.NodeDescriptor
+
+    def describe(_opts), do: {:ok, NodeDescriptor.new!(node_id: "stub-remote-node")}
+
+    def admit(request, _opts), do: {:error, Rejection.new(:not_implemented, request.request_id)}
+
+    def execute(request, opts) do
+      test_pid = Keyword.fetch!(opts, :test_pid)
+      attestation_class = List.first(request.acceptable_attestation.classes)
+      send(test_pid, {:execution_plane_execute, attestation_class, request})
+
+      if attestation_class == Keyword.fetch!(opts, :succeed_on) do
+        {:ok,
+         PlaneExecutionResult.new!(
+           execution_ref: "exec-#{attestation_class}",
+           status: "succeeded",
+           output: %{"attestation_class" => attestation_class},
+           evidence: [
+             %{
+               "evidence_type" => "execution.completed",
+               "attestation_class" => attestation_class
+             }
+           ],
+           provenance: request.provenance
+         )}
+      else
+        {:error,
+         PlaneExecutionResult.new!(
+           execution_ref: "exec-#{attestation_class}",
+           status: "rejected",
+           error: %{"reason" => "no_target_for_attestation"},
+           provenance: request.provenance
+         )}
+      end
+    end
+
+    def stream(_request, _opts), do: {:error, Rejection.new(:not_implemented, "stream")}
+    def cancel(_execution_ref, _opts), do: :ok
   end
 
   setup do
@@ -246,6 +293,61 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     end
   end
 
+  test "maps governance into admission requests without rewriting acceptable attestations" do
+    projection = execution_governance_projection()
+
+    request =
+      ExecutionPlaneBoundary.admission_request(
+        projection,
+        %{"prompt" => "hello"},
+        request_id: "request-map-1"
+      )
+
+    assert request.request_id == "request-map-1"
+    assert request.lane_id == "process"
+    assert request.operation == "runtime.session"
+
+    assert request.acceptable_attestation.classes == [
+             "spiffe://prod/microvm-strict@v1",
+             "local-erlexec-weak"
+           ]
+
+    assert request.sandbox_profile.bundle_hash ==
+             ExecutionGovernanceProjection.payload_hash(projection)
+
+    assert request.sandbox_profile.opaque_bundle ==
+             ExecutionGovernanceProjection.dump(projection)
+
+    assert request.authority_ref.metadata["decision_id"] == "decision-1"
+    assert request.provenance.owner == "jido_integration"
+  end
+
+  test "owns the Execution Plane fallback ladder over separate runtime-client calls" do
+    assert {:ok, result, attempts} =
+             ExecutionPlaneBoundary.execute_fallback_ladder(
+               execution_governance_projection(),
+               %{"prompt" => "hello"},
+               FallbackRuntimeClient,
+               runtime_client_opts: [
+                 test_pid: self(),
+                 succeed_on: "local-erlexec-weak"
+               ]
+             )
+
+    assert result.status == "succeeded"
+
+    assert Enum.map(attempts, &{&1.rung, &1.attestation_class, &1.status}) == [
+             {1, "spiffe://prod/microvm-strict@v1", :rejected},
+             {2, "local-erlexec-weak", :succeeded}
+           ]
+
+    assert_receive {:execution_plane_execute, "spiffe://prod/microvm-strict@v1", first_request}
+    assert first_request.acceptable_attestation.classes == ["spiffe://prod/microvm-strict@v1"]
+
+    assert_receive {:execution_plane_execute, "local-erlexec-weak", second_request}
+    assert second_request.acceptable_attestation.classes == ["local-erlexec-weak"]
+  end
+
   defp capability_fixture(overrides \\ %{}) do
     runtime =
       Map.get(overrides, :runtime, %{
@@ -301,6 +403,65 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
       health: :healthy,
       location: %{mode: :beam, region: "test", workspace_root: "/tmp/runtime"},
       extensions: %{"runtime" => runtime_extensions}
+    })
+  end
+
+  defp execution_governance_projection do
+    ExecutionGovernanceProjection.new!(%{
+      contract_version: "v1",
+      execution_governance_id: "governance-runtime-router-1",
+      authority_ref: %{
+        "decision_id" => "decision-1",
+        "policy_version" => "policy-2026-04-24",
+        "decision_hash" => String.duplicate("a", 64)
+      },
+      sandbox: %{
+        "level" => "strict",
+        "egress" => "restricted",
+        "approvals" => "manual",
+        "acceptable_attestation" => [
+          "spiffe://prod/microvm-strict@v1",
+          "local-erlexec-weak"
+        ],
+        "allowed_tools" => ["bash"],
+        "file_scope_ref" => "workspace://tenant/project",
+        "file_scope_hint" => "/workspace/project"
+      },
+      boundary: %{
+        "boundary_class" => "workspace_session",
+        "trust_profile" => "trusted_operator",
+        "requested_attach_mode" => "fresh_or_reuse",
+        "requested_ttl_ms" => 60_000
+      },
+      topology: %{
+        "topology_intent_id" => "topology-1",
+        "session_mode" => "attached",
+        "coordination_mode" => "single_target",
+        "topology_epoch" => 1,
+        "routing_hints" => %{"runtime_driver" => "asm"}
+      },
+      workspace: %{
+        "workspace_profile" => "project_workspace",
+        "logical_workspace_ref" => "workspace://tenant/project",
+        "mutability" => "read_write"
+      },
+      resources: %{
+        "resource_profile" => "standard",
+        "cpu_class" => nil,
+        "memory_class" => nil,
+        "wall_clock_budget_ms" => 120_000
+      },
+      placement: %{
+        "execution_family" => "process",
+        "placement_intent" => "host_local",
+        "target_kind" => "cli",
+        "node_affinity" => "same-node"
+      },
+      operations: %{
+        "allowed_operations" => ["runtime.session"],
+        "effect_classes" => ["process"]
+      },
+      extensions: %{}
     })
   end
 

@@ -120,6 +120,13 @@ defmodule Jido.Integration.Build.DependencyResolver do
     {:req_llm, "~> 1.9", opts}
   end
 
+  def execution_plane(opts \\ []) do
+    case local_root_path("../execution_plane") do
+      nil -> {:execution_plane, "~> 0.1.0", opts}
+      path -> {:execution_plane, Keyword.merge([path: path], opts)}
+    end
+  end
+
   def splode(opts \\ []) do
     {:splode, "~> 0.3.0", opts}
   end
@@ -143,10 +150,6 @@ defmodule Jido.Integration.Build.DependencyResolver do
       nil -> {:llama_cpp_sdk, "~> 0.1.0", opts}
       path -> {:llama_cpp_sdk, Keyword.merge([path: path, override: true], opts)}
     end
-  end
-
-  def erlexec(opts \\ []) do
-    {:erlexec, "~> 2.2", opts}
   end
 
   def repo_root, do: @repo_root

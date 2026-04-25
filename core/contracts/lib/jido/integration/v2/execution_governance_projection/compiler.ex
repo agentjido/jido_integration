@@ -23,6 +23,7 @@ defmodule Jido.Integration.V2.ExecutionGovernanceProjection.Compiler do
           "level" => Contracts.validate_sandbox_level!(sandbox["level"]),
           "egress" => Contracts.validate_egress_policy!(sandbox["egress"]),
           "approvals" => Contracts.validate_approvals!(sandbox["approvals"]),
+          "acceptable_attestation" => sandbox["acceptable_attestation"],
           "allowed_tools" => sandbox["allowed_tools"],
           "file_scope_ref" => sandbox["file_scope_ref"],
           "file_scope_hint" => sandbox["file_scope_hint"]
@@ -34,6 +35,7 @@ defmodule Jido.Integration.V2.ExecutionGovernanceProjection.Compiler do
         "target_kind" => projection.placement["target_kind"],
         "logical_workspace_ref" => projection.workspace["logical_workspace_ref"],
         "routing_hints" => projection.topology["routing_hints"],
+        "acceptable_attestation" => sandbox["acceptable_attestation"],
         "allowed_tools" => sandbox["allowed_tools"]
       },
       boundary_request: %{
