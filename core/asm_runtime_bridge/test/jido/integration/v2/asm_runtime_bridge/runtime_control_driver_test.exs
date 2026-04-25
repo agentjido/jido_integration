@@ -234,6 +234,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
         metadata: %{
           provider_turn_id: "codex-turn-1",
           tool_name: "echo_json",
+          call_id: "call-1",
           access_token: "secret-token"
         }
       )
@@ -243,6 +244,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert projected.type == :host_tool_requested
     assert projected.provider_session_id == "codex-thread-1"
     assert projected.provider_turn_id == "codex-turn-1"
+    assert projected.provider_request_id == "jsonrpc-1"
+    assert projected.provider_tool_call_id == "call-1"
     assert projected.tool_name == "echo_json"
     refute Map.has_key?(projected.payload, "raw")
     assert projected.payload["arguments"]["access_token"] == "[REDACTED]"

@@ -104,10 +104,12 @@ provider-native session controls:
   `%{app_server: true}` without widening the common Runtime Control schema for
   every provider-specific switch.
 
-`ExecutionEvent` and `ExecutionResult` include `provider_session_id`; streamed
-events can also carry `provider_turn_id`, `tool_name`, and `approval_id`.
-Drivers should redact raw provider evidence before storing it under event
-metadata or `raw`.
+`ExecutionEvent` and `ExecutionResult` include `provider_session_id`; results
+can also carry `provider_turn_id`. Streamed events can carry
+`provider_turn_id`, `provider_request_id`, `provider_item_id`,
+`provider_tool_call_id`, `provider_message_id`, `tool_name`, and
+`approval_id`. Drivers should redact raw provider evidence before storing it
+under event metadata or `raw`.
 
 ## Boundary Metadata Carriage
 

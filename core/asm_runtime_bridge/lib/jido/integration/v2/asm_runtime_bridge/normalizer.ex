@@ -26,6 +26,10 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
       provider: session.provider || canonical_provider(event.provider),
       provider_session_id: provider_session_id(event),
       provider_turn_id: provider_turn_id(event),
+      provider_request_id: provider_request_id(event),
+      provider_item_id: provider_item_id(event),
+      provider_tool_call_id: provider_tool_call_id(event),
+      provider_message_id: provider_message_id(event),
       tool_name: tool_name(event),
       approval_id: approval_id(event),
       sequence: event.sequence,
@@ -39,6 +43,10 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
         |> maybe_put("causation_id", event.causation_id)
         |> maybe_put("provider_session_id", provider_session_id(event))
         |> maybe_put("provider_turn_id", provider_turn_id(event))
+        |> maybe_put("provider_request_id", provider_request_id(event))
+        |> maybe_put("provider_item_id", provider_item_id(event))
+        |> maybe_put("provider_tool_call_id", provider_tool_call_id(event))
+        |> maybe_put("provider_message_id", provider_message_id(event))
         |> maybe_put("tool_name", tool_name(event))
         |> maybe_put("approval_id", approval_id(event))
         |> maybe_put("boundary", boundary_metadata(session))
@@ -52,6 +60,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
       |> normalize()
       |> default_map()
       |> maybe_put("provider_session_id", result.session_id_from_cli)
+      |> maybe_put("provider_turn_id", metadata_value(result.metadata, :provider_turn_id))
       |> maybe_put("boundary", boundary_metadata(session))
 
     ExecutionResult.new!(%{
@@ -60,6 +69,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
       runtime_id: session.runtime_id,
       provider: session.provider,
       provider_session_id: result.session_id_from_cli,
+      provider_turn_id: metadata_value(result.metadata, :provider_turn_id),
       status: result_status(result),
       text: result.text,
       messages: normalize(result.messages || []),
@@ -146,6 +156,10 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
       provider: event.provider,
       provider_session_id: provider_session_id(event),
       provider_turn_id: provider_turn_id(event),
+      provider_request_id: provider_request_id(event),
+      provider_item_id: provider_item_id(event),
+      provider_tool_call_id: provider_tool_call_id(event),
+      provider_message_id: provider_message_id(event),
       tool_name: tool_name(event),
       approval_id: approval_id(event),
       metadata: event.metadata,
@@ -156,12 +170,53 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
   end
 
   defp provider_session_id(%Event{} = event) do
-    event.provider_session_id || payload_value(event.payload, :provider_session_id)
+    id_to_string(event.provider_session_id || payload_value(event.payload, :provider_session_id))
   end
 
   defp provider_turn_id(%Event{} = event) do
-    metadata_value(event.metadata, :provider_turn_id) ||
-      payload_value(event.payload, :provider_turn_id)
+    id_to_string(
+      metadata_value(event.metadata, :provider_turn_id) ||
+        payload_value(event.payload, :provider_turn_id)
+    )
+  end
+
+  defp provider_request_id(%Event{} = event) do
+    id_to_string(
+      metadata_value(event.metadata, :provider_request_id) ||
+        metadata_value(event.metadata, :codex_request_id) ||
+        payload_value(event.payload, :provider_request_id) ||
+        payload_value(event.payload, :request_id) ||
+        host_tool_request_id(event)
+    )
+  end
+
+  defp provider_item_id(%Event{} = event) do
+    id_to_string(
+      metadata_value(event.metadata, :provider_item_id) ||
+        metadata_value(event.metadata, :item_id) ||
+        payload_value(event.payload, :provider_item_id) ||
+        payload_value(event.payload, :item_id)
+    )
+  end
+
+  defp provider_tool_call_id(%Event{} = event) do
+    id_to_string(
+      metadata_value(event.metadata, :provider_tool_call_id) ||
+        metadata_value(event.metadata, :tool_call_id) ||
+        metadata_value(event.metadata, :call_id) ||
+        payload_value(event.payload, :provider_tool_call_id) ||
+        payload_value(event.payload, :tool_call_id) ||
+        payload_value(event.payload, :call_id)
+    )
+  end
+
+  defp provider_message_id(%Event{} = event) do
+    id_to_string(
+      metadata_value(event.metadata, :provider_message_id) ||
+        metadata_value(event.metadata, :message_id) ||
+        payload_value(event.payload, :provider_message_id) ||
+        payload_value(event.payload, :message_id)
+    )
   end
 
   defp tool_name(%Event{} = event) do
@@ -169,7 +224,9 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
   end
 
   defp approval_id(%Event{} = event) do
-    payload_value(event.payload, :approval_id) || metadata_value(event.metadata, :approval_id)
+    id_to_string(
+      payload_value(event.payload, :approval_id) || metadata_value(event.metadata, :approval_id)
+    )
   end
 
   defp metadata_value(%{} = map, key) when is_atom(key) do
@@ -181,6 +238,24 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
   defp payload_value(%{} = map, key), do: metadata_value(map, key)
   defp payload_value(%_{} = struct, key), do: struct |> Map.from_struct() |> metadata_value(key)
   defp payload_value(_payload, _key), do: nil
+
+  defp host_tool_request_id(%Event{kind: kind, payload: payload})
+       when kind in [
+              :host_tool_requested,
+              :host_tool_completed,
+              :host_tool_failed,
+              :host_tool_denied
+            ] do
+    payload_value(payload, :id)
+  end
+
+  defp host_tool_request_id(_event), do: nil
+
+  defp id_to_string(nil), do: nil
+  defp id_to_string(value) when is_binary(value), do: value
+  defp id_to_string(value) when is_integer(value), do: Integer.to_string(value)
+  defp id_to_string(value) when is_atom(value), do: Atom.to_string(value)
+  defp id_to_string(value), do: inspect(value)
 
   defp normalize_reason(nil), do: nil
   defp normalize_reason(reason) when is_binary(reason), do: reason

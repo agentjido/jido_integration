@@ -71,9 +71,10 @@ Control seam:
   `app_server` requests rather than silently falling back
 
 ASM host-tool events are projected into `ExecutionEvent` values with
-`provider_session_id`, `provider_turn_id`, `tool_name`, and `approval_id` where
-available. Raw provider payloads are reduced to redacted evidence envelopes
-before crossing into Runtime Control.
+`provider_session_id`, `provider_turn_id`, `provider_request_id`,
+`provider_item_id`, `provider_tool_call_id`, `provider_message_id`,
+`tool_name`, and `approval_id` where available. Raw provider payloads are
+reduced to redacted evidence envelopes before crossing into Runtime Control.
 
 Live acceptance:
 
