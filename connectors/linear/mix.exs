@@ -65,7 +65,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: ["README.md", "docs/live_acceptance.md"]
     ]
   end
 end

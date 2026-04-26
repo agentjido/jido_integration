@@ -129,9 +129,18 @@ mix ci
 
 ## Live Proof Status
 
-No package-local live proof exists yet. Any future live acceptance should stay
-package-local and continue to run through the public auth and direct-runtime
+Package-local live proof entry points now live under `scripts/live_acceptance.sh`
+and `examples/`. They run through the public auth, lease, and direct-runtime
 surface instead of publishing OAuth control helpers as runtime capabilities.
+
+The live proof uses typed operator inputs only. It requires an explicit API-key
+source via standard input or an operator-owned file path; package code, scripts,
+tests, and docs do not define process-variable contracts. It also rejects static
+provider object selectors such as issue ids, comment ids, workflow-state ids, or
+state ids. Live provider ids are discovered from Linear list/retrieve/create
+responses, workflow state, or durable runtime receipts during the run.
+
+See `docs/live_acceptance.md` for the full command contract.
 
 ## SDK Boundary
 

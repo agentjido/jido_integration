@@ -40,7 +40,7 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
              "Package-local live proofs exist"
 
     assert readme(Path.expand("../../connectors/linear/README.md", __DIR__)) =~
-             "No package-local live proof exists yet"
+             "Package-local live proof entry points now live"
 
     assert readme(Path.expand("../../connectors/codex_cli/README.md", __DIR__)) =~
              "No package-local live proof exists yet"
