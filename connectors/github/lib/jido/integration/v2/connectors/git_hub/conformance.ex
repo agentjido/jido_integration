@@ -81,6 +81,27 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Conformance do
   defp conformance_input("github.commits.list"),
     do: %{repo: @repo, sha: "main", path: "lib", per_page: 2, page: 1}
 
+  defp conformance_input("github.contents.upsert") do
+    %{
+      repo: @repo,
+      path: "generated/live-e2e/jido-conformance-proof.txt",
+      message: "Add conformance scratch artifact",
+      content: "scratch artifact",
+      branch: "jido-conformance-proof"
+    }
+  end
+
+  defp conformance_input("github.git.ref.create") do
+    %{
+      repo: @repo,
+      ref: "refs/heads/jido-conformance-proof",
+      sha: "0ddba11adeadbeef1234567890abcdef12345678"
+    }
+  end
+
+  defp conformance_input("github.git.ref.delete"),
+    do: %{repo: @repo, ref: "heads/jido-conformance-proof"}
+
   defp conformance_input("github.issue.fetch"),
     do: %{repo: @repo, issue_number: 77}
 
@@ -170,4 +191,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Conformance do
       side: "RIGHT"
     }
   end
+
+  defp conformance_input("github.repo.fetch"),
+    do: %{repo: @repo}
 end

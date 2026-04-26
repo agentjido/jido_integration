@@ -17,7 +17,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSpec do
             tenant_id: @defaults.tenant_id,
             api_base_url: nil,
             timeout_ms: nil,
-            read_limit: @defaults.read_limit
+            read_limit: @defaults.read_limit,
+            keep_terminal_comment?: false
 
   @type api_key_source :: :stdin | {:file, String.t()}
   @type mode :: :auth | :read | :write | :all
@@ -29,7 +30,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSpec do
           tenant_id: String.t(),
           api_base_url: String.t() | nil,
           timeout_ms: pos_integer() | nil,
-          read_limit: pos_integer()
+          read_limit: pos_integer(),
+          keep_terminal_comment?: boolean()
         }
 
   @spec parse(mode(), [String.t()]) :: {:ok, t()} | {:error, term()}
@@ -66,6 +68,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSpec do
       --actor-id value              operator actor id
       --tenant-id value             tenant id
       --read-limit positive_integer live list page size for dynamic discovery
+      --keep-terminal-comment       preserve the updated write-proof comment as terminal evidence
       --api-base-url url            optional Linear GraphQL API base URL
       --timeout-ms positive_integer optional HTTP receive timeout
     """
@@ -101,6 +104,9 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSpec do
       {:ok, :api_key_stdin} ->
         put_boolean_flag(flag, inline_value, rest, acc, :api_key_stdin)
 
+      {:ok, :keep_terminal_comment} ->
+        put_boolean_flag(flag, inline_value, rest, acc, :keep_terminal_comment)
+
       {:ok, key} ->
         case value_for(flag, inline_value, rest) do
           {:ok, value, remaining} -> parse_args(remaining, Map.put(acc, key, value))
@@ -120,6 +126,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSpec do
   defp flag_key("--api-base-url"), do: {:ok, :api_base_url}
   defp flag_key("--timeout-ms"), do: {:ok, :timeout_ms}
   defp flag_key("--read-limit"), do: {:ok, :read_limit}
+  defp flag_key("--keep-terminal-comment"), do: {:ok, :keep_terminal_comment}
   defp flag_key(_flag), do: :error
 
   defp put_boolean_flag(_flag, nil, rest, acc, key), do: parse_args(rest, Map.put(acc, key, true))
@@ -201,7 +208,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSpec do
       tenant_id: Map.get(opts, :tenant_id, @defaults.tenant_id),
       api_base_url: Map.get(opts, :api_base_url),
       timeout_ms: Map.get(opts, :timeout_ms),
-      read_limit: Map.fetch!(opts, :read_limit)
+      read_limit: Map.fetch!(opts, :read_limit),
+      keep_terminal_comment?: Map.get(opts, :keep_terminal_comment, false)
     })
   end
 

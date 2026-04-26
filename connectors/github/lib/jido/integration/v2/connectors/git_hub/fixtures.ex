@@ -16,9 +16,13 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
   @repo "agentjido/jido_integration_v2"
   @pull_number 17
   @head_ref "source-backed-work"
+  @disposable_ref "refs/heads/jido-live-proof"
+  @disposable_delete_ref "heads/jido-live-proof"
+  @disposable_path "generated/live-e2e/jido-live-proof.txt"
   @base_ref "main"
   @head_sha "f00dbabe1234567890abcdef1234567890abcdef"
   @base_sha "0ddba11adeadbeef1234567890abcdef12345678"
+  @content_sha "c0ffee1234567890abcdef1234567890abcdef12"
 
   @capability_specs [
     %{
@@ -56,6 +60,30 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
       event_type: "connector.github.commits.listed",
       artifact_key: "github/#{@run_id}/#{@attempt_id}/commits_list.term",
       input: %{repo: @repo, sha: @base_ref, path: "lib", per_page: 2, page: 1}
+    },
+    %{
+      capability_id: "github.contents.upsert",
+      event_type: "connector.github.contents.upserted",
+      artifact_key: "github/#{@run_id}/#{@attempt_id}/contents_upsert.term",
+      input: %{
+        repo: @repo,
+        path: @disposable_path,
+        message: "Add live E2E scratch artifact",
+        content: "scratch artifact",
+        branch: @head_ref
+      }
+    },
+    %{
+      capability_id: "github.git.ref.create",
+      event_type: "connector.github.git.ref.created",
+      artifact_key: "github/#{@run_id}/#{@attempt_id}/git_ref_create.term",
+      input: %{repo: @repo, ref: @disposable_ref, sha: @base_sha}
+    },
+    %{
+      capability_id: "github.git.ref.delete",
+      event_type: "connector.github.git.ref.deleted",
+      artifact_key: "github/#{@run_id}/#{@attempt_id}/git_ref_delete.term",
+      input: %{repo: @repo, ref: @disposable_delete_ref}
     },
     %{
       capability_id: "github.issue.close",
@@ -183,6 +211,12 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
         base: @base_ref,
         maintainer_can_modify: true
       }
+    },
+    %{
+      capability_id: "github.repo.fetch",
+      event_type: "connector.github.repo.fetched",
+      artifact_key: "github/#{@run_id}/#{@attempt_id}/repo_fetch.term",
+      input: %{repo: @repo}
     }
   ]
 
@@ -332,6 +366,42 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
       total_count: length(commits),
       commits: commits,
       listed_by: subject,
+      auth_binding: auth_binding(token)
+    }
+  end
+
+  def expected_output("github.contents.upsert", input, subject, token) do
+    %{
+      repo: input.repo,
+      path: input.path,
+      branch: input.branch,
+      content_sha: @content_sha,
+      commit_sha: @head_sha,
+      html_url: "https://github.com/#{input.repo}/blob/#{input.branch}/#{input.path}",
+      committed_by: subject,
+      auth_binding: auth_binding(token)
+    }
+  end
+
+  def expected_output("github.git.ref.create", input, subject, token) do
+    %{
+      repo: input.repo,
+      ref: input.ref,
+      sha: input.sha,
+      object_type: "commit",
+      url: "https://api.github.com/repos/#{input.repo}/git/commits/#{input.sha}",
+      node_id: "REF_jido_live_proof",
+      created_by: subject,
+      auth_binding: auth_binding(token)
+    }
+  end
+
+  def expected_output("github.git.ref.delete", input, subject, token) do
+    %{
+      repo: input.repo,
+      ref: input.ref,
+      deleted?: true,
+      deleted_by: subject,
       auth_binding: auth_binding(token)
     }
   end
@@ -563,6 +633,17 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
     }
   end
 
+  def expected_output("github.repo.fetch", input, subject, token) do
+    %{
+      repo: input.repo,
+      default_branch: @base_ref,
+      private?: false,
+      html_url: "https://github.com/#{input.repo}",
+      fetched_by: subject,
+      auth_binding: auth_binding(token)
+    }
+  end
+
   @spec assert_request(String.t(), map()) :: true
   def assert_request(capability_id, request) do
     input = input_for(capability_id)
@@ -635,6 +716,47 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
     expect_equal(request.method, :get, "request method")
     expect_equal(uri.path, "/repos/agentjido/jido_integration_v2/commits", "request path")
     expect_equal(uri.query, "page=1&path=lib&per_page=2&sha=main", "query string")
+  end
+
+  defp assert_capability_request("github.contents.upsert", request, uri, input) do
+    expect_equal(request.method, :put, "request method")
+
+    expect_equal(
+      uri.path,
+      "/repos/agentjido/jido_integration_v2/contents/generated%2Flive-e2e%2Fjido-live-proof.txt",
+      "request path"
+    )
+
+    expect_equal(
+      Jason.decode!(request.body),
+      %{
+        "branch" => input.branch,
+        "content" => Base.encode64(input.content),
+        "message" => input.message
+      },
+      "request body"
+    )
+  end
+
+  defp assert_capability_request("github.git.ref.create", request, uri, input) do
+    expect_equal(request.method, :post, "request method")
+    expect_equal(uri.path, "/repos/agentjido/jido_integration_v2/git/refs", "request path")
+
+    expect_equal(
+      Jason.decode!(request.body),
+      %{"ref" => input.ref, "sha" => input.sha},
+      "request body"
+    )
+  end
+
+  defp assert_capability_request("github.git.ref.delete", request, uri, _input) do
+    expect_equal(request.method, :delete, "request method")
+
+    expect_equal(
+      uri.path,
+      "/repos/agentjido/jido_integration_v2/git/refs/heads%2Fjido-live-proof",
+      "request path"
+    )
   end
 
   defp assert_capability_request("github.issue.fetch", request, uri, _input) do
@@ -823,6 +945,11 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
     )
   end
 
+  defp assert_capability_request("github.repo.fetch", request, uri, _input) do
+    expect_equal(request.method, :get, "request method")
+    expect_equal(uri.path, "/repos/agentjido/jido_integration_v2", "request path")
+  end
+
   @spec response_for_request(map(), map()) :: {:ok, Response.t()}
   def response_for_request(request, _context \\ %{}) do
     uri = URI.parse(request.url)
@@ -831,9 +958,16 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
     case request.method do
       :get -> response_for_get(request, uri, segments)
       :post -> response_for_post(request, uri, segments)
+      :put -> response_for_put(request, uri, segments)
       :patch -> response_for_patch(request, uri, segments)
+      :delete -> response_for_delete(request, uri, segments)
       _other -> missing_fixture_response(request, uri)
     end
+  end
+
+  defp response_for_get(_request, _uri, ["repos", owner, repo]) do
+    repo = repo_name(owner, repo)
+    sdk_response(repo_fetch_body(repo))
   end
 
   defp response_for_get(_request, uri, ["repos", owner, repo, "issues"]) do
@@ -916,6 +1050,12 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
     sdk_response(create_pr_body(repo, body))
   end
 
+  defp response_for_post(request, _uri, ["repos", owner, repo, "git", "refs"]) do
+    repo = repo_name(owner, repo)
+    body = decode_request_body(request)
+    sdk_response(create_ref_body(repo, body))
+  end
+
   defp response_for_post(request, _uri, ["repos", owner, repo, "pulls", pull_number, "reviews"]) do
     repo = repo_name(owner, repo)
     pull_number = String.to_integer(pull_number)
@@ -950,6 +1090,15 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
 
   defp response_for_post(request, uri, _segments), do: missing_fixture_response(request, uri)
 
+  defp response_for_put(request, _uri, ["repos", owner, repo, "contents" | path_segments]) do
+    repo = repo_name(owner, repo)
+    path = Enum.join(path_segments, "/")
+    body = decode_request_body(request)
+    sdk_response(upsert_contents_body(repo, path, body))
+  end
+
+  defp response_for_put(request, uri, _segments), do: missing_fixture_response(request, uri)
+
   defp response_for_patch(request, _uri, ["repos", owner, repo, "issues", issue_number]) do
     repo = repo_name(owner, repo)
     issue_number = String.to_integer(issue_number)
@@ -976,6 +1125,12 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
   end
 
   defp response_for_patch(request, uri, _segments), do: missing_fixture_response(request, uri)
+
+  defp response_for_delete(_request, _uri, ["repos", _owner, _repo, "git", "refs" | _ref]) do
+    sdk_response(%{}, 204)
+  end
+
+  defp response_for_delete(request, uri, _segments), do: missing_fixture_response(request, uri)
 
   defp missing_fixture_response(request, uri) do
     sdk_response(
@@ -1014,6 +1169,46 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
         "labels" => Enum.map(label_set(issue_number), &%{"name" => &1})
       }
     end
+  end
+
+  defp repo_fetch_body(repo) do
+    %{
+      "full_name" => repo,
+      "default_branch" => @base_ref,
+      "private" => false,
+      "html_url" => "https://github.com/#{repo}"
+    }
+  end
+
+  defp create_ref_body(repo, body) do
+    sha = Map.get(body, "sha")
+
+    %{
+      "ref" => Map.get(body, "ref"),
+      "node_id" => "REF_jido_live_proof",
+      "object" => %{
+        "type" => "commit",
+        "sha" => sha,
+        "url" => "https://api.github.com/repos/#{repo}/git/commits/#{sha}"
+      }
+    }
+  end
+
+  defp upsert_contents_body(repo, path, body) do
+    branch = Map.get(body, "branch", @base_ref)
+
+    %{
+      "content" => %{
+        "name" => Path.basename(path),
+        "path" => path,
+        "sha" => @content_sha,
+        "html_url" => "https://github.com/#{repo}/blob/#{branch}/#{path}"
+      },
+      "commit" => %{
+        "sha" => @head_sha,
+        "html_url" => "https://github.com/#{repo}/commit/#{@head_sha}"
+      }
+    }
   end
 
   defp fetch_issue_body(repo, issue_number) do
@@ -1510,6 +1705,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
   defp path_segments(path) do
     path
     |> String.split("/", trim: true)
+    |> Enum.map(&URI.decode/1)
   end
 
   defp parse_positive_integer(nil), do: nil

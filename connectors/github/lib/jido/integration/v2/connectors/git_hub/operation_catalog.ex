@@ -43,6 +43,9 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       commit_statuses_get_combined_operation(),
       commit_statuses_list_operation(),
       commits_list_operation(),
+      contents_upsert_operation(),
+      git_ref_create_operation(),
+      git_ref_delete_operation(),
       issue_close_operation(),
       issue_create_operation(),
       issue_fetch_operation(),
@@ -56,7 +59,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       pr_review_comment_create_operation(),
       pr_review_comments_list_operation(),
       pr_reviews_list_operation(),
-      pr_update_operation()
+      pr_update_operation(),
+      repo_fetch_operation()
     ]
     |> Enum.sort_by(& &1.operation_id)
   end
@@ -262,6 +266,123 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
         event_type: "connector.github.commits.listed",
         failure_event_type: "connector.github.commits.list.failed",
         artifact_slug: "commits_list",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp contents_upsert_operation do
+    operation_spec(
+      operation_id: "github.contents.upsert",
+      name: "contents_upsert",
+      description: "Create or update repository file contents on a selected branch.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          path: ref_schema(),
+          message: ref_schema(),
+          content: Zoi.string(),
+          branch: ref_schema() |> Zoi.optional(),
+          sha: Zoi.string() |> Zoi.optional(),
+          committer: Zoi.map(description: "Optional GitHub committer object") |> Zoi.optional(),
+          author: Zoi.map(description: "Optional GitHub author object") |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          path: ref_schema(),
+          branch: Zoi.string() |> Zoi.nullable(),
+          content_sha: Zoi.string() |> Zoi.nullable(),
+          commit_sha: Zoi.string(),
+          html_url: Zoi.string() |> Zoi.nullable(),
+          committed_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.contents.upsert"],
+      upstream: %{
+        method: "PUT",
+        path: "/repos/{owner}/{repo}/contents/{path}"
+      },
+      metadata: %{
+        operation: :contents_upsert,
+        sdk_module: GitHubEx.Repos,
+        sdk_function: :create_or_update_file_contents,
+        actor_field: :committed_by,
+        event_type: "connector.github.contents.upserted",
+        failure_event_type: "connector.github.contents.upsert.failed",
+        artifact_slug: "contents_upsert",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp git_ref_create_operation do
+    operation_spec(
+      operation_id: "github.git.ref.create",
+      name: "git_ref_create",
+      description: "Create a Git reference such as a disposable branch.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          ref: ref_schema(),
+          sha: ref_schema(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema: git_ref_output_schema(:created_by),
+      allowed_tools: ["github.api.git.ref.create"],
+      upstream: %{
+        method: "POST",
+        path: "/repos/{owner}/{repo}/git/refs"
+      },
+      metadata: %{
+        operation: :git_ref_create,
+        sdk_module: GitHubEx.Git,
+        sdk_function: :create_ref,
+        actor_field: :created_by,
+        event_type: "connector.github.git.ref.created",
+        failure_event_type: "connector.github.git.ref.create.failed",
+        artifact_slug: "git_ref_create",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp git_ref_delete_operation do
+    operation_spec(
+      operation_id: "github.git.ref.delete",
+      name: "git_ref_delete",
+      description: "Delete a Git reference such as a disposable branch.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          ref: ref_schema(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          ref: ref_schema(),
+          deleted?: Zoi.boolean(),
+          deleted_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.git.ref.delete"],
+      upstream: %{
+        method: "DELETE",
+        path: "/repos/{owner}/{repo}/git/refs/{ref}"
+      },
+      metadata: %{
+        operation: :git_ref_delete,
+        sdk_module: GitHubEx.Git,
+        sdk_function: :delete_ref,
+        actor_field: :deleted_by,
+        event_type: "connector.github.git.ref.deleted",
+        failure_event_type: "connector.github.git.ref.delete.failed",
+        artifact_slug: "git_ref_delete",
         rollout_phase: :a0,
         publication: :public
       }
@@ -923,6 +1044,44 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
     )
   end
 
+  defp repo_fetch_operation do
+    operation_spec(
+      operation_id: "github.repo.fetch",
+      name: "repo_fetch",
+      description: "Fetch repository metadata needed for dynamic live proof defaults.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          default_branch: ref_schema(),
+          private?: Zoi.boolean(),
+          html_url: Zoi.string() |> Zoi.nullable(),
+          fetched_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.repo.fetch"],
+      upstream: %{
+        method: "GET",
+        path: "/repos/{owner}/{repo}"
+      },
+      metadata: %{
+        operation: :repo_fetch,
+        sdk_module: GitHubEx.Repos,
+        sdk_function: :get,
+        actor_field: :fetched_by,
+        event_type: "connector.github.repo.fetched",
+        failure_event_type: "connector.github.repo.fetch.failed",
+        artifact_slug: "repo_fetch",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
   defp operation_spec(opts) do
     operation_id = Keyword.fetch!(opts, :operation_id)
     allowed_tools = Keyword.fetch!(opts, :allowed_tools)
@@ -1001,6 +1160,15 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   defp common_consumer_surface("github.commits.list"),
     do: %{mode: :common, normalized_id: "commit.list", action_name: "commit_list"}
 
+  defp common_consumer_surface("github.contents.upsert"),
+    do: %{mode: :common, normalized_id: "file.upsert", action_name: "file_upsert"}
+
+  defp common_consumer_surface("github.git.ref.create"),
+    do: %{mode: :common, normalized_id: "git_ref.create", action_name: "git_ref_create"}
+
+  defp common_consumer_surface("github.git.ref.delete"),
+    do: %{mode: :common, normalized_id: "git_ref.delete", action_name: "git_ref_delete"}
+
   defp common_consumer_surface("github.issue.list"),
     do: %{mode: :common, normalized_id: "work_item.list", action_name: "work_item_list"}
 
@@ -1072,6 +1240,9 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       action_name: "pull_request_review_comment_create"
     }
   end
+
+  defp common_consumer_surface("github.repo.fetch"),
+    do: %{mode: :common, normalized_id: "repository.fetch", action_name: "repository_fetch"}
 
   defp strict_object(fields) do
     Contracts.strict_object!(fields)
@@ -1169,6 +1340,20 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       sha: Zoi.string() |> Zoi.nullable(),
       repo: Zoi.string() |> Zoi.nullable()
     )
+  end
+
+  defp git_ref_output_schema(actor_field) do
+    [
+      repo: repo_schema(),
+      ref: ref_schema(),
+      sha: ref_schema(),
+      object_type: Zoi.string() |> Zoi.nullable(),
+      url: Zoi.string() |> Zoi.nullable(),
+      node_id: Zoi.string() |> Zoi.nullable(),
+      auth_binding: auth_binding_schema()
+    ]
+    |> Keyword.put(actor_field, Zoi.string())
+    |> strict_object()
   end
 
   defp review_schema do

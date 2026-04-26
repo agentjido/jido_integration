@@ -187,6 +187,17 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationTest do
     refute_receive {:transport_request, _request, _context}
   end
 
+  test "supports disposable PR branch and scratch file lifecycle operations" do
+    expected_capabilities = [
+      "github.repo.fetch",
+      "github.git.ref.create",
+      "github.git.ref.delete",
+      "github.contents.upsert"
+    ]
+
+    assert Enum.all?(expected_capabilities, &fetch_capability!/1)
+  end
+
   defp fetch_capability!(capability_id) do
     Enum.find(GitHub.manifest().capabilities, &(&1.id == capability_id)) ||
       raise "missing capability #{capability_id}"

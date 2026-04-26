@@ -111,6 +111,9 @@ defmodule Jido.Integration.V2Test do
     "github.commit.statuses.get_combined",
     "github.commit.statuses.list",
     "github.commits.list",
+    "github.contents.upsert",
+    "github.git.ref.create",
+    "github.git.ref.delete",
     "github.issue.close",
     "github.issue.create",
     "github.issue.fetch",
@@ -124,7 +127,8 @@ defmodule Jido.Integration.V2Test do
     "github.pr.review_comment.create",
     "github.pr.review_comments.list",
     "github.pr.reviews.list",
-    "github.pr.update"
+    "github.pr.update",
+    "github.repo.fetch"
   ]
   @github_capability_specs Map.new(@github_capabilities, &{&1.capability_id, &1})
 

@@ -33,9 +33,11 @@ Modes:
   discovered issue by provider id, and lists workflow states using the
   discovered team id when one is present.
 - `write` lists and retrieves a discovered issue, creates a disposable comment,
-  updates that comment, performs a no-op issue state update using the issue's
-  current state id from Linear, then deletes the disposable comment through the
-  connector-local GraphQL capability.
+  updates that comment, and performs a no-op issue state update using the
+  issue's current state id from Linear. By default it deletes the disposable
+  comment through the connector-local GraphQL capability; with
+  `--keep-terminal-comment`, it preserves the updated comment as terminal
+  workpad evidence for a higher-level live E2E run.
 - `all` runs auth, read, and write in one runtime boot.
 
 Optional typed settings:
@@ -47,6 +49,7 @@ scripts/live_acceptance.sh all \
   --actor-id operator-1 \
   --tenant-id tenant-linear-live \
   --read-limit 10 \
+  --keep-terminal-comment \
   --timeout-ms 20000
 ```
 
@@ -54,3 +57,7 @@ The proof intentionally rejects static provider selectors such as issue ids,
 comment ids, workflow-state ids, or state ids. Those values must be carried
 from source events, provider list/retrieve/create responses, workflow state, or
 durable receipts.
+
+Use `--keep-terminal-comment` only for runs where the updated Linear comment is
+the intended terminal publication/readback evidence. The returned comment id is
+provider output recorded by the run, not a caller-supplied selector.

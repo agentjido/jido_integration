@@ -50,7 +50,7 @@ What it proves:
 
 - the auth lifecycle proof
 - the read proof surface, including issue list/fetch, commit evidence, statuses, checks, and PR discovery
-- the write proof surface, including issue create, fetch, update, label, comment create/update, and close
+- the write proof surface, including issue create, fetch, update, label, comment create/update, close, repository metadata fetch, disposable branch create/delete, scratch file upsert, disposable PR create/fetch/review/list evidence/close
 
 Combined-mode behavior:
 
@@ -58,6 +58,7 @@ Combined-mode behavior:
 - if an issue exists, its provider-returned number is carried into the fetch proof
 - if no issue exists, `all` creates a temporary issue in the writable repo and carries that returned issue number into the read and write steps
 - PR read proof lists pull requests in the read repo and exercises fetch/reviews/comments only when a PR is discovered
+- PR write proof fetches the writable repository, discovers the default branch head commit, creates a unique disposable branch, commits a scratch file, opens a disposable PR, publishes a comment review, reads the PR/review evidence, closes the PR, and deletes the branch
 
 Use `all` when you want one end-to-end smoke run without having to pre-seed a
 readable repo issue.
@@ -126,9 +127,30 @@ What it proves:
 - `github.comment.create`
 - `github.comment.update`
 - `github.issue.close`
+- `github.repo.fetch`
+- `github.commits.list`
+- `github.git.ref.create`
+- `github.contents.upsert`
+- `github.pr.create`
+- `github.pr.fetch`
+- `github.pr.review.create`
+- `github.pr.reviews.list`
+- `github.pr.review_comments.list`
+- `github.pr.update`
+- `github.git.ref.delete`
 
-Use a sandbox repository. The script attempts to close the created issue even
-if a later proof step fails, but it still performs real writes.
+Use a sandbox repository. The script attempts to close the created issue and
+pull request and delete the disposable branch if a later proof step fails, but
+it still performs real writes.
+
+Identity lifecycle:
+
+- repository identity is the typed `--write-repo owner/repo` argument
+- default branch identity comes from `github.repo.fetch`
+- base commit identity comes from `github.commits.list` scoped to that default branch
+- branch identity is generated uniquely for the run and then carried into `github.git.ref.create`, `github.contents.upsert`, and `github.pr.create`
+- scratch commit SHA, PR number, review id, comment id, and cleanup refs come from provider responses and are recorded in the run summary
+- the caller cannot provide issue numbers, PR numbers, branch names, commit SHAs, review ids, or comment ids
 
 ## Typed Arguments
 

@@ -348,6 +348,8 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
           issue_number: issue_number
         })
 
+      pr_result = perform_disposable_pr_acceptance(auth, spec, repo, seed)
+
       expect!(create_result.output.repo == repo, "issue create returned the wrong repo")
 
       expect!(
@@ -383,16 +385,18 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
         comment_id: create_comment_result.output.comment_id,
         label: spec.write_label,
         close_state: close_result.output.state,
+        disposable_pr: pr_result.summary,
         auth_connection_id: auth.connection.connection_id,
-        run_ids: [
-          create_result.run.run_id,
-          fetch_result.run.run_id,
-          update_result.run.run_id,
-          label_result.run.run_id,
-          create_comment_result.run.run_id,
-          update_comment_result.run.run_id,
-          close_result.run.run_id
-        ]
+        run_ids:
+          [
+            create_result.run.run_id,
+            fetch_result.run.run_id,
+            update_result.run.run_id,
+            label_result.run.run_id,
+            create_comment_result.run.run_id,
+            update_comment_result.run.run_id,
+            close_result.run.run_id
+          ] ++ pr_result.run_ids
       }
     rescue
       error ->
@@ -425,12 +429,19 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     })
   end
 
-  defp list_commits!(auth, repo) do
-    invoke!(auth, "github.commits.list", %{
-      repo: repo,
-      per_page: 1,
-      page: 1
-    })
+  defp fetch_repo!(auth, repo) do
+    invoke!(auth, "github.repo.fetch", %{repo: repo})
+  end
+
+  defp list_commits!(auth, repo, sha \\ nil) do
+    input =
+      if is_binary(sha) do
+        %{repo: repo, sha: sha, per_page: 1, page: 1}
+      else
+        %{repo: repo, per_page: 1, page: 1}
+      end
+
+    invoke!(auth, "github.commits.list", input)
   end
 
   defp fetch_combined_status!(auth, repo, ref) do
@@ -542,8 +553,214 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     })
   end
 
+  defp perform_disposable_pr_acceptance(auth, _spec, repo, seed) do
+    repo_result = fetch_repo!(auth, repo)
+    default_branch = repo_result.output.default_branch
+
+    expect!(
+      is_binary(default_branch) and default_branch != "",
+      "repository fetch did not return a default branch"
+    )
+
+    base_commits_result = list_commits!(auth, repo, default_branch)
+    base_sha = first_commit_sha!(base_commits_result.output.commits, repo)
+    branch = unique_branch_name()
+    create_ref = "refs/heads/#{branch}"
+    delete_ref = "heads/#{branch}"
+    scratch_path = "generated/live-e2e/#{branch}.txt"
+
+    create_ref_result = create_ref!(auth, repo, create_ref, base_sha)
+
+    try do
+      upsert_result =
+        upsert_contents!(
+          auth,
+          repo,
+          scratch_path,
+          "Add #{branch} GitHub live proof artifact",
+          disposable_pr_content(seed, repo, default_branch, base_sha),
+          branch
+        )
+
+      create_pr_result =
+        create_pr!(
+          auth,
+          repo,
+          "Jido live PR acceptance #{branch}",
+          "Disposable PR created by the package-local GitHub live proof.",
+          branch,
+          default_branch
+        )
+
+      created_pr =
+        exercise_created_disposable_pr!(
+          auth,
+          repo,
+          create_pr_result,
+          upsert_result.output.commit_sha,
+          seed
+        )
+
+      delete_ref_result = delete_ref!(auth, repo, delete_ref)
+
+      expect!(create_ref_result.output.sha == base_sha, "branch ref used the wrong base sha")
+
+      expect!(
+        upsert_result.output.path == scratch_path,
+        "scratch file upsert used the wrong path"
+      )
+
+      expect!(create_pr_result.output.repo == repo, "PR create returned the wrong repo")
+
+      expect!(
+        created_pr.fetch_result.output.pull_number == create_pr_result.output.pull_number,
+        "PR fetch returned the wrong PR"
+      )
+
+      expect!(
+        created_pr.close_result.output.state == "closed",
+        "PR close did not return closed state"
+      )
+
+      expect!(
+        delete_ref_result.output.deleted? == true,
+        "branch ref delete did not report success"
+      )
+
+      %{
+        summary: %{
+          repo: repo,
+          default_branch: default_branch,
+          base_sha: base_sha,
+          branch: branch,
+          branch_ref: create_ref,
+          deleted_ref: delete_ref_result.output.ref,
+          scratch_path: scratch_path,
+          scratch_commit_sha: upsert_result.output.commit_sha,
+          pull_number: create_pr_result.output.pull_number,
+          review_id: created_pr.review_result.output.review.review_id,
+          review_state: created_pr.review_result.output.review.state,
+          review_count: created_pr.reviews_result.output.total_count,
+          review_comment_count: created_pr.comments_result.output.total_count,
+          close_state: created_pr.close_result.output.state
+        },
+        run_ids: [
+          repo_result.run.run_id,
+          base_commits_result.run.run_id,
+          create_ref_result.run.run_id,
+          upsert_result.run.run_id,
+          create_pr_result.run.run_id,
+          created_pr.fetch_result.run.run_id,
+          created_pr.review_result.run.run_id,
+          created_pr.reviews_result.run.run_id,
+          created_pr.comments_result.run.run_id,
+          created_pr.close_result.run.run_id,
+          delete_ref_result.run.run_id
+        ]
+      }
+    rescue
+      error ->
+        safe_delete_ref(auth, repo, delete_ref)
+        reraise(error, __STACKTRACE__)
+    end
+  end
+
+  defp exercise_created_disposable_pr!(
+         auth,
+         repo,
+         create_pr_result,
+         scratch_commit_sha,
+         seed
+       ) do
+    pull_number = create_pr_result.output.pull_number
+
+    try do
+      fetch_result = fetch_pr!(auth, repo, pull_number)
+
+      review_result =
+        create_pr_review!(
+          auth,
+          repo,
+          pull_number,
+          scratch_commit_sha,
+          seed.comment_body <> " PR review evidence."
+        )
+
+      reviews_result = list_pr_reviews!(auth, repo, pull_number)
+      comments_result = list_pr_review_comments!(auth, repo, pull_number)
+      close_result = close_pr!(auth, repo, pull_number)
+
+      %{
+        fetch_result: fetch_result,
+        review_result: review_result,
+        reviews_result: reviews_result,
+        comments_result: comments_result,
+        close_result: close_result
+      }
+    rescue
+      error ->
+        safe_close_pr(auth, repo, pull_number)
+        reraise(error, __STACKTRACE__)
+    end
+  end
+
+  defp create_ref!(auth, repo, ref, sha) do
+    invoke!(auth, "github.git.ref.create", %{
+      repo: repo,
+      ref: ref,
+      sha: sha
+    })
+  end
+
+  defp delete_ref!(auth, repo, ref) do
+    invoke!(auth, "github.git.ref.delete", %{
+      repo: repo,
+      ref: ref
+    })
+  end
+
+  defp upsert_contents!(auth, repo, path, message, content, branch) do
+    invoke!(auth, "github.contents.upsert", %{
+      repo: repo,
+      path: path,
+      message: message,
+      content: content,
+      branch: branch
+    })
+  end
+
+  defp create_pr!(auth, repo, title, body, head, base) do
+    invoke!(auth, "github.pr.create", %{
+      repo: repo,
+      title: title,
+      body: body,
+      head: head,
+      base: base,
+      draft: false,
+      maintainer_can_modify: true
+    })
+  end
+
+  defp create_pr_review!(auth, repo, pull_number, commit_id, body) do
+    invoke!(auth, "github.pr.review.create", %{
+      repo: repo,
+      pull_number: pull_number,
+      body: body,
+      event: "COMMENT",
+      commit_id: commit_id
+    })
+  end
+
+  defp close_pr!(auth, repo, pull_number) do
+    invoke!(auth, "github.pr.update", %{
+      repo: repo,
+      pull_number: pull_number,
+      state: "closed"
+    })
+  end
+
   defp write_seed do
-    marker = Integer.to_string(System.system_time(:second))
+    marker = unique_marker()
 
     %{
       title: "Jido live acceptance #{marker}",
@@ -565,6 +782,55 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
   end
 
   defp safe_close_issue(_auth, _repo, _issue_number), do: :ok
+
+  defp safe_close_pr(auth, repo, pull_number)
+       when is_binary(repo) and is_integer(pull_number) do
+    _ =
+      try do
+        close_pr!(auth, repo, pull_number)
+      rescue
+        _error -> :noop
+      end
+
+    :ok
+  end
+
+  defp safe_close_pr(_auth, _repo, _pull_number), do: :ok
+
+  defp safe_delete_ref(auth, repo, ref)
+       when is_binary(repo) and is_binary(ref) do
+    _ =
+      try do
+        delete_ref!(auth, repo, ref)
+      rescue
+        _error -> :noop
+      end
+
+    :ok
+  end
+
+  defp safe_delete_ref(_auth, _repo, _ref), do: :ok
+
+  defp disposable_pr_content(seed, repo, default_branch, base_sha) do
+    """
+    #{seed.title}
+
+    Repository: #{repo}
+    Default branch: #{default_branch}
+    Base commit: #{base_sha}
+
+    This file is created on a disposable branch, carried into a disposable pull
+    request, and deleted by the package-local GitHub live proof.
+    """
+  end
+
+  defp unique_branch_name do
+    "jido-live-e2e-#{unique_marker()}"
+  end
+
+  defp unique_marker do
+    "#{System.system_time(:second)}-#{System.unique_integer([:positive])}"
+  end
 
   defp first_issue_number!([], repo) do
     raise ArgumentError,

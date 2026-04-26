@@ -62,6 +62,9 @@ The connector publishes these direct runtime capabilities:
 - `github.commit.statuses.get_combined`
 - `github.commit.statuses.list`
 - `github.commits.list`
+- `github.contents.upsert`
+- `github.git.ref.create`
+- `github.git.ref.delete`
 - `github.pr.create`
 - `github.pr.fetch`
 - `github.pr.list`
@@ -70,6 +73,7 @@ The connector publishes these direct runtime capabilities:
 - `github.pr.review_comments.list`
 - `github.pr.review.create`
 - `github.pr.review_comment.create`
+- `github.repo.fetch`
 
 All direct capabilities currently require the GitHub `repo` scope.
 
@@ -92,6 +96,9 @@ authored operation specs project into these normalized action names:
 - `commit_status_combined_fetch`
 - `commit_status_list`
 - `commit_list`
+- `file_upsert`
+- `git_ref_create`
+- `git_ref_delete`
 - `pull_request_create`
 - `pull_request_fetch`
 - `pull_request_list`
@@ -100,6 +107,7 @@ authored operation specs project into these normalized action names:
 - `pull_request_review_comment_list`
 - `pull_request_review_create`
 - `pull_request_review_comment_create`
+- `repository_fetch`
 
 That common layer now projects into:
 
@@ -199,7 +207,12 @@ scripts/live_acceptance.sh all --repo owner/repo --write-repo owner/sandbox-repo
 
 `all` runs one combined live proof. If the read repo does not already have an
 issue, the combined flow bootstraps the writable repo with a temporary issue
-and reuses the provider-returned issue number for the read and write steps.
+and reuses the provider-returned issue number for the read and write steps. The
+write flow also fetches repository metadata, discovers the default branch head,
+creates a unique disposable branch, commits a scratch file, opens a disposable
+pull request, publishes a comment review, closes the pull request, and deletes
+the branch. The branch name, commit SHA, PR number, review id, and cleanup refs
+all come from connector inputs derived during the run or provider responses.
 
 ```bash
 cd connectors/github
@@ -220,6 +233,12 @@ caller-supplied PR number.
 cd connectors/github
 scripts/live_acceptance.sh write --write-repo owner/sandbox-repo
 ```
+
+`write` performs real issue and PR mutations in the disposable write repository:
+issue create/fetch/update/label/comment/update/close plus repository fetch,
+branch create, scratch file upsert, PR create/fetch/review/list evidence/close,
+and branch delete. It does not accept issue numbers, PR numbers, branch names,
+commit SHAs, review ids, or comment ids from the caller.
 
 Read the detailed runbook in [`docs/live_acceptance.md`](docs/live_acceptance.md).
 

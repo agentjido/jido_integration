@@ -15,6 +15,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSpecTest do
     assert spec.actor_id == "linear-live-proof"
     assert spec.tenant_id == "tenant-linear-live"
     assert spec.read_limit == 10
+    assert spec.keep_terminal_comment? == false
     assert spec.api_base_url == nil
     assert spec.timeout_ms == nil
   end
@@ -55,7 +56,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSpecTest do
                "--tenant-id=tenant-1",
                "--api-base-url=https://linear.example.test/graphql",
                "--timeout-ms=20000",
-               "--read-limit=25"
+               "--read-limit=25",
+               "--keep-terminal-comment"
              ])
 
     assert spec.subject == "operator"
@@ -64,6 +66,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSpecTest do
     assert spec.api_base_url == "https://linear.example.test/graphql"
     assert spec.timeout_ms == 20_000
     assert spec.read_limit == 25
+    assert spec.keep_terminal_comment? == true
   end
 
   test "rejects malformed integers, duplicate credential sources, and unknown provider id flags" do

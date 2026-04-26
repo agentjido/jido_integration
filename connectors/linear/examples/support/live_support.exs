@@ -277,7 +277,10 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSupport do
           state_id: state_id
         })
 
-      delete_comment_result = delete_comment!(auth, comment_id)
+      delete_comment_result =
+        unless spec.keep_terminal_comment? do
+          delete_comment!(auth, comment_id)
+        end
 
       expect!(create_comment_result.output.success, "comment create did not report success")
       expect!(update_comment_result.output.success, "comment update did not report success")
@@ -297,16 +300,21 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSupport do
         issue_id: fetched_issue.id,
         issue_identifier: fetched_issue.identifier,
         comment_id: comment_id,
-        cleanup: %{comment_deleted?: true},
+        terminal_publication: %{
+          comment_id: comment_id,
+          body: update_comment_result.output.comment.body,
+          preserved_as_terminal_evidence?: spec.keep_terminal_comment?
+        },
+        cleanup: %{comment_deleted?: not spec.keep_terminal_comment?},
         auth_connection_id: auth.connection.connection_id,
-        run_ids: [
-          list_result.run.run_id,
-          fetch_result.run.run_id,
-          create_comment_result.run.run_id,
-          update_comment_result.run.run_id,
-          update_issue_result.run.run_id,
-          delete_comment_result.run.run_id
-        ]
+        run_ids:
+          [
+            list_result.run.run_id,
+            fetch_result.run.run_id,
+            create_comment_result.run.run_id,
+            update_comment_result.run.run_id,
+            update_issue_result.run.run_id
+          ] ++ maybe_result_run_ids(delete_comment_result)
       }
     rescue
       error ->
@@ -363,6 +371,9 @@ defmodule Jido.Integration.V2.Connectors.Linear.LiveSupport do
 
     :ok
   end
+
+  defp maybe_result_run_ids(nil), do: []
+  defp maybe_result_run_ids(result), do: [result.run.run_id]
 
   defp first_issue!([]) do
     raise ArgumentError,

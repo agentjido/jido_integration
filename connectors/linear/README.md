@@ -139,6 +139,10 @@ tests, and docs do not define process-variable contracts. It also rejects static
 provider object selectors such as issue ids, comment ids, workflow-state ids, or
 state ids. Live provider ids are discovered from Linear list/retrieve/create
 responses, workflow state, or durable runtime receipts during the run.
+Write mode normally deletes its disposable comment after update. Higher-level
+live E2E runs can pass `--keep-terminal-comment` to preserve the updated
+comment as terminal workpad evidence while still carrying the comment id only
+from provider output.
 
 See `docs/live_acceptance.md` for the full command contract.
 

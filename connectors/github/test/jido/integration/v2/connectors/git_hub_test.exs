@@ -14,6 +14,9 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     "github.commit.statuses.get_combined",
     "github.commit.statuses.list",
     "github.commits.list",
+    "github.contents.upsert",
+    "github.git.ref.create",
+    "github.git.ref.delete",
     "github.issue.close",
     "github.issue.create",
     "github.issue.fetch",
@@ -27,7 +30,8 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     "github.pr.review_comment.create",
     "github.pr.review_comments.list",
     "github.pr.reviews.list",
-    "github.pr.update"
+    "github.pr.update",
+    "github.repo.fetch"
   ]
 
   @sdk_expectations %{
@@ -40,6 +44,10 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     "github.commit.statuses.list" =>
       {GitHubEx.Repos, :list_commit_statuses_for_ref, ["github.api.commit.statuses.list"]},
     "github.commits.list" => {GitHubEx.Repos, :list_commits, ["github.api.commits.list"]},
+    "github.contents.upsert" =>
+      {GitHubEx.Repos, :create_or_update_file_contents, ["github.api.contents.upsert"]},
+    "github.git.ref.create" => {GitHubEx.Git, :create_ref, ["github.api.git.ref.create"]},
+    "github.git.ref.delete" => {GitHubEx.Git, :delete_ref, ["github.api.git.ref.delete"]},
     "github.issue.close" => {GitHubEx.Issues, :update, ["github.api.issue.close"]},
     "github.issue.create" => {GitHubEx.Issues, :create, ["github.api.issue.create"]},
     "github.issue.fetch" => {GitHubEx.Issues, :get, ["github.api.issue.fetch"]},
@@ -56,7 +64,8 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     "github.pr.review_comments.list" =>
       {GitHubEx.Pulls, :list_review_comments, ["github.api.pr.review_comments.list"]},
     "github.pr.reviews.list" => {GitHubEx.Pulls, :list_reviews, ["github.api.pr.reviews.list"]},
-    "github.pr.update" => {GitHubEx.Pulls, :update, ["github.api.pr.update"]}
+    "github.pr.update" => {GitHubEx.Pulls, :update, ["github.api.pr.update"]},
+    "github.repo.fetch" => {GitHubEx.Repos, :get, ["github.api.repo.fetch"]}
   }
   @normalized_surface_expectations %{
     "github.check_runs.list_for_ref" => {"check_run.list", "check_run_list"},
@@ -66,6 +75,9 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
       {"commit_status.combined_fetch", "commit_status_combined_fetch"},
     "github.commit.statuses.list" => {"commit_status.list", "commit_status_list"},
     "github.commits.list" => {"commit.list", "commit_list"},
+    "github.contents.upsert" => {"file.upsert", "file_upsert"},
+    "github.git.ref.create" => {"git_ref.create", "git_ref_create"},
+    "github.git.ref.delete" => {"git_ref.delete", "git_ref_delete"},
     "github.issue.close" => {"work_item.close", "work_item_close"},
     "github.issue.create" => {"work_item.create", "work_item_create"},
     "github.issue.fetch" => {"work_item.fetch", "work_item_fetch"},
@@ -81,7 +93,8 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     "github.pr.review_comments.list" =>
       {"pull_request_review_comment.list", "pull_request_review_comment_list"},
     "github.pr.reviews.list" => {"pull_request_review.list", "pull_request_review_list"},
-    "github.pr.update" => {"pull_request.update", "pull_request_update"}
+    "github.pr.update" => {"pull_request.update", "pull_request_update"},
+    "github.repo.fetch" => {"repository.fetch", "repository_fetch"}
   }
 
   test "publishes the A0 direct catalog slice as authored operation specs plus derived capabilities" do

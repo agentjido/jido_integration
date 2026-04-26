@@ -131,6 +131,44 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     end
   end
 
+  defp sdk_params(:contents_upsert, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_non_empty_string(input, :path),
+         :ok <- validate_required_non_empty_string(input, :message),
+         :ok <- validate_required_string(input, :content) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [
+           :path,
+           :message,
+           :content,
+           :branch,
+           :sha,
+           :committer,
+           :author,
+           :request_opts
+         ])
+         |> encode_content()
+       )}
+    end
+  end
+
+  defp sdk_params(:git_ref_create, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_non_empty_string(input, :ref),
+         :ok <- validate_required_non_empty_string(input, :sha) do
+      {:ok, Map.merge(repo_params, take_present(input, [:ref, :sha, :request_opts]))}
+    end
+  end
+
+  defp sdk_params(:git_ref_delete, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_non_empty_string(input, :ref) do
+      {:ok, Map.merge(repo_params, take_present(input, [:ref, :request_opts]))}
+    end
+  end
+
   defp sdk_params(:issue_list, input) do
     with {:ok, repo_params} <- repo_params(input),
          :ok <- validate_optional_positive_integer(input, :per_page),
@@ -350,6 +388,12 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     end
   end
 
+  defp sdk_params(:repo_fetch, input) do
+    with {:ok, repo_params} <- repo_params(input) do
+      {:ok, Map.merge(repo_params, take_present(input, [:request_opts]))}
+    end
+  end
+
   defp normalize_output(:check_runs_list_for_ref, response, input, context, auth_binding) do
     check_runs =
       response
@@ -411,6 +455,34 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
       total_count: length(commits),
       commits: commits,
       listed_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp normalize_output(:contents_upsert, response, input, context, auth_binding) do
+    %{
+      repo: repo_value(input),
+      path: input_value(input, :path),
+      branch: input_value(input, :branch),
+      content_sha: get_in(response, ["content", "sha"]),
+      commit_sha: get_in(response, ["commit", "sha"]),
+      html_url: get_in(response, ["content", "html_url"]),
+      committed_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp normalize_output(:git_ref_create, response, input, context, auth_binding) do
+    normalize_git_ref(response, input)
+    |> Map.merge(%{created_by: context.credential_lease.subject, auth_binding: auth_binding})
+  end
+
+  defp normalize_output(:git_ref_delete, _response, input, context, auth_binding) do
+    %{
+      repo: repo_value(input),
+      ref: input_value(input, :ref),
+      deleted?: true,
+      deleted_by: context.credential_lease.subject,
       auth_binding: auth_binding
     }
   end
@@ -603,6 +675,17 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     }
   end
 
+  defp normalize_output(:repo_fetch, response, _input, context, auth_binding) do
+    %{
+      repo: Map.get(response, "full_name"),
+      default_branch: Map.get(response, "default_branch"),
+      private?: Map.get(response, "private", false),
+      html_url: Map.get(response, "html_url"),
+      fetched_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
   defp error_result(context, metadata, input, auth_binding, mapped_error) do
     runtime_result =
       RuntimeResult.new!(%{
@@ -736,6 +819,26 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     end
   end
 
+  defp validate_required_string(input, field) do
+    case fetch_input(input, field) do
+      {:ok, value} when is_binary(value) ->
+        :ok
+
+      {:ok, value} ->
+        {:error, {:invalid_input, field, value}}
+
+      :error ->
+        {:error, {:invalid_input, field, nil}}
+    end
+  end
+
+  defp encode_content(params) do
+    case Map.fetch(params, :content) do
+      {:ok, content} -> Map.put(params, :content, Base.encode64(content))
+      :error -> params
+    end
+  end
+
   defp normalize_labels(labels) when is_list(labels) do
     Enum.map(labels, fn
       %{"name" => name} -> name
@@ -777,6 +880,19 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
       user: login(Map.get(response, "user")),
       labels: normalize_labels(Map.get(response, "labels", [])),
       requested_reviewers: normalize_logins(Map.get(response, "requested_reviewers", []))
+    }
+  end
+
+  defp normalize_git_ref(response, input) do
+    object = Map.get(response, "object", %{})
+
+    %{
+      repo: repo_value(input),
+      ref: Map.get(response, "ref", input_value(input, :ref)),
+      sha: Map.get(object, "sha", input_value(input, :sha)),
+      object_type: Map.get(object, "type"),
+      url: Map.get(object, "url"),
+      node_id: Map.get(response, "node_id")
     }
   end
 
@@ -911,6 +1027,34 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     }
   end
 
+  defp event_payload(:contents_upsert, output, auth_binding) do
+    %{
+      repo: output.repo,
+      path: output.path,
+      branch: output.branch,
+      commit_sha: output.commit_sha,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:git_ref_create, output, auth_binding) do
+    %{
+      repo: output.repo,
+      ref: output.ref,
+      sha: output.sha,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:git_ref_delete, output, auth_binding) do
+    %{
+      repo: output.repo,
+      ref: output.ref,
+      deleted?: output.deleted?,
+      auth_binding: auth_binding
+    }
+  end
+
   defp event_payload(:issue_list, output, auth_binding) do
     %{
       repo: output.repo,
@@ -1009,6 +1153,14 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
       repo: output.repo,
       pull_number: output.pull_number,
       comment_id: output.comment.comment_id,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:repo_fetch, output, auth_binding) do
+    %{
+      repo: output.repo,
+      default_branch: output.default_branch,
       auth_binding: auth_binding
     }
   end
