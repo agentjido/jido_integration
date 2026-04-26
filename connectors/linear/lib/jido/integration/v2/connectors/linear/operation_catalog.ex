@@ -32,10 +32,13 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationCatalog do
   def operations do
     [
       comments_create_operation(),
+      comments_update_operation(),
+      graphql_execute_operation(),
       issues_list_operation(),
       issues_retrieve_operation(),
       issues_update_operation(),
-      users_get_self_operation()
+      users_get_self_operation(),
+      workflow_states_list_operation()
     ]
     |> Enum.sort_by(& &1.operation_id)
   end
@@ -153,6 +156,49 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationCatalog do
     )
   end
 
+  defp comments_update_operation do
+    operation_spec(
+      operation_id: "linear.comments.update",
+      name: "comments_update",
+      description: "Update a stable Linear workpad or progress comment.",
+      permission_bundle: ["write"],
+      allowed_tools: ["linear.api.comments.update"],
+      upstream: %{method: "POST", path: "/graphql"},
+      metadata: %{
+        operation: :comments_update,
+        event_type: "connector.linear.comments.update.completed",
+        failure_event_type: "connector.linear.comments.update.failed",
+        artifact_slug: "comments_update",
+        rollout_phase: :a0,
+        publication: :public,
+        document: PublishedSurface.document("linear.comments.update"),
+        operation_name: PublishedSurface.operation_name("linear.comments.update")
+      }
+    )
+  end
+
+  defp graphql_execute_operation do
+    operation_spec(
+      operation_id: "linear.graphql.execute",
+      name: "graphql_execute",
+      description:
+        "Execute a governed connector-local Linear GraphQL document through the lease-bound SDK client.",
+      permission_bundle: ["read", "write"],
+      allowed_tools: ["linear.api.graphql.execute"],
+      upstream: %{method: "POST", path: "/graphql"},
+      metadata: %{
+        operation: :graphql_execute,
+        event_type: "connector.linear.graphql.execute.completed",
+        failure_event_type: "connector.linear.graphql.execute.failed",
+        artifact_slug: "graphql_execute",
+        rollout_phase: :a0,
+        publication: :public,
+        document: PublishedSurface.document("linear.graphql.execute"),
+        operation_name: PublishedSurface.operation_name("linear.graphql.execute")
+      }
+    )
+  end
+
   defp issues_update_operation do
     operation_spec(
       operation_id: "linear.issues.update",
@@ -170,6 +216,27 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationCatalog do
         publication: :public,
         document: PublishedSurface.document("linear.issues.update"),
         operation_name: PublishedSurface.operation_name("linear.issues.update")
+      }
+    )
+  end
+
+  defp workflow_states_list_operation do
+    operation_spec(
+      operation_id: "linear.workflow_states.list",
+      name: "workflow_states_list",
+      description: "List Linear workflow states by ids, names, type, and team filter.",
+      permission_bundle: ["read"],
+      allowed_tools: ["linear.api.workflow_states.list"],
+      upstream: %{method: "POST", path: "/graphql"},
+      metadata: %{
+        operation: :workflow_states_list,
+        event_type: "connector.linear.workflow_states.list.completed",
+        failure_event_type: "connector.linear.workflow_states.list.failed",
+        artifact_slug: "workflow_states_list",
+        rollout_phase: :a0,
+        publication: :public,
+        document: PublishedSurface.document("linear.workflow_states.list"),
+        operation_name: PublishedSurface.operation_name("linear.workflow_states.list")
       }
     )
   end
@@ -204,14 +271,16 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationCatalog do
       upstream: Keyword.fetch!(opts, :upstream),
       consumer_surface: consumer_surface,
       schema_policy: %{input: :defined, output: :defined},
-      jido: %{
-        action: %{
-          name: consumer_surface.action_name
-        }
-      },
+      jido: jido_surface(consumer_surface),
       metadata: metadata
     })
   end
+
+  defp jido_surface(%{mode: :common, action_name: action_name}) do
+    %{action: %{name: action_name}}
+  end
+
+  defp jido_surface(_consumer_surface), do: %{}
 
   defp entry(%OperationSpec{} = operation) do
     %{

@@ -142,7 +142,8 @@ Runtime families proved in-tree:
 
 - `:direct`
   - GitHub issue and comment operations
-  - Linear user, issue, and comment operations
+  - Linear user, issue, workflow-state, comment create/update, and
+    connector-local raw GraphQL operations
   - Notion user, search, page, block, data-source, and comment operations
 - `:session`
   - `codex.session.start`

@@ -10,24 +10,36 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
 
   @published_capability_ids [
     "linear.comments.create",
+    "linear.comments.update",
+    "linear.graphql.execute",
     "linear.issues.list",
     "linear.issues.retrieve",
     "linear.issues.update",
-    "linear.users.get_self"
+    "linear.users.get_self",
+    "linear.workflow_states.list"
   ]
-  @normalized_surface_expectations %{
+  @common_surface_expectations %{
     "linear.comments.create" => {"comment.create", "comment_create"},
+    "linear.comments.update" => {"comment.update", "comment_update"},
     "linear.issues.list" => {"work_item.list", "work_item_list"},
     "linear.issues.retrieve" => {"work_item.fetch", "work_item_fetch"},
     "linear.issues.update" => {"work_item.update", "work_item_update"},
-    "linear.users.get_self" => {"users.get_self", "users_get_self"}
+    "linear.users.get_self" => {"users.get_self", "users_get_self"},
+    "linear.workflow_states.list" => {"workflow_state.list", "workflow_state_list"}
+  }
+  @connector_local_surface_expectations %{
+    "linear.graphql.execute" =>
+      "Raw Linear GraphQL remains connector-local because its result shape is provider-specific"
   }
   @permission_expectations %{
     "linear.comments.create" => ["write"],
+    "linear.comments.update" => ["write"],
+    "linear.graphql.execute" => ["read", "write"],
     "linear.issues.list" => ["read"],
     "linear.issues.retrieve" => ["read"],
     "linear.issues.update" => ["write"],
-    "linear.users.get_self" => ["read"]
+    "linear.users.get_self" => ["read"],
+    "linear.workflow_states.list" => ["read"]
   }
 
   test "publishes the A0 direct catalog slice as authored operation specs plus derived capabilities" do
@@ -137,7 +149,13 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
       assert capability.metadata.event_type |> is_binary()
       assert capability.metadata.failure_event_type |> is_binary()
       assert capability.metadata.artifact_slug |> is_binary()
-      assert capability.metadata.jido.action.name |> is_binary()
+
+      if Map.has_key?(@common_surface_expectations, capability.id) do
+        assert capability.metadata.jido.action.name |> is_binary()
+      else
+        assert capability.metadata.jido == %{}
+      end
+
       assert capability.metadata.policy.environment.allowed == [:prod, :staging]
       assert capability.metadata.policy.sandbox.level == :standard
       assert capability.metadata.policy.sandbox.egress == :restricted
@@ -148,16 +166,7 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
              ]
     end)
 
-    Enum.each(manifest.operations, fn operation ->
-      {normalized_id, action_name} =
-        Map.fetch!(@normalized_surface_expectations, operation.operation_id)
-
-      assert operation.consumer_surface.mode == :common
-      assert operation.consumer_surface.normalized_id == normalized_id
-      assert operation.consumer_surface.action_name == action_name
-      assert operation.schema_policy.input == :defined
-      assert operation.schema_policy.output == :defined
-    end)
+    Enum.each(manifest.operations, &assert_surface_contract/1)
   end
 
   test "authors the A0 slice as rich operation specs and derives the executable catalog from them" do
@@ -198,5 +207,26 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
     assert plugin_module.subscriptions() == []
 
     refute Enum.any?(operations, &String.contains?(&1.operation_id, "install_binding"))
+  end
+
+  defp assert_surface_contract(operation) do
+    if Map.has_key?(@common_surface_expectations, operation.operation_id) do
+      {normalized_id, action_name} =
+        Map.fetch!(@common_surface_expectations, operation.operation_id)
+
+      assert operation.consumer_surface.mode == :common
+      assert operation.consumer_surface.normalized_id == normalized_id
+      assert operation.consumer_surface.action_name == action_name
+    else
+      reason = Map.fetch!(@connector_local_surface_expectations, operation.operation_id)
+
+      assert operation.consumer_surface.mode == :connector_local
+      assert operation.consumer_surface.reason == reason
+      refute Map.has_key?(operation.consumer_surface, :normalized_id)
+      refute Map.has_key?(operation.consumer_surface, :action_name)
+    end
+
+    assert operation.schema_policy.input == :defined
+    assert operation.schema_policy.output == :defined
   end
 end

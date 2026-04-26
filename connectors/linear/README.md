@@ -41,13 +41,29 @@ non-direct capability families.
 
 ## Capability Surface
 
-The connector publishes the narrow A0 issue-workflow slice:
+The connector publishes the A0 issue-workflow slice plus the first
+Symphony-parity source-control helpers:
 
 - `linear.users.get_self`
 - `linear.issues.list`
 - `linear.issues.retrieve`
 - `linear.comments.create`
+- `linear.comments.update`
 - `linear.issues.update`
+- `linear.workflow_states.list`
+- `linear.graphql.execute`
+
+Issue list/retrieve outputs include priority, branch name, labels, assignee,
+project/team refs, workflow state refs, pagination, and blocker relations
+needed by source admission/reconciliation. `linear.workflow_states.list`
+supports id, name, type, team, and cursor filters so source-state mappings can
+resolve provider state ids before mutation. `linear.comments.update` is the
+workpad/progress update primitive.
+
+`linear.graphql.execute` remains connector-local by design. It runs a
+lease-bound provider-native GraphQL document through `linear_sdk`, but it is not
+projected into the generated common action bundle because arbitrary GraphQL
+result shapes are provider-specific.
 
 These runtime capability ids stay provider-facing on purpose. They are the
 stable internal routing ids used by the control plane, conformance layer, and
@@ -60,7 +76,9 @@ authored operation specs project into these normalized action names:
 - `work_item_list`
 - `work_item_fetch`
 - `comment_create`
+- `comment_update`
 - `work_item_update`
+- `workflow_state_list`
 
 That common layer currently projects into:
 
@@ -74,13 +92,13 @@ Those generated actions and plugin exports are derivative only. They stay
 pinned to the authored common operation specs and do not become a second
 authoring plane for Linear inventory, OAuth control behavior, or auth posture.
 
-The generated plugin publishes only the curated action bundle. It does not
-publish subscriptions because this connector does not expose triggers in the
-initial A0 slice.
+The generated plugin publishes only the curated common action bundle. It does
+not publish subscriptions because this connector does not expose triggers in the
+initial A0 slice, and it intentionally excludes connector-local raw GraphQL.
 
 This package does not auto-project arbitrary GraphQL documents or `linear_sdk`
-helpers. The current common surface is intentionally limited to the first issue
-workflow slice.
+helpers into common surfaces. Raw GraphQL is available only through the explicit
+connector-local capability above.
 
 ## Package Verification
 

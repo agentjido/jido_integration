@@ -25,9 +25,15 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
         identifier
         title
         priority
+        branchName
         url
         createdAt
         updatedAt
+        labels {
+          nodes {
+            name
+          }
+        }
         state {
           id
           name
@@ -99,6 +105,61 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
           }
         }
       }
+      relations(first: 20) {
+        nodes {
+          id
+          type
+          relatedIssue {
+            id
+            identifier
+            title
+            url
+            state {
+              id
+              name
+              type
+            }
+          }
+        }
+      }
+      inverseRelations(first: 20) {
+        nodes {
+          id
+          type
+          issue {
+            id
+            identifier
+            title
+            url
+            state {
+              id
+              name
+              type
+            }
+          }
+        }
+      }
+    }
+  }
+  """
+
+  @workflow_states_list_query """
+  query JidoLinearWorkflowStatesList($filter: WorkflowStateFilter, $first: Int, $after: String) {
+    workflowStates(filter: $filter, first: $first, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        name
+        type
+        team {
+          id
+          key
+          name
+        }
+      }
     }
   }
   """
@@ -106,6 +167,22 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
   @comment_create_mutation """
   mutation JidoLinearCommentCreate($issueId: String!, $body: String!) {
     commentCreate(input: {issueId: $issueId, body: $body}) {
+      success
+      comment {
+        id
+        body
+        issue {
+          id
+          identifier
+        }
+      }
+    }
+  }
+  """
+
+  @comment_update_mutation """
+  mutation JidoLinearCommentUpdate($commentId: String!, $body: String!) {
+    commentUpdate(id: $commentId, input: {body: $body}) {
       success
       comment {
         id
@@ -156,8 +233,28 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
     %{mode: :common, normalized_id: "comment.create", action_name: "comment_create"}
   end
 
+  def consumer_surface("linear.comments.update") do
+    %{mode: :common, normalized_id: "comment.update", action_name: "comment_update"}
+  end
+
+  def consumer_surface("linear.graphql.execute") do
+    %{
+      mode: :connector_local,
+      reason:
+        "Raw Linear GraphQL remains connector-local because its result shape is provider-specific"
+    }
+  end
+
   def consumer_surface("linear.issues.update") do
     %{mode: :common, normalized_id: "work_item.update", action_name: "work_item_update"}
+  end
+
+  def consumer_surface("linear.workflow_states.list") do
+    %{
+      mode: :common,
+      normalized_id: "workflow_state.list",
+      action_name: "workflow_state_list"
+    }
   end
 
   @spec document(String.t()) :: String.t()
@@ -165,14 +262,20 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
   def document("linear.issues.list"), do: @issues_list_query
   def document("linear.issues.retrieve"), do: @issue_retrieve_query
   def document("linear.comments.create"), do: @comment_create_mutation
+  def document("linear.comments.update"), do: @comment_update_mutation
   def document("linear.issues.update"), do: @issue_update_mutation
+  def document("linear.workflow_states.list"), do: @workflow_states_list_query
+  def document("linear.graphql.execute"), do: "runtime supplied Linear GraphQL document"
 
   @spec operation_name(String.t()) :: String.t()
   def operation_name("linear.users.get_self"), do: "JidoLinearViewer"
   def operation_name("linear.issues.list"), do: "JidoLinearIssuesList"
   def operation_name("linear.issues.retrieve"), do: "JidoLinearIssueRetrieve"
   def operation_name("linear.comments.create"), do: "JidoLinearCommentCreate"
+  def operation_name("linear.comments.update"), do: "JidoLinearCommentUpdate"
   def operation_name("linear.issues.update"), do: "JidoLinearIssueUpdate"
+  def operation_name("linear.workflow_states.list"), do: "JidoLinearWorkflowStatesList"
+  def operation_name("linear.graphql.execute"), do: "LinearGraphQLRuntimeDocument"
 
   @spec input_schema(String.t()) :: Zoi.schema()
   def input_schema("linear.users.get_self") do
@@ -221,6 +324,27 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
     )
   end
 
+  def input_schema("linear.comments.update") do
+    strict_object(
+      [
+        comment_id: Zoi.string(),
+        body: Zoi.string()
+      ],
+      description: "Update an existing Linear comment by provider comment id"
+    )
+  end
+
+  def input_schema("linear.graphql.execute") do
+    strict_object(
+      [
+        query: Zoi.string(),
+        variables: Contracts.map_schema("linear.graphql.variables") |> Zoi.optional(),
+        operation_name: Zoi.string() |> Zoi.optional()
+      ],
+      description: "Execute a provider-native Linear GraphQL document"
+    )
+  end
+
   def input_schema("linear.issues.update") do
     strict_object(
       [
@@ -231,6 +355,27 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
         assignee_id: Zoi.string() |> Zoi.nullish()
       ],
       description: "Update a Linear issue with the narrow A0 workflow fields"
+    )
+  end
+
+  def input_schema("linear.workflow_states.list") do
+    strict_object(
+      [
+        filter:
+          strict_object(
+            [
+              state_ids: Zoi.list(Zoi.string()) |> Zoi.optional(),
+              state_names: Zoi.list(Zoi.string()) |> Zoi.optional(),
+              state_types: Zoi.list(Zoi.string()) |> Zoi.optional(),
+              team_id: Zoi.string() |> Zoi.optional()
+            ],
+            description: "Optional workflow-state filter by id, name, type, or team"
+          )
+          |> Zoi.optional(),
+        first: positive_integer_schema() |> Zoi.optional(),
+        after: Zoi.string() |> Zoi.optional()
+      ],
+      description: "List Linear workflow states for source-state mapping"
     )
   end
 
@@ -277,6 +422,27 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
     )
   end
 
+  def output_schema("linear.comments.update") do
+    strict_object(
+      [
+        success: Zoi.boolean(),
+        comment: comment_schema() |> Zoi.nullable(),
+        auth_binding: auth_binding_schema()
+      ],
+      description: "Comment update result returned by Linear"
+    )
+  end
+
+  def output_schema("linear.graphql.execute") do
+    strict_object(
+      [
+        data: Contracts.map_schema("linear.graphql.data"),
+        auth_binding: auth_binding_schema()
+      ],
+      description: "Provider-native Linear GraphQL data envelope"
+    )
+  end
+
   def output_schema("linear.issues.update") do
     strict_object(
       [
@@ -288,12 +454,25 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
     )
   end
 
+  def output_schema("linear.workflow_states.list") do
+    strict_object(
+      [
+        workflow_states: Zoi.list(workflow_state_with_team_schema()),
+        page_info: page_info_schema(),
+        auth_binding: auth_binding_schema()
+      ],
+      description: "Linear workflow states with team refs"
+    )
+  end
+
   defp issue_summary_schema do
     strict_object(
       id: Zoi.string(),
       identifier: Zoi.string(),
       title: Zoi.string(),
       priority: Zoi.integer() |> Zoi.nullable(),
+      branch_name: Zoi.string() |> Zoi.nullable(),
+      labels: Zoi.list(Zoi.string()),
       url: Zoi.string() |> Zoi.nullable(),
       created_at: Zoi.string() |> Zoi.nullable(),
       updated_at: Zoi.string() |> Zoi.nullable(),
@@ -319,7 +498,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
       state: workflow_state_schema() |> Zoi.nullable(),
       assignee: user_schema() |> Zoi.nullable(),
       project: project_schema() |> Zoi.nullable(),
-      team: team_detail_schema() |> Zoi.nullable()
+      team: team_detail_schema() |> Zoi.nullable(),
+      blockers: Zoi.list(blocker_schema())
     )
   end
 
@@ -386,6 +566,31 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
       id: Zoi.string(),
       name: Zoi.string() |> Zoi.nullable(),
       type: Zoi.string() |> Zoi.nullable()
+    )
+  end
+
+  defp workflow_state_with_team_schema do
+    strict_object(
+      id: Zoi.string(),
+      name: Zoi.string() |> Zoi.nullable(),
+      type: Zoi.string() |> Zoi.nullable(),
+      team: team_summary_schema() |> Zoi.nullable()
+    )
+  end
+
+  defp blocker_schema do
+    strict_object(
+      id: Zoi.string(),
+      type: Zoi.string() |> Zoi.nullable(),
+      direction: Zoi.string(),
+      issue:
+        strict_object(
+          id: Zoi.string(),
+          identifier: Zoi.string() |> Zoi.nullable(),
+          title: Zoi.string() |> Zoi.nullable(),
+          url: Zoi.string() |> Zoi.nullable(),
+          state: workflow_state_schema() |> Zoi.nullable()
+        )
     )
   end
 

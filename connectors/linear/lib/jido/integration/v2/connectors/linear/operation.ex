@@ -15,12 +15,13 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
 
     with {:ok, client} <- ClientFactory.build(context),
          {:ok, variables} <- variables(metadata.operation, input),
+         {:ok, document} <- document(metadata, input),
          {:ok, %LinearSDK.Response{} = response} <-
            LinearSDK.execute_document(
              client,
-             metadata.document,
+             document,
              variables,
-             request_opts(context)
+             request_opts(metadata.operation, input, context)
            ),
          {:ok, output} <- normalize_output(metadata.operation, response.data, auth_binding) do
       {:ok, success_result(context, metadata, input, output, auth_binding)}
@@ -56,6 +57,19 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
      |> maybe_put("after", optional_value(input, :after))}
   end
 
+  defp variables(:workflow_states_list, input) do
+    filter =
+      input
+      |> optional_map(:filter)
+      |> build_workflow_state_filter()
+
+    {:ok,
+     %{}
+     |> maybe_put("filter", filter)
+     |> maybe_put("first", optional_value(input, :first))
+     |> maybe_put("after", optional_value(input, :after))}
+  end
+
   defp variables(:issues_retrieve, input) do
     {:ok, %{"issueId" => required_value(input, :issue_id)}}
   end
@@ -66,6 +80,30 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
        "issueId" => required_value(input, :issue_id),
        "body" => required_value(input, :body)
      }}
+  end
+
+  defp variables(:comments_update, input) do
+    {:ok,
+     %{
+       "commentId" => required_value(input, :comment_id),
+       "body" => required_value(input, :body)
+     }}
+  end
+
+  defp variables(:graphql_execute, input) do
+    case optional_value(input, :variables) do
+      nil ->
+        {:ok, %{}}
+
+      variables when is_map(variables) ->
+        {:ok, variables}
+
+      other ->
+        {:error,
+         ErrorMapper.preflight_validation("Linear GraphQL variables must be a map",
+           issues: [variables: other]
+         )}
+    end
   end
 
   defp variables(:issues_update, input) do
@@ -110,6 +148,22 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
      }}
   end
 
+  defp normalize_output(
+         :workflow_states_list,
+         %{"workflowStates" => workflow_states},
+         auth_binding
+       ) do
+    nodes = workflow_states |> Map.get("nodes", []) |> Enum.map(&normalize_workflow_state/1)
+    page_info = normalize_page_info(Map.get(workflow_states, "pageInfo"))
+
+    {:ok,
+     %{
+       workflow_states: nodes,
+       page_info: page_info,
+       auth_binding: auth_binding
+     }}
+  end
+
   defp normalize_output(:issues_retrieve, %{"issue" => issue}, auth_binding) do
     {:ok,
      %{
@@ -127,11 +181,28 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
      }}
   end
 
+  defp normalize_output(:comments_update, %{"commentUpdate" => payload}, auth_binding) do
+    {:ok,
+     %{
+       success: Map.get(payload, "success", false),
+       comment: normalize_comment(Map.get(payload, "comment")),
+       auth_binding: auth_binding
+     }}
+  end
+
   defp normalize_output(:issues_update, %{"issueUpdate" => payload}, auth_binding) do
     {:ok,
      %{
        success: Map.get(payload, "success", false),
        issue: normalize_updated_issue(Map.get(payload, "issue")),
+       auth_binding: auth_binding
+     }}
+  end
+
+  defp normalize_output(:graphql_execute, data, auth_binding) when is_map(data) do
+    {:ok,
+     %{
+       data: data,
        auth_binding: auth_binding
      }}
   end
@@ -225,7 +296,15 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
     {:error, mapped_error, runtime_result}
   end
 
-  defp request_opts(context) do
+  defp request_opts(:graphql_execute, input, context) do
+    context
+    |> base_request_opts()
+    |> maybe_put_operation_name(optional_value(input, :operation_name))
+  end
+
+  defp request_opts(_operation, _input, context), do: base_request_opts(context)
+
+  defp base_request_opts(context) do
     context
     |> Map.get(:opts, %{})
     |> Contracts.get(:linear_request, [])
@@ -237,6 +316,15 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
     |> maybe_put("project", project_filter(filter))
     |> maybe_put("state", state_filter(filter))
     |> maybe_put("assignee", assignee_filter(filter))
+    |> empty_map_to_nil()
+  end
+
+  defp build_workflow_state_filter(%{} = filter) do
+    %{}
+    |> maybe_put("id", id_list_filter(filter, :state_ids))
+    |> maybe_put("name", string_list_filter(filter, :state_names))
+    |> maybe_put("type", string_list_filter(filter, :state_types))
+    |> maybe_put("team", team_filter(filter))
     |> empty_map_to_nil()
   end
 
@@ -261,12 +349,35 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
     end
   end
 
+  defp team_filter(filter) do
+    case present_filter_value(filter, :team_id) do
+      nil -> nil
+      team_id -> %{"id" => %{"eq" => team_id}}
+    end
+  end
+
+  defp id_list_filter(filter, key) do
+    case present_filter_list(filter, key) do
+      [] -> nil
+      ids -> %{"in" => ids}
+    end
+  end
+
+  defp string_list_filter(filter, key) do
+    case present_filter_list(filter, key) do
+      [] -> nil
+      values -> %{"in" => values}
+    end
+  end
+
   defp normalize_issue_summary(issue) do
     %{
       id: Map.get(issue, "id"),
       identifier: Map.get(issue, "identifier"),
       title: Map.get(issue, "title"),
       priority: Map.get(issue, "priority"),
+      branch_name: Map.get(issue, "branchName"),
+      labels: normalize_label_names(issue),
       url: Map.get(issue, "url"),
       created_at: Map.get(issue, "createdAt"),
       updated_at: Map.get(issue, "updatedAt"),
@@ -288,16 +399,12 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
       url: Map.get(issue, "url"),
       created_at: Map.get(issue, "createdAt"),
       updated_at: Map.get(issue, "updatedAt"),
-      labels:
-        issue
-        |> Map.get("labels", %{})
-        |> Map.get("nodes", [])
-        |> Enum.map(&Map.get(&1, "name"))
-        |> Enum.reject(&is_nil/1),
+      labels: normalize_label_names(issue),
       state: normalize_state(Map.get(issue, "state")),
       assignee: normalize_user(Map.get(issue, "assignee")),
       project: normalize_project(Map.get(issue, "project")),
-      team: normalize_team_detail(Map.get(issue, "team"))
+      team: normalize_team_detail(Map.get(issue, "team")),
+      blockers: normalize_blockers(issue)
     }
   end
 
@@ -404,9 +511,92 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
     }
   end
 
+  defp normalize_workflow_state(state) do
+    %{
+      id: Map.get(state, "id"),
+      name: Map.get(state, "name"),
+      type: Map.get(state, "type"),
+      team: normalize_team_summary(Map.get(state, "team"))
+    }
+  end
+
+  defp normalize_label_names(issue) do
+    issue
+    |> Map.get("labels", %{})
+    |> Map.get("nodes", [])
+    |> Enum.map(&Map.get(&1, "name"))
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp normalize_blockers(issue) do
+    outgoing =
+      issue
+      |> Map.get("relations", %{})
+      |> Map.get("nodes", [])
+      |> Enum.map(&normalize_relation(&1, "outbound", "relatedIssue"))
+
+    incoming =
+      issue
+      |> Map.get("inverseRelations", %{})
+      |> Map.get("nodes", [])
+      |> Enum.map(&normalize_relation(&1, "inbound", "issue"))
+
+    Enum.filter(outgoing ++ incoming, &blocker_relation?/1)
+  end
+
+  defp normalize_relation(relation, direction, issue_key) do
+    %{
+      id: Map.get(relation, "id"),
+      type: Map.get(relation, "type"),
+      direction: direction,
+      issue: normalize_related_issue(Map.get(relation, issue_key))
+    }
+  end
+
+  defp normalize_related_issue(nil), do: nil
+
+  defp normalize_related_issue(issue) do
+    %{
+      id: Map.get(issue, "id"),
+      identifier: Map.get(issue, "identifier"),
+      title: Map.get(issue, "title"),
+      url: Map.get(issue, "url"),
+      state: normalize_state(Map.get(issue, "state"))
+    }
+  end
+
+  defp blocker_relation?(%{direction: "outbound", type: "blocked_by", issue: issue}),
+    do: not is_nil(issue)
+
+  defp blocker_relation?(%{direction: "inbound", type: "blocks", issue: issue}),
+    do: not is_nil(issue)
+
+  defp blocker_relation?(_relation), do: false
+
   defp artifact_key(context, slug) do
     "linear/#{context.run_id}/#{context.attempt_id}/#{slug}.term"
   end
+
+  defp document(%{operation: :graphql_execute}, input) do
+    case optional_value(input, :query) do
+      value when is_binary(value) ->
+        case String.trim(value) do
+          "" ->
+            {:error, ErrorMapper.preflight_validation("Linear GraphQL query must not be blank")}
+
+          query ->
+            {:ok, query}
+        end
+
+      other ->
+        {:error,
+         ErrorMapper.preflight_validation("Linear GraphQL query must be a string",
+           issues: [query: other]
+         )}
+    end
+  end
+
+  defp document(metadata, _input), do: {:ok, metadata.document}
 
   defp required_value(input, key) do
     optional_value(input, key)
@@ -471,4 +661,13 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
   defp normalize_runtime_opts(opts) when is_list(opts), do: opts
   defp normalize_runtime_opts(opts) when is_map(opts), do: Enum.into(opts, [])
   defp normalize_runtime_opts(_opts), do: []
+
+  defp maybe_put_operation_name(opts, value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> opts
+      operation_name -> Keyword.put(opts, :operation_name, operation_name)
+    end
+  end
+
+  defp maybe_put_operation_name(opts, _value), do: opts
 end

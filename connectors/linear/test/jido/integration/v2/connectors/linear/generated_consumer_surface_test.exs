@@ -21,7 +21,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.GeneratedConsumerSurfaceTest do
     projected_operations = ConsumerProjection.projected_operations(manifest)
 
     assert Enum.map(projected_operations, & &1.operation_id) ==
-             Enum.map(manifest.operations, & &1.operation_id)
+             Enum.map(projected_common_operations(manifest), & &1.operation_id)
 
     Enum.each(projected_operations, fn operation ->
       action_module = ConsumerProjection.action_module(Linear, operation.operation_id)
@@ -73,7 +73,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.GeneratedConsumerSurfaceTest do
     register_connector!()
     connection_id = install_connection!()
 
-    Enum.each(Fixtures.specs(), fn spec ->
+    Enum.each(projected_common_specs(), fn spec ->
       capability = fetch_capability!(spec.capability_id)
       action_module = ConsumerProjection.action_module(Linear, spec.capability_id)
 
@@ -148,6 +148,19 @@ defmodule Jido.Integration.V2.Connectors.Linear.GeneratedConsumerSurfaceTest do
 
   defp register_connector! do
     assert :ok = V2.register_connector(Linear)
+  end
+
+  defp projected_common_operations(manifest) do
+    Enum.filter(manifest.operations, &(&1.consumer_surface.mode == :common))
+  end
+
+  defp projected_common_specs do
+    common_ids =
+      Linear.manifest()
+      |> projected_common_operations()
+      |> MapSet.new(& &1.operation_id)
+
+    Enum.filter(Fixtures.specs(), &MapSet.member?(common_ids, &1.capability_id))
   end
 
   defp install_connection! do

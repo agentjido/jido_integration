@@ -31,6 +31,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     identifier: @issue_identifier,
     title: "Investigate deployment rollback",
     priority: 2,
+    branch_name: "eng-321-investigate-rollback",
+    labels: ["incident", "automation"],
     url: "https://linear.app/acme/issue/#{@issue_identifier}",
     created_at: "2026-03-12T09:15:00Z",
     updated_at: "2026-03-12T10:00:00Z",
@@ -44,6 +46,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     identifier: "ENG-654",
     title: "Audit release checklist",
     priority: 3,
+    branch_name: "eng-654-audit-release-checklist",
+    labels: ["release"],
     url: "https://linear.app/acme/issue/ENG-654",
     created_at: "2026-03-12T08:00:00Z",
     updated_at: "2026-03-12T09:45:00Z",
@@ -56,6 +60,20 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
                   description: "The deployment rolled back after the health checks failed.",
                   branch_name: "eng-321-investigate-rollback",
                   labels: ["incident", "automation"],
+                  blockers: [
+                    %{
+                      id: "rel-blocks-001",
+                      type: "blocks",
+                      direction: "inbound",
+                      issue: %{
+                        id: "lin-issue-009",
+                        identifier: "SEC-9",
+                        title: "Restore deployment credentials",
+                        url: "https://linear.app/acme/issue/SEC-9",
+                        state: @state_in_progress
+                      }
+                    }
+                  ],
                   team: Map.put(@team, :workflow_states, [@state_backlog, @state_in_progress])
                 })
   @updated_issue %{
@@ -71,6 +89,11 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     body: "Handing this back to the queue.",
     issue: %{id: @issue_id, identifier: @issue_identifier}
   }
+  @updated_comment %{
+    id: "comment-linear-workpad",
+    body: "Updated workpad progress.",
+    issue: %{id: @issue_id, identifier: @issue_identifier}
+  }
 
   @capability_specs [
     %{
@@ -79,6 +102,28 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
       artifact_key: "linear/#{@run_id}/#{@attempt_id}/comments_create.term",
       input: %{issue_id: @issue_id, body: "Handing this back to the queue."},
       output: %{success: true, comment: @created_comment, auth_binding: @auth_binding}
+    },
+    %{
+      capability_id: "linear.comments.update",
+      event_type: "connector.linear.comments.update.completed",
+      artifact_key: "linear/#{@run_id}/#{@attempt_id}/comments_update.term",
+      input: %{comment_id: @updated_comment.id, body: @updated_comment.body},
+      output: %{success: true, comment: @updated_comment, auth_binding: @auth_binding}
+    },
+    %{
+      capability_id: "linear.graphql.execute",
+      event_type: "connector.linear.graphql.execute.completed",
+      artifact_key: "linear/#{@run_id}/#{@attempt_id}/graphql_execute.term",
+      input: %{
+        query:
+          "query JidoLinearRawViewer($includeEmail: Boolean!) { viewer { id name email @include(if: $includeEmail) } }",
+        variables: %{"includeEmail" => false},
+        operation_name: "JidoLinearRawViewer"
+      },
+      output: %{
+        data: %{"viewer" => %{"id" => @subject, "name" => @viewer.name}},
+        auth_binding: @auth_binding
+      }
     },
     %{
       capability_id: "linear.issues.list",
@@ -122,6 +167,26 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
       artifact_key: "linear/#{@run_id}/#{@attempt_id}/users_get_self.term",
       input: %{},
       output: %{user: @viewer, auth_binding: @auth_binding}
+    },
+    %{
+      capability_id: "linear.workflow_states.list",
+      event_type: "connector.linear.workflow_states.list.completed",
+      artifact_key: "linear/#{@run_id}/#{@attempt_id}/workflow_states_list.term",
+      input: %{
+        filter: %{
+          state_ids: [@state_backlog.id, @state_in_progress.id],
+          team_id: @team.id
+        },
+        first: 10
+      },
+      output: %{
+        workflow_states: [
+          Map.put(@state_backlog, :team, @team),
+          Map.put(@state_in_progress, :team, @team)
+        ],
+        page_info: %{has_next_page: false, end_cursor: "cursor-state-in-progress"},
+        auth_binding: @auth_binding
+      }
     }
   ]
 
@@ -276,6 +341,22 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
           "variables"
         )
 
+      "linear.workflow_states.list" ->
+        expect_equal(payload["operationName"], "JidoLinearWorkflowStatesList", "operation name")
+        expect_contains(payload["query"], "query JidoLinearWorkflowStatesList", "query document")
+
+        expect_equal(
+          payload["variables"],
+          %{
+            "filter" => %{
+              "id" => %{"in" => input.filter.state_ids},
+              "team" => %{"id" => %{"eq" => @team.id}}
+            },
+            "first" => 10
+          },
+          "variables"
+        )
+
       "linear.issues.retrieve" ->
         expect_equal(payload["operationName"], "JidoLinearIssueRetrieve", "operation name")
         expect_contains(payload["query"], "query JidoLinearIssueRetrieve", "query document")
@@ -288,6 +369,16 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
         expect_equal(
           payload["variables"],
           %{"issueId" => @issue_id, "body" => input.body},
+          "variables"
+        )
+
+      "linear.comments.update" ->
+        expect_equal(payload["operationName"], "JidoLinearCommentUpdate", "operation name")
+        expect_contains(payload["query"], "mutation JidoLinearCommentUpdate", "query document")
+
+        expect_equal(
+          payload["variables"],
+          %{"commentId" => @updated_comment.id, "body" => @updated_comment.body},
           "variables"
         )
 
@@ -306,6 +397,11 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
           },
           "variables"
         )
+
+      "linear.graphql.execute" ->
+        expect_equal(payload["operationName"], input.operation_name, "operation name")
+        expect_equal(payload["query"], input.query, "query document")
+        expect_equal(payload["variables"], input.variables, "variables")
     end
 
     true
@@ -313,31 +409,11 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
 
   @spec response_for_request(map(), map(), keyword()) :: {:ok, map()}
   def response_for_request(payload, _context, _opts \\ []) do
-    case payload["operationName"] do
-      "JidoLinearViewer" ->
-        sdk_response(%{"viewer" => viewer_body()})
+    operation_name = payload["operationName"]
 
-      "JidoLinearIssuesList" ->
-        sdk_response(%{"issues" => issues_connection_body()})
-
-      "JidoLinearIssueRetrieve" ->
-        sdk_response(%{"issue" => issue_detail_body()})
-
-      "JidoLinearCommentCreate" ->
-        sdk_response(%{"commentCreate" => comment_create_body()})
-
-      "JidoLinearIssueUpdate" ->
-        sdk_response(%{"issueUpdate" => issue_update_body()})
-
-      other ->
-        sdk_response(
-          %{
-            "errors" => [
-              %{"message" => "missing linear fixture for #{inspect(other)}"}
-            ]
-          },
-          500
-        )
+    case response_data_for_operation(operation_name) do
+      nil -> missing_fixture_response(operation_name)
+      data -> sdk_response(data)
     end
   end
 
@@ -369,6 +445,33 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     }
   end
 
+  defp response_data_for_operation(operation_name) do
+    Map.get(
+      %{
+        "JidoLinearViewer" => %{"viewer" => viewer_body()},
+        "JidoLinearIssuesList" => %{"issues" => issues_connection_body()},
+        "JidoLinearWorkflowStatesList" => %{"workflowStates" => workflow_states_connection_body()},
+        "JidoLinearIssueRetrieve" => %{"issue" => issue_detail_body()},
+        "JidoLinearCommentCreate" => %{"commentCreate" => comment_create_body()},
+        "JidoLinearCommentUpdate" => %{"commentUpdate" => comment_update_body()},
+        "JidoLinearIssueUpdate" => %{"issueUpdate" => issue_update_body()},
+        "JidoLinearRawViewer" => %{"viewer" => %{"id" => @subject, "name" => @viewer.name}}
+      },
+      operation_name
+    )
+  end
+
+  defp missing_fixture_response(operation_name) do
+    sdk_response(
+      %{
+        "errors" => [
+          %{"message" => "missing linear fixture for #{inspect(operation_name)}"}
+        ]
+      },
+      500
+    )
+  end
+
   defp issues_connection_body do
     %{
       "pageInfo" => %{
@@ -382,6 +485,19 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     }
   end
 
+  defp workflow_states_connection_body do
+    %{
+      "pageInfo" => %{
+        "hasNextPage" => false,
+        "endCursor" => "cursor-state-in-progress"
+      },
+      "nodes" => [
+        workflow_state_body(Map.put(@state_backlog, :team, @team)),
+        workflow_state_body(Map.put(@state_in_progress, :team, @team))
+      ]
+    }
+  end
+
   defp issue_detail_body do
     base = issue_summary_body(@issue_detail)
 
@@ -390,6 +506,22 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
       "branchName" => @issue_detail.branch_name,
       "labels" => %{
         "nodes" => Enum.map(@issue_detail.labels, &%{"name" => &1})
+      },
+      "relations" => %{"nodes" => []},
+      "inverseRelations" => %{
+        "nodes" => [
+          %{
+            "id" => "rel-blocks-001",
+            "type" => "blocks",
+            "issue" => %{
+              "id" => "lin-issue-009",
+              "identifier" => "SEC-9",
+              "title" => "Restore deployment credentials",
+              "url" => "https://linear.app/acme/issue/SEC-9",
+              "state" => workflow_state_body(@state_in_progress)
+            }
+          }
+        ]
       },
       "team" => %{
         "id" => @team.id,
@@ -408,6 +540,20 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
       "comment" => %{
         "id" => @created_comment.id,
         "body" => @created_comment.body,
+        "issue" => %{
+          "id" => @issue_id,
+          "identifier" => @issue_identifier
+        }
+      }
+    }
+  end
+
+  defp comment_update_body do
+    %{
+      "success" => true,
+      "comment" => %{
+        "id" => @updated_comment.id,
+        "body" => @updated_comment.body,
         "issue" => %{
           "id" => @issue_id,
           "identifier" => @issue_identifier
@@ -436,6 +582,10 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
       "identifier" => summary.identifier,
       "title" => summary.title,
       "priority" => summary.priority,
+      "branchName" => summary.branch_name,
+      "labels" => %{
+        "nodes" => Enum.map(summary.labels, &%{"name" => &1})
+      },
       "url" => summary.url,
       "createdAt" => summary.created_at,
       "updatedAt" => summary.updated_at,
@@ -479,6 +629,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
       "name" => state.name,
       "type" => state.type
     }
+    |> maybe_put_map("team", Map.get(state, :team) && team_body(state.team))
   end
 
   defp sdk_response(data, status \\ 200, headers \\ [{"x-request-id", "req-linear-fixture"}]) do
@@ -511,4 +662,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
 
   defp maybe_put(list, _key, nil), do: list
   defp maybe_put(list, key, value), do: Keyword.put(list, key, value)
+
+  defp maybe_put_map(map, _key, nil), do: map
+  defp maybe_put_map(map, key, value), do: Map.put(map, key, value)
 end
