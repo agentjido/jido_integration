@@ -48,7 +48,6 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     :provider_permission_mode,
     :cli_path,
     :cwd,
-    :env,
     :args,
     :queue_limit,
     :overflow_policy,
@@ -77,6 +76,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     :backend_opts
   ]
   @asm_run_option_keys @asm_session_option_keys ++ [:run_id, :continuation]
+  @blocked_provider_option_keys [:env]
 
   @spec reuse_key(map(), map(), map(), map()) :: map()
   def reuse_key(capability, _input, context, runtime_config) do
@@ -425,7 +425,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     |> Keyword.delete(:driver)
     |> Keyword.put(:provider, requested_provider)
     |> author_execution_inputs()
-    |> Keyword.take(@asm_session_option_keys ++ Keyword.keys(provider.options_schema))
+    |> Keyword.take(allowed_asm_session_option_keys(provider))
   end
 
   defp stream_run_opts(%RunRequest{} = request, provider, opts, run_id) do
@@ -434,7 +434,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     |> normalize_bridge_run_overrides()
     |> author_execution_inputs()
     |> Keyword.put(:run_id, run_id)
-    |> Keyword.take(@asm_run_option_keys ++ Keyword.keys(provider.options_schema))
+    |> Keyword.take(allowed_asm_run_option_keys(provider))
   end
 
   defp normalize_bridge_run_overrides(opts) do
@@ -458,6 +458,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     allowed_keys =
       provider.options_schema
       |> Keyword.keys()
+      |> Kernel.--(@blocked_provider_option_keys)
       |> Enum.uniq()
 
     provider_opts =
@@ -547,6 +548,22 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
   end
 
   defp normalize_known_option_key(_key), do: nil
+
+  defp allowed_asm_session_option_keys(provider) do
+    (@asm_session_option_keys ++ allowed_provider_option_keys(provider))
+    |> Enum.uniq()
+  end
+
+  defp allowed_asm_run_option_keys(provider) do
+    (@asm_run_option_keys ++ allowed_provider_option_keys(provider))
+    |> Enum.uniq()
+  end
+
+  defp allowed_provider_option_keys(provider) do
+    provider.options_schema
+    |> Keyword.keys()
+    |> Kernel.--(@blocked_provider_option_keys)
+  end
 
   defp normalize_continuation(nil), do: nil
 

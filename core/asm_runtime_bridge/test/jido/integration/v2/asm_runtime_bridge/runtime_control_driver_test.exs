@@ -178,6 +178,38 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert is_function(context.tools["echo_json"], 1)
   end
 
+  test "start_session/1 and stream_run/3 do not forward caller-supplied env options" do
+    assert {:ok, session} =
+             RuntimeControlDriver.start_session(
+               provider: :codex,
+               env: %{"credential_token" => "must-not-cross"}
+             )
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    assert {:ok, session_ref} = SessionStore.fetch(session.session_id)
+    assert {:ok, info} = ASM.session_info(session_ref)
+    refute inspect(Keyword.get(info.options, :env)) =~ "must-not-cross"
+
+    request = RunRequest.new!(%{prompt: "hello", metadata: %{}})
+
+    assert {:ok, _run, stream} =
+             RuntimeControlDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               driver_opts: [test_pid: self()],
+               env: %{"credential_token" => "must-not-cross"},
+               run_id: "bridge-run-no-env"
+             )
+
+    assert Enum.to_list(stream) != []
+
+    assert_receive {:stream_scripted_driver_context, context}
+    refute inspect(Map.get(context, :env)) =~ "must-not-cross"
+    refute inspect(Keyword.get(context.provider_opts, :env)) =~ "must-not-cross"
+  end
+
   test "stream_run/3 rejects host tools for unsupported providers with a Jido-facing error" do
     assert {:ok, session} = RuntimeControlDriver.start_session(provider: :gemini)
 

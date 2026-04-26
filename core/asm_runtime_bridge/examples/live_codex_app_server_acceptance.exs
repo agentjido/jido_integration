@@ -156,7 +156,6 @@ defmodule LiveCodexAppServerAcceptance do
     {_, 0} =
       System.cmd("mix", ["compile"],
         cd: codex_sdk_path,
-        env: [{"MIX_ENV", "dev"}],
         into: IO.stream(:stdio, :line)
       )
 

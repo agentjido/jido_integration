@@ -114,8 +114,7 @@ where `agent_session_manager` and `codex_sdk` are both present:
 
 ```bash
 cd core/asm_runtime_bridge
-JIDO_INTEGRATION_WORKSPACE="${JIDO_INTEGRATION_WORKSPACE:-$PWD/../..}"
-/home/home/scripts/with_bash_secrets mix run examples/live_codex_app_server_acceptance.exs -- --cwd "$JIDO_INTEGRATION_WORKSPACE"
+/home/home/scripts/with_bash_secrets mix run examples/live_codex_app_server_acceptance.exs -- --cwd ../..
 ```
 
 Expected output includes `jido_codex_app_server_live=ok`,
