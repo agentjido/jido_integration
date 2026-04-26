@@ -168,6 +168,23 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationTest do
     assert mapped_error.upstream_context.value == 0
 
     refute_receive {:transport_request, _request, _context}
+
+    pr_fetch = fetch_capability!("github.pr.fetch")
+
+    assert {:error, mapped_error, _result} =
+             DirectRuntime.execute(
+               pr_fetch,
+               %{repo: "agentjido/jido_integration_v2", pull_number: -1},
+               Fixtures.execution_context("github.pr.fetch",
+                 github_client: Fixtures.client_opts(self())
+               )
+             )
+
+    assert mapped_error.code == "github.invalid_input"
+    assert mapped_error.upstream_context.field == :pull_number
+    assert mapped_error.upstream_context.value == -1
+
+    refute_receive {:transport_request, _request, _context}
   end
 
   defp fetch_capability!(capability_id) do

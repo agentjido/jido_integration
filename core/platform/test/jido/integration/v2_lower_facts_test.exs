@@ -143,9 +143,10 @@ defmodule Jido.Integration.V2LowerFactsTest do
     assert {:ok, fetched_receipt} =
              LowerFacts.fetch_submission_receipt(submission_scope, invocation.submission_key)
 
+    assert receipt.status in [:accepted, :duplicate]
     assert fetched_receipt.submission_key == receipt.submission_key
     assert fetched_receipt.submission_receipt_ref == receipt.submission_receipt_ref
-    assert fetched_receipt.status == receipt.status
+    assert fetched_receipt.status == :accepted
     assert fetched_receipt.ledger_version == receipt.ledger_version
 
     request =

@@ -104,7 +104,28 @@ defmodule Jido.Integration.V2Test do
     }
   ]
 
-  @github_capability_ids Enum.map(@github_capabilities, & &1.capability_id)
+  @github_capability_ids [
+    "github.check_runs.list_for_ref",
+    "github.comment.create",
+    "github.comment.update",
+    "github.commit.statuses.get_combined",
+    "github.commit.statuses.list",
+    "github.commits.list",
+    "github.issue.close",
+    "github.issue.create",
+    "github.issue.fetch",
+    "github.issue.label",
+    "github.issue.list",
+    "github.issue.update",
+    "github.pr.create",
+    "github.pr.fetch",
+    "github.pr.list",
+    "github.pr.review.create",
+    "github.pr.review_comment.create",
+    "github.pr.review_comments.list",
+    "github.pr.reviews.list",
+    "github.pr.update"
+  ]
   @github_capability_specs Map.new(@github_capabilities, &{&1.capability_id, &1})
 
   @codex_cli %{

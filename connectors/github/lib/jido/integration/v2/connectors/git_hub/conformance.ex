@@ -63,6 +63,24 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Conformance do
   defp conformance_input("github.issue.list"),
     do: %{repo: @repo, state: "open", per_page: 2, page: 1}
 
+  defp conformance_input("github.check_runs.list_for_ref"),
+    do: %{
+      repo: @repo,
+      ref: "f00dbabe1234567890abcdef1234567890abcdef",
+      status: "completed",
+      per_page: 2,
+      page: 1
+    }
+
+  defp conformance_input("github.commit.statuses.get_combined"),
+    do: %{repo: @repo, ref: "f00dbabe1234567890abcdef1234567890abcdef", per_page: 2, page: 1}
+
+  defp conformance_input("github.commit.statuses.list"),
+    do: %{repo: @repo, ref: "f00dbabe1234567890abcdef1234567890abcdef", per_page: 2, page: 1}
+
+  defp conformance_input("github.commits.list"),
+    do: %{repo: @repo, sha: "main", path: "lib", per_page: 2, page: 1}
+
   defp conformance_input("github.issue.fetch"),
     do: %{repo: @repo, issue_number: 77}
 
@@ -93,4 +111,63 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Conformance do
 
   defp conformance_input("github.comment.update"),
     do: %{repo: @repo, comment_id: 901, body: "Updated comment"}
+
+  defp conformance_input("github.pr.create") do
+    %{
+      repo: @repo,
+      title: "Source-backed GitHub connector parity",
+      body: "Open PR through the governed direct runtime",
+      head: "source-backed-work",
+      base: "main",
+      draft: true
+    }
+  end
+
+  defp conformance_input("github.pr.fetch"),
+    do: %{repo: @repo, pull_number: 17}
+
+  defp conformance_input("github.pr.list"),
+    do: %{repo: @repo, state: "all", per_page: 2, page: 1}
+
+  defp conformance_input("github.pr.update") do
+    %{
+      repo: @repo,
+      pull_number: 17,
+      title: "Source-backed GitHub connector parity updated",
+      body: "Updated through the governed direct runtime",
+      state: "open",
+      base: "main",
+      maintainer_can_modify: true
+    }
+  end
+
+  defp conformance_input("github.pr.reviews.list"),
+    do: %{repo: @repo, pull_number: 17, per_page: 2, page: 1}
+
+  defp conformance_input("github.pr.review_comments.list") do
+    %{
+      repo: @repo,
+      pull_number: 17,
+      sort: "created",
+      direction: "asc",
+      per_page: 2,
+      page: 1
+    }
+  end
+
+  defp conformance_input("github.pr.review.create") do
+    %{repo: @repo, pull_number: 17, body: "Connector parity review", event: "COMMENT"}
+  end
+
+  defp conformance_input("github.pr.review_comment.create") do
+    %{
+      repo: @repo,
+      pull_number: 17,
+      body: "Inline connector parity note",
+      commit_id: "f00dbabe1234567890abcdef1234567890abcdef",
+      path: "lib/source.ex",
+      line: 12,
+      side: "RIGHT"
+    }
+  end
 end

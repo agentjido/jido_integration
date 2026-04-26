@@ -50,6 +50,7 @@ Proves:
 
 The connector publishes these direct runtime capabilities:
 
+- `github.check_runs.list_for_ref`
 - `github.issue.list`
 - `github.issue.fetch`
 - `github.issue.create`
@@ -58,6 +59,17 @@ The connector publishes these direct runtime capabilities:
 - `github.issue.close`
 - `github.comment.create`
 - `github.comment.update`
+- `github.commit.statuses.get_combined`
+- `github.commit.statuses.list`
+- `github.commits.list`
+- `github.pr.create`
+- `github.pr.fetch`
+- `github.pr.list`
+- `github.pr.update`
+- `github.pr.reviews.list`
+- `github.pr.review_comments.list`
+- `github.pr.review.create`
+- `github.pr.review_comment.create`
 
 All direct capabilities currently require the GitHub `repo` scope.
 
@@ -76,6 +88,18 @@ authored operation specs project into these normalized action names:
 - `work_item_close`
 - `comment_create`
 - `comment_update`
+- `check_run_list`
+- `commit_status_combined_fetch`
+- `commit_status_list`
+- `commit_list`
+- `pull_request_create`
+- `pull_request_fetch`
+- `pull_request_list`
+- `pull_request_update`
+- `pull_request_review_list`
+- `pull_request_review_comment_list`
+- `pull_request_review_create`
+- `pull_request_review_comment_create`
 
 That common layer now projects into:
 
@@ -102,8 +126,17 @@ now declare both:
   operation projects into generated consumer surfaces
 
 This package does not auto-project arbitrary `github_ex` methods. The current
-common surface is intentionally limited to issue and comment workflows that are
-meaningfully reusable across providers.
+common surface is intentionally limited to issue, comment, PR, review, status,
+check-run, and commit evidence workflows that are meaningfully reusable across
+providers.
+
+PR outputs include GitHub evidence URLs such as `html_url`, `diff_url`,
+`patch_url`, `commits_url`, and `review_comments_url`. Commit and status
+capabilities expose normalized evidence summaries. The connector does not
+publish the generated `github_ex` compare endpoint in this slice because the
+SDK path guard rejects the triple-dot compare separator before transport; PR and
+commit evidence refs cover the product parity need without publishing a
+provider call that cannot be live-tested safely.
 
 The generated plugin uses the real `Jido.Plugin` `actions:` and
 `subscriptions/2` surface. In this phase its subscriptions remain empty.
@@ -157,45 +190,35 @@ The current package-local live scripts exercise the default
 `oauth_user` profile for hosted or manually completed OAuth installs without
 adding OAuth control endpoints to the invoke surface.
 
-Use the package-local wrapper:
+Use the package-local wrapper with typed arguments:
 
 ```bash
 cd connectors/github
-JIDO_INTEGRATION_V2_GITHUB_LIVE=1 \
-JIDO_INTEGRATION_V2_GITHUB_LIVE_WRITE=1 \
-JIDO_INTEGRATION_V2_GITHUB_REPO=owner/repo \
-JIDO_INTEGRATION_V2_GITHUB_WRITE_REPO=owner/sandbox-repo \
-scripts/live_acceptance.sh all
+scripts/live_acceptance.sh all --repo owner/repo --write-repo owner/sandbox-repo
 ```
 
 `all` runs one combined live proof. If the read repo does not already have an
-issue and `JIDO_INTEGRATION_V2_GITHUB_READ_ISSUE_NUMBER` is not set, the
-combined flow bootstraps the writable repo with a temporary issue and reuses it
-for the read and write steps.
+issue, the combined flow bootstraps the writable repo with a temporary issue
+and reuses the provider-returned issue number for the read and write steps.
 
 ```bash
 cd connectors/github
-JIDO_INTEGRATION_V2_GITHUB_LIVE=1 \
 scripts/live_acceptance.sh auth
 ```
 
 ```bash
 cd connectors/github
-JIDO_INTEGRATION_V2_GITHUB_LIVE=1 \
-JIDO_INTEGRATION_V2_GITHUB_REPO=owner/repo \
-scripts/live_acceptance.sh read
+scripts/live_acceptance.sh read --repo owner/repo
 ```
 
 `read` stays strict on purpose. It still needs an existing issue in the target
-repo or `JIDO_INTEGRATION_V2_GITHUB_READ_ISSUE_NUMBER` set explicitly.
+repo. PR read evidence is discovered by listing pull requests; if no PR exists,
+the proof reports the PR read branch as not exercised instead of accepting a
+caller-supplied PR number.
 
 ```bash
 cd connectors/github
-JIDO_INTEGRATION_V2_GITHUB_LIVE=1 \
-JIDO_INTEGRATION_V2_GITHUB_LIVE_WRITE=1 \
-JIDO_INTEGRATION_V2_GITHUB_REPO=owner/repo \
-JIDO_INTEGRATION_V2_GITHUB_WRITE_REPO=owner/sandbox-repo \
-scripts/live_acceptance.sh write
+scripts/live_acceptance.sh write --write-repo owner/sandbox-repo
 ```
 
 Read the detailed runbook in [`docs/live_acceptance.md`](docs/live_acceptance.md).

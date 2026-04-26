@@ -37,14 +37,26 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   @spec operations() :: [OperationSpec.t()]
   def operations do
     [
+      check_runs_list_for_ref_operation(),
       comment_create_operation(),
       comment_update_operation(),
+      commit_statuses_get_combined_operation(),
+      commit_statuses_list_operation(),
+      commits_list_operation(),
       issue_close_operation(),
       issue_create_operation(),
       issue_fetch_operation(),
       issue_label_operation(),
       issue_list_operation(),
-      issue_update_operation()
+      issue_update_operation(),
+      pr_create_operation(),
+      pr_fetch_operation(),
+      pr_list_operation(),
+      pr_review_create_operation(),
+      pr_review_comment_create_operation(),
+      pr_review_comments_list_operation(),
+      pr_reviews_list_operation(),
+      pr_update_operation()
     ]
     |> Enum.sort_by(& &1.operation_id)
   end
@@ -76,6 +88,184 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
     operation_id
     |> fetch_operation!()
     |> entry()
+  end
+
+  defp check_runs_list_for_ref_operation do
+    operation_spec(
+      operation_id: "github.check_runs.list_for_ref",
+      name: "check_runs_list_for_ref",
+      description: "List GitHub check runs for a commit ref.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          ref: ref_schema(),
+          check_name: Zoi.string() |> Zoi.optional(),
+          status: Zoi.string() |> Zoi.optional(),
+          filter: Zoi.string() |> Zoi.optional(),
+          app_id: positive_integer_schema() |> Zoi.optional(),
+          per_page: positive_integer_schema() |> Zoi.optional(),
+          page: positive_integer_schema() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          ref: ref_schema(),
+          total_count: Zoi.integer(),
+          check_runs: Zoi.list(check_run_schema()),
+          listed_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.check_runs.list_for_ref"],
+      upstream: %{
+        method: "GET",
+        path: "/repos/{owner}/{repo}/commits/{ref}/check-runs"
+      },
+      metadata: %{
+        operation: :check_runs_list_for_ref,
+        sdk_module: GitHubEx.Checks,
+        sdk_function: :list_for_ref,
+        actor_field: :listed_by,
+        event_type: "connector.github.check_runs.listed",
+        failure_event_type: "connector.github.check_runs.list.failed",
+        artifact_slug: "check_runs_list_for_ref",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp commit_statuses_get_combined_operation do
+    operation_spec(
+      operation_id: "github.commit.statuses.get_combined",
+      name: "commit_statuses_get_combined",
+      description: "Fetch the combined GitHub commit status for a ref.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          ref: ref_schema(),
+          per_page: positive_integer_schema() |> Zoi.optional(),
+          page: positive_integer_schema() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          ref: ref_schema(),
+          sha: ref_schema(),
+          state: Zoi.string(),
+          total_count: Zoi.integer(),
+          statuses: Zoi.list(commit_status_schema()),
+          fetched_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.commit.statuses.get_combined"],
+      upstream: %{
+        method: "GET",
+        path: "/repos/{owner}/{repo}/commits/{ref}/status"
+      },
+      metadata: %{
+        operation: :commit_statuses_get_combined,
+        sdk_module: GitHubEx.Repos,
+        sdk_function: :get_combined_status_for_ref,
+        actor_field: :fetched_by,
+        event_type: "connector.github.commit.statuses.combined_fetched",
+        failure_event_type: "connector.github.commit.statuses.get_combined.failed",
+        artifact_slug: "commit_statuses_get_combined",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp commit_statuses_list_operation do
+    operation_spec(
+      operation_id: "github.commit.statuses.list",
+      name: "commit_statuses_list",
+      description: "List GitHub commit statuses for a ref.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          ref: ref_schema(),
+          per_page: positive_integer_schema() |> Zoi.optional(),
+          page: positive_integer_schema() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          ref: ref_schema(),
+          total_count: Zoi.integer(),
+          statuses: Zoi.list(commit_status_schema()),
+          listed_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.commit.statuses.list"],
+      upstream: %{
+        method: "GET",
+        path: "/repos/{owner}/{repo}/commits/{ref}/statuses"
+      },
+      metadata: %{
+        operation: :commit_statuses_list,
+        sdk_module: GitHubEx.Repos,
+        sdk_function: :list_commit_statuses_for_ref,
+        actor_field: :listed_by,
+        event_type: "connector.github.commit.statuses.listed",
+        failure_event_type: "connector.github.commit.statuses.list.failed",
+        artifact_slug: "commit_statuses_list",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp commits_list_operation do
+    operation_spec(
+      operation_id: "github.commits.list",
+      name: "commits_list",
+      description: "List GitHub commits with filters used as evidence refs.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          sha: Zoi.string() |> Zoi.optional(),
+          path: Zoi.string() |> Zoi.optional(),
+          author: Zoi.string() |> Zoi.optional(),
+          committer: Zoi.string() |> Zoi.optional(),
+          since: Zoi.string() |> Zoi.optional(),
+          until: Zoi.string() |> Zoi.optional(),
+          per_page: positive_integer_schema() |> Zoi.optional(),
+          page: positive_integer_schema() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          sha: Zoi.string() |> Zoi.nullable(),
+          path: Zoi.string() |> Zoi.nullable(),
+          page: positive_integer_schema(),
+          per_page: positive_integer_schema(),
+          total_count: Zoi.integer(),
+          commits: Zoi.list(commit_schema()),
+          listed_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.commits.list"],
+      upstream: %{
+        method: "GET",
+        path: "/repos/{owner}/{repo}/commits"
+      },
+      metadata: %{
+        operation: :commits_list,
+        sdk_module: GitHubEx.Repos,
+        sdk_function: :list_commits,
+        actor_field: :listed_by,
+        event_type: "connector.github.commits.listed",
+        failure_event_type: "connector.github.commits.list.failed",
+        artifact_slug: "commits_list",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
   end
 
   defp issue_list_operation do
@@ -410,6 +600,329 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
     )
   end
 
+  defp pr_create_operation do
+    operation_spec(
+      operation_id: "github.pr.create",
+      name: "pr_create",
+      description: "Create a GitHub pull request through the active lease.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          title: ref_schema(),
+          body: Zoi.string() |> Zoi.nullish(),
+          head: ref_schema(),
+          base: ref_schema(),
+          draft: Zoi.boolean() |> Zoi.optional(),
+          maintainer_can_modify: Zoi.boolean() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema: pull_request_output_schema(:opened_by),
+      allowed_tools: ["github.api.pr.create"],
+      upstream: %{
+        method: "POST",
+        path: "/repos/{owner}/{repo}/pulls"
+      },
+      metadata: %{
+        operation: :pr_create,
+        sdk_module: GitHubEx.Pulls,
+        sdk_function: :create,
+        actor_field: :opened_by,
+        event_type: "connector.github.pr.created",
+        failure_event_type: "connector.github.pr.create.failed",
+        artifact_slug: "pr_create",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp pr_fetch_operation do
+    operation_spec(
+      operation_id: "github.pr.fetch",
+      name: "pr_fetch",
+      description: "Fetch a GitHub pull request by repository and PR number.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema: pull_request_output_schema(:fetched_by),
+      allowed_tools: ["github.api.pr.fetch"],
+      upstream: %{
+        method: "GET",
+        path: "/repos/{owner}/{repo}/pulls/{pull_number}"
+      },
+      metadata: %{
+        operation: :pr_fetch,
+        sdk_module: GitHubEx.Pulls,
+        sdk_function: :get,
+        actor_field: :fetched_by,
+        event_type: "connector.github.pr.fetched",
+        failure_event_type: "connector.github.pr.fetch.failed",
+        artifact_slug: "pr_fetch",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp pr_list_operation do
+    operation_spec(
+      operation_id: "github.pr.list",
+      name: "pr_list",
+      description: "List GitHub pull requests for a repository.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          state: Zoi.enum(["open", "closed", "all"]) |> Zoi.optional(),
+          head: Zoi.string() |> Zoi.optional(),
+          base: Zoi.string() |> Zoi.optional(),
+          sort: Zoi.enum(["created", "updated", "popularity", "long-running"]) |> Zoi.optional(),
+          direction: Zoi.enum(["asc", "desc"]) |> Zoi.optional(),
+          per_page: positive_integer_schema() |> Zoi.optional(),
+          page: positive_integer_schema() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          state: Zoi.string(),
+          page: positive_integer_schema(),
+          per_page: positive_integer_schema(),
+          total_count: Zoi.integer(),
+          pull_requests: Zoi.list(pull_request_summary_schema()),
+          listed_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.pr.list"],
+      upstream: %{
+        method: "GET",
+        path: "/repos/{owner}/{repo}/pulls"
+      },
+      metadata: %{
+        operation: :pr_list,
+        sdk_module: GitHubEx.Pulls,
+        sdk_function: :list,
+        actor_field: :listed_by,
+        event_type: "connector.github.pr.listed",
+        failure_event_type: "connector.github.pr.list.failed",
+        artifact_slug: "pr_list",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp pr_update_operation do
+    operation_spec(
+      operation_id: "github.pr.update",
+      name: "pr_update",
+      description: "Update a GitHub pull request's editable fields.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          title: Zoi.string() |> Zoi.optional(),
+          body: Zoi.string() |> Zoi.nullish(),
+          state: Zoi.string() |> Zoi.optional(),
+          base: Zoi.string() |> Zoi.optional(),
+          maintainer_can_modify: Zoi.boolean() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema: pull_request_output_schema(:updated_by),
+      allowed_tools: ["github.api.pr.update"],
+      upstream: %{
+        method: "PATCH",
+        path: "/repos/{owner}/{repo}/pulls/{pull_number}"
+      },
+      metadata: %{
+        operation: :pr_update,
+        sdk_module: GitHubEx.Pulls,
+        sdk_function: :update,
+        actor_field: :updated_by,
+        event_type: "connector.github.pr.updated",
+        failure_event_type: "connector.github.pr.update.failed",
+        artifact_slug: "pr_update",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp pr_reviews_list_operation do
+    operation_spec(
+      operation_id: "github.pr.reviews.list",
+      name: "pr_reviews_list",
+      description: "List GitHub pull request reviews.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          per_page: positive_integer_schema() |> Zoi.optional(),
+          page: positive_integer_schema() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          total_count: Zoi.integer(),
+          reviews: Zoi.list(review_schema()),
+          listed_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.pr.reviews.list"],
+      upstream: %{
+        method: "GET",
+        path: "/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
+      },
+      metadata: %{
+        operation: :pr_reviews_list,
+        sdk_module: GitHubEx.Pulls,
+        sdk_function: :list_reviews,
+        actor_field: :listed_by,
+        event_type: "connector.github.pr.reviews.listed",
+        failure_event_type: "connector.github.pr.reviews.list.failed",
+        artifact_slug: "pr_reviews_list",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp pr_review_comments_list_operation do
+    operation_spec(
+      operation_id: "github.pr.review_comments.list",
+      name: "pr_review_comments_list",
+      description: "List GitHub pull request review comments as thread evidence.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          sort: Zoi.enum(["created", "updated"]) |> Zoi.optional(),
+          direction: Zoi.enum(["asc", "desc"]) |> Zoi.optional(),
+          since: Zoi.string() |> Zoi.optional(),
+          per_page: positive_integer_schema() |> Zoi.optional(),
+          page: positive_integer_schema() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          total_count: Zoi.integer(),
+          comments: Zoi.list(review_comment_schema()),
+          listed_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.pr.review_comments.list"],
+      upstream: %{
+        method: "GET",
+        path: "/repos/{owner}/{repo}/pulls/{pull_number}/comments"
+      },
+      metadata: %{
+        operation: :pr_review_comments_list,
+        sdk_module: GitHubEx.Pulls,
+        sdk_function: :list_review_comments,
+        actor_field: :listed_by,
+        event_type: "connector.github.pr.review_comments.listed",
+        failure_event_type: "connector.github.pr.review_comments.list.failed",
+        artifact_slug: "pr_review_comments_list",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp pr_review_create_operation do
+    operation_spec(
+      operation_id: "github.pr.review.create",
+      name: "pr_review_create",
+      description: "Publish a GitHub pull request review.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          body: Zoi.string() |> Zoi.nullish(),
+          event: Zoi.enum(["APPROVE", "REQUEST_CHANGES", "COMMENT"]) |> Zoi.optional(),
+          comments: Zoi.list(Zoi.map(description: "Inline review comment")) |> Zoi.optional(),
+          commit_id: Zoi.string() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          review: review_schema(),
+          created_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.pr.review.create"],
+      upstream: %{
+        method: "POST",
+        path: "/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
+      },
+      metadata: %{
+        operation: :pr_review_create,
+        sdk_module: GitHubEx.Pulls,
+        sdk_function: :create_review,
+        actor_field: :created_by,
+        event_type: "connector.github.pr.review.created",
+        failure_event_type: "connector.github.pr.review.create.failed",
+        artifact_slug: "pr_review_create",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
+  defp pr_review_comment_create_operation do
+    operation_spec(
+      operation_id: "github.pr.review_comment.create",
+      name: "pr_review_comment_create",
+      description: "Publish a GitHub pull request inline review comment.",
+      input_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          body: Zoi.string(),
+          commit_id: ref_schema(),
+          path: ref_schema(),
+          position: positive_integer_schema() |> Zoi.optional(),
+          line: positive_integer_schema() |> Zoi.optional(),
+          side: Zoi.string() |> Zoi.optional(),
+          start_line: positive_integer_schema() |> Zoi.optional(),
+          start_side: Zoi.string() |> Zoi.optional(),
+          request_opts: request_opts_schema() |> Zoi.optional()
+        ),
+      output_schema:
+        strict_object(
+          repo: repo_schema(),
+          pull_number: positive_integer_schema(),
+          comment: review_comment_schema(),
+          created_by: Zoi.string(),
+          auth_binding: auth_binding_schema()
+        ),
+      allowed_tools: ["github.api.pr.review_comment.create"],
+      upstream: %{
+        method: "POST",
+        path: "/repos/{owner}/{repo}/pulls/{pull_number}/comments"
+      },
+      metadata: %{
+        operation: :pr_review_comment_create,
+        sdk_module: GitHubEx.Pulls,
+        sdk_function: :create_review_comment,
+        actor_field: :created_by,
+        event_type: "connector.github.pr.review_comment.created",
+        failure_event_type: "connector.github.pr.review_comment.create.failed",
+        artifact_slug: "pr_review_comment_create",
+        rollout_phase: :a0,
+        publication: :public
+      }
+    )
+  end
+
   defp operation_spec(opts) do
     operation_id = Keyword.fetch!(opts, :operation_id)
     allowed_tools = Keyword.fetch!(opts, :allowed_tools)
@@ -471,6 +984,23 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
     Map.get(operation.metadata, :publication) == :public
   end
 
+  defp common_consumer_surface("github.check_runs.list_for_ref"),
+    do: %{mode: :common, normalized_id: "check_run.list", action_name: "check_run_list"}
+
+  defp common_consumer_surface("github.commit.statuses.get_combined") do
+    %{
+      mode: :common,
+      normalized_id: "commit_status.combined_fetch",
+      action_name: "commit_status_combined_fetch"
+    }
+  end
+
+  defp common_consumer_surface("github.commit.statuses.list"),
+    do: %{mode: :common, normalized_id: "commit_status.list", action_name: "commit_status_list"}
+
+  defp common_consumer_surface("github.commits.list"),
+    do: %{mode: :common, normalized_id: "commit.list", action_name: "commit_list"}
+
   defp common_consumer_surface("github.issue.list"),
     do: %{mode: :common, normalized_id: "work_item.list", action_name: "work_item_list"}
 
@@ -499,6 +1029,50 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   defp common_consumer_surface("github.comment.update"),
     do: %{mode: :common, normalized_id: "comment.update", action_name: "comment_update"}
 
+  defp common_consumer_surface("github.pr.create"),
+    do: %{mode: :common, normalized_id: "pull_request.create", action_name: "pull_request_create"}
+
+  defp common_consumer_surface("github.pr.fetch"),
+    do: %{mode: :common, normalized_id: "pull_request.fetch", action_name: "pull_request_fetch"}
+
+  defp common_consumer_surface("github.pr.list"),
+    do: %{mode: :common, normalized_id: "pull_request.list", action_name: "pull_request_list"}
+
+  defp common_consumer_surface("github.pr.update"),
+    do: %{mode: :common, normalized_id: "pull_request.update", action_name: "pull_request_update"}
+
+  defp common_consumer_surface("github.pr.reviews.list") do
+    %{
+      mode: :common,
+      normalized_id: "pull_request_review.list",
+      action_name: "pull_request_review_list"
+    }
+  end
+
+  defp common_consumer_surface("github.pr.review_comments.list") do
+    %{
+      mode: :common,
+      normalized_id: "pull_request_review_comment.list",
+      action_name: "pull_request_review_comment_list"
+    }
+  end
+
+  defp common_consumer_surface("github.pr.review.create") do
+    %{
+      mode: :common,
+      normalized_id: "pull_request_review.create",
+      action_name: "pull_request_review_create"
+    }
+  end
+
+  defp common_consumer_surface("github.pr.review_comment.create") do
+    %{
+      mode: :common,
+      normalized_id: "pull_request_review_comment.create",
+      action_name: "pull_request_review_comment_create"
+    }
+  end
+
   defp strict_object(fields) do
     Contracts.strict_object!(fields)
   end
@@ -510,6 +1084,10 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
 
   defp request_opts_schema do
     Zoi.object(%{}, description: "Optional github_ex request options forwarded as a map")
+  end
+
+  defp ref_schema do
+    Contracts.non_empty_string_schema("github.ref")
   end
 
   defp positive_integer_schema do
@@ -531,6 +1109,138 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
       title: Zoi.string(),
       state: Zoi.string(),
       labels: string_list_schema()
+    )
+  end
+
+  defp pull_request_output_schema(actor_field) do
+    [
+      repo: repo_schema(),
+      pull_number: positive_integer_schema(),
+      title: Zoi.string(),
+      body: Zoi.string() |> Zoi.nullable(),
+      state: Zoi.string(),
+      draft: Zoi.boolean(),
+      merged: Zoi.boolean(),
+      mergeable: Zoi.boolean() |> Zoi.nullable(),
+      maintainer_can_modify: Zoi.boolean(),
+      html_url: Zoi.string(),
+      diff_url: Zoi.string() |> Zoi.nullable(),
+      patch_url: Zoi.string() |> Zoi.nullable(),
+      commits_url: Zoi.string() |> Zoi.nullable(),
+      review_comments_url: Zoi.string() |> Zoi.nullable(),
+      head: pr_ref_schema(),
+      base: pr_ref_schema(),
+      user: Zoi.string() |> Zoi.nullable(),
+      labels: string_list_schema(),
+      requested_reviewers: string_list_schema(),
+      auth_binding: auth_binding_schema()
+    ]
+    |> Keyword.put(actor_field, Zoi.string())
+    |> strict_object()
+  end
+
+  defp pull_request_summary_schema do
+    strict_object(
+      repo: repo_schema(),
+      pull_number: positive_integer_schema(),
+      title: Zoi.string(),
+      body: Zoi.string() |> Zoi.nullable(),
+      state: Zoi.string(),
+      draft: Zoi.boolean(),
+      merged: Zoi.boolean(),
+      mergeable: Zoi.boolean() |> Zoi.nullable(),
+      maintainer_can_modify: Zoi.boolean(),
+      html_url: Zoi.string(),
+      diff_url: Zoi.string() |> Zoi.nullable(),
+      patch_url: Zoi.string() |> Zoi.nullable(),
+      commits_url: Zoi.string() |> Zoi.nullable(),
+      review_comments_url: Zoi.string() |> Zoi.nullable(),
+      head: pr_ref_schema(),
+      base: pr_ref_schema(),
+      user: Zoi.string() |> Zoi.nullable(),
+      labels: string_list_schema(),
+      requested_reviewers: string_list_schema()
+    )
+  end
+
+  defp pr_ref_schema do
+    strict_object(
+      ref: Zoi.string() |> Zoi.nullable(),
+      sha: Zoi.string() |> Zoi.nullable(),
+      repo: Zoi.string() |> Zoi.nullable()
+    )
+  end
+
+  defp review_schema do
+    strict_object(
+      review_id: positive_integer_schema(),
+      state: Zoi.string() |> Zoi.nullable(),
+      body: Zoi.string() |> Zoi.nullable(),
+      commit_id: Zoi.string() |> Zoi.nullable(),
+      submitted_at: Zoi.string() |> Zoi.nullable(),
+      user: Zoi.string() |> Zoi.nullable(),
+      html_url: Zoi.string() |> Zoi.nullable()
+    )
+  end
+
+  defp review_comment_schema do
+    strict_object(
+      comment_id: positive_integer_schema(),
+      body: Zoi.string() |> Zoi.nullable(),
+      path: Zoi.string() |> Zoi.nullable(),
+      diff_hunk: Zoi.string() |> Zoi.nullable(),
+      position: positive_integer_schema() |> Zoi.nullable(),
+      line: positive_integer_schema() |> Zoi.nullable(),
+      side: Zoi.string() |> Zoi.nullable(),
+      start_line: positive_integer_schema() |> Zoi.nullable(),
+      start_side: Zoi.string() |> Zoi.nullable(),
+      commit_id: Zoi.string() |> Zoi.nullable(),
+      original_commit_id: Zoi.string() |> Zoi.nullable(),
+      in_reply_to_id: positive_integer_schema() |> Zoi.nullable(),
+      pull_request_review_id: positive_integer_schema() |> Zoi.nullable(),
+      user: Zoi.string() |> Zoi.nullable(),
+      html_url: Zoi.string() |> Zoi.nullable()
+    )
+  end
+
+  defp commit_status_schema do
+    strict_object(
+      status_id: positive_integer_schema(),
+      state: Zoi.string(),
+      context: Zoi.string() |> Zoi.nullable(),
+      description: Zoi.string() |> Zoi.nullable(),
+      target_url: Zoi.string() |> Zoi.nullable(),
+      created_at: Zoi.string() |> Zoi.nullable(),
+      updated_at: Zoi.string() |> Zoi.nullable()
+    )
+  end
+
+  defp check_run_schema do
+    strict_object(
+      check_run_id: positive_integer_schema(),
+      name: Zoi.string(),
+      head_sha: Zoi.string() |> Zoi.nullable(),
+      status: Zoi.string() |> Zoi.nullable(),
+      conclusion: Zoi.string() |> Zoi.nullable(),
+      html_url: Zoi.string() |> Zoi.nullable(),
+      details_url: Zoi.string() |> Zoi.nullable(),
+      started_at: Zoi.string() |> Zoi.nullable(),
+      completed_at: Zoi.string() |> Zoi.nullable(),
+      app_slug: Zoi.string() |> Zoi.nullable()
+    )
+  end
+
+  defp commit_schema do
+    strict_object(
+      sha: Zoi.string(),
+      html_url: Zoi.string() |> Zoi.nullable(),
+      message: Zoi.string() |> Zoi.nullable(),
+      author_name: Zoi.string() |> Zoi.nullable(),
+      author_email: Zoi.string() |> Zoi.nullable(),
+      author_date: Zoi.string() |> Zoi.nullable(),
+      committer_name: Zoi.string() |> Zoi.nullable(),
+      committer_email: Zoi.string() |> Zoi.nullable(),
+      committer_date: Zoi.string() |> Zoi.nullable()
     )
   end
 

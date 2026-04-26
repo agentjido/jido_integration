@@ -8,35 +8,80 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
   alias Jido.Integration.V2.OperationSpec
 
   @published_capability_ids [
+    "github.check_runs.list_for_ref",
     "github.comment.create",
     "github.comment.update",
+    "github.commit.statuses.get_combined",
+    "github.commit.statuses.list",
+    "github.commits.list",
     "github.issue.close",
     "github.issue.create",
     "github.issue.fetch",
     "github.issue.label",
     "github.issue.list",
-    "github.issue.update"
+    "github.issue.update",
+    "github.pr.create",
+    "github.pr.fetch",
+    "github.pr.list",
+    "github.pr.review.create",
+    "github.pr.review_comment.create",
+    "github.pr.review_comments.list",
+    "github.pr.reviews.list",
+    "github.pr.update"
   ]
 
   @sdk_expectations %{
+    "github.check_runs.list_for_ref" =>
+      {GitHubEx.Checks, :list_for_ref, ["github.api.check_runs.list_for_ref"]},
     "github.comment.create" => {GitHubEx.Issues, :create_comment, ["github.api.comment.create"]},
     "github.comment.update" => {GitHubEx.Issues, :update_comment, ["github.api.comment.update"]},
+    "github.commit.statuses.get_combined" =>
+      {GitHubEx.Repos, :get_combined_status_for_ref, ["github.api.commit.statuses.get_combined"]},
+    "github.commit.statuses.list" =>
+      {GitHubEx.Repos, :list_commit_statuses_for_ref, ["github.api.commit.statuses.list"]},
+    "github.commits.list" => {GitHubEx.Repos, :list_commits, ["github.api.commits.list"]},
     "github.issue.close" => {GitHubEx.Issues, :update, ["github.api.issue.close"]},
     "github.issue.create" => {GitHubEx.Issues, :create, ["github.api.issue.create"]},
     "github.issue.fetch" => {GitHubEx.Issues, :get, ["github.api.issue.fetch"]},
     "github.issue.label" => {GitHubEx.Issues, :add_labels, ["github.api.issue.label"]},
     "github.issue.list" => {GitHubEx.Issues, :list_for_repo, ["github.api.issue.list"]},
-    "github.issue.update" => {GitHubEx.Issues, :update, ["github.api.issue.update"]}
+    "github.issue.update" => {GitHubEx.Issues, :update, ["github.api.issue.update"]},
+    "github.pr.create" => {GitHubEx.Pulls, :create, ["github.api.pr.create"]},
+    "github.pr.fetch" => {GitHubEx.Pulls, :get, ["github.api.pr.fetch"]},
+    "github.pr.list" => {GitHubEx.Pulls, :list, ["github.api.pr.list"]},
+    "github.pr.review.create" =>
+      {GitHubEx.Pulls, :create_review, ["github.api.pr.review.create"]},
+    "github.pr.review_comment.create" =>
+      {GitHubEx.Pulls, :create_review_comment, ["github.api.pr.review_comment.create"]},
+    "github.pr.review_comments.list" =>
+      {GitHubEx.Pulls, :list_review_comments, ["github.api.pr.review_comments.list"]},
+    "github.pr.reviews.list" => {GitHubEx.Pulls, :list_reviews, ["github.api.pr.reviews.list"]},
+    "github.pr.update" => {GitHubEx.Pulls, :update, ["github.api.pr.update"]}
   }
   @normalized_surface_expectations %{
+    "github.check_runs.list_for_ref" => {"check_run.list", "check_run_list"},
     "github.comment.create" => {"comment.create", "comment_create"},
     "github.comment.update" => {"comment.update", "comment_update"},
+    "github.commit.statuses.get_combined" =>
+      {"commit_status.combined_fetch", "commit_status_combined_fetch"},
+    "github.commit.statuses.list" => {"commit_status.list", "commit_status_list"},
+    "github.commits.list" => {"commit.list", "commit_list"},
     "github.issue.close" => {"work_item.close", "work_item_close"},
     "github.issue.create" => {"work_item.create", "work_item_create"},
     "github.issue.fetch" => {"work_item.fetch", "work_item_fetch"},
     "github.issue.label" => {"work_item.label_add", "work_item_label_add"},
     "github.issue.list" => {"work_item.list", "work_item_list"},
-    "github.issue.update" => {"work_item.update", "work_item_update"}
+    "github.issue.update" => {"work_item.update", "work_item_update"},
+    "github.pr.create" => {"pull_request.create", "pull_request_create"},
+    "github.pr.fetch" => {"pull_request.fetch", "pull_request_fetch"},
+    "github.pr.list" => {"pull_request.list", "pull_request_list"},
+    "github.pr.review.create" => {"pull_request_review.create", "pull_request_review_create"},
+    "github.pr.review_comment.create" =>
+      {"pull_request_review_comment.create", "pull_request_review_comment_create"},
+    "github.pr.review_comments.list" =>
+      {"pull_request_review_comment.list", "pull_request_review_comment_list"},
+    "github.pr.reviews.list" => {"pull_request_review.list", "pull_request_review_list"},
+    "github.pr.update" => {"pull_request.update", "pull_request_update"}
   }
 
   test "publishes the A0 direct catalog slice as authored operation specs plus derived capabilities" do
@@ -55,7 +100,7 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
     assert manifest.catalog.publication == :public
     assert manifest.runtime_families == [:direct]
     assert manifest.metadata.provider_sdk == :github_ex
-    assert manifest.metadata.published_slice == :a0_issue_workflows
+    assert manifest.metadata.published_slice == :a0_pr_review_status_workflows
 
     assert manifest.auth.install == %{
              required: true,
@@ -235,8 +280,37 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
                %{repo: "agentjido/jido_integration_v2", per_page: 2, page: -1}
              )
 
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.pr.fetch").input_schema,
+               %{repo: "agentjido/jido_integration_v2", pull_number: 0}
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.pr.create").input_schema,
+               %{repo: "agentjido/jido_integration_v2", title: "Missing branch refs"}
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.pr.review_comment.create").input_schema,
+               %{
+                 repo: "agentjido/jido_integration_v2",
+                 pull_number: 17,
+                 body: "Missing commit and path"
+               }
+             )
+
+    assert {:error, _reason} =
+             Zoi.parse(
+               OperationCatalog.fetch_operation!("github.check_runs.list_for_ref").input_schema,
+               %{repo: "agentjido/jido_integration_v2", ref: "", page: 1}
+             )
+
     assert OperationCatalog.fetch!("github.issue.close").sdk_function == :update
     assert OperationCatalog.fetch!("github.issue.label").sdk_function == :add_labels
+    assert OperationCatalog.fetch!("github.pr.review.create").sdk_function == :create_review
 
     assert Enum.all?(entries, fn entry ->
              assert Code.ensure_loaded?(entry.sdk_module)

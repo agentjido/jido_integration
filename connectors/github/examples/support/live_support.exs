@@ -5,38 +5,38 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
   alias Jido.Integration.V2.Connectors.GitHub.InstallBinding
-  alias Jido.Integration.V2.Connectors.GitHub.LiveEnv
   alias Jido.Integration.V2.Connectors.GitHub.LivePlan
+  alias Jido.Integration.V2.Connectors.GitHub.LiveSpec
 
   @runtime_apps [
     :jido_integration_v2_auth,
     :jido_integration_v2_control_plane
   ]
 
-  @spec run_auth_lifecycle!() :: map()
-  def run_auth_lifecycle! do
-    spec = prepare!(:auth)
+  @spec run_auth_lifecycle!([String.t()]) :: map()
+  def run_auth_lifecycle!(argv \\ System.argv()) do
+    spec = prepare!(:auth, argv)
     auth = install_connection!(spec)
     print_result!("auth lifecycle", auth_summary(auth))
   end
 
-  @spec run_read_acceptance!() :: map()
-  def run_read_acceptance! do
-    spec = prepare!(:read)
+  @spec run_read_acceptance!([String.t()]) :: map()
+  def run_read_acceptance!(argv \\ System.argv()) do
+    spec = prepare!(:read, argv)
     auth = install_connection!(spec)
     print_result!("read acceptance", perform_read_acceptance(auth, spec))
   end
 
-  @spec run_write_acceptance!() :: map()
-  def run_write_acceptance! do
-    spec = prepare!(:write)
+  @spec run_write_acceptance!([String.t()]) :: map()
+  def run_write_acceptance!(argv \\ System.argv()) do
+    spec = prepare!(:write, argv)
     auth = install_connection!(spec)
     print_result!("write acceptance", perform_write_acceptance(auth, spec))
   end
 
-  @spec run_all_acceptance!() :: map()
-  def run_all_acceptance! do
-    spec = prepare!(:write)
+  @spec run_all_acceptance!([String.t()]) :: map()
+  def run_all_acceptance!(argv \\ System.argv()) do
+    spec = prepare!(:all, argv)
     auth = install_connection!(spec)
     initial_list_result = list_issues!(auth, spec.repo)
 
@@ -90,55 +90,34 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     print_result!("full acceptance", result)
   end
 
-  defp prepare!(mode) do
-    env = System.get_env()
-
-    case LiveEnv.validate(mode, env) do
-      :ok ->
-        :ok
-
-      {:error, missing} ->
-        raise ArgumentError,
-              """
-              missing live configuration for #{mode}: #{Enum.join(missing, ", ")}
-
-              See connectors/github/docs/live_acceptance.md for the package-local runbook.
-              """
-    end
-
-    spec = LiveEnv.spec(env)
-    spec = Map.put(spec, :token, resolve_token!(spec))
+  defp prepare!(mode, argv) do
+    spec = LiveSpec.parse!(mode, argv)
+    spec = Map.put(spec, :token, resolve_token!())
 
     configure_live_provider!(spec)
     boot_runtime!()
     spec
   end
 
-  defp resolve_token!(spec) do
-    case spec.token do
-      token when is_binary(token) and token != "" ->
+  defp resolve_token! do
+    executable = System.find_executable("gh")
+
+    expect!(
+      is_binary(executable),
+      "missing GitHub token source; install `gh`, run `gh auth login`, and rerun the live proof"
+    )
+
+    case System.cmd(executable, ["auth", "token"], stderr_to_stdout: true) do
+      {token, 0} ->
         token
+        |> String.trim()
+        |> tap(fn trimmed ->
+          expect!(trimmed != "", "`gh auth token` returned an empty token")
+        end)
 
-      _other ->
-        executable = System.find_executable("gh")
-
-        expect!(
-          is_binary(executable),
-          "missing GitHub token; set #{Enum.join(LiveEnv.preferred_token_envs(), " or ")} or install `gh auth login`"
-        )
-
-        case System.cmd(executable, ["auth", "token"], stderr_to_stdout: true) do
-          {token, 0} ->
-            token
-            |> String.trim()
-            |> tap(fn trimmed ->
-              expect!(trimmed != "", "`gh auth token` returned an empty token")
-            end)
-
-          {output, _exit_code} ->
-            raise ArgumentError,
-                  "failed to resolve a GitHub token from gh: #{String.trim(output)}"
-        end
+      {output, _exit_code} ->
+        raise ArgumentError,
+              "failed to resolve a GitHub token from gh: #{String.trim(output)}"
     end
   end
 
@@ -264,13 +243,22 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     list_result = Keyword.get(opts, :list_result) || list_issues!(auth, repo)
 
     issue_number =
-      Keyword.get(opts, :issue_number) || spec.read_issue_number ||
-        first_issue_number!(list_result.output.issues, repo)
+      Keyword.get(opts, :issue_number) || first_issue_number!(list_result.output.issues, repo)
 
     fetch_result = fetch_issue!(auth, repo, issue_number)
+    commits_result = list_commits!(auth, repo)
+    head_sha = first_commit_sha!(commits_result.output.commits, repo)
+    combined_status_result = fetch_combined_status!(auth, repo, head_sha)
+    statuses_result = list_commit_statuses!(auth, repo, head_sha)
+    check_runs_result = list_check_runs!(auth, repo, head_sha)
+    pr_read_result = maybe_perform_pr_read_acceptance(auth, spec, repo)
 
     expect!(list_result.output.repo == repo, "live issue list returned the wrong repo")
     expect!(fetch_result.output.repo == repo, "live issue fetch returned the wrong repo")
+    expect!(commits_result.output.repo == repo, "live commit list returned the wrong repo")
+    expect!(combined_status_result.output.ref == head_sha, "combined status used the wrong ref")
+    expect!(statuses_result.output.ref == head_sha, "status list used the wrong ref")
+    expect!(check_runs_result.output.ref == head_sha, "check-run list used the wrong ref")
 
     expect!(
       fetch_result.output.issue_number == issue_number,
@@ -291,8 +279,22 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
       repo: repo,
       listed_issue_count: list_result.output.total_count,
       fetched_issue_number: issue_number,
+      evidence_head_sha: head_sha,
+      commit_count: commits_result.output.total_count,
+      combined_status_state: combined_status_result.output.state,
+      status_count: statuses_result.output.total_count,
+      check_run_count: check_runs_result.output.total_count,
+      pr_read: pr_read_result.summary,
       auth_connection_id: auth.connection.connection_id,
-      run_ids: [list_result.run.run_id, fetch_result.run.run_id]
+      run_ids:
+        [
+          list_result.run.run_id,
+          fetch_result.run.run_id,
+          commits_result.run.run_id,
+          combined_status_result.run.run_id,
+          statuses_result.run.run_id,
+          check_runs_result.run.run_id
+        ] ++ pr_read_result.run_ids
     }
   end
 
@@ -423,6 +425,123 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     })
   end
 
+  defp list_commits!(auth, repo) do
+    invoke!(auth, "github.commits.list", %{
+      repo: repo,
+      per_page: 1,
+      page: 1
+    })
+  end
+
+  defp fetch_combined_status!(auth, repo, ref) do
+    invoke!(auth, "github.commit.statuses.get_combined", %{
+      repo: repo,
+      ref: ref,
+      per_page: 10,
+      page: 1
+    })
+  end
+
+  defp list_commit_statuses!(auth, repo, ref) do
+    invoke!(auth, "github.commit.statuses.list", %{
+      repo: repo,
+      ref: ref,
+      per_page: 10,
+      page: 1
+    })
+  end
+
+  defp list_check_runs!(auth, repo, ref) do
+    invoke!(auth, "github.check_runs.list_for_ref", %{
+      repo: repo,
+      ref: ref,
+      per_page: 10,
+      page: 1
+    })
+  end
+
+  defp maybe_perform_pr_read_acceptance(auth, _spec, repo) do
+    list_result = list_prs!(auth, repo)
+
+    case list_result.output.pull_requests do
+      [%{pull_number: pull_number} | _rest] when is_integer(pull_number) and pull_number > 0 ->
+        perform_discovered_pr_read_acceptance(auth, repo, pull_number, list_result)
+
+      _none ->
+        %{
+          summary: %{exercised?: false, reason: :no_pull_requests, listed_count: 0},
+          run_ids: [list_result.run.run_id]
+        }
+    end
+  end
+
+  defp perform_discovered_pr_read_acceptance(auth, repo, pull_number, list_result) do
+    fetch_result = fetch_pr!(auth, repo, pull_number)
+    reviews_result = list_pr_reviews!(auth, repo, pull_number)
+    comments_result = list_pr_review_comments!(auth, repo, pull_number)
+
+    expect!(list_result.output.repo == repo, "live PR list returned the wrong repo")
+    expect!(fetch_result.output.repo == repo, "live PR fetch returned the wrong repo")
+    expect!(fetch_result.output.pull_number == pull_number, "live PR fetch returned the wrong PR")
+    expect!(reviews_result.output.pull_number == pull_number, "review list used the wrong PR")
+
+    expect!(
+      comments_result.output.pull_number == pull_number,
+      "review-comment list used the wrong PR"
+    )
+
+    %{
+      summary: %{
+        exercised?: true,
+        pull_number: pull_number,
+        state: fetch_result.output.state,
+        listed_count: list_result.output.total_count,
+        review_count: reviews_result.output.total_count,
+        review_comment_count: comments_result.output.total_count
+      },
+      run_ids: [
+        list_result.run.run_id,
+        fetch_result.run.run_id,
+        reviews_result.run.run_id,
+        comments_result.run.run_id
+      ]
+    }
+  end
+
+  defp list_prs!(auth, repo) do
+    invoke!(auth, "github.pr.list", %{
+      repo: repo,
+      state: "all",
+      per_page: 1,
+      page: 1
+    })
+  end
+
+  defp fetch_pr!(auth, repo, pull_number) do
+    invoke!(auth, "github.pr.fetch", %{
+      repo: repo,
+      pull_number: pull_number
+    })
+  end
+
+  defp list_pr_reviews!(auth, repo, pull_number) do
+    invoke!(auth, "github.pr.reviews.list", %{
+      repo: repo,
+      pull_number: pull_number,
+      per_page: 10,
+      page: 1
+    })
+  end
+
+  defp list_pr_review_comments!(auth, repo, pull_number) do
+    invoke!(auth, "github.pr.review_comments.list", %{
+      repo: repo,
+      pull_number: pull_number,
+      per_page: 10,
+      page: 1
+    })
+  end
+
   defp write_seed do
     marker = Integer.to_string(System.system_time(:second))
 
@@ -450,14 +569,19 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
   defp first_issue_number!([], repo) do
     raise ArgumentError,
           """
-          the read-only proof needs a repo with at least one issue or #{LiveEnv.env_names().read_issue_number}
-          set explicitly. Repo: #{repo}
+          the read-only proof needs #{repo} to have at least one existing issue.
 
           For the combined smoke run, `scripts/live_acceptance.sh all` can bootstrap a writable repo issue automatically.
           """
   end
 
   defp first_issue_number!([issue | _rest], _repo), do: issue.issue_number
+
+  defp first_commit_sha!([], repo) do
+    raise ArgumentError, "the read proof needs #{repo} to have at least one commit"
+  end
+
+  defp first_commit_sha!([commit | _rest], _repo), do: commit.sha
 
   defp auth_summary(auth) do
     %{

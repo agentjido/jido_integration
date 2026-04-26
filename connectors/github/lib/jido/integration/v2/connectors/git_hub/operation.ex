@@ -68,6 +68,69 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     apply(metadata.sdk_module, metadata.sdk_function, [client, sdk_params])
   end
 
+  defp sdk_params(:check_runs_list_for_ref, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_non_empty_string(input, :ref),
+         :ok <- validate_optional_positive_integer(input, :app_id),
+         :ok <- validate_optional_positive_integer(input, :per_page),
+         :ok <- validate_optional_positive_integer(input, :page) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [
+           :ref,
+           :check_name,
+           :status,
+           :filter,
+           :app_id,
+           :per_page,
+           :page,
+           :request_opts
+         ])
+       )}
+    end
+  end
+
+  defp sdk_params(:commit_statuses_get_combined, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_non_empty_string(input, :ref),
+         :ok <- validate_optional_positive_integer(input, :per_page),
+         :ok <- validate_optional_positive_integer(input, :page) do
+      {:ok, Map.merge(repo_params, take_present(input, [:ref, :per_page, :page, :request_opts]))}
+    end
+  end
+
+  defp sdk_params(:commit_statuses_list, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_non_empty_string(input, :ref),
+         :ok <- validate_optional_positive_integer(input, :per_page),
+         :ok <- validate_optional_positive_integer(input, :page) do
+      {:ok, Map.merge(repo_params, take_present(input, [:ref, :per_page, :page, :request_opts]))}
+    end
+  end
+
+  defp sdk_params(:commits_list, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_optional_positive_integer(input, :per_page),
+         :ok <- validate_optional_positive_integer(input, :page) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [
+           :sha,
+           :path,
+           :author,
+           :committer,
+           :since,
+           :until,
+           :per_page,
+           :page,
+           :request_opts
+         ])
+       )}
+    end
+  end
+
   defp sdk_params(:issue_list, input) do
     with {:ok, repo_params} <- repo_params(input),
          :ok <- validate_optional_positive_integer(input, :per_page),
@@ -144,6 +207,212 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
          :ok <- validate_required_positive_integer(input, :comment_id) do
       {:ok, Map.merge(repo_params, take_present(input, [:comment_id, :body, :request_opts]))}
     end
+  end
+
+  defp sdk_params(:pr_create, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_non_empty_string(input, :title),
+         :ok <- validate_required_non_empty_string(input, :head),
+         :ok <- validate_required_non_empty_string(input, :base) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [
+           :title,
+           :body,
+           :head,
+           :base,
+           :draft,
+           :maintainer_can_modify,
+           :request_opts
+         ])
+       )}
+    end
+  end
+
+  defp sdk_params(:pr_fetch, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :pull_number) do
+      {:ok, Map.merge(repo_params, take_present(input, [:pull_number, :request_opts]))}
+    end
+  end
+
+  defp sdk_params(:pr_list, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_optional_positive_integer(input, :per_page),
+         :ok <- validate_optional_positive_integer(input, :page) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [
+           :state,
+           :head,
+           :base,
+           :sort,
+           :direction,
+           :per_page,
+           :page,
+           :request_opts
+         ])
+       )}
+    end
+  end
+
+  defp sdk_params(:pr_update, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :pull_number) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [
+           :pull_number,
+           :title,
+           :body,
+           :state,
+           :base,
+           :maintainer_can_modify,
+           :request_opts
+         ])
+       )}
+    end
+  end
+
+  defp sdk_params(:pr_reviews_list, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :pull_number),
+         :ok <- validate_optional_positive_integer(input, :per_page),
+         :ok <- validate_optional_positive_integer(input, :page) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [:pull_number, :per_page, :page, :request_opts])
+       )}
+    end
+  end
+
+  defp sdk_params(:pr_review_comments_list, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :pull_number),
+         :ok <- validate_optional_positive_integer(input, :per_page),
+         :ok <- validate_optional_positive_integer(input, :page) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [
+           :pull_number,
+           :sort,
+           :direction,
+           :since,
+           :per_page,
+           :page,
+           :request_opts
+         ])
+       )}
+    end
+  end
+
+  defp sdk_params(:pr_review_create, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :pull_number) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [:pull_number, :body, :event, :comments, :commit_id, :request_opts])
+       )}
+    end
+  end
+
+  defp sdk_params(:pr_review_comment_create, input) do
+    with {:ok, repo_params} <- repo_params(input),
+         :ok <- validate_required_positive_integer(input, :pull_number),
+         :ok <- validate_required_non_empty_string(input, :body),
+         :ok <- validate_required_non_empty_string(input, :commit_id),
+         :ok <- validate_required_non_empty_string(input, :path),
+         :ok <- validate_optional_positive_integer(input, :position),
+         :ok <- validate_optional_positive_integer(input, :line),
+         :ok <- validate_optional_positive_integer(input, :start_line) do
+      {:ok,
+       Map.merge(
+         repo_params,
+         take_present(input, [
+           :pull_number,
+           :body,
+           :commit_id,
+           :path,
+           :position,
+           :line,
+           :side,
+           :start_line,
+           :start_side,
+           :request_opts
+         ])
+       )}
+    end
+  end
+
+  defp normalize_output(:check_runs_list_for_ref, response, input, context, auth_binding) do
+    check_runs =
+      response
+      |> Map.get("check_runs", [])
+      |> Enum.map(&normalize_check_run/1)
+
+    %{
+      repo: repo_value(input),
+      ref: input_value(input, :ref),
+      total_count: Map.get(response, "total_count", length(check_runs)),
+      check_runs: check_runs,
+      listed_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp normalize_output(:commit_statuses_get_combined, response, input, context, auth_binding) do
+    statuses =
+      response
+      |> Map.get("statuses", [])
+      |> Enum.map(&normalize_commit_status/1)
+
+    %{
+      repo: repo_value(input),
+      ref: input_value(input, :ref),
+      sha: Map.get(response, "sha", input_value(input, :ref)),
+      state: Map.get(response, "state"),
+      total_count: Map.get(response, "total_count", length(statuses)),
+      statuses: statuses,
+      fetched_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp normalize_output(:commit_statuses_list, response, input, context, auth_binding)
+       when is_list(response) do
+    statuses = Enum.map(response, &normalize_commit_status/1)
+
+    %{
+      repo: repo_value(input),
+      ref: input_value(input, :ref),
+      total_count: length(statuses),
+      statuses: statuses,
+      listed_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp normalize_output(:commits_list, response, input, context, auth_binding)
+       when is_list(response) do
+    commits = Enum.map(response, &normalize_commit/1)
+
+    %{
+      repo: repo_value(input),
+      sha: input_value(input, :sha),
+      path: input_value(input, :path),
+      page: input_value(input, :page, 1),
+      per_page: input_value(input, :per_page, 30),
+      total_count: length(commits),
+      commits: commits,
+      listed_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
   end
 
   defp normalize_output(:issue_list, response, input, context, auth_binding)
@@ -252,6 +521,88 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     }
   end
 
+  defp normalize_output(:pr_create, response, _input, context, auth_binding) do
+    response
+    |> normalize_pull_request()
+    |> Map.merge(%{opened_by: context.credential_lease.subject, auth_binding: auth_binding})
+  end
+
+  defp normalize_output(:pr_fetch, response, _input, context, auth_binding) do
+    response
+    |> normalize_pull_request()
+    |> Map.merge(%{fetched_by: context.credential_lease.subject, auth_binding: auth_binding})
+  end
+
+  defp normalize_output(:pr_list, response, input, context, auth_binding)
+       when is_list(response) do
+    pull_requests = Enum.map(response, &normalize_pull_request/1)
+
+    %{
+      repo: repo_value(input),
+      state: input_value(input, :state, "open"),
+      page: input_value(input, :page, 1),
+      per_page: input_value(input, :per_page, 30),
+      total_count: length(pull_requests),
+      pull_requests: pull_requests,
+      listed_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp normalize_output(:pr_update, response, _input, context, auth_binding) do
+    response
+    |> normalize_pull_request()
+    |> Map.merge(%{updated_by: context.credential_lease.subject, auth_binding: auth_binding})
+  end
+
+  defp normalize_output(:pr_reviews_list, response, input, context, auth_binding)
+       when is_list(response) do
+    reviews = Enum.map(response, &normalize_review/1)
+
+    %{
+      repo: repo_value(input),
+      pull_number: input_value(input, :pull_number),
+      total_count: length(reviews),
+      reviews: reviews,
+      listed_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp normalize_output(:pr_review_comments_list, response, input, context, auth_binding)
+       when is_list(response) do
+    comments = Enum.map(response, &normalize_review_comment/1)
+
+    %{
+      repo: repo_value(input),
+      pull_number: input_value(input, :pull_number),
+      total_count: length(comments),
+      comments: comments,
+      listed_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp normalize_output(:pr_review_create, response, input, context, auth_binding) do
+    %{
+      repo: repo_value(input),
+      pull_number: input_value(input, :pull_number),
+      review: normalize_review(response),
+      created_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp normalize_output(:pr_review_comment_create, response, input, context, auth_binding) do
+    %{
+      repo: repo_value(input),
+      pull_number: input_value(input, :pull_number),
+      comment: normalize_review_comment(response),
+      created_by: context.credential_lease.subject,
+      auth_binding: auth_binding
+    }
+  end
+
   defp error_result(context, metadata, input, auth_binding, mapped_error) do
     runtime_result =
       RuntimeResult.new!(%{
@@ -342,6 +693,13 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     end
   end
 
+  defp input_value(input, key, default \\ nil) do
+    case fetch_input(input, key) do
+      {:ok, value} -> value
+      :error -> default
+    end
+  end
+
   defp validate_required_positive_integer(input, field) do
     case fetch_input(input, field) do
       {:ok, value} ->
@@ -365,6 +723,19 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     {:error, {:invalid_input, field, value}}
   end
 
+  defp validate_required_non_empty_string(input, field) do
+    case fetch_input(input, field) do
+      {:ok, value} when is_binary(value) and value != "" ->
+        :ok
+
+      {:ok, value} ->
+        {:error, {:invalid_input, field, value}}
+
+      :error ->
+        {:error, {:invalid_input, field, nil}}
+    end
+  end
+
   defp normalize_labels(labels) when is_list(labels) do
     Enum.map(labels, fn
       %{"name" => name} -> name
@@ -384,6 +755,161 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
   end
 
   defp normalize_logins(_logins), do: []
+
+  defp normalize_pull_request(response) do
+    %{
+      repo: pull_request_repo(response),
+      pull_number: Map.get(response, "number"),
+      title: Map.get(response, "title"),
+      body: Map.get(response, "body"),
+      state: Map.get(response, "state"),
+      draft: Map.get(response, "draft", false),
+      merged: Map.get(response, "merged", false),
+      mergeable: Map.get(response, "mergeable"),
+      maintainer_can_modify: Map.get(response, "maintainer_can_modify", false),
+      html_url: Map.get(response, "html_url"),
+      diff_url: Map.get(response, "diff_url"),
+      patch_url: Map.get(response, "patch_url"),
+      commits_url: Map.get(response, "commits_url"),
+      review_comments_url: Map.get(response, "review_comments_url"),
+      head: normalize_ref(Map.get(response, "head")),
+      base: normalize_ref(Map.get(response, "base")),
+      user: login(Map.get(response, "user")),
+      labels: normalize_labels(Map.get(response, "labels", [])),
+      requested_reviewers: normalize_logins(Map.get(response, "requested_reviewers", []))
+    }
+  end
+
+  defp pull_request_repo(response) do
+    get_in(response, ["head", "repo", "full_name"]) ||
+      get_in(response, ["base", "repo", "full_name"])
+  end
+
+  defp normalize_ref(%{} = ref) do
+    %{
+      ref: Map.get(ref, "ref"),
+      sha: Map.get(ref, "sha"),
+      repo: get_in(ref, ["repo", "full_name"])
+    }
+  end
+
+  defp normalize_ref(_ref), do: %{ref: nil, sha: nil, repo: nil}
+
+  defp normalize_review(review) do
+    %{
+      review_id: Map.get(review, "id"),
+      state: Map.get(review, "state"),
+      body: Map.get(review, "body"),
+      commit_id: Map.get(review, "commit_id"),
+      submitted_at: Map.get(review, "submitted_at"),
+      user: login(Map.get(review, "user")),
+      html_url: Map.get(review, "html_url")
+    }
+  end
+
+  defp normalize_review_comment(comment) do
+    %{
+      comment_id: Map.get(comment, "id"),
+      body: Map.get(comment, "body"),
+      path: Map.get(comment, "path"),
+      diff_hunk: Map.get(comment, "diff_hunk"),
+      position: Map.get(comment, "position"),
+      line: Map.get(comment, "line"),
+      side: Map.get(comment, "side"),
+      start_line: Map.get(comment, "start_line"),
+      start_side: Map.get(comment, "start_side"),
+      commit_id: Map.get(comment, "commit_id"),
+      original_commit_id: Map.get(comment, "original_commit_id"),
+      in_reply_to_id: Map.get(comment, "in_reply_to_id"),
+      pull_request_review_id: Map.get(comment, "pull_request_review_id"),
+      user: login(Map.get(comment, "user")),
+      html_url: Map.get(comment, "html_url")
+    }
+  end
+
+  defp normalize_commit_status(status) do
+    %{
+      status_id: Map.get(status, "id"),
+      state: Map.get(status, "state"),
+      context: Map.get(status, "context"),
+      description: Map.get(status, "description"),
+      target_url: Map.get(status, "target_url"),
+      created_at: Map.get(status, "created_at"),
+      updated_at: Map.get(status, "updated_at")
+    }
+  end
+
+  defp normalize_check_run(check_run) do
+    %{
+      check_run_id: Map.get(check_run, "id"),
+      name: Map.get(check_run, "name"),
+      head_sha: Map.get(check_run, "head_sha"),
+      status: Map.get(check_run, "status"),
+      conclusion: Map.get(check_run, "conclusion"),
+      html_url: Map.get(check_run, "html_url"),
+      details_url: Map.get(check_run, "details_url"),
+      started_at: Map.get(check_run, "started_at"),
+      completed_at: Map.get(check_run, "completed_at"),
+      app_slug: get_in(check_run, ["app", "slug"])
+    }
+  end
+
+  defp normalize_commit(commit) do
+    commit_body = Map.get(commit, "commit", %{})
+    author = Map.get(commit_body, "author", %{})
+    committer = Map.get(commit_body, "committer", %{})
+
+    %{
+      sha: Map.get(commit, "sha"),
+      html_url: Map.get(commit, "html_url"),
+      message: Map.get(commit_body, "message"),
+      author_name: Map.get(author, "name"),
+      author_email: Map.get(author, "email"),
+      author_date: Map.get(author, "date"),
+      committer_name: Map.get(committer, "name"),
+      committer_email: Map.get(committer, "email"),
+      committer_date: Map.get(committer, "date")
+    }
+  end
+
+  defp login(%{"login" => login}), do: login
+  defp login(_user), do: nil
+
+  defp event_payload(:check_runs_list_for_ref, output, auth_binding) do
+    %{
+      repo: output.repo,
+      ref: output.ref,
+      total_count: output.total_count,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:commit_statuses_get_combined, output, auth_binding) do
+    %{
+      repo: output.repo,
+      ref: output.ref,
+      state: output.state,
+      total_count: output.total_count,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:commit_statuses_list, output, auth_binding) do
+    %{
+      repo: output.repo,
+      ref: output.ref,
+      total_count: output.total_count,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:commits_list, output, auth_binding) do
+    %{
+      repo: output.repo,
+      total_count: output.total_count,
+      auth_binding: auth_binding
+    }
+  end
 
   defp event_payload(:issue_list, output, auth_binding) do
     %{
@@ -428,6 +954,61 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
     %{
       repo: output.repo,
       comment_id: output.comment_id,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(operation, output, auth_binding)
+       when operation in [:pr_create, :pr_fetch, :pr_update] do
+    %{
+      repo: output.repo,
+      pull_number: output.pull_number,
+      state: output.state,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:pr_list, output, auth_binding) do
+    %{
+      repo: output.repo,
+      total_count: output.total_count,
+      page: output.page,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:pr_reviews_list, output, auth_binding) do
+    %{
+      repo: output.repo,
+      pull_number: output.pull_number,
+      total_count: output.total_count,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:pr_review_comments_list, output, auth_binding) do
+    %{
+      repo: output.repo,
+      pull_number: output.pull_number,
+      total_count: output.total_count,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:pr_review_create, output, auth_binding) do
+    %{
+      repo: output.repo,
+      pull_number: output.pull_number,
+      review_id: output.review.review_id,
+      auth_binding: auth_binding
+    }
+  end
+
+  defp event_payload(:pr_review_comment_create, output, auth_binding) do
+    %{
+      repo: output.repo,
+      pull_number: output.pull_number,
+      comment_id: output.comment.comment_id,
       auth_binding: auth_binding
     }
   end

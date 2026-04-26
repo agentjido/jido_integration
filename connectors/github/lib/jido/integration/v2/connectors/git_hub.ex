@@ -89,10 +89,16 @@ defmodule Jido.Integration.V2.Connectors.GitHub do
       catalog:
         CatalogSpec.new!(%{
           display_name: "GitHub",
-          description: "GitHub issue and comment workflows backed by github_ex",
+          description:
+            "GitHub issue, PR, review, status, and evidence workflows backed by github_ex",
           category: "developer_tools",
-          tags: ["github", "issues", "comments"],
-          docs_refs: ["https://docs.github.com/rest/issues"],
+          tags: ["github", "issues", "comments", "pull_requests", "reviews", "checks"],
+          docs_refs: [
+            "https://docs.github.com/rest/issues",
+            "https://docs.github.com/rest/pulls",
+            "https://docs.github.com/rest/commits/statuses",
+            "https://docs.github.com/rest/checks"
+          ],
           maturity: :beta,
           publication: :public
         }),
@@ -101,7 +107,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub do
       runtime_families: [:direct],
       metadata: %{
         provider_sdk: :github_ex,
-        published_slice: :a0_issue_workflows
+        published_slice: :a0_pr_review_status_workflows
       }
     })
   end
