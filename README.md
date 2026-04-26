@@ -83,6 +83,9 @@ Key public capabilities today include:
 - review and targeting through `fetch_run/1`, `fetch_attempt/1`, `events/1`,
   `run_artifacts/1`, `fetch_artifact/1`, `announce_target/1`, `fetch_target/1`,
   `compatible_targets/1`, and `review_packet/2`
+- substrate readback through `Jido.Integration.V2.LowerFacts`, including
+  tenant-scoped submission receipt, run, attempt, event, artifact, trace, and
+  terminal execution outcome reads for Mezzanine
 
 Phase 1 also lands the first live inference runtime family on that same
 surface:

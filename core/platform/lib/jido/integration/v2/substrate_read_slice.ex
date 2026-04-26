@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.SubstrateReadSlice do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.Event
+  alias Jido.Integration.V2.Receipt
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.SubmissionAcceptance
   alias Jido.Integration.V2.TenantScope
@@ -24,6 +25,7 @@ defmodule Jido.Integration.V2.SubstrateReadSlice do
           | :events
           | :fetch_artifact
           | :run_artifacts
+          | :fetch_execution_outcome
           | :resolve_trace
 
   @type failure ::
@@ -42,6 +44,7 @@ defmodule Jido.Integration.V2.SubstrateReadSlice do
     :events,
     :fetch_artifact,
     :run_artifacts,
+    :fetch_execution_outcome,
     :resolve_trace
   ]
 
@@ -162,6 +165,23 @@ defmodule Jido.Integration.V2.SubstrateReadSlice do
     with {:ok, _scope} <- normalize_scope(scope), do: {:error, :not_found}
   end
 
+  @spec fetch_execution_outcome(TenantScope.t(), map(), keyword()) ::
+          :pending | {:ok, map()} | {:error, failure()}
+  def fetch_execution_outcome(scope, execution_lookup, opts \\ [])
+
+  def fetch_execution_outcome(scope, execution_lookup, opts)
+      when is_map(execution_lookup) and is_list(opts) do
+    with {:ok, %TenantScope{} = scope} <- normalize_scope(scope),
+         {:ok, %Run{} = run} <- resolve_run_from_execution_lookup(execution_lookup),
+         :ok <- authorize_run(scope, run) do
+      execution_outcome(run, execution_lookup, opts)
+    end
+  end
+
+  def fetch_execution_outcome(scope, _execution_lookup, _opts) do
+    with {:ok, _scope} <- normalize_scope(scope), do: {:error, :not_found}
+  end
+
   @spec resolve_trace(TenantScope.t(), String.t(), keyword()) ::
           {:ok, map()} | {:error, failure()}
   def resolve_trace(scope, trace_or_lower_id, opts \\ [])
@@ -226,6 +246,114 @@ defmodule Jido.Integration.V2.SubstrateReadSlice do
       :error -> {:error, :not_found}
     end
   end
+
+  defp resolve_run_from_execution_lookup(execution_lookup) do
+    execution_lookup
+    |> execution_lookup_identifiers()
+    |> Enum.reduce_while({:error, :not_found}, fn identifier, _acc ->
+      case resolve_run(identifier) do
+        {:ok, %Run{} = run} -> {:halt, {:ok, run}}
+        {:error, :not_found} -> {:cont, {:error, :not_found}}
+      end
+    end)
+  end
+
+  defp execution_lookup_identifiers(execution_lookup) do
+    [
+      lookup_value(execution_lookup, [:lower_receipt, :run_id]),
+      lookup_value(execution_lookup, [:lower_receipt, :attempt_id]),
+      lookup_value(execution_lookup, [:submission_ref, :run_id]),
+      lookup_value(execution_lookup, [:submission_ref, :attempt_id]),
+      lookup_value(execution_lookup, [:run_id]),
+      lookup_value(execution_lookup, [:attempt_id]),
+      lookup_value(execution_lookup, [:artifact_id]),
+      lookup_value(execution_lookup, [:trace_id]),
+      lookup_value(execution_lookup, [:lower_run_id]),
+      lookup_value(execution_lookup, [:lower_attempt_id]),
+      lookup_value(execution_lookup, [:lower_artifact_id])
+    ]
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp execution_outcome(%Run{status: status}, _execution_lookup, _opts)
+       when status in [:accepted, :running],
+       do: :pending
+
+  defp execution_outcome(%Run{} = run, execution_lookup, opts) do
+    with {:ok, attempt} <- execution_lookup_attempt(run, execution_lookup) do
+      events = ControlPlane.events(run.run_id)
+      artifacts = ControlPlane.run_artifacts(run.run_id)
+
+      receipt =
+        Receipt.from_lower_records!(
+          run,
+          attempt,
+          events,
+          artifacts,
+          receipt_opts(run, execution_lookup, opts)
+        )
+
+      case Receipt.to_execution_outcome(receipt, normalized_outcome(run, attempt)) do
+        {:ok, outcome} -> {:ok, outcome}
+        {:error, {:non_terminal_receipt, _status}} -> :pending
+      end
+    end
+  end
+
+  defp execution_lookup_attempt(%Run{} = run, execution_lookup) do
+    case lookup_attempt_id(execution_lookup) do
+      nil ->
+        {:ok, latest_attempt(run)}
+
+      attempt_id ->
+        with {:ok, %Attempt{} = attempt} <- fetch_attempt_record(attempt_id),
+             true <- attempt.run_id == run.run_id do
+          {:ok, attempt}
+        else
+          false -> {:error, :stale}
+          {:error, :not_found} -> {:error, :not_found}
+        end
+    end
+  end
+
+  defp lookup_attempt_id(execution_lookup) do
+    first_present([
+      lookup_value(execution_lookup, [:lower_receipt, :attempt_id]),
+      lookup_value(execution_lookup, [:submission_ref, :attempt_id]),
+      lookup_value(execution_lookup, [:attempt_id]),
+      lookup_value(execution_lookup, [:lower_attempt_id])
+    ])
+  end
+
+  defp latest_attempt(%Run{} = run) do
+    run.run_id
+    |> ControlPlane.attempts()
+    |> Enum.max_by(& &1.attempt, fn -> nil end)
+  end
+
+  defp receipt_opts(%Run{} = run, execution_lookup, opts) do
+    [
+      ji_submission_key: ji_submission_key(run, execution_lookup),
+      normalized_outcome_ref:
+        lookup_value(execution_lookup, [:lower_receipt, :normalized_outcome_ref]),
+      lifecycle_hints: lookup_value(execution_lookup, [:lower_receipt, :lifecycle_hints]) || %{},
+      failure_kind: lookup_value(execution_lookup, [:lower_receipt, :failure_kind])
+    ]
+    |> Keyword.merge(opts)
+  end
+
+  defp ji_submission_key(%Run{} = run, execution_lookup) do
+    first_present([
+      lookup_value(execution_lookup, [:lower_receipt, :ji_submission_key]),
+      lookup_value(execution_lookup, [:submission_ref, :ji_submission_key]),
+      fetch_path(run.input, [:metadata, :ji_submission_key]),
+      fetch_path(run.input, [:request, :metadata, :ji_submission_key])
+    ])
+  end
+
+  defp normalized_outcome(%Run{}, %Attempt{output: output}) when is_map(output), do: output
+  defp normalized_outcome(%Run{result: result}, _attempt) when is_map(result), do: result
+  defp normalized_outcome(_run, _attempt), do: %{}
 
   defp resolve_run_from_run_or_attempt(identifier) do
     case fetch_attempt_record(identifier) do
@@ -330,6 +458,8 @@ defmodule Jido.Integration.V2.SubstrateReadSlice do
   end
 
   defp fetch_path(_value, _path), do: nil
+
+  defp lookup_value(value, path), do: fetch_path(value, path)
 
   defp first_present(values), do: Enum.find_value(values, &present_value/1)
 

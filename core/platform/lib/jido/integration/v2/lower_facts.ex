@@ -28,6 +28,7 @@ defmodule Jido.Integration.V2.LowerFacts do
           | :events
           | :fetch_artifact
           | :run_artifacts
+          | :fetch_execution_outcome
           | :resolve_trace
 
   @doc """
@@ -77,6 +78,12 @@ defmodule Jido.Integration.V2.LowerFacts do
   List durable artifact references for a run.
   """
   defdelegate run_artifacts(scope, run_id, opts \\ []), to: SubstrateReadSlice
+
+  @doc """
+  Fetch a terminal execution outcome derived from durable lower truth.
+  """
+  defdelegate fetch_execution_outcome(scope, execution_lookup, opts \\ []),
+    to: SubstrateReadSlice
 
   @doc """
   Resolve a scoped lower trace from a trace id or one of its lower ids.

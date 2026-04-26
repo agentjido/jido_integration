@@ -54,11 +54,13 @@ defmodule Jido.Integration.V2LowerFactsTest do
              :events,
              :fetch_artifact,
              :run_artifacts,
+             :fetch_execution_outcome,
              :resolve_trace
            ]
 
     assert LowerFacts.operation_supported?(:fetch_run)
     assert LowerFacts.operation_supported?(:run_artifacts)
+    assert LowerFacts.operation_supported?(:fetch_execution_outcome)
     assert LowerFacts.operation_supported?(:resolve_trace)
     refute LowerFacts.operation_supported?(:review_packet)
     refute LowerFacts.operation_supported?(:derived_state_attachment)
@@ -208,6 +210,33 @@ defmodule Jido.Integration.V2LowerFactsTest do
     assert stored_artifact == artifact
     assert {:ok, [^artifact]} = LowerFacts.run_artifacts(lower_scope, result.run.run_id)
 
+    assert {:ok, execution_outcome} =
+             LowerFacts.fetch_execution_outcome(lower_scope, %{
+               "lower_receipt" => %{
+                 "run_id" => result.run.run_id,
+                 "attempt_id" => result.attempt.attempt_id
+               }
+             })
+
+    assert execution_outcome.status == :ok
+
+    assert execution_outcome.receipt_id ==
+             "#{result.run.run_id}:#{result.attempt.attempt_id}:execution"
+
+    assert execution_outcome.normalized_outcome == result.attempt.output
+    assert execution_outcome.lower_receipt["run_id"] == result.run.run_id
+    assert execution_outcome.lower_receipt["attempt_id"] == result.attempt.attempt_id
+    assert execution_outcome.lower_receipt["terminal?"] == true
+    assert execution_outcome.artifact_refs == [artifact.artifact_id]
+
+    assert Enum.map(execution_outcome.lower_receipt["event_refs"], & &1["type"]) == [
+             "inference.request_admitted",
+             "inference.attempt_started",
+             "inference.compatibility_evaluated",
+             "inference.target_resolved",
+             "inference.attempt_completed"
+           ]
+
     assert {:ok, trace_resolution} = LowerFacts.resolve_trace(lower_scope, result.run.run_id)
     assert trace_resolution.run.run_id == result.run.run_id
     assert Enum.map(trace_resolution.attempts, & &1.attempt_id) == [result.attempt.attempt_id]
@@ -225,6 +254,12 @@ defmodule Jido.Integration.V2LowerFactsTest do
              LowerFacts.fetch_artifact(wrong_scope, artifact.artifact_id)
 
     assert {:error, :tenant_mismatch} = LowerFacts.run_artifacts(wrong_scope, result.run.run_id)
+
+    assert {:error, :tenant_mismatch} =
+             LowerFacts.fetch_execution_outcome(wrong_scope, %{
+               "lower_receipt" => %{"run_id" => result.run.run_id}
+             })
+
     assert {:error, :tenant_mismatch} = LowerFacts.resolve_trace(wrong_scope, result.run.run_id)
   end
 

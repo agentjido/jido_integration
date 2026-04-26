@@ -118,6 +118,7 @@ Substrate-facing lower facts:
 - `Jido.Integration.V2.LowerFacts.events/2`
 - `Jido.Integration.V2.LowerFacts.fetch_artifact/2`
 - `Jido.Integration.V2.LowerFacts.run_artifacts/2`
+- `Jido.Integration.V2.LowerFacts.fetch_execution_outcome/2`
 - `Jido.Integration.V2.LowerFacts.resolve_trace/2`
 
 Higher-order substrate bridges should treat `Jido.Integration.V2.LowerFacts`
@@ -129,6 +130,13 @@ the scope is missing or does not match the durable lower record. The dedicated
 facade may continue to expose convenience read helpers for general consumers,
 but lower-stack integrations should freeze against the bounded, tenant-scoped
 `LowerFacts` surface instead.
+
+`fetch_execution_outcome/2` derives Mezzanine's terminal outcome envelope from
+durable lower run, attempt, event, and artifact truth. Callers pass a lookup map
+containing lower receipt, run, attempt, artifact, or trace refs already carried
+by source admission, workflow state, or prior receipts; the read path does not
+accept env-backed selectors or static provider object IDs as production
+identity.
 
 `Jido.Integration.V2.AuthorityTenantPropagation` is the Phase 6 M8 owner
 evidence surface for `AuthorityTenantPropagation.v1`. It requires propagated

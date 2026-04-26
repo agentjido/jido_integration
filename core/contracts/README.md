@@ -78,6 +78,12 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `Attempt` identity is deterministic from `run_id` and monotonic `attempt`
 - `Event` uses a canonical control-plane envelope with `schema_version`,
   attempt-aware sequencing, trace fields, and optional `payload_ref` maps
+- `Receipt` now projects durable lower run, attempt, event, and artifact
+  records into Mezzanine-safe lower receipts, terminal execution outcomes, and
+  `Mezzanine.WorkflowReceiptSignal.v1` attrs. The projection carries only
+  lower IDs, event refs, artifact IDs, provider correlation IDs, lifecycle
+  hints, and normalized outcome refs; raw provider payload bodies stay in lower
+  event/artifact storage.
 - `RuntimeResult` is the shared connector/runtime emission contract for
   output, reviewable events, and durable artifact refs
 - the phase-0 inference contract seam extends that same contracts package with
