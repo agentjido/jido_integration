@@ -42,6 +42,12 @@ the authored projection metadata. Connector-local inventory stays outside that
 suite so connectors can keep unstable or host-specific capability slices
 private.
 
+`capability_contracts` also checks session-control honesty for non-direct
+surfaces. Capabilities that publish `*.session.start`, `*.session.status`,
+`*.session.cancel`, or `*.session.approve` must carry executable
+`metadata.session_control.operation` routing metadata, and out-of-band control
+operations must require `input.session_id`.
+
 Future profiles should extend this model with more suites instead of changing
 the root task shape.
 

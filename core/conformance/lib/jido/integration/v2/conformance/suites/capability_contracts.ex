@@ -3,7 +3,11 @@ defmodule Jido.Integration.V2.Conformance.Suites.CapabilityContracts do
 
   alias Jido.Integration.V2.Conformance.SuiteResult
   alias Jido.Integration.V2.Conformance.SuiteSupport
+  alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Manifest
+
+  @allowed_session_control_operations [:start, :turn, :stream, :status, :cancel, :approve]
+  @out_of_band_session_control_operations [:status, :cancel, :approve]
 
   @spec run(map()) :: SuiteResult.t()
   def run(%{manifest: manifest}) do
@@ -36,7 +40,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.CapabilityContracts do
         )
       ] ++
         Enum.flat_map(capabilities, fn capability ->
-          authored_source_checks(capability, manifest)
+          authored_source_checks(capability, manifest) ++ session_control_checks(capability)
         end)
 
     SuiteResult.from_checks(
@@ -125,4 +129,96 @@ defmodule Jido.Integration.V2.Conformance.Suites.CapabilityContracts do
       "derived capability could not be matched to an authored schema source"
     )
   end
+
+  defp session_control_checks(%{
+         id: capability_id,
+         runtime_class: runtime_class,
+         metadata: metadata
+       })
+       when is_map(metadata) do
+    session_control = Contracts.get(metadata, :session_control)
+    operation = session_control_operation(session_control)
+    control_id? = session_control_id?(capability_id)
+
+    [
+      SuiteSupport.check(
+        "#{capability_id}.session_control.metadata_present",
+        not control_id? or not is_nil(operation),
+        "session-control operations must declare metadata.session_control.operation"
+      ),
+      SuiteSupport.check(
+        "#{capability_id}.session_control.operation_allowed",
+        is_nil(operation) or operation in @allowed_session_control_operations,
+        "metadata.session_control.operation must be one of #{inspect(@allowed_session_control_operations)}"
+      ),
+      SuiteSupport.check(
+        "#{capability_id}.session_control.runtime_class_matches",
+        is_nil(operation) or session_control_runtime_class_matches?(operation, runtime_class),
+        "metadata.session_control.operation must match the authored runtime_class"
+      ),
+      SuiteSupport.check(
+        "#{capability_id}.session_control.requires_session_id",
+        operation not in @out_of_band_session_control_operations or
+          schema_requires_session_id?(metadata, operation),
+        "out-of-band session-control operations must require input.session_id"
+      )
+    ]
+  end
+
+  defp session_control_checks(_capability), do: []
+
+  defp session_control_operation(%{} = session_control) do
+    case Contracts.get(session_control, :operation) do
+      operation when is_atom(operation) -> operation
+      operation when is_binary(operation) -> session_control_operation_atom(operation)
+      _other -> nil
+    end
+  end
+
+  defp session_control_operation(_other), do: nil
+
+  defp session_control_operation_atom(operation) do
+    operation
+    |> String.trim()
+    |> case do
+      "approve" -> :approve
+      "cancel" -> :cancel
+      "start" -> :start
+      "status" -> :status
+      "stream" -> :stream
+      "turn" -> :turn
+      _other -> nil
+    end
+  end
+
+  defp session_control_id?(capability_id) when is_binary(capability_id) do
+    Regex.match?(~r/\.session\.(start|status|cancel|approve|tool\.respond)$/, capability_id)
+  end
+
+  defp session_control_id?(_capability_id), do: false
+
+  defp session_control_runtime_class_matches?(:stream, :stream), do: true
+  defp session_control_runtime_class_matches?(:stream, _runtime_class), do: false
+  defp session_control_runtime_class_matches?(_operation, :session), do: true
+  defp session_control_runtime_class_matches?(_operation, _runtime_class), do: false
+
+  defp schema_requires_session_id?(metadata, operation) do
+    case Contracts.get(metadata, :input_schema) do
+      nil ->
+        false
+
+      schema ->
+        case Zoi.parse(schema, sample_without_session_id(operation)) do
+          {:ok, _value} -> false
+          {:error, _reason} -> true
+        end
+    end
+  rescue
+    _error -> false
+  end
+
+  defp sample_without_session_id(:status), do: %{}
+  defp sample_without_session_id(:cancel), do: %{run_id: "run-1"}
+  defp sample_without_session_id(:approve), do: %{approval_id: "approval-1", decision: :allow}
+  defp sample_without_session_id(_operation), do: %{}
 end

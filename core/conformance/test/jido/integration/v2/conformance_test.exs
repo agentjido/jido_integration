@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
   alias Jido.Integration.V2.Conformance.Suites.ManifestContract
   alias Jido.Integration.V2.Conformance.Suites.RuntimeClassFit
   alias Jido.Integration.V2.Connector
+  alias Jido.Integration.V2.Connectors.CodexCli
   alias Jido.Integration.V2.Connectors.GitHub
   alias Jido.Integration.V2.ConsumerProjection
   alias Jido.Integration.V2.Manifest
@@ -1466,6 +1467,29 @@ defmodule Jido.Integration.V2.ConformanceTest do
 
     assert Enum.find(report.suite_results, &(&1.id == :ingress_definition_discipline)).status ==
              :skipped
+  end
+
+  test "passes Codex session-control conformance only when control operations carry executable routing metadata" do
+    assert {:ok, report} =
+             Conformance.run(
+               CodexCli,
+               profile: :connector_foundation,
+               generated_at: ~U[2026-04-25 00:00:00Z]
+             )
+
+    capability_suite = Enum.find(report.suite_results, &(&1.id == :capability_contracts))
+
+    assert report.status == :passed
+    assert capability_suite.status == :passed
+
+    for operation <- [:start, :status, :cancel, :turn, :stream] do
+      capability_id = "codex.session.#{operation}"
+
+      assert passed_check?(
+               capability_suite.checks,
+               "#{capability_id}.session_control.metadata_present"
+             )
+    end
   end
 
   test "passes GitHub generated consumer surface loadability and projection checks" do

@@ -28,6 +28,12 @@ Sessioned and streamed capabilities go through `Jido.RuntimeControl`.
 
 This is the stable non-direct seam for long-running or stateful execution.
 
+Generated non-direct actions distinguish execution turns from pure session
+control with `metadata.session_control.operation`. `:turn` and `:stream` build
+a `RunRequest`; `:start`, `:status`, `:cancel`, and `:approve` call Runtime
+Control lifecycle/control callbacks directly. Control operations must not rely
+on the prompt fallback path.
+
 Use it when:
 
 - work must reuse a runtime-managed session

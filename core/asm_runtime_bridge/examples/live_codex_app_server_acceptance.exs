@@ -53,6 +53,9 @@ defmodule LiveCodexAppServerAcceptance do
       )
 
     try do
+      {:ok, status} = RuntimeControl.session_status(session)
+      assert_control_status!(status, session)
+
       {:ok, _run, stream} =
         RuntimeControl.stream_run(session, request,
           lane: :sdk,
@@ -69,6 +72,12 @@ defmodule LiveCodexAppServerAcceptance do
       assert_live_result!(events)
     after
       _ = RuntimeControl.stop_session(session)
+    end
+  end
+
+  defp assert_control_status!(status, session) do
+    unless status.session_id == session.session_id and status.state == :ready do
+      raise "live acceptance failed: session status was not ready; got #{inspect(status)}"
     end
   end
 
@@ -96,6 +105,7 @@ defmodule LiveCodexAppServerAcceptance do
 
     IO.puts("jido_codex_app_server_live=ok")
     IO.puts("provider_session_id=#{provider_session_id}")
+    IO.puts("session_control_status=ready")
     IO.puts("host_tool_events=requested,completed")
     IO.puts("text=#{String.trim(text)}")
   end

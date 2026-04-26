@@ -149,8 +149,6 @@ Runtime families proved in-tree:
   - `codex.session.turn`
   - `codex.session.cancel`
   - `codex.session.status`
-  - `codex.session.approve`
-  - `codex.session.tool.respond`
 - `:stream`
   - `codex.session.stream`
   - `market.ticks.pull`

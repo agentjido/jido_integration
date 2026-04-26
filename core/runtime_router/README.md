@@ -8,6 +8,8 @@ runtime-control-backed session and stream runtime adapter for the control plane.
 - session reuse and shutdown through `RuntimeRouter.SessionStore`
 - the built-in `asm` and `jido_session` driver ids
 - translation between authored runtime metadata and `Jido.RuntimeControl` requests
+- session-control dispatch from `metadata.session_control.operation` to
+  lifecycle/status/cancel/approval Runtime Control callbacks
 - translation from accepted governance projections into
   `ExecutionPlane.Admission.Request` values
 - fallback ladders over an injected `ExecutionPlane.Runtime.Client`, issuing one
@@ -26,6 +28,23 @@ the node never silently downgrades within one `execute/2` call.
 This package is not the path for CLI-backed inference endpoints. That route is
 published by ASM and consumed by the control plane as an inference target
 instead of a Runtime Control session/stream capability.
+
+## Session Control Routing
+
+Non-direct capabilities may declare generic session-control intent in authored
+metadata:
+
+```elixir
+metadata: %{
+  session_control: %{operation: :turn | :stream | :start | :status | :cancel | :approve}
+}
+```
+
+`:turn` and `:stream` keep using the existing Runtime Control run path.
+`:start`, `:status`, `:cancel`, and `:approve` are pure control operations and
+do not synthesize prompt text. Out-of-band control operations require an
+explicit `session_id`; `:cancel` also requires `run_id`, and `:approve` requires
+`approval_id` plus `decision`.
 
 ## Publication Boundary
 

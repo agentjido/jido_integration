@@ -34,14 +34,13 @@ The package publishes the promoted Codex app-server session family:
 - `codex.session.stream`
 - `codex.session.cancel`
 - `codex.session.status`
-- `codex.session.approve`
-- `codex.session.tool.respond`
 
 The primary executable turn is `codex.session.turn`:
 
 - `consumer_surface.mode: :common`
 - `consumer_surface.normalized_id: "codex.session.turn"`
 - `consumer_surface.action_name: "codex_session_turn"`
+- `metadata.session_control.operation: :turn`
 - `metadata.codex_app_server.primary?: true`
 - `metadata.codex_app_server.host_tools: :native`
 - canonical `metadata.runtime_family` for connection affinity, resumability,
@@ -74,6 +73,19 @@ Proves:
 - Codex app-server host tools and provider session ids carried by Runtime
   Control events/results
 
+`codex.session.start`, `codex.session.status`, and `codex.session.cancel` are
+pure Runtime Control operations. They use `metadata.session_control.operation`
+to route through lifecycle/status/cancel callbacks instead of synthesizing a
+prompt turn. Out-of-band control operations require the `session_id` returned by
+`codex.session.start`; `codex.session.cancel` also requires an explicit
+`run_id`.
+
+`codex.session.approve` is not public in this connector until Codex approval
+requests are surfaced with stable approval ids through the broader provider
+request envelope. `codex.session.tool.respond` is also not public because the
+currently supported host-tool mode is automatic ASM execution and response, not
+operator-mediated delayed response through a pending-request broker.
+
 ## Package Verification
 
 From the package directory:
@@ -105,6 +117,10 @@ cd core/asm_runtime_bridge
 JIDO_INTEGRATION_WORKSPACE="${JIDO_INTEGRATION_WORKSPACE:-$PWD/../..}"
 /home/home/scripts/with_bash_secrets mix run examples/live_codex_app_server_acceptance.exs -- --cwd "$JIDO_INTEGRATION_WORKSPACE"
 ```
+
+Expected output includes `jido_codex_app_server_live=ok`,
+`session_control_status=ready`, host-tool request/completion evidence, and the
+deterministic final marker text.
 
 Default package tests and conformance stay credential-free.
 

@@ -19,7 +19,19 @@ defmodule Jido.Integration.V2.RuntimeRouter do
 
   alias Jido.Integration.V2.{Capability, Contracts, RuntimeResult, TargetDescriptor}
   alias Jido.Integration.V2.RuntimeRouter.SessionStore
-  alias Jido.RuntimeControl.{ExecutionResult, RunRequest, SessionHandle}
+
+  alias Jido.RuntimeControl.{
+    Error,
+    ExecutionResult,
+    ExecutionStatus,
+    RunRequest,
+    Runtime,
+    SessionHandle
+  }
+
+  @session_control_run_operations [:turn, :stream]
+  @session_control_control_operations [:start, :status, :cancel, :approve]
+  @session_control_out_of_band_operations [:status, :cancel, :approve]
 
   @target_driver_modules %{
     "asm" => Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver,
@@ -67,20 +79,100 @@ defmodule Jido.Integration.V2.RuntimeRouter do
       when runtime_class in [:session, :stream] and is_map(input) and is_map(context) do
     assert_started!()
 
-    with {:ok, resolution} <- resolve_driver(capability, input, context),
-         {:ok, %{session: session, lifecycle: lifecycle}} <-
-           fetch_or_start_session(resolution, capability, input, context) do
-      case run_driver(resolution, session, capability, input, context, lifecycle) do
-        {:ok, result} ->
-          finalize_execution(result, session, capability, context, lifecycle)
+    case resolve_driver(capability, input, context) do
+      {:ok, resolution} ->
+        case session_control_operation(capability) do
+          operation when operation in @session_control_control_operations ->
+            execute_session_control(operation, resolution, capability, input, context)
 
-        {:error, reason} ->
-          {:error, reason,
-           failure_runtime_result(capability, context, reason, lifecycle, session.session_id)}
-      end
-    else
+          operation when operation in @session_control_run_operations or is_nil(operation) ->
+            execute_run_operation(resolution, capability, input, context)
+
+          operation ->
+            reason =
+              Error.validation_error("Unsupported session-control operation", %{
+                field: :session_control,
+                value: operation,
+                details: %{operation: operation}
+              })
+
+            {:error, reason, failure_runtime_result(capability, context, reason)}
+        end
+
       {:error, reason} ->
         {:error, reason, failure_runtime_result(capability, context, reason)}
+    end
+  end
+
+  defp execute_run_operation(resolution, capability, input, context) do
+    case fetch_or_start_session(resolution, capability, input, context) do
+      {:ok, %{session: session, lifecycle: lifecycle}} ->
+        case run_driver(resolution, session, capability, input, context, lifecycle) do
+          {:ok, result} ->
+            finalize_execution(result, session, capability, context, lifecycle)
+
+          {:error, reason} ->
+            {:error, reason,
+             failure_runtime_result(capability, context, reason, lifecycle, session.session_id)}
+        end
+
+      {:error, reason} ->
+        {:error, reason, failure_runtime_result(capability, context, reason)}
+    end
+  end
+
+  defp execute_session_control(:start, resolution, capability, input, context) do
+    case fetch_or_start_session(resolution, capability, input, context) do
+      {:ok, %{session: session, lifecycle: lifecycle}} ->
+        {:ok, start_runtime_result(session, capability, lifecycle)}
+
+      {:error, reason} ->
+        {:error, reason, failure_runtime_result(capability, context, reason)}
+    end
+  end
+
+  defp execute_session_control(:status, _resolution, capability, input, context) do
+    with {:ok, %{driver_module: driver_module, session: session}} <-
+           fetch_control_session(input, :status),
+         {:ok, %ExecutionStatus{} = status} <- Runtime.session_status(driver_module, session) do
+      {:ok, status_runtime_result(:status, status, session, capability)}
+    else
+      {:error, reason} ->
+        {:error, reason,
+         failure_runtime_result(capability, context, reason, nil, control_session_id(input))}
+    end
+  end
+
+  defp execute_session_control(:cancel, _resolution, capability, input, context) do
+    with {:ok, %{driver_module: driver_module, session: session}} <-
+           fetch_control_session(input, :cancel),
+         {:ok, run_id} <- required_control_string(input, :run_id, :cancel),
+         :ok <- Runtime.cancel_run(driver_module, session, run_id),
+         {:ok, %ExecutionStatus{} = status} <- Runtime.session_status(driver_module, session) do
+      {:ok, status_runtime_result(:cancel, status, session, capability, %{run_id: run_id})}
+    else
+      {:error, reason} ->
+        {:error, reason,
+         failure_runtime_result(capability, context, reason, nil, control_session_id(input))}
+    end
+  end
+
+  defp execute_session_control(:approve, _resolution, capability, input, context) do
+    with {:ok, %{driver_module: driver_module, session: session}} <-
+           fetch_control_session(input, :approve),
+         {:ok, approval_id} <- required_control_string(input, :approval_id, :approve),
+         {:ok, decision} <- required_control_decision(input),
+         :ok <- Runtime.approve(driver_module, session, approval_id, decision, []),
+         {:ok, %ExecutionStatus{} = status} <- Runtime.session_status(driver_module, session) do
+      {:ok,
+       status_runtime_result(:approve, status, session, capability, %{
+         approval_id: approval_id,
+         decision: decision
+       })}
+    else
+      {:error, reason} ->
+        {:error, reason,
+         failure_runtime_result(capability, context, reason, nil, control_session_id(input))}
     end
   end
 
@@ -189,7 +281,7 @@ defmodule Jido.Integration.V2.RuntimeRouter do
 
     options
     |> maybe_put(:provider, normalize_optional_atom(Contracts.get(runtime_config, :provider)))
-    |> maybe_put(:cwd, workspace_root(context))
+    |> maybe_put(:cwd, workspace_root(context) || requested_cwd(input))
     |> maybe_put(:allowed_tools, allowed_tools(context))
     |> Keyword.put(:capability, capability)
     |> Keyword.put(:input, input)
@@ -220,6 +312,76 @@ defmodule Jido.Integration.V2.RuntimeRouter do
             {:error, {:invalid_runtime_control_session, other}}
         end
     end
+  end
+
+  defp fetch_control_session(input, operation)
+       when operation in @session_control_out_of_band_operations do
+    with {:ok, session_id} <- required_control_string(input, :session_id, operation) do
+      case fetch_session_entry_by_id(session_id) do
+        {:ok, entry} ->
+          {:ok, entry}
+
+        :error ->
+          {:error,
+           Error.validation_error("Runtime Control session is not active", %{
+             field: :session_id,
+             value: session_id,
+             details: %{operation: operation}
+           })}
+      end
+    end
+  end
+
+  defp fetch_session_entry_by_id(session_id) when is_binary(session_id) do
+    session_store_entries()
+    |> Enum.find_value(:error, fn
+      {_key, %{session: %SessionHandle{session_id: ^session_id}} = entry} -> {:ok, entry}
+      _entry -> false
+    end)
+  end
+
+  defp required_control_string(input, field, operation) when is_map(input) and is_atom(field) do
+    case Contracts.get(input, field) do
+      value when is_binary(value) ->
+        if String.trim(value) != "" do
+          {:ok, value}
+        else
+          missing_control_field(field, value, operation)
+        end
+
+      value ->
+        missing_control_field(field, value, operation)
+    end
+  end
+
+  defp required_control_decision(input) when is_map(input) do
+    case Contracts.get(input, :decision) do
+      decision when decision in [:allow, :deny] ->
+        {:ok, decision}
+
+      "allow" ->
+        {:ok, :allow}
+
+      "deny" ->
+        {:ok, :deny}
+
+      value ->
+        {:error,
+         Error.validation_error("decision is required for session-control approve", %{
+           field: :decision,
+           value: value,
+           details: %{operation: :approve}
+         })}
+    end
+  end
+
+  defp missing_control_field(field, value, operation) do
+    {:error,
+     Error.validation_error("#{field} is required for session-control #{operation}", %{
+       field: field,
+       value: value,
+       details: %{operation: operation}
+     })}
   end
 
   defp run_driver(
@@ -256,6 +418,91 @@ defmodule Jido.Integration.V2.RuntimeRouter do
         {:error, {:runtime_router_invocation_failed, Exception.message(error)}}
     end
   end
+
+  defp start_runtime_result(%SessionHandle{} = session, %Capability{} = capability, lifecycle) do
+    RuntimeResult.new!(%{
+      output: %{
+        operation: :start,
+        status: session.status,
+        state: session.status,
+        session_id: session.session_id,
+        runtime_id: session.runtime_id,
+        provider: session.provider,
+        message: session_control_message(:start, session.status),
+        metadata: session.metadata
+      },
+      runtime_ref_id: session.session_id,
+      events: [
+        %{
+          type: lifecycle_event_type(capability.runtime_class, lifecycle),
+          stream: :control,
+          payload: %{
+            operation: :start,
+            runtime_id: session.runtime_id,
+            provider: session.provider,
+            status: session.status
+          },
+          session_id: session.session_id,
+          runtime_ref_id: session.session_id
+        },
+        %{
+          type: "session_control.started",
+          stream: :control,
+          payload: %{
+            operation: :start,
+            runtime_id: session.runtime_id,
+            provider: session.provider,
+            status: session.status
+          },
+          session_id: session.session_id,
+          runtime_ref_id: session.session_id
+        }
+      ]
+    })
+  end
+
+  defp status_runtime_result(
+         operation,
+         %ExecutionStatus{} = status,
+         %SessionHandle{} = session,
+         %Capability{} = _capability,
+         extra_output \\ %{}
+       ) do
+    output =
+      %{
+        operation: operation,
+        status: status.state,
+        state: status.state,
+        session_id: status.session_id || session.session_id,
+        runtime_id: status.runtime_id,
+        provider: session.provider,
+        message: status.message,
+        details: status.details,
+        metadata: status.details
+      }
+      |> Map.merge(extra_output)
+
+    RuntimeResult.new!(%{
+      output: output,
+      runtime_ref_id: session.session_id,
+      events: [
+        %{
+          type: session_control_event_type(operation),
+          stream: :control,
+          payload: output,
+          session_id: session.session_id,
+          runtime_ref_id: session.session_id
+        }
+      ]
+    })
+  end
+
+  defp session_control_event_type(:status), do: "session_control.status"
+  defp session_control_event_type(:cancel), do: "session_control.cancelled"
+  defp session_control_event_type(:approve), do: "session_control.approval_resolved"
+
+  defp session_control_message(:start, :ready), do: "session ready"
+  defp session_control_message(:start, state), do: "session #{state}"
 
   defp build_run_request(%Capability{} = capability, input, context) do
     %{
@@ -297,6 +544,41 @@ defmodule Jido.Integration.V2.RuntimeRouter do
       _other -> %{}
     end
   end
+
+  defp session_control_operation(%Capability{metadata: metadata}) when is_map(metadata) do
+    metadata
+    |> Contracts.get(:session_control)
+    |> case do
+      %{} = session_control ->
+        raw_operation = Contracts.get(session_control, :operation)
+
+        case normalize_session_control_operation(raw_operation) do
+          nil -> {:invalid, raw_operation}
+          operation -> operation
+        end
+
+      _other ->
+        nil
+    end
+  end
+
+  defp normalize_session_control_operation(operation) when is_atom(operation), do: operation
+
+  defp normalize_session_control_operation(operation) when is_binary(operation) do
+    operation
+    |> String.trim()
+    |> case do
+      "approve" -> :approve
+      "cancel" -> :cancel
+      "start" -> :start
+      "status" -> :status
+      "stream" -> :stream
+      "turn" -> :turn
+      _other -> nil
+    end
+  end
+
+  defp normalize_session_control_operation(_operation), do: nil
 
   defp finalize_execution(
          %ExecutionResult{} = result,
@@ -485,6 +767,20 @@ defmodule Jido.Integration.V2.RuntimeRouter do
 
       _other ->
         "#{capability_id}: #{inspect(input)}"
+    end
+  end
+
+  defp control_session_id(input) when is_map(input) do
+    case Contracts.get(input, :session_id) do
+      value when is_binary(value) and value != "" -> value
+      _other -> nil
+    end
+  end
+
+  defp requested_cwd(input) when is_map(input) do
+    case Contracts.get(input, :cwd) do
+      value when is_binary(value) and value != "" -> value
+      _other -> nil
     end
   end
 

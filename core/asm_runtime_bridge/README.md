@@ -84,6 +84,10 @@ JIDO_INTEGRATION_WORKSPACE="${JIDO_INTEGRATION_WORKSPACE:-$PWD/../..}"
 /home/home/scripts/with_bash_secrets mix run examples/live_codex_app_server_acceptance.exs -- --cwd "$JIDO_INTEGRATION_WORKSPACE"
 ```
 
+Expected output includes `jido_codex_app_server_live=ok`,
+`session_control_status=ready`, host-tool request/completion evidence, and the
+deterministic final marker text.
+
 ## Runtime Scope
 
 This package is now direct about its scope:

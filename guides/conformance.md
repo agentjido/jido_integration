@@ -33,6 +33,12 @@ that generated actions, sensors, and plugins for published common surfaces
 actually resolve and that their projection metadata stays internally
 consistent. Connector-local inventory is intentionally outside that check.
 
+`capability_contracts` keeps session-control manifests honest. A connector that
+publishes session-control operation ids such as `*.session.start`,
+`*.session.status`, `*.session.cancel`, or `*.session.approve` must also publish
+generic `metadata.session_control.operation` routing metadata so Runtime Router
+can call lifecycle/control callbacks instead of prompt execution.
+
 ## Working Rule
 
 Conformance stays reusable by keeping evidence package-local.

@@ -2,6 +2,10 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.GeneratedConsumerSurfaceTest d
   use ExUnit.Case
 
   alias Jido.Integration.V2.Connectors.CodexCli
+  alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionCancel
+  alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionStart
+  alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionStatus
+  alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionStream
   alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionTurn
   alias Jido.Integration.V2.Connectors.CodexCli.Generated.Plugin, as: GeneratedPlugin
   alias Jido.Integration.V2.ConsumerProjection
@@ -21,7 +25,22 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.GeneratedConsumerSurfaceTest d
     assert action_module.category() == manifest.catalog.category
     assert GeneratedPlugin.name() == "codex_cli"
     assert GeneratedPlugin.state_key() == :codex_cli
+
+    assert GeneratedPlugin.actions() == [
+             CodexSessionCancel,
+             CodexSessionStart,
+             CodexSessionStatus,
+             CodexSessionStream,
+             CodexSessionTurn
+           ]
+
+    assert Code.ensure_loaded?(CodexSessionCancel)
+    assert Code.ensure_loaded?(CodexSessionStart)
+    assert Code.ensure_loaded?(CodexSessionStatus)
+    assert Code.ensure_loaded?(CodexSessionStream)
     assert CodexSessionTurn in GeneratedPlugin.actions()
+    refute Enum.any?(GeneratedPlugin.actions(), &(to_string(&1) =~ "ToolRespond"))
+    refute Enum.any?(GeneratedPlugin.actions(), &(to_string(&1) =~ "Approve"))
 
     sample_input = %{
       prompt: "Summarize the review packet",
@@ -61,6 +80,17 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.GeneratedConsumerSurfaceTest d
                CodexSessionTurn.generated_action_projection(),
                %{prompt: "Summarize the review packet", connection_id: "conn-codex"},
                %{trace_id: "trace-codex-generated"}
+             )
+
+    assert %InvocationRequest{
+             capability_id: "codex.session.status",
+             connection_id: "conn-codex",
+             input: %{session_id: "runtime-session-1"}
+           } =
+             ConsumerProjection.invocation_request!(
+               CodexSessionStatus.generated_action_projection(),
+               %{session_id: "runtime-session-1", connection_id: "conn-codex"},
+               %{}
              )
   end
 end

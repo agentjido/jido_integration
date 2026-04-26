@@ -66,31 +66,21 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
         }),
       operations: [
         session_operation(
-          "codex.session.approve",
-          "session_approve",
-          "Approve session request",
-          "Approves or denies a pending Codex app-server approval",
-          input_schema:
-            Zoi.object(%{
-              approval_id: Zoi.string(),
-              decision: Zoi.enum([:allow, :deny, "allow", "deny"])
-            }),
-          output_schema: status_output_schema(),
-          required_scopes: ["session:control"],
-          metadata: %{codex_app_server: %{primary?: false, control: :approval}}
-        ),
-        session_operation(
           "codex.session.cancel",
           "session_cancel",
           "Cancel session run",
-          "Cancels the active Codex app-server run for the session",
+          "Cancels a Codex app-server run through Runtime Control",
           input_schema:
             Zoi.object(%{
-              run_id: Zoi.string() |> Zoi.optional()
+              session_id: Zoi.string(),
+              run_id: Zoi.string()
             }),
           output_schema: status_output_schema(),
           required_scopes: ["session:control"],
-          metadata: %{codex_app_server: %{primary?: false, control: :cancel}}
+          metadata: %{
+            session_control: %{operation: :cancel},
+            codex_app_server: %{primary?: false}
+          }
         ),
         session_operation(
           "codex.session.start",
@@ -103,7 +93,10 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
             }),
           output_schema: status_output_schema(),
           required_scopes: ["session:execute"],
-          metadata: %{codex_app_server: %{primary?: false, control: :start}}
+          metadata: %{
+            session_control: %{operation: :start},
+            codex_app_server: %{primary?: false}
+          }
         ),
         session_operation(
           "codex.session.status",
@@ -112,11 +105,14 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
           "Reads the current ASM-owned Codex app-server session status",
           input_schema:
             Zoi.object(%{
-              session_id: Zoi.string() |> Zoi.optional()
+              session_id: Zoi.string()
             }),
           output_schema: status_output_schema(),
           required_scopes: ["session:control"],
-          metadata: %{codex_app_server: %{primary?: false, control: :status}}
+          metadata: %{
+            session_control: %{operation: :status},
+            codex_app_server: %{primary?: false}
+          }
         ),
         session_operation(
           "codex.session.stream",
@@ -127,22 +123,10 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
           input_schema: turn_input_schema(),
           output_schema: turn_output_schema(),
           required_scopes: ["session:execute"],
-          metadata: %{codex_app_server: %{primary?: false, host_tools: :native}}
-        ),
-        session_operation(
-          "codex.session.tool.respond",
-          "session_tool_respond",
-          "Respond to host tool",
-          "Responds to a pending Codex app-server dynamic host-tool request",
-          input_schema:
-            Zoi.object(%{
-              request_id: Zoi.string(),
-              output: Zoi.any() |> Zoi.optional(),
-              error: Zoi.any() |> Zoi.optional()
-            }),
-          output_schema: status_output_schema(),
-          required_scopes: ["session:tools"],
-          metadata: %{codex_app_server: %{primary?: false, control: :tool_response}}
+          metadata: %{
+            session_control: %{operation: :stream},
+            codex_app_server: %{primary?: false, host_tools: :native}
+          }
         ),
         session_operation(
           "codex.session.turn",
@@ -152,7 +136,10 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
           input_schema: turn_input_schema(),
           output_schema: turn_output_schema(),
           required_scopes: ["session:execute"],
-          metadata: %{codex_app_server: %{primary?: true, host_tools: :native}}
+          metadata: %{
+            session_control: %{operation: :turn},
+            codex_app_server: %{primary?: true, host_tools: :native}
+          }
         )
       ],
       triggers: [],
@@ -234,10 +221,17 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
 
   defp status_output_schema do
     Zoi.object(%{
+      operation: Zoi.atom(),
       status: Zoi.atom(),
+      state: Zoi.atom() |> Zoi.optional(),
+      session_id: Zoi.string(),
+      runtime_id: Zoi.atom(),
+      provider: Zoi.atom() |> Zoi.nullish() |> Zoi.optional(),
       provider_session_id: Zoi.string() |> Zoi.nullish() |> Zoi.optional(),
-      auth_binding: Zoi.string(),
-      message: Zoi.string() |> Zoi.nullish() |> Zoi.optional()
+      message: Zoi.string() |> Zoi.nullish() |> Zoi.optional(),
+      details: any_map_schema() |> Zoi.default(%{}),
+      metadata: any_map_schema() |> Zoi.default(%{}),
+      run_id: Zoi.string() |> Zoi.optional()
     })
   end
 end

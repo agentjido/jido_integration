@@ -7,10 +7,10 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
   alias Jido.Integration.V2.RuntimeRouter
   alias Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary
   alias Jido.Integration.V2.TargetDescriptor
-  alias Jido.RuntimeControl.{ExecutionResult, SessionHandle}
+  alias Jido.RuntimeControl.SessionHandle
 
   defmodule AuthoredDriver do
-    alias Jido.RuntimeControl.{ExecutionResult, RunRequest, SessionHandle}
+    alias Jido.RuntimeControl.{ExecutionResult, ExecutionStatus, RunRequest, SessionHandle}
 
     def start_session(opts) when is_list(opts) do
       send(self(), {:authored_driver_start_session, opts})
@@ -41,6 +41,32 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
          stop_reason: "completed",
          metadata: %{}
        })}
+    end
+
+    def cancel_run(%SessionHandle{} = session, run_id) when is_binary(run_id) do
+      send(self(), {:authored_driver_cancel_run, session.session_id, run_id})
+      :ok
+    end
+
+    def session_status(%SessionHandle{} = session) do
+      send(self(), {:authored_driver_session_status, session.session_id})
+
+      {:ok,
+       ExecutionStatus.new!(%{
+         runtime_id: session.runtime_id,
+         session_id: session.session_id,
+         scope: :session,
+         state: :ready,
+         timestamp: "2026-04-25T00:00:00Z",
+         message: "ready",
+         details: %{"provider" => Atom.to_string(session.provider)}
+       })}
+    end
+
+    def approve(%SessionHandle{} = session, approval_id, decision, opts)
+        when is_binary(approval_id) and decision in [:allow, :deny] and is_list(opts) do
+      send(self(), {:authored_driver_approve, session.session_id, approval_id, decision, opts})
+      :ok
     end
 
     def stop_session(%SessionHandle{}), do: :ok
@@ -275,6 +301,147 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     refute_received {:override_driver_run, _session_id, _prompt, _opts}
   end
 
+  test "routes session-control start without constructing a prompt fallback" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    assert {:ok, result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{
+                 id: "codex.session.start",
+                 session_control_operation: :start
+               }),
+               %{},
+               runtime_context()
+             )
+
+    assert result.output.status == :ready
+    assert result.output.session_id == "authored-session"
+    assert result.output.operation == :start
+    assert Enum.map(result.events, & &1.type) == ["session.started", "session_control.started"]
+
+    assert_receive {:authored_driver_start_session, _opts}
+    refute_received {:authored_driver_run, _session_id, _prompt, _opts}
+  end
+
+  test "routes session-control status to session_status without running a prompt turn" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    put_session_store_entry("authored-session")
+
+    assert {:ok, result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{
+                 id: "codex.session.status",
+                 session_control_operation: :status
+               }),
+               %{session_id: "authored-session"},
+               runtime_context()
+             )
+
+    assert result.output.status == :ready
+    assert result.output.session_id == "authored-session"
+    assert result.output.operation == :status
+
+    assert_receive {:authored_driver_session_status, "authored-session"}
+    refute_received {:authored_driver_start_session, _opts}
+    refute_received {:authored_driver_run, _session_id, _prompt, _opts}
+  end
+
+  test "routes session-control cancel to cancel_run with explicit ids" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    put_session_store_entry("authored-session")
+
+    assert {:ok, result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{
+                 id: "codex.session.cancel",
+                 session_control_operation: :cancel
+               }),
+               %{session_id: "authored-session", run_id: "run-to-cancel"},
+               runtime_context()
+             )
+
+    assert result.output.status == :ready
+    assert result.output.session_id == "authored-session"
+    assert result.output.run_id == "run-to-cancel"
+    assert result.output.operation == :cancel
+
+    assert_receive {:authored_driver_cancel_run, "authored-session", "run-to-cancel"}
+    assert_receive {:authored_driver_session_status, "authored-session"}
+    refute_received {:authored_driver_start_session, _opts}
+    refute_received {:authored_driver_run, _session_id, _prompt, _opts}
+  end
+
+  test "routes session-control approve to approve with explicit approval id and decision" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    put_session_store_entry("authored-session")
+
+    assert {:ok, result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{
+                 id: "codex.session.approve",
+                 session_control_operation: :approve
+               }),
+               %{session_id: "authored-session", approval_id: "approval-1", decision: :allow},
+               runtime_context()
+             )
+
+    assert result.output.status == :ready
+    assert result.output.session_id == "authored-session"
+    assert result.output.approval_id == "approval-1"
+    assert result.output.decision == :allow
+    assert result.output.operation == :approve
+
+    assert_receive {:authored_driver_approve, "authored-session", "approval-1", :allow, _opts}
+    assert_receive {:authored_driver_session_status, "authored-session"}
+    refute_received {:authored_driver_start_session, _opts}
+    refute_received {:authored_driver_run, _session_id, _prompt, _opts}
+  end
+
+  test "returns structured validation errors for out-of-band control without session_id" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    assert {:error, %Jido.RuntimeControl.Error.InvalidInputError{} = error, result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{
+                 id: "codex.session.status",
+                 session_control_operation: :status
+               }),
+               %{},
+               runtime_context()
+             )
+
+    assert error.field == :session_id
+    assert error.details == %{operation: :status}
+    assert result.output == nil
+    assert Enum.map(result.events, & &1.type) == ["attempt.started", "attempt.failed"]
+
+    refute_received {:authored_driver_start_session, _opts}
+    refute_received {:authored_driver_run, _session_id, _prompt, _opts}
+  end
+
   test "fails loudly when the runtime router application is not started" do
     stop_runtime_router!()
 
@@ -359,16 +526,41 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
       })
 
     Capability.new!(%{
-      id: "test.session.exec",
+      id: Map.get(overrides, :id, "test.session.exec"),
       connector: "test",
       runtime_class: :session,
       kind: :operation,
       transport_profile: :stdio,
       handler: __MODULE__,
-      metadata: %{
-        runtime: runtime
-      }
+      metadata:
+        %{
+          runtime: runtime
+        }
+        |> maybe_put_session_control(Map.get(overrides, :session_control_operation))
     })
+  end
+
+  defp maybe_put_session_control(metadata, nil), do: metadata
+
+  defp maybe_put_session_control(metadata, operation) when is_atom(operation) do
+    Map.put(metadata, :session_control, %{operation: operation})
+  end
+
+  defp put_session_store_entry(session_id) do
+    Jido.Integration.V2.RuntimeRouter.SessionStore.put(
+      {:test_session_id, session_id},
+      %{
+        driver_module: AuthoredDriver,
+        session:
+          SessionHandle.new!(%{
+            session_id: session_id,
+            runtime_id: :authored_driver,
+            provider: :codex,
+            status: :ready,
+            metadata: %{}
+          })
+      }
+    )
   end
 
   defp runtime_context(target_descriptor \\ nil) do
