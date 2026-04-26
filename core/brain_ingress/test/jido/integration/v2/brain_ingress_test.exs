@@ -239,6 +239,43 @@ defmodule Jido.Integration.V2.BrainIngressTest do
     assert rejection.retry_class == :never
   end
 
+  test "rejects lower shadows that weaken Citadel governance fields", %{agent: agent} do
+    mutations = [
+      {:sandbox_level,
+       fn shadows -> put_in(shadows.gateway_request["sandbox"]["level"], :none) end},
+      {:egress, fn shadows -> put_in(shadows.gateway_request["sandbox"]["egress"], :open) end},
+      {:approvals,
+       fn shadows -> put_in(shadows.gateway_request["sandbox"]["approvals"], :auto) end},
+      {:file_scope,
+       fn shadows ->
+         put_in(shadows.gateway_request["sandbox"]["file_scope_ref"], "workspace://other/root")
+       end},
+      {:allowed_tools,
+       fn shadows -> put_in(shadows.gateway_request["sandbox"]["allowed_tools"], ["bash"]) end}
+    ]
+
+    for {_field, mutator} <- mutations do
+      invocation = brain_invocation_fixture(mutator)
+
+      assert {:error, %SubmissionRejection{} = rejection} =
+               BrainIngress.accept_invocation(
+                 invocation,
+                 submission_ledger: Ledger,
+                 submission_ledger_opts: [agent: agent],
+                 scope_resolver: Resolver,
+                 scope_resolver_opts: [
+                   mapping: %{
+                     "workspace://tenant-1/root" => "/srv/workspaces/tenant-1"
+                   }
+                 ]
+               )
+
+      assert rejection.rejection_family == :projection_mismatch
+      assert rejection.reason_code == "shadow_projection_mismatch"
+      assert rejection.retry_class == :never
+    end
+  end
+
   defp brain_invocation_fixture(shadow_mutator \\ & &1) do
     identity =
       SubmissionIdentity.new!(%{

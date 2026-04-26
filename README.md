@@ -86,6 +86,10 @@ Key public capabilities today include:
 - substrate readback through `Jido.Integration.V2.LowerFacts`, including
   tenant-scoped submission receipt, run, attempt, event, artifact, trace, and
   terminal execution outcome reads for Mezzanine
+- brain-ingress acceptance verifies the Citadel execution-governance projection
+  exactly before resolving workspace scope or recording a submission, so lower
+  gateway shadows cannot weaken sandbox, egress, approvals, file scope, or
+  allowed tools
 
 Phase 1 also lands the first live inference runtime family on that same
 surface:
