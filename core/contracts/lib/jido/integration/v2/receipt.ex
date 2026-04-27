@@ -141,6 +141,17 @@ defmodule Jido.Integration.V2.Receipt do
       "ji_submission_key" => metadata_value(receipt, "ji_submission_key"),
       "lifecycle_hints" => lifecycle_hints(receipt),
       "normalized_outcome_ref" => metadata_value(receipt, "normalized_outcome_ref"),
+      "session_ref" => metadata_value(receipt, "session_ref"),
+      "boundary_session_ref" => metadata_value(receipt, "boundary_session_ref"),
+      "turn_ref" => metadata_value(receipt, "turn_ref"),
+      "workspace_ref" => metadata_value(receipt, "workspace_ref"),
+      "worker_ref" => metadata_value(receipt, "worker_ref"),
+      "execution_plane_ref" => metadata_value(receipt, "execution_plane_ref"),
+      "route_ref" => metadata_value(receipt, "route_ref") || receipt.route_id,
+      "outcome_ref" => metadata_value(receipt, "outcome_ref"),
+      "token_totals" => metadata_value(receipt, "token_totals") || %{},
+      "rate_limits" => metadata_value(receipt, "rate_limits") || %{},
+      "authority_refs" => metadata_value(receipt, "authority_refs") || [],
       "observed_at" => DateTime.to_iso8601(receipt.observed_at),
       "event_refs" => event_refs(receipt),
       "receipt_id" => receipt.receipt_id,
@@ -236,6 +247,17 @@ defmodule Jido.Integration.V2.Receipt do
       |> maybe_put("artifact_refs", Enum.map(artifacts, & &1.artifact_id))
       |> maybe_put("event_refs", event_refs_from_events(events))
       |> maybe_put("provider_refs", provider_refs_from_events(events))
+      |> maybe_put("session_ref", Keyword.get(opts, :session_ref))
+      |> maybe_put("boundary_session_ref", Keyword.get(opts, :boundary_session_ref))
+      |> maybe_put("turn_ref", Keyword.get(opts, :turn_ref))
+      |> maybe_put("workspace_ref", Keyword.get(opts, :workspace_ref))
+      |> maybe_put("worker_ref", Keyword.get(opts, :worker_ref))
+      |> maybe_put("execution_plane_ref", Keyword.get(opts, :execution_plane_ref))
+      |> maybe_put("route_ref", Keyword.get(opts, :route_ref))
+      |> maybe_put("outcome_ref", Keyword.get(opts, :outcome_ref))
+      |> maybe_put("token_totals", Keyword.get(opts, :token_totals))
+      |> maybe_put("rate_limits", Keyword.get(opts, :rate_limits))
+      |> maybe_put("authority_refs", Keyword.get(opts, :authority_refs))
       |> maybe_put("lifecycle_hints", Keyword.get(opts, :lifecycle_hints, %{}))
       |> maybe_put(
         "failure_kind",

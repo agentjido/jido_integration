@@ -46,6 +46,17 @@ defmodule Jido.Integration.V2.ReceiptContractTest do
              "ji_submission_key" => "submission-key-1",
              "lifecycle_hints" => %{"next" => "publish_review"},
              "normalized_outcome_ref" => @artifact_ref,
+             "session_ref" => nil,
+             "boundary_session_ref" => nil,
+             "turn_ref" => nil,
+             "workspace_ref" => nil,
+             "worker_ref" => nil,
+             "execution_plane_ref" => nil,
+             "route_ref" => "route-1",
+             "outcome_ref" => nil,
+             "token_totals" => %{},
+             "rate_limits" => %{},
+             "authority_refs" => [],
              "observed_at" => DateTime.to_iso8601(receipt.observed_at),
              "event_refs" => [],
              "receipt_id" => "run-1:run-1:1:execution",
@@ -165,6 +176,40 @@ defmodule Jido.Integration.V2.ReceiptContractTest do
            }
 
     refute inspect(lower_receipt) =~ "raw_provider_body"
+  end
+
+  test "lower receipts carry S0 session, turn, workspace, route, outcome, and authority refs" do
+    run = run!(status: :completed)
+    attempt = attempt!(run.run_id, status: :completed)
+
+    assert {:ok, receipt} =
+             Receipt.from_lower_records(run, attempt, [], [],
+               session_ref: "session-1",
+               boundary_session_ref: "boundary-session-1",
+               turn_ref: "turn-1",
+               workspace_ref: "workspace-1",
+               worker_ref: "worker-1",
+               execution_plane_ref: "execution-plane-1",
+               route_ref: "route-1",
+               outcome_ref: "outcome-1",
+               token_totals: %{"input" => 10, "output" => 2},
+               rate_limits: %{"remaining" => 99},
+               authority_refs: ["authority-1"]
+             )
+
+    lower_receipt = Receipt.to_lower_receipt_map(receipt)
+
+    assert lower_receipt["session_ref"] == "session-1"
+    assert lower_receipt["boundary_session_ref"] == "boundary-session-1"
+    assert lower_receipt["turn_ref"] == "turn-1"
+    assert lower_receipt["workspace_ref"] == "workspace-1"
+    assert lower_receipt["worker_ref"] == "worker-1"
+    assert lower_receipt["execution_plane_ref"] == "execution-plane-1"
+    assert lower_receipt["route_ref"] == "route-1"
+    assert lower_receipt["outcome_ref"] == "outcome-1"
+    assert lower_receipt["token_totals"] == %{"input" => 10, "output" => 2}
+    assert lower_receipt["rate_limits"] == %{"remaining" => 99}
+    assert lower_receipt["authority_refs"] == ["authority-1"]
   end
 
   test "workflow receipt signal attrs match the Mezzanine signal contract shape" do
