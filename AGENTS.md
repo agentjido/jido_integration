@@ -238,3 +238,47 @@ just temporal-ui
 ```
 
 Do not invent raw `temporal server start-dev` commands for normal work. Do not reset local Temporal state unless the user explicitly approves `just temporal-reset-confirm`.
+
+<!-- gn-ten:repo-agent:start repo=jido_integration source_sha=ab276c0640772b73065ab12bf05d77be51f1bb67 -->
+# jido_integration Agent Instructions Draft
+
+## Owns
+
+- Connector capability catalog.
+- Auth lifecycle.
+- Credential leases.
+- Lower gateway invocation.
+- Durable connector execution state.
+- Reviewable connector packets.
+
+## Does Not Own
+
+- Product UX.
+- Semantic reasoning.
+- Citadel authority decisions.
+- Execution Plane placement internals.
+- GroundPlane universal primitives.
+
+## Allowed Dependencies
+
+- Execution Plane packets and lane-facing contracts.
+- Citadel authority/governance packet contracts.
+- GroundPlane refs.
+- Provider SDKs inside connector packages.
+
+## Forbidden Imports
+
+- Product modules.
+- Direct semantic prompt logic.
+- Static long-lived provider tokens in runtime config.
+
+## Verification
+
+- `mix ci`
+- Connector lifecycle, lease, invocation, and lower-facts tests.
+
+## Escalation
+
+If a connector needs a new lower execution shape, add the packet/lane contract
+in Execution Plane first.
+<!-- gn-ten:repo-agent:end -->
