@@ -39,6 +39,30 @@ It:
 - resolves self-hosted endpoints through an optional provider seam
 - executes those self-hosted OpenAI-compatible endpoints through `req_llm`
 
+## Shared `:inference` Adapter
+
+`core/control_plane` also exposes
+`Jido.Integration.V2.ControlPlane.Inference.Adapter`, a Jido-owned implementation
+of the shared `Inference.Adapter` behaviour from the standalone `:inference`
+package.
+
+That adapter is the integration point for libraries such as GEPA and TRINITY
+that speak shared `Inference.Client` / `Inference.Request` contracts but need
+Jido's governed execution path. It translates the shared request into
+`Jido.Integration.V2.InferenceRequest`, invokes the control-plane inference
+execution path, and maps the durable result back to `Inference.Response` /
+`Inference.StreamEvent` while preserving:
+
+- run and attempt ids;
+- route and endpoint metadata;
+- credential, authority, policy, and replay options passed through invoke opts;
+- session and trace context;
+- review-ready raw result metadata.
+
+Provider-specific SDK behavior still does not move into the adapter. The
+adapter delegates execution to the existing control-plane inference path, which
+continues to own `req_llm`, ASM endpoint, and self-hosted endpoint resolution.
+
 The self-hosted lane now proves both ownership shapes:
 
 - spawned: `llama_cpp_sdk`

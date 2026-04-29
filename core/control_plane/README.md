@@ -11,6 +11,8 @@ Capability registry, run ledger, and execution admission for the platform.
 - artifact-ref durability behaviours
 - target-descriptor durability behaviours
 - live inference routing and execution through `invoke_inference/2`
+- shared `:inference` package integration through
+  `Jido.Integration.V2.ControlPlane.Inference.Adapter`
 - durable inference attempt recording through `record_inference_attempt/1`
 - credential-ref resolution through `core/auth`
 - credential lease issuance through `core/auth`
@@ -102,6 +104,9 @@ It:
   provider seam
 - executes those self-hosted OpenAI-compatible endpoints through `req_llm`
 - persists the resulting durable inference attempt truth
+- exposes a Jido-owned `Inference.Adapter` implementation for GEPA, TRINITY, and
+  other standalone consumers that need this governed route without depending on
+  Jido-specific request structs directly
 
 The self-hosted route now proves both runtime ownership shapes:
 

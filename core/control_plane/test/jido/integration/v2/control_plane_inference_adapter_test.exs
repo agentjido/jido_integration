@@ -121,6 +121,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceAdapterTest do
       )
 
     assert {:ok, stream} = Adapter.stream(client, request)
+
     assert [%StreamEvent{type: :delta, data: "streamed answer"}, %StreamEvent{type: :done}] =
              Enum.to_list(stream)
 

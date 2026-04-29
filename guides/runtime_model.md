@@ -69,6 +69,9 @@ Inference is now a first-class runtime family on the public facade.
 - both routes execute the data-plane call through `req_llm`
 - `core/control_plane` records the durable inference event minimum
 - `core/platform` exposes both `invoke_inference/2` and `review_packet/2`
+- `Jido.Integration.V2.ControlPlane.Inference.Adapter` implements the shared
+  `Inference.Adapter` behaviour so standalone consumers can enter this governed
+  route through the `:inference` package
 - CLI-backed inference endpoints are published by ASM and consumed here as
   inference targets, not as Runtime Control session connectors
 - lower spawned-service mechanics sit on `execution_plane`, but lease lineage,
