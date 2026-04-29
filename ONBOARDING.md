@@ -31,3 +31,5 @@ and `/home/home/p/g/n/stack_lab/docs/gn_ten_proof_matrix.md`.
 
 Never expose raw secrets or provider payloads in public DTOs or receipts. For
 connector work, keep fixture/provider-free tests green before live smoke exists.
+For shared adapter work, preserve shared-library defaults/options/tool policy at
+the Jido boundary and prove it with package-local tests plus root `mix ci`.

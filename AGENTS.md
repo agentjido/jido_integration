@@ -120,6 +120,11 @@ Keep documentation aligned to the permanent V2 layout:
   there rather than in the workspace root or connector packages.
 - Treat `platform` as the public facade package. The root workspace must not
   reclaim app identity `:jido_integration_v2`.
+- Treat shared adapter packages as contract producers, not governance owners.
+  When implementing an adapter for `:inference`, Jido owns the governed
+  translation into `InferenceRequest`, durable run/attempt truth, route
+  selection, credential leases, replay, and review metadata. The adapter must
+  not grow provider SDK branches or bypass `ControlPlane.Inference.invoke/2`.
 - Treat connector packages as isolated deliverables. Each connector should compile, test, lint, type-check, and document cleanly on its own.
 - `DependencyResolver.execution_plane/1` resolves local sibling development to
   `../execution_plane/core/execution_plane`. Do not point `:execution_plane` at
@@ -180,6 +185,25 @@ mix mr.docs
 
 Package-local live proofs remain opt-in. They should never be required for the
 default root acceptance gate.
+
+## Shared Adapter Boundary Checklist
+
+Use this checklist when a shared library such as `:inference` enters Jido
+through a Jido-owned adapter:
+
+- Preserve `Inference.Client.defaults`, `Inference.Request.options`, request
+  metadata, trace context, and session fields unless the Jido boundary has an
+  explicit reason to reject them.
+- Prove request-level options override client defaults where both are accepted.
+- Map portable tool controls into Jido `tool_policy`; do not leave them as
+  unstructured provider options.
+- Preserve provider-reported usage, cost, finish reason, route, run id, and
+  attempt id on the returned shared response.
+- Keep internal compatibility options internal. Do not leak raw prompts,
+  provider payloads, secrets, or workflow histories into public DTOs, docs, or
+  receipts.
+- Run the shared producer package gate when the adapter depends on new shared
+  semantics, then run this repo's root `mix ci`.
 
 ## Working Style
 
