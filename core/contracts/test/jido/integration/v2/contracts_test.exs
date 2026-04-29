@@ -112,6 +112,7 @@ defmodule Jido.Integration.V2.ContractsTest do
     lease =
       CredentialLease.new!(%{
         lease_id: "lease-1",
+        tenant_id: "tenant-contracts",
         credential_ref_id: credential_ref.id,
         credential_id: credential.id,
         connection_id: credential.connection_id,

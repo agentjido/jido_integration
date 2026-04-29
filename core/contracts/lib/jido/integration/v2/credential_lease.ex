@@ -10,6 +10,7 @@ defmodule Jido.Integration.V2.CredentialLease do
             __MODULE__,
             %{
               lease_id: Contracts.non_empty_string_schema("credential_lease.lease_id"),
+              tenant_id: Contracts.non_empty_string_schema("credential_lease.tenant_id"),
               credential_ref_id:
                 Contracts.non_empty_string_schema("credential_lease.credential_ref_id"),
               credential_id:

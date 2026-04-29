@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord do
   @timestamps_opts [type: :utc_datetime_usec]
 
   schema "credential_leases" do
+    field(:tenant_id, :string)
     field(:credential_ref_id, :string)
     field(:credential_id, :string)
     field(:connection_id, :string)
@@ -27,6 +28,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord do
     record
     |> cast(attrs, [
       :lease_id,
+      :tenant_id,
       :credential_ref_id,
       :credential_id,
       :connection_id,
@@ -42,6 +44,7 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord do
     ])
     |> validate_required([
       :lease_id,
+      :tenant_id,
       :credential_ref_id,
       :credential_id,
       :connection_id,

@@ -137,6 +137,7 @@ defmodule Jido.Integration.V2.ZoiStandardTest do
   defp valid_attrs(CredentialLease) do
     %{
       lease_id: "lease-1",
+      tenant_id: "tenant-1",
       credential_ref_id: "cred-ref-1",
       credential_id: "cred-1",
       connection_id: "conn-1",

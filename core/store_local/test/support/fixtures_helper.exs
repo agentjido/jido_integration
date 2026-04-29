@@ -225,6 +225,7 @@ defmodule Jido.Integration.V2.StoreLocal.Fixtures do
     attrs =
       Enum.into(attrs, %{
         lease_id: "lease-#{System.unique_integer([:positive])}",
+        tenant_id: Map.get(credential.metadata, :tenant_id, "tenant-1"),
         credential_ref_id: credential.credential_ref_id || credential.id,
         credential_id: credential.id,
         connection_id:

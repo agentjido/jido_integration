@@ -167,11 +167,20 @@ defmodule Jido.Integration.V2.StoreLocal.AuthStoreContractTest do
 
     assert {:ok, %CredentialLease{} = lease} =
              Auth.request_lease(connection.connection_id, %{
+               tenant_id: "tenant-1",
                required_scopes: ["repo"],
                now: DateTime.add(now, 60, :second)
              })
 
+    assert lease.tenant_id == "tenant-1"
     assert lease.payload == %{access_token: "secret-token"}
+
+    assert {:error, :tenant_mismatch} =
+             Auth.fetch_lease(lease.lease_id, %{
+               tenant_id: "tenant-other",
+               now: DateTime.add(now, 70, :second)
+             })
+
     assert completed_install.state == :completed
     assert completed_connection.state == :connected
     assert credential_ref.id == completed_connection.credential_ref_id
@@ -188,8 +197,12 @@ defmodule Jido.Integration.V2.StoreLocal.AuthStoreContractTest do
              Auth.connection_status(connection.connection_id)
 
     assert {:ok, %CredentialLease{} = recovered_lease} =
-             Auth.fetch_lease(lease.lease_id, %{now: DateTime.add(now, 75, :second)})
+             Auth.fetch_lease(lease.lease_id, %{
+               tenant_id: "tenant-1",
+               now: DateTime.add(now, 75, :second)
+             })
 
+    assert recovered_lease.tenant_id == "tenant-1"
     assert recovered_lease.payload == %{access_token: "secret-token"}
     assert StoreLocal.storage_path() == Server.storage_path()
   end

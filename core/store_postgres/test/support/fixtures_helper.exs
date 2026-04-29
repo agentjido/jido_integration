@@ -167,6 +167,7 @@ defmodule Jido.Integration.V2.StorePostgres.Fixtures do
     attrs =
       Enum.into(attrs, %{
         lease_id: "lease-#{System.unique_integer([:positive])}",
+        tenant_id: Map.get(credential.metadata, :tenant_id, "tenant-1"),
         credential_ref_id: credential.id,
         subject: credential.subject,
         scopes: credential.scopes,

@@ -258,6 +258,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
           credential_ref: %{id: "cred-trigger-1", subject: "router", scopes: ["trigger:ingest"]},
           credential_lease: %{
             lease_id: "lease-trigger-1",
+            tenant_id: "tenant-trigger-1",
             credential_ref_id: "cred-trigger-1",
             subject: "router",
             scopes: ["trigger:ingest"],
@@ -360,6 +361,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
           },
           credential_lease: %{
             lease_id: "lease-trigger-identity-1",
+            tenant_id: "tenant-trigger-identity-1",
             credential_ref_id: "cred-trigger-identity-1",
             subject: "router",
             scopes: ["trigger:ingest"],
@@ -1215,6 +1217,7 @@ defmodule Jido.Integration.V2.ConformanceTest do
           },
           credential_lease: %{
             lease_id: "lease-leaky-1",
+            tenant_id: "tenant-leaky-1",
             credential_ref_id: "cred-leaky-1",
             subject: "operator",
             profile_id: "api_token",

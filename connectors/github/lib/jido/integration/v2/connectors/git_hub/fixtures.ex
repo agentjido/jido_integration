@@ -257,6 +257,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Fixtures do
   def credential_lease(subject \\ @subject, token \\ @access_token) do
     CredentialLease.new!(%{
       lease_id: @lease_id,
+      tenant_id: "tenant-github-fixture",
       credential_ref_id: @credential_ref_id,
       profile_id: @profile_id,
       subject: subject,

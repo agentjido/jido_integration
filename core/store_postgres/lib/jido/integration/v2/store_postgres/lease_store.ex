@@ -19,6 +19,7 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
         {:replace,
          [
            :credential_ref_id,
+           :tenant_id,
            :credential_id,
            :connection_id,
            :profile_id,
@@ -48,6 +49,7 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
         {:ok,
          AuthLeaseRecord.new!(%{
            lease_id: record.lease_id,
+           tenant_id: record.tenant_id,
            credential_ref_id: record.credential_ref_id,
            credential_id: record.credential_id,
            connection_id: record.connection_id,
@@ -72,6 +74,7 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
   defp to_record_attrs(%AuthLeaseRecord{} = lease) do
     %{
       lease_id: lease.lease_id,
+      tenant_id: lease.tenant_id,
       credential_ref_id: lease.credential_ref_id,
       credential_id: lease.credential_id,
       connection_id: lease.connection_id,

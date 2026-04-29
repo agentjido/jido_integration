@@ -58,6 +58,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.Conformance do
   defp credential_lease do
     %{
       lease_id: "lease-codex-cli-conformance",
+      tenant_id: "tenant-codex-cli-conformance",
       credential_ref_id: "cred-codex-cli-conformance",
       subject: @subject,
       scopes: ["session:execute"],

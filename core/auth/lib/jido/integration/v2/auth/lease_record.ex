@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.Auth.LeaseRecord do
 
   @enforce_keys [
     :lease_id,
+    :tenant_id,
     :credential_ref_id,
     :credential_id,
     :connection_id,
@@ -18,6 +19,7 @@ defmodule Jido.Integration.V2.Auth.LeaseRecord do
   ]
   defstruct [
     :lease_id,
+    :tenant_id,
     :credential_ref_id,
     :credential_id,
     :connection_id,
@@ -34,6 +36,7 @@ defmodule Jido.Integration.V2.Auth.LeaseRecord do
 
   @type t :: %__MODULE__{
           lease_id: String.t(),
+          tenant_id: String.t(),
           credential_ref_id: String.t(),
           credential_id: String.t(),
           connection_id: String.t(),
@@ -61,6 +64,7 @@ defmodule Jido.Integration.V2.Auth.LeaseRecord do
 
     struct!(__MODULE__, %{
       lease_id: Map.fetch!(attrs, :lease_id),
+      tenant_id: Map.fetch!(attrs, :tenant_id),
       credential_ref_id: Map.fetch!(attrs, :credential_ref_id),
       credential_id: Map.fetch!(attrs, :credential_id),
       connection_id: Map.fetch!(attrs, :connection_id),

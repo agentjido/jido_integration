@@ -306,6 +306,7 @@ defmodule Jido.Integration.V2.Auth do
              | :connection_disabled
              | :connection_revoked
              | :reauth_required
+             | :tenant_mismatch
              | :external_secret_unavailable
              | :expired_lease
              | {:missing_connection_scopes, [String.t()]}
@@ -315,6 +316,7 @@ defmodule Jido.Integration.V2.Auth do
     now = now(context)
 
     with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
+         :ok <- authorize_context_tenant(connection.tenant_id, Map.get(context, :tenant_id)),
          :ok <- ensure_connection_available(connection),
          {:ok, credential} <- fetch_active_credential(connection),
          :ok <-
@@ -341,6 +343,7 @@ defmodule Jido.Integration.V2.Auth do
         lease_record =
           LeaseRecord.new!(%{
             lease_id: Contracts.next_id("lease"),
+            tenant_id: lease_connection.tenant_id,
             credential_ref_id: refreshed_credential.credential_ref_id,
             credential_id: refreshed_credential.id,
             connection_id: lease_connection.connection_id,
@@ -415,6 +418,7 @@ defmodule Jido.Integration.V2.Auth do
              | :connection_disabled
              | :connection_revoked
              | :reauth_required
+             | :tenant_mismatch
              | :external_secret_unavailable
              | {:missing_connection_scopes, [String.t()]}
              | {:missing_lease_fields, [String.t()]}}
@@ -437,6 +441,7 @@ defmodule Jido.Integration.V2.Auth do
              | :unknown_credential
              | :connection_revoked
              | :reauth_required
+             | :tenant_mismatch
              | :external_secret_unavailable
              | {:missing_lease_fields, [String.t()]}}
   def fetch_lease(lease_id, context \\ %{}) do
@@ -444,6 +449,7 @@ defmodule Jido.Integration.V2.Auth do
     now = now(context)
 
     with {:ok, lease_record} <- Stores.lease_store().fetch_lease(lease_id),
+         :ok <- authorize_context_tenant(lease_record.tenant_id, Map.get(context, :tenant_id)),
          :ok <- ensure_lease_active(lease_record, now),
          {:ok, connection} <-
            Stores.connection_store().fetch_connection(lease_record.connection_id),
@@ -867,6 +873,7 @@ defmodule Jido.Integration.V2.Auth do
        ) do
     CredentialLease.new!(%{
       lease_id: lease_record.lease_id,
+      tenant_id: lease_record.tenant_id,
       credential_ref_id: lease_record.credential_ref_id,
       credential_id: lease_record.credential_id,
       connection_id: connection.connection_id,
@@ -1219,6 +1226,12 @@ defmodule Jido.Integration.V2.Auth do
       do: :ok,
       else: {:error, :expired_lease}
   end
+
+  defp authorize_context_tenant(_record_tenant_id, nil), do: :ok
+  defp authorize_context_tenant(tenant_id, tenant_id), do: :ok
+
+  defp authorize_context_tenant(_record_tenant_id, _requested_tenant_id),
+    do: {:error, :tenant_mismatch}
 
   defp ensure_subject_match(expected, actual, _reason) when expected == actual, do: :ok
   defp ensure_subject_match(_expected, _actual, reason), do: {:error, reason}

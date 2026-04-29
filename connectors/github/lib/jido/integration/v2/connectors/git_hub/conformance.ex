@@ -49,6 +49,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Conformance do
   defp credential_lease do
     %{
       lease_id: "lease-github-conformance",
+      tenant_id: "tenant-github-conformance",
       credential_ref_id: "cred-github-conformance",
       profile_id: "personal_access_token",
       subject: @subject,

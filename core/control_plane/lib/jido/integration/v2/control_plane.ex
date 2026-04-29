@@ -831,6 +831,7 @@ defmodule Jido.Integration.V2.ControlPlane do
     {:ok,
      CredentialLease.new!(%{
        lease_id: Contracts.next_id("lease"),
+       tenant_id: "tenant-anonymous",
        credential_ref_id: credential_ref.id,
        subject: credential_ref.subject,
        scopes: Capability.required_scopes(capability),

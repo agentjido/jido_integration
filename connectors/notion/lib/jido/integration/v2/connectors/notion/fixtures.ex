@@ -79,6 +79,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.Fixtures do
   def credential_lease_attrs do
     %{
       lease_id: @lease_id,
+      tenant_id: "tenant-notion-fixture",
       credential_ref_id: @credential_ref_id,
       profile_id: @profile_id,
       subject: @subject,

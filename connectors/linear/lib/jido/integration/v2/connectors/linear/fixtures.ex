@@ -233,6 +233,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
   def credential_lease_attrs do
     %{
       lease_id: @lease_id,
+      tenant_id: "tenant-linear-fixture",
       credential_ref_id: @credential_ref_id,
       profile_id: @profile_id,
       subject: @subject,
@@ -248,6 +249,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
   def oauth_credential_lease do
     CredentialLease.new!(%{
       lease_id: "lease-linear-oauth-test",
+      tenant_id: "tenant-linear-fixture",
       credential_ref_id: @credential_ref_id,
       profile_id: "oauth_user",
       subject: @subject,
