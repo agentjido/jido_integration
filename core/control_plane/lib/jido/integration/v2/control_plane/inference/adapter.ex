@@ -48,12 +48,12 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
       request_id: request.id || generated_request_id(),
       operation: operation,
       messages: messages(request),
-      prompt: prompt(request),
+      prompt: prompt(client, request),
       model_preference: model_preference(client, request),
       target_preference: target_preference(client, request),
       stream?: operation == :stream_text,
-      tool_policy: option_map(request, :tool_policy, %{}),
-      output_constraints: output_constraints(request),
+      tool_policy: tool_policy(client, request),
+      output_constraints: output_constraints(client, request),
       metadata: metadata(client, request)
     )
   end
@@ -69,30 +69,50 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     end)
   end
 
-  defp prompt(%Request{} = request) do
-    case Keyword.get(request.options, :prompt) do
+  defp prompt(%Client{} = client, %Request{} = request) do
+    case option_value(client, request, :prompt) do
       prompt when is_binary(prompt) and prompt != "" -> prompt
       _other -> nil
     end
   end
 
   defp model_preference(%Client{} = client, %Request{} = request) do
-    request
-    |> option_map(:model_preference, %{})
+    client
+    |> option_map(request, :model_preference, %{})
     |> Map.put_new(:provider, client.provider)
     |> Map.put_new(:id, request.model || client.model)
     |> reject_nil_values()
   end
 
   defp target_preference(%Client{} = client, %Request{} = request) do
-    request
-    |> option_map(:target_preference, %{})
-    |> Map.merge(Map.new(Keyword.get(client.adapter_opts, :target_preference, %{})))
+    client_target_preference =
+      client.adapter_opts
+      |> Keyword.get(:target_preference, %{})
+      |> map_or_empty()
+
+    request_target_preference = option_map(client, request, :target_preference, %{})
+
+    Map.merge(client_target_preference, request_target_preference)
   end
 
-  defp output_constraints(%Request{} = request) do
-    request
+  defp tool_policy(%Client{} = client, %Request{} = request) do
+    request_options = request_options(client, request)
+
+    client
+    |> option_map(request, :tool_policy, %{})
+    |> maybe_put(:tools, Keyword.get(request_options, :tools))
+    |> maybe_put(:tool_choice, Keyword.get(request_options, :tool_choice))
+  end
+
+  defp output_constraints(%Client{} = client, %Request{} = request) do
+    request_options = request_options(client, request)
+
+    request_options
     |> option_map(:output_constraints, %{})
+    |> maybe_put(:frequency_penalty, Keyword.get(request_options, :frequency_penalty))
+    |> maybe_put(:presence_penalty, Keyword.get(request_options, :presence_penalty))
+    |> maybe_put(:provider_options, option_map(request_options, :provider_options, nil))
+    |> maybe_put(:system_prompt, Keyword.get(request_options, :system_prompt))
     |> maybe_put(:temperature, request.temperature)
     |> maybe_put(:top_p, request.top_p)
     |> maybe_put(:max_tokens, request.max_tokens)
@@ -107,18 +127,24 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
   end
 
   defp invoke_opts(%Client{} = client, %Request{} = request) do
+    request_options = request_options(client, request)
+
     client.adapter_opts
     |> Keyword.get(:invoke_opts, [])
-    |> Keyword.merge(Keyword.get(request.options, :invoke_opts, []))
+    |> Keyword.merge(Keyword.get(request_options, :invoke_opts, []))
     |> maybe_put(:trace_id, trace_value(request, :trace_id))
     |> maybe_put(:span_id, trace_value(request, :span_id))
     |> maybe_put(:correlation_id, trace_value(request, :correlation_id))
     |> maybe_put(:causation_id, trace_value(request, :causation_id))
-    |> maybe_put(:context_metadata, option_map(request, :context_metadata, nil))
-    |> maybe_put(:consumer_metadata, option_map(request, :consumer_metadata, nil))
-    |> maybe_put(:target_backend_options, option_map(request, :target_backend_options, nil))
-    |> maybe_put(:credential_scope, option_map(request, :credential_scope, nil))
-    |> maybe_put(:api_key, Keyword.get(request.options, :api_key))
+    |> maybe_put(:context_metadata, option_map(request_options, :context_metadata, nil))
+    |> maybe_put(:consumer_metadata, option_map(request_options, :consumer_metadata, nil))
+    |> maybe_put(
+      :target_backend_options,
+      option_map(request_options, :target_backend_options, nil)
+    )
+    |> maybe_put(:credential_scope, option_map(request_options, :credential_scope, nil))
+    |> maybe_put(:api_key, Keyword.get(request_options, :api_key))
+    |> maybe_put(:req_http_options, Keyword.get(request_options, :req_http_options))
   end
 
   defp response_from_invocation({:ok, result}, %Client{} = client, %Request{} = request) do
@@ -128,6 +154,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
        model: request.model || client.model,
        text: response_text(result),
        usage: result_field(result, [:inference_result, :usage]),
+       cost: result_cost(result),
        finish_reason: result_field(result, [:inference_result, :finish_reason]),
        raw: result,
        metadata: response_metadata(result, client, request)
@@ -158,6 +185,13 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     end
   end
 
+  defp result_cost(result) do
+    result_field(result, [:response_summary, :cost]) ||
+      result_field(result, [:inference_result, :metadata, :cost]) ||
+      result_field(result, [:inference_result, :usage, :cost]) ||
+      result_field(result, [:inference_result, :usage, :total_cost])
+  end
+
   defp stream_events(""), do: [%StreamEvent{type: :done, data: nil}]
 
   defp stream_events(text) do
@@ -173,13 +207,25 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     Error.provider_error(reason, adapter: __MODULE__)
   end
 
-  defp option_map(%Request{options: options}, key, default) do
+  defp option_map(%Client{} = client, %Request{} = request, key, default),
+    do: option_map(request_options(client, request), key, default)
+
+  defp option_map(options, key, default) when is_list(options) do
     case Keyword.get(options, key, default) do
       nil -> default
       value when is_map(value) -> value
       value when is_list(value) -> Map.new(value)
       _other -> default
     end
+  end
+
+  defp map_or_empty(nil), do: %{}
+  defp map_or_empty(value) when is_map(value), do: value
+  defp map_or_empty(value) when is_list(value), do: Map.new(value)
+  defp map_or_empty(_value), do: %{}
+
+  defp request_options(%Client{} = client, %Request{} = request) do
+    Keyword.merge(client.defaults, request.options)
   end
 
   defp trace_value(%Request{trace_context: trace_context}, key) when is_map(trace_context) do
@@ -198,8 +244,22 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
   end
 
   defp field(%_struct{} = value, key), do: Map.get(value, key)
-  defp field(value, key) when is_map(value), do: value[key] || value[to_string(key)]
+
+  defp field(value, key) when is_map(value) do
+    cond do
+      Map.has_key?(value, key) -> Map.fetch!(value, key)
+      Map.has_key?(value, to_string(key)) -> Map.fetch!(value, to_string(key))
+      true -> nil
+    end
+  end
+
   defp field(_value, _key), do: nil
+
+  defp option_value(%Client{} = client, %Request{} = request, key) do
+    client
+    |> request_options(request)
+    |> Keyword.get(key)
+  end
 
   defp generated_request_id do
     "req-inference-" <> Integer.to_string(System.unique_integer([:positive]))
@@ -215,5 +275,6 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
   end
 
   defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(opts, key, value) when is_list(opts), do: Keyword.put(opts, key, value)
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 end

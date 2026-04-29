@@ -71,7 +71,8 @@ Inference is now a first-class runtime family on the public facade.
 - `core/platform` exposes both `invoke_inference/2` and `review_packet/2`
 - `Jido.Integration.V2.ControlPlane.Inference.Adapter` implements the shared
   `Inference.Adapter` behaviour so standalone consumers can enter this governed
-  route through the `:inference` package
+  route through the `:inference` package while preserving shared defaults,
+  tool controls, route preferences, and provider-reported cost metadata
 - CLI-backed inference endpoints are published by ASM and consumed here as
   inference targets, not as Runtime Control session connectors
 - lower spawned-service mechanics sit on `execution_plane`, but lease lineage,

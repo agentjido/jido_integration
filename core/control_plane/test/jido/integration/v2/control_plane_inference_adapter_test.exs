@@ -20,7 +20,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceAdapterTest do
              status: :ok,
              streaming?: false,
              finish_reason: :stop,
-             usage: %{"input_tokens" => 3, "output_tokens" => 2},
+             usage: %{"input_tokens" => 3, "output_tokens" => 2, "total_cost" => 0.004},
              metadata: %{"route" => "cloud"}
            }),
          compatibility_result: %{metadata: %{route: :cloud}},
@@ -37,9 +37,19 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceAdapterTest do
         adapter: Adapter,
         provider: :openai,
         model: "gpt-test",
+        defaults: [
+          output_constraints: %{presence_penalty: 0.1},
+          req_http_options: [receive_timeout: 1_000],
+          tools: [%{name: "lookup", description: "Lookup tool"}],
+          tool_choice: :auto
+        ],
         metadata: %{tenant_id: "tenant-1", caller: "unit"},
         adapter_opts: [
           invoke_fun: invoke_fun,
+          target_preference: %{
+            target_class: "self_hosted_endpoint",
+            startup_kind: "warm"
+          },
           invoke_opts: [
             run_id: "run-adapter-1",
             decision_ref: "decision-1",
@@ -56,14 +66,19 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceAdapterTest do
         temperature: 0.2,
         max_tokens: 32,
         metadata: %{route_id: "route-1"},
-        options: [target_preference: %{target_class: "cloud_provider"}]
+        options: [
+          provider_options: %{reasoning_effort: "low"},
+          target_preference: %{target_class: "cloud_provider"},
+          tool_choice: :required
+        ]
       )
 
     assert {:ok, %Response{} = response} = Adapter.complete(client, request)
     assert Response.text(response) == "governed answer"
     assert response.provider == :openai
     assert response.model == "gpt-test"
-    assert response.usage == %{"input_tokens" => 3, "output_tokens" => 2}
+    assert response.usage == %{"input_tokens" => 3, "output_tokens" => 2, "total_cost" => 0.004}
+    assert response.cost == 0.004
     assert response.metadata.run_id == "run-adapter-1"
     assert response.metadata.attempt_id == Contracts.attempt_id("run-adapter-1", 1)
     assert response.metadata.status == :ok
@@ -72,15 +87,28 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceAdapterTest do
     assert jido_request.request_id == "req-adapter-1"
     assert jido_request.operation == :generate_text
     assert jido_request.model_preference == %{provider: :openai, id: "gpt-test"}
-    assert jido_request.target_preference == %{target_class: "cloud_provider"}
+
+    assert jido_request.target_preference == %{
+             startup_kind: "warm",
+             target_class: "cloud_provider"
+           }
+
+    assert jido_request.tool_policy == %{
+             tools: [%{name: "lookup", description: "Lookup tool"}],
+             tool_choice: :required
+           }
+
     assert jido_request.output_constraints.temperature == 0.2
     assert jido_request.output_constraints.max_tokens == 32
+    assert jido_request.output_constraints.presence_penalty == 0.1
+    assert jido_request.output_constraints.provider_options == %{reasoning_effort: "low"}
     assert jido_request.metadata.tenant_id == "tenant-1"
     assert jido_request.metadata.route_id == "route-1"
     assert invoke_opts[:run_id] == "run-adapter-1"
     assert invoke_opts[:decision_ref] == "decision-1"
     assert invoke_opts[:trace_id] == "trace-1"
     assert invoke_opts[:api_key] == "test-key"
+    assert invoke_opts[:req_http_options] == [receive_timeout: 1_000]
   end
 
   test "stream/2 records a streaming invocation and returns shared stream events" do

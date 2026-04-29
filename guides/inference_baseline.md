@@ -55,6 +55,8 @@ execution path, and maps the durable result back to `Inference.Response` /
 
 - run and attempt ids;
 - route and endpoint metadata;
+- provider-reported usage/cost fields;
+- client defaults and per-request provider/tool controls;
 - credential, authority, policy, and replay options passed through invoke opts;
 - session and trace context;
 - review-ready raw result metadata.

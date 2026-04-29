@@ -107,6 +107,8 @@ It:
 - exposes a Jido-owned `Inference.Adapter` implementation for GEPA, TRINITY, and
   other standalone consumers that need this governed route without depending on
   Jido-specific request structs directly
+- maps shared `Inference.Client` defaults, request options, tool policy, route
+  preference, usage, and cost fields into the governed control-plane boundary
 
 The self-hosted route now proves both runtime ownership shapes:
 
