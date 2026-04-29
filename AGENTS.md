@@ -33,6 +33,11 @@
 
 This file defines the working contract for `/home/home/p/g/n/jido_integration`.
 
+## Onboarding
+
+Read `ONBOARDING.md` first for the repo's one-screen ownership, first command,
+and proof path.
+
 ## Purpose
 
 `jido_integration` is a tooling-root Elixir monorepo for the greenfield

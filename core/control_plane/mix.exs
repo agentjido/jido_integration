@@ -40,6 +40,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       DependencyResolver.jido_integration_v2_policy(),
       DependencyResolver.jido_integration_v2_direct_runtime(),
       DependencyResolver.agent_session_manager(env: :dev),
+      DependencyResolver.inference(),
       DependencyResolver.req_llm(),
       DependencyResolver.jido_integration_v2_runtime_router(only: :test),
       {:jason, "~> 1.4"},

@@ -120,6 +120,13 @@ defmodule Jido.Integration.Build.DependencyResolver do
     {:req_llm, "~> 1.9", opts}
   end
 
+  def inference(opts \\ []) do
+    case local_root_path("../inference/apps/inference") do
+      nil -> {:inference, "~> 0.1.0", opts}
+      path -> {:inference, Keyword.merge([path: path], opts)}
+    end
+  end
+
   def execution_plane(opts \\ []) do
     case local_root_path("../execution_plane/core/execution_plane") do
       nil -> {:execution_plane, "~> 0.1.0", opts}
