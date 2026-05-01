@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+self_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+self_path="${self_dir}/mix"
+
+if [[ -n "${JIDO_INTEGRATION_MIX_EXECUTABLE:-}" ]]; then
+  exec "${JIDO_INTEGRATION_MIX_EXECUTABLE}" "$@"
+fi
+
+IFS=':' read -r -a path_entries <<< "${PATH:-}"
+
+for path_entry in "${path_entries[@]}"; do
+  [[ -n "${path_entry}" ]] || path_entry="."
+
+  candidate="${path_entry}/mix"
+  candidate_dir="$(dirname -- "${candidate}")"
+  [[ -x "${candidate}" && -d "${candidate_dir}" ]] || continue
+
+  candidate_path="$(cd -- "${candidate_dir}" && pwd -P)/$(basename -- "${candidate}")"
+  [[ "${candidate_path}" != "${self_path}" ]] || continue
+
+  exec "${candidate_path}" "$@"
+done
+
+printf 'jido_integration: could not find a mix executable outside %s\n' "${self_path}" >&2
+exit 127

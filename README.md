@@ -376,6 +376,24 @@ Primary package and app runbooks:
 - `apps/devops_incident_response/README.md`
 - `apps/inference_ops/README.md`
 
+## Fresh Clone Bootstrap
+
+From the repo root:
+
+```bash
+test -x bin/mix
+git check-ignore -v bin/mix && {
+  echo "bin/mix is ignored; remove the broad external ignore before continuing"
+  exit 1
+}
+mix deps.get
+mix mr.deps.get
+```
+
+The root workspace deliberately puts `bin/` first on `PATH` for child package
+commands. `bin/mix` is therefore a tracked repo wrapper and must stay portable;
+do not replace it with a workstation-specific `asdf` or shell shim path.
+
 ## Validation Prerequisites
 
 The monorepo test and CI surface now includes packages that wire

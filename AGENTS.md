@@ -142,6 +142,21 @@ Keep documentation aligned to the permanent V2 layout:
 
 The root monorepo commands are the canonical quality surface for this repo.
 
+Fresh clone setup from the repo root:
+
+```bash
+test -x bin/mix
+git check-ignore -v bin/mix && {
+  echo "bin/mix is ignored; remove the broad external ignore before continuing"
+  exit 1
+}
+mix deps.get
+mix mr.deps.get
+```
+
+`bin/mix` is a repo-owned workspace wrapper, not a local-only artifact. Keep it
+portable and tracked; do not replace it with a machine-specific shim path.
+
 At minimum, future agents should preserve this invariant:
 
 > The repo docs now match the tooling-root workspace slice. I’m finishing with
