@@ -205,13 +205,13 @@ defmodule Jido.Integration.Workspace.MixProject do
         env: "JIDO_MONOREPO_MAX_CONCURRENCY",
         multiplier: :auto,
         base: [
-          deps_get: 3,
+          deps_get: 4,
           format: 4,
-          compile: 2,
+          compile: 4,
           test: 2,
-          credo: 2,
-          dialyzer: 1,
-          docs: 1
+          credo: 4,
+          dialyzer: 4,
+          docs: 4
         ],
         overrides: []
       ],
