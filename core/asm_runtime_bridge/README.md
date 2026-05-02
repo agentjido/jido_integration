@@ -76,6 +76,14 @@ ASM host-tool events are projected into `ExecutionEvent` values with
 `tool_name`, and `approval_id` where available. Raw provider payloads are
 reduced to redacted evidence envelopes before crossing into Runtime Control.
 
+Phase 10 deterministic governed Codex conformance is exercised through this
+bridge without launching a live provider. The bridge carries governed
+runtime-auth evidence, materialized Codex runtime input, and cleanup/redaction
+evidence into ASM. ASM's strict materialization guard rejects provider-only
+calls, unmanaged ambient provider auth, and materialized-runtime overrides
+before a deterministic backend can emit Codex-shaped events. Live Codex smoke
+remains optional and requires disposable auth outside default CI.
+
 Live acceptance:
 
 ```bash

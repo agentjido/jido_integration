@@ -15,10 +15,16 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
 
   alias ASM.{Event, HostTool}
   alias Jido.Integration.V2.AsmRuntimeBridge.Normalizer
+  alias Jido.Integration.V2.AsmRuntimeBridge.TestSupport.GovernedCodexBackend
 
   setup do
     ensure_asm_runtime_bridge_started!()
     SessionStore.reset!()
+    saved_codex_env = capture_codex_env()
+    clear_codex_env()
+
+    on_exit(fn -> restore_codex_env(saved_codex_env) end)
+
     :ok
   end
 
@@ -176,6 +182,97 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert Keyword.fetch!(context.provider_opts, :app_server) == true
     assert [%{"name" => "echo_json"}] = Keyword.fetch!(context.provider_opts, :host_tools)
     assert is_function(context.tools["echo_json"], 1)
+  end
+
+  test "stream_run/3 carries governed Codex evidence into ASM strict materialization" do
+    assert {:ok, session} =
+             RuntimeControlDriver.start_session(governed_codex_session_opts())
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request =
+      RunRequest.new!(%{
+        prompt: "phase 10 deterministic codex",
+        metadata: %{}
+      })
+
+    assert {:ok, _run, stream} =
+             RuntimeControlDriver.stream_run(session, request,
+               lane: :core,
+               backend_module: GovernedCodexBackend,
+               codex_materialized_runtime: materialized_runtime(),
+               backend_opts: [test_pid: self()],
+               run_id: "bridge-governed-codex-run"
+             )
+
+    events = Enum.to_list(stream)
+    assert Enum.any?(events, &(&1.type == :assistant_delta))
+    assert Enum.any?(events, &(&1.type == :result))
+
+    metadata = events |> List.last() |> Map.fetch!(:raw) |> Map.fetch!("metadata")
+    assert metadata["runtime_auth_mode"] == "governed"
+    assert metadata["codex_materialization"]["command"] == "redacted_materialized_command"
+    assert metadata["codex_materialization"]["credential_lease_ref"] == "[REDACTED]"
+    assert metadata["codex_materialization"]["env_keys"] == ["CODEX_HOME"]
+
+    refute inspect(events) =~ "/materialized/bin/codex"
+    refute inspect(events) =~ "/materialized/phase10/workspace"
+    refute inspect(events) =~ "/materialized/phase10/codex-home"
+    refute inspect(events) =~ "phase10-secret"
+
+    assert_receive {:governed_codex_backend_cleanup, cleanup}
+    assert cleanup.cleanup_status == :completed
+    assert cleanup.materialized_command == :redacted_materialized_command
+    assert cleanup.credential_lease_ref == "jido-credential-lease://phase10/lease-1"
+    assert cleanup.env_keys == ["CODEX_HOME"]
+    refute inspect(cleanup) =~ "/materialized"
+  end
+
+  test "governed Codex bridge rejects provider-only calls without authority evidence" do
+    assert {:error, error} =
+             RuntimeControlDriver.start_session(
+               provider: :codex,
+               runtime_auth_mode: :governed,
+               runtime_auth_scope: :governed
+             )
+
+    assert error.kind == :config_invalid
+    assert error.message =~ "governed runtime_auth requires governed context source"
+  end
+
+  test "governed Codex bridge rejects ambient auth before deterministic provider launch" do
+    saved = capture_codex_env()
+    System.put_env("CODEX_API_KEY", "ambient-phase10-secret")
+
+    on_exit(fn -> restore_codex_env(saved) end)
+
+    assert {:ok, session} =
+             RuntimeControlDriver.start_session(governed_codex_session_opts())
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request =
+      RunRequest.new!(%{
+        prompt: "phase 10 deterministic codex",
+        metadata: %{}
+      })
+
+    assert {:ok, _run, stream} =
+             RuntimeControlDriver.stream_run(session, request,
+               lane: :core,
+               backend_module: GovernedCodexBackend,
+               codex_materialized_runtime: materialized_runtime(),
+               backend_opts: [test_pid: self()],
+               run_id: "bridge-governed-codex-ambient-reject"
+             )
+
+    assert_raise ASM.Error, fn -> Enum.to_list(stream) end
+
+    refute_receive {:governed_codex_backend_cleanup, _cleanup}
   end
 
   test "start_session/1 and stream_run/3 do not forward caller-supplied env options" do
@@ -521,5 +618,65 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
       {:ok, _apps} -> :ok
       {:error, reason} -> flunk("failed to start asm_runtime_bridge: #{inspect(reason)}")
     end
+  end
+
+  defp governed_codex_session_opts do
+    [
+      provider: :codex,
+      runtime_auth_mode: :governed,
+      runtime_auth_scope: :governed,
+      execution_context_ref: "asm-execution-context://phase10/governed",
+      connector_instance_ref: "jido-connector-instance://phase10/codex-1",
+      connector_binding_ref: "jido-connector-binding://phase10/codex-1",
+      connector_id: "codex-cli-phase10",
+      provider_account_ref: "provider-account://codex/phase10/redacted",
+      provider_account_status: :known_redacted_ref,
+      authority_ref: "citadel-authority://phase10/decision-1",
+      authority_decision_ref: "citadel-authority-decision://phase10/decision-1",
+      credential_lease_ref: "jido-credential-lease://phase10/lease-1",
+      native_auth_assertion_ref: "codex-native-auth://phase10/assertion-1",
+      tenant_ref: "tenant://phase10",
+      installation_ref: "installation://phase10",
+      target_ref: "target://phase10/local",
+      workspace_root: "workspace://phase10/opaque",
+      approval_posture: :manual,
+      allowed_tools: ["codex.session.turn"]
+    ]
+  end
+
+  defp materialized_runtime do
+    %{
+      source: :verified_materializer,
+      command: "/materialized/bin/codex",
+      cwd: "/materialized/phase10/workspace",
+      config_root: "/materialized/phase10/codex-home",
+      env: %{"CODEX_HOME" => "/materialized/phase10/codex-home"},
+      clear_env?: true,
+      target_auth_posture: :materialize_on_attach,
+      native_auth_assertion: %{
+        introspection_level: :auth_file_metadata,
+        limits: %{secrets: :redacted, token_values: :not_read},
+        redacted?: true
+      }
+    }
+  end
+
+  defp capture_codex_env do
+    Map.new(codex_env_keys(), &{&1, System.get_env(&1)})
+  end
+
+  defp clear_codex_env do
+    Enum.each(codex_env_keys(), &System.delete_env/1)
+  end
+
+  defp restore_codex_env(saved) do
+    Enum.each(saved, fn
+      {key, nil} -> System.delete_env(key)
+      {key, value} -> System.put_env(key, value)
+    end)
+  end
+
+  defp codex_env_keys do
+    ["CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_HOME", "OPENAI_BASE_URL"]
   end
 end
