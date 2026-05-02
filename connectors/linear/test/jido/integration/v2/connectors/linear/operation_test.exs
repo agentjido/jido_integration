@@ -140,6 +140,51 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationTest do
     refute_receive {:transport_request, _payload, _context, _opts}
   end
 
+  test "rejects multi-operation Linear GraphQL before calling linear_sdk" do
+    capability = fetch_capability!("linear.graphql.execute")
+
+    assert {:error, mapped_error, _result} =
+             DirectRuntime.execute(
+               capability,
+               %{
+                 query:
+                   "query FirstViewer { viewer { id } } mutation SecondViewer { commentCreate(input: {issueId: \"issue\", body: \"body\"}) { success } }",
+                 operation_name: "FirstViewer"
+               },
+               Fixtures.execution_context("linear.graphql.execute",
+                 linear_request: Fixtures.request_opts(self())
+               )
+             )
+
+    assert mapped_error.code == "linear.preflight_validation"
+    assert mapped_error.class == "invalid_request"
+    assert mapped_error.message =~ "exactly one operation"
+
+    refute_receive {:transport_request, _payload, _context, _opts}
+  end
+
+  test "rejects Linear GraphQL operation_name mismatches before calling linear_sdk" do
+    capability = fetch_capability!("linear.graphql.execute")
+
+    assert {:error, mapped_error, _result} =
+             DirectRuntime.execute(
+               capability,
+               %{
+                 query: "query FirstViewer { viewer { id } }",
+                 operation_name: "SecondViewer"
+               },
+               Fixtures.execution_context("linear.graphql.execute",
+                 linear_request: Fixtures.request_opts(self())
+               )
+             )
+
+    assert mapped_error.code == "linear.preflight_validation"
+    assert mapped_error.class == "invalid_request"
+    assert mapped_error.message =~ "operation_name"
+
+    refute_receive {:transport_request, _payload, _context, _opts}
+  end
+
   test "runtime execution and client construction do not invoke InstallBinding" do
     capability = fetch_capability!("linear.users.get_self")
     trace_pattern = {InstallBinding, :_, :_}

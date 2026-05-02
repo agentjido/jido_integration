@@ -14,6 +14,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
 
   alias ASM.{Event, Provider, RuntimeAuth, Stream}
   alias Jido.Integration.V2.AsmRuntimeBridge.{Normalizer, SessionStore}
+  alias Jido.Integration.V2.DynamicToolManifest
 
   alias Jido.RuntimeControl.{
     Error,
@@ -440,6 +441,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     filtered_request_opts(request, provider)
     |> Keyword.merge(opts)
     |> normalize_bridge_run_overrides()
+    |> materialize_dynamic_tool_manifest(request)
     |> author_execution_inputs()
     |> Keyword.put(:run_id, run_id)
     |> Keyword.take(allowed_asm_run_option_keys(provider))
@@ -492,7 +494,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
 
   defp validate_runtime_request(provider, %RunRequest{} = request, opts) do
     cond do
-      host_tools_requested?(request, opts) and provider.name != :codex ->
+      (host_tools_requested?(request, opts) or dynamic_tool_manifest_requested?(request, opts)) and
+          provider.name != :codex ->
         {:error,
          Error.validation_error(
            "host_tools are unsupported for #{provider.name}; Codex app-server is the only native host-tool lane",
@@ -521,6 +524,10 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
 
   defp host_tools_requested?(%RunRequest{} = request, opts) do
     non_empty_list?(request.host_tools) or non_empty_list?(Keyword.get(opts, :host_tools))
+  end
+
+  defp dynamic_tool_manifest_requested?(%RunRequest{} = request, opts) do
+    dynamic_tool_manifest(opts, request) != nil
   end
 
   defp app_server_requested?(%RunRequest{} = request, opts) do
@@ -556,6 +563,57 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
   end
 
   defp normalize_known_option_key(_key), do: nil
+
+  defp materialize_dynamic_tool_manifest(opts, %RunRequest{} = request) do
+    case dynamic_tool_manifest(opts, request) do
+      nil ->
+        opts
+
+      manifest ->
+        context = Keyword.get(opts, :context, %{})
+
+        resolved =
+          DynamicToolManifest.resolve!(
+            manifest,
+            connector_manifests: Keyword.get(opts, :connector_manifests, []),
+            allowed_operations: allowed_operations_value(opts, context),
+            allowed_tools: allowed_tools_value(opts, context),
+            authority_ref:
+              Keyword.get(opts, :authority_ref) || map_value(context, :authority_ref),
+            tenant_ref: Keyword.get(opts, :tenant_ref) || map_value(context, :tenant_ref),
+            installation_ref:
+              Keyword.get(opts, :installation_ref) || map_value(context, :installation_ref)
+          )
+
+        opts
+        |> Keyword.put(
+          :host_tools,
+          merge_host_tools(Keyword.get(opts, :host_tools, []), resolved.host_tools)
+        )
+        |> Keyword.put(
+          :metadata,
+          merge_dynamic_tool_metadata(Keyword.get(opts, :metadata, %{}), resolved)
+        )
+    end
+  end
+
+  defp dynamic_tool_manifest(opts, %RunRequest{} = request) do
+    Keyword.get(opts, :dynamic_tool_manifest) ||
+      metadata_value(request.provider_metadata, :dynamic_tool_manifest) ||
+      metadata_value(request.metadata, :dynamic_tool_manifest)
+  end
+
+  defp merge_host_tools(existing, additions) do
+    List.wrap(existing) ++ List.wrap(additions)
+  end
+
+  defp merge_dynamic_tool_metadata(metadata, resolved) when is_map(metadata) do
+    Map.put(metadata, "dynamic_tool_manifest", resolved.metadata)
+  end
+
+  defp merge_dynamic_tool_metadata(_metadata, resolved) do
+    %{"dynamic_tool_manifest" => resolved.metadata}
+  end
 
   defp allowed_asm_session_option_keys(provider) do
     (@asm_session_option_keys ++
@@ -675,6 +733,14 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     else
       allowed_tools(context)
     end
+  end
+
+  defp allowed_operations_value(opts, context) do
+    Keyword.get(opts, :allowed_operations) ||
+      get_in(context, [:policy_inputs, :execution, :operations, :allowed_operations]) ||
+      get_in(context, [:policy_inputs, :execution, "operations", "allowed_operations"]) ||
+      get_in(context, ["policy_inputs", "execution", "operations", "allowed_operations"]) ||
+      []
   end
 
   defp approval_posture_value(opts, context) do

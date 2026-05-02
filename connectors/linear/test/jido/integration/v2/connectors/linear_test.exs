@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
   alias Jido.Integration.V2.Connectors.Linear.Operation
   alias Jido.Integration.V2.Connectors.Linear.OperationCatalog
   alias Jido.Integration.V2.ConsumerProjection
+  alias Jido.Integration.V2.DynamicToolManifest
   alias Jido.Integration.V2.OperationSpec
 
   @published_capability_ids [
@@ -207,6 +208,41 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
     assert plugin_module.subscriptions() == []
 
     refute Enum.any?(operations, &String.contains?(&1.operation_id, "install_binding"))
+  end
+
+  test "maps Linear catalog entries into governed dynamic host tools" do
+    assert {:ok, resolved} =
+             DynamicToolManifest.resolve(
+               %{tools: ["linear.comment.update", "linear_graphql"]},
+               connector_manifests: [Linear.manifest()],
+               allowed_operations: ["linear.comments.update", "linear.graphql.execute"],
+               allowed_tools: ["linear.api.comments.update", "linear.api.graphql.execute"],
+               authority_ref: "authority://linear/phase11"
+             )
+
+    assert resolved.operations == ["linear.comments.update", "linear.graphql.execute"]
+
+    assert Enum.map(resolved.host_tools, & &1["name"]) == [
+             "linear_comment_update",
+             "linear_graphql"
+           ]
+
+    assert Enum.map(resolved.host_tools, &get_in(&1, ["metadata", "catalog_ref"])) == [
+             "linear:linear.comments.update",
+             "linear:linear.graphql.execute"
+           ]
+  end
+
+  test "rejects Linear dynamic tools not authorized by Citadel allowed operations" do
+    assert {:error, error} =
+             DynamicToolManifest.resolve(
+               %{tools: ["linear_graphql"]},
+               connector_manifests: [Linear.manifest()],
+               allowed_operations: ["linear.comments.update"],
+               allowed_tools: ["linear.api.graphql.execute"]
+             )
+
+    assert Exception.message(error) =~ "not present in Citadel allowed_operations"
   end
 
   defp assert_surface_contract(operation) do

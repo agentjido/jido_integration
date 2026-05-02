@@ -578,25 +578,168 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
   end
 
   defp document(%{operation: :graphql_execute}, input) do
-    case optional_value(input, :query) do
-      value when is_binary(value) ->
-        case String.trim(value) do
-          "" ->
-            {:error, ErrorMapper.preflight_validation("Linear GraphQL query must not be blank")}
-
-          query ->
-            {:ok, query}
-        end
-
-      other ->
-        {:error,
-         ErrorMapper.preflight_validation("Linear GraphQL query must be a string",
-           issues: [query: other]
-         )}
+    with {:ok, query} <- graphql_query(input),
+         :ok <- validate_single_graphql_operation(query, optional_value(input, :operation_name)) do
+      {:ok, query}
     end
   end
 
   defp document(metadata, _input), do: {:ok, metadata.document}
+
+  defp graphql_query(input) do
+    input
+    |> optional_value(:query)
+    |> normalize_graphql_query()
+  end
+
+  defp normalize_graphql_query(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> {:error, ErrorMapper.preflight_validation("Linear GraphQL query must not be blank")}
+      query -> {:ok, query}
+    end
+  end
+
+  defp normalize_graphql_query(other) do
+    {:error,
+     ErrorMapper.preflight_validation("Linear GraphQL query must be a string",
+       issues: [query: other]
+     )}
+  end
+
+  defp validate_single_graphql_operation(query, requested_operation_name) do
+    definitions = graphql_operation_definitions(query)
+    requested_name = present_string(requested_operation_name)
+
+    cond do
+      definitions == [] and graphql_selection_shorthand?(query) and is_nil(requested_name) ->
+        :ok
+
+      length(definitions) != 1 ->
+        {:error,
+         ErrorMapper.preflight_validation(
+           "Linear GraphQL query must contain exactly one operation definition",
+           issues: [operation_count: length(definitions)]
+         )}
+
+      not is_nil(requested_name) and requested_name != hd(definitions).name ->
+        {:error,
+         ErrorMapper.preflight_validation(
+           "Linear GraphQL operation_name does not match the query operation",
+           issues: [operation_name: requested_name]
+         )}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp graphql_selection_shorthand?(query) do
+    query
+    |> String.trim_leading()
+    |> String.starts_with?("{")
+  end
+
+  defp graphql_operation_definitions(query) do
+    query
+    |> String.to_charlist()
+    |> scan_graphql_tokens([], [], 0, 0)
+    |> Enum.reverse()
+    |> operation_definitions([])
+    |> Enum.reverse()
+  end
+
+  defp scan_graphql_tokens([], tokens, current, _depth, token_depth) do
+    finish_graphql_token(tokens, current, token_depth)
+  end
+
+  defp scan_graphql_tokens([?# | rest], tokens, current, depth, token_depth) do
+    rest
+    |> skip_graphql_comment()
+    |> scan_graphql_tokens(finish_graphql_token(tokens, current, token_depth), [], depth, depth)
+  end
+
+  defp scan_graphql_tokens([?" | rest], tokens, current, depth, token_depth) do
+    rest
+    |> skip_graphql_string()
+    |> scan_graphql_tokens(finish_graphql_token(tokens, current, token_depth), [], depth, depth)
+  end
+
+  defp scan_graphql_tokens([?{ | rest], tokens, current, depth, token_depth) do
+    scan_graphql_tokens(
+      rest,
+      finish_graphql_token(tokens, current, token_depth),
+      [],
+      depth + 1,
+      depth + 1
+    )
+  end
+
+  defp scan_graphql_tokens([?} | rest], tokens, current, depth, token_depth) do
+    next_depth = max(depth - 1, 0)
+
+    scan_graphql_tokens(
+      rest,
+      finish_graphql_token(tokens, current, token_depth),
+      [],
+      next_depth,
+      next_depth
+    )
+  end
+
+  defp scan_graphql_tokens([char | rest], tokens, current, depth, token_depth) do
+    cond do
+      graphql_name_char?(char) and current == [] ->
+        scan_graphql_tokens(rest, tokens, [char], depth, depth)
+
+      graphql_name_char?(char) ->
+        scan_graphql_tokens(rest, tokens, [char | current], depth, token_depth)
+
+      true ->
+        scan_graphql_tokens(
+          rest,
+          finish_graphql_token(tokens, current, token_depth),
+          [],
+          depth,
+          depth
+        )
+    end
+  end
+
+  defp finish_graphql_token(tokens, [], _token_depth), do: tokens
+
+  defp finish_graphql_token(tokens, current, token_depth) do
+    [{current |> Enum.reverse() |> to_string(), token_depth} | tokens]
+  end
+
+  defp skip_graphql_comment([]), do: []
+  defp skip_graphql_comment([?\n | rest]), do: rest
+  defp skip_graphql_comment([?\r | rest]), do: rest
+  defp skip_graphql_comment([_char | rest]), do: skip_graphql_comment(rest)
+
+  defp skip_graphql_string([]), do: []
+  defp skip_graphql_string([?\\, _escaped | rest]), do: skip_graphql_string(rest)
+  defp skip_graphql_string([?" | rest]), do: rest
+  defp skip_graphql_string([_char | rest]), do: skip_graphql_string(rest)
+
+  defp graphql_name_char?(char) when char in ?a..?z, do: true
+  defp graphql_name_char?(char) when char in ?A..?Z, do: true
+  defp graphql_name_char?(char) when char in ?0..?9, do: true
+  defp graphql_name_char?(?_), do: true
+  defp graphql_name_char?(_char), do: false
+
+  defp operation_definitions([], acc), do: acc
+
+  defp operation_definitions([{operation, 0}, {name, 0} | rest], acc)
+       when operation in ["query", "mutation", "subscription"] do
+    operation_definitions(rest, [%{kind: operation, name: name} | acc])
+  end
+
+  defp operation_definitions([{operation, 0} | rest], acc)
+       when operation in ["query", "mutation", "subscription"] do
+    operation_definitions(rest, [%{kind: operation, name: nil} | acc])
+  end
+
+  defp operation_definitions([_token | rest], acc), do: operation_definitions(rest, acc)
 
   defp required_value(input, key) do
     optional_value(input, key)

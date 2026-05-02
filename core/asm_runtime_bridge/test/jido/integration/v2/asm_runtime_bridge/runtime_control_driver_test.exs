@@ -16,6 +16,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
   alias ASM.{Event, HostTool}
   alias Jido.Integration.V2.AsmRuntimeBridge.Normalizer
   alias Jido.Integration.V2.AsmRuntimeBridge.TestSupport.GovernedCodexBackend
+  alias Jido.Integration.V2.{AuthSpec, CatalogSpec, Manifest, OperationSpec}
 
   setup do
     ensure_asm_runtime_bridge_started!()
@@ -182,6 +183,70 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert Keyword.fetch!(context.provider_opts, :app_server) == true
     assert [%{"name" => "echo_json"}] = Keyword.fetch!(context.provider_opts, :host_tools)
     assert is_function(context.tools["echo_json"], 1)
+  end
+
+  test "stream_run/3 maps governed dynamic tool manifests into ASM host tools" do
+    assert {:ok, session} = RuntimeControlDriver.start_session(provider: :codex)
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request = RunRequest.new!(%{prompt: "use linear graph", metadata: %{}})
+
+    assert {:ok, _run, stream} =
+             RuntimeControlDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               driver_opts: [test_pid: self()],
+               app_server: true,
+               dynamic_tool_manifest: %{tools: ["linear_graphql"]},
+               connector_manifests: [
+                 dynamic_tool_manifest_fixture("linear", "linear.graphql.execute")
+               ],
+               allowed_operations: ["linear.graphql.execute"],
+               allowed_tools: ["linear.api.graphql.execute"],
+               authority_ref: "authority://phase11",
+               tenant_ref: "tenant://phase11",
+               installation_ref: "installation://phase11",
+               run_id: "bridge-run-dynamic-tools"
+             )
+
+    assert Enum.to_list(stream) != []
+
+    assert_receive {:stream_scripted_driver_context, context}
+
+    assert [%{"name" => "linear_graphql"} = tool] =
+             Keyword.fetch!(context.provider_opts, :host_tools)
+
+    assert get_in(tool, ["metadata", "operation_id"]) == "linear.graphql.execute"
+    assert context.metadata["dynamic_tool_manifest"]["operations"] == ["linear.graphql.execute"]
+    assert context.metadata["dynamic_tool_manifest"]["authority_ref"] == "authority://phase11"
+  end
+
+  test "stream_run/3 rejects dynamic tool manifests outside Citadel allowed operations" do
+    assert {:ok, session} = RuntimeControlDriver.start_session(provider: :codex)
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request = RunRequest.new!(%{prompt: "use linear graph", metadata: %{}})
+
+    assert {:error, error} =
+             RuntimeControlDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               app_server: true,
+               dynamic_tool_manifest: %{tools: ["linear_graphql"]},
+               connector_manifests: [
+                 dynamic_tool_manifest_fixture("linear", "linear.graphql.execute")
+               ],
+               allowed_operations: ["github.pr.create"],
+               allowed_tools: ["linear.api.graphql.execute"],
+               run_id: "bridge-run-dynamic-tools-rejected"
+             )
+
+    assert error.message =~ "ASM bridge stream_run/3 failed"
+    assert error.details.error =~ "not present in Citadel allowed_operations"
   end
 
   test "stream_run/3 carries governed Codex evidence into ASM strict materialization" do
@@ -678,5 +743,62 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
 
   defp codex_env_keys do
     ["CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_HOME", "OPENAI_BASE_URL"]
+  end
+
+  defp dynamic_tool_manifest_fixture(connector, operation_id) do
+    Manifest.new!(%{
+      connector: connector,
+      auth:
+        AuthSpec.new!(%{
+          binding_kind: :connection_id,
+          auth_type: :oauth2,
+          install: %{required: true},
+          reauth: %{supported: true},
+          requested_scopes: ["write"],
+          lease_fields: ["access_token"],
+          secret_names: []
+        }),
+      catalog:
+        CatalogSpec.new!(%{
+          display_name: connector,
+          description: "#{connector} connector",
+          category: "developer_tools",
+          tags: [connector],
+          docs_refs: [],
+          maturity: :beta,
+          publication: :public
+        }),
+      operations: [dynamic_tool_operation(operation_id)],
+      triggers: [],
+      runtime_families: [:direct]
+    })
+  end
+
+  defp dynamic_tool_operation(operation_id) do
+    OperationSpec.new!(%{
+      operation_id: operation_id,
+      name: String.replace(operation_id, ".", "_"),
+      display_name: operation_id,
+      description: "Executes #{operation_id}",
+      runtime_class: :direct,
+      transport_mode: :sdk,
+      handler: __MODULE__,
+      input_schema: Zoi.object(%{input: Zoi.string()}),
+      output_schema: Zoi.object(%{ok: Zoi.boolean()}),
+      permissions: %{required_scopes: ["write"]},
+      policy: %{
+        environment: %{allowed: [:prod]},
+        sandbox: %{
+          level: :standard,
+          egress: :restricted,
+          approvals: :auto,
+          allowed_tools: [String.replace(operation_id, "linear.", "linear.api.")]
+        }
+      },
+      upstream: %{method: "POST", path: "/"},
+      consumer_surface: %{mode: :connector_local, reason: "test"},
+      schema_policy: %{input: :defined, output: :defined},
+      jido: %{}
+    })
   end
 end

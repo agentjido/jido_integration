@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures
   alias Jido.Integration.V2.Connectors.GitHub.Operation
   alias Jido.Integration.V2.Connectors.GitHub.OperationCatalog
+  alias Jido.Integration.V2.DynamicToolManifest
   alias Jido.Integration.V2.OperationSpec
 
   @published_capability_ids [
@@ -220,6 +221,34 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
       assert operation.schema_policy.input == :defined
       assert operation.schema_policy.output == :defined
     end)
+  end
+
+  test "maps GitHub catalog entries into governed dynamic host tools" do
+    assert {:ok, resolved} =
+             DynamicToolManifest.resolve(
+               %{tools: ["github.pr.create"]},
+               connector_manifests: [GitHub.manifest()],
+               allowed_operations: ["github.pr.create"],
+               allowed_tools: ["github.api.pr.create"],
+               authority_ref: "authority://github/phase11"
+             )
+
+    assert resolved.operations == ["github.pr.create"]
+    assert [%{"name" => "github_pr_create"} = host_tool] = resolved.host_tools
+    assert get_in(host_tool, ["metadata", "catalog_ref"]) == "github:github.pr.create"
+    assert get_in(host_tool, ["metadata", "allowed_tools"]) == ["github.api.pr.create"]
+  end
+
+  test "rejects GitHub dynamic tools missing required allowed tools" do
+    assert {:error, error} =
+             DynamicToolManifest.resolve(
+               %{tools: ["github.pr.create"]},
+               connector_manifests: [GitHub.manifest()],
+               allowed_operations: ["github.pr.create"],
+               allowed_tools: ["github.api.pr.fetch"]
+             )
+
+    assert Exception.message(error) =~ "requires allowed tools"
   end
 
   test "authors the A0 slice as rich operation specs and derives the executable catalog from them" do
