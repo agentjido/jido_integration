@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.Auth do
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Auth.LeaseRecord
+  alias Jido.Integration.V2.Auth.LeaseRedemption
   alias Jido.Integration.V2.Auth.Store
   alias Jido.Integration.V2.Auth.Stores
   alias Jido.Integration.V2.Contracts
@@ -353,10 +354,7 @@ defmodule Jido.Integration.V2.Auth do
             payload_keys: payload_keys,
             issued_at: now,
             expires_at: DateTime.add(now, ttl_seconds, :second),
-            metadata: %{
-              actor_id: Map.get(context, :actor_id),
-              connection_id: lease_connection.connection_id
-            }
+            metadata: lease_record_metadata(context, lease_connection)
           })
 
         :ok = Stores.lease_store().store_lease(lease_record)
@@ -886,6 +884,17 @@ defmodule Jido.Integration.V2.Auth do
       expires_at: lease_record.expires_at,
       metadata: Map.merge(lease_record.metadata, %{connection_id: connection.connection_id})
     })
+  end
+
+  defp lease_record_metadata(context, %Connection{} = connection) do
+    %{
+      actor_id: Map.get(context, :actor_id),
+      connection_id: connection.connection_id,
+      connector_id: connection.connector_id
+    }
+    |> Map.merge(LeaseRedemption.redacted_metadata(context))
+    |> Enum.reject(fn {_key, value} -> value in [nil, [], %{}] end)
+    |> Map.new()
   end
 
   defp requested_scopes(%Connection{}, %{required_scopes: required_scopes})

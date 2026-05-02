@@ -415,9 +415,9 @@ repo still supports the other two durability tiers in parallel:
 
 ## Temporal developer environment
 
-Temporal runtime development is managed from `/home/home/p/g/n/mezzanine`
-through the repo-owned `just` workflow. Do not start ad hoc Temporal processes
-or rely on the `temporal` CLI as the implementation runbook.
+Temporal runtime development is managed from the Mezzanine checkout through the
+repo-owned `just` workflow. Do not start ad hoc Temporal processes or rely on
+the `temporal` CLI as the implementation runbook.
 
 ## Native Temporal development substrate
 
