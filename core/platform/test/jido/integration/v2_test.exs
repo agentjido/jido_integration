@@ -4,7 +4,6 @@ defmodule Jido.Integration.V2Test do
   alias Jido.Integration.V2.Connectors.CodexCli
   alias Jido.Integration.V2.Connectors.CodexCli.ConformanceRuntimeControlDriver
   alias Jido.Integration.V2.Connectors.GitHub
-  alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures, as: GitHubFixtures
   alias Jido.Integration.V2.Connectors.MarketData
   alias Jido.Integration.V2.ConsumerProjection
@@ -166,16 +165,8 @@ defmodule Jido.Integration.V2Test do
   }
 
   setup do
-    previous = Application.get_env(:jido_integration_v2_github, ClientFactory)
-
     previous_runtime_drivers =
       Application.get_env(:jido_integration_v2_control_plane, :runtime_drivers)
-
-    Application.put_env(
-      :jido_integration_v2_github,
-      ClientFactory,
-      GitHubFixtures.client_opts(nil)
-    )
 
     RuntimeRouter.reset!()
     ConformanceRuntimeControlDriver.reset!()
@@ -187,12 +178,6 @@ defmodule Jido.Integration.V2Test do
     )
 
     on_exit(fn ->
-      if is_nil(previous) do
-        Application.delete_env(:jido_integration_v2_github, ClientFactory)
-      else
-        Application.put_env(:jido_integration_v2_github, ClientFactory, previous)
-      end
-
       case previous_runtime_drivers do
         nil ->
           Application.delete_env(:jido_integration_v2_control_plane, :runtime_drivers)
@@ -664,7 +649,8 @@ defmodule Jido.Integration.V2Test do
         actor_id: "connector-contract",
         tenant_id: @github.tenant_id,
         environment: @github.environment,
-        sandbox: github_spec.sandbox
+        sandbox: github_spec.sandbox,
+        extensions: [github_client: GitHubFixtures.client_opts(nil)]
       })
 
     assert {:ok, via_request} = V2.invoke(request)

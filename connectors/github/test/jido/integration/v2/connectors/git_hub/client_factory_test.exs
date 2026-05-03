@@ -1,5 +1,5 @@
 defmodule Jido.Integration.V2.Connectors.GitHub.ClientFactoryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
   alias Jido.Integration.V2.Connectors.GitHub.Fixtures
@@ -34,5 +34,30 @@ defmodule Jido.Integration.V2.Connectors.GitHub.ClientFactoryTest do
                credential_lease: %{payload: %{}},
                opts: %{}
              })
+  end
+
+  test "ignores standalone application config once a governed credential lease is present" do
+    previous = Application.get_env(:jido_integration_v2_github, ClientFactory)
+
+    Application.put_env(
+      :jido_integration_v2_github,
+      ClientFactory,
+      base_url: "https://shadow-github-config.example.test",
+      timeout_ms: 99_999
+    )
+
+    on_exit(fn ->
+      case previous do
+        nil -> Application.delete_env(:jido_integration_v2_github, ClientFactory)
+        value -> Application.put_env(:jido_integration_v2_github, ClientFactory, value)
+      end
+    end)
+
+    context = Fixtures.execution_context("github.issue.list")
+
+    assert {:ok, client} = ClientFactory.build(context)
+    refute client.base_url == "https://shadow-github-config.example.test"
+    refute client.timeout_ms == 99_999
+    assert client.auth == Fixtures.access_token()
   end
 end

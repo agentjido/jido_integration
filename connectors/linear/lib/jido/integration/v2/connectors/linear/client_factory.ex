@@ -3,6 +3,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.ClientFactory do
 
   alias Jido.Integration.V2.ArtifactBuilder
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.GovernedRuntimeConfig
 
   @config_key __MODULE__
   @allowed_option_keys [
@@ -17,7 +18,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.ClientFactory do
   def build(context) when is_map(context) do
     with {:ok, auth_opts} <- runtime_auth(context) do
       opts =
-        configured_opts()
+        configured_opts(context)
         |> Keyword.merge(runtime_opts(context))
         |> Keyword.merge(auth_opts)
 
@@ -32,10 +33,13 @@ defmodule Jido.Integration.V2.Connectors.Linear.ClientFactory do
     |> ArtifactBuilder.digest()
   end
 
-  defp configured_opts do
-    :jido_integration_v2_linear
-    |> Application.get_env(@config_key, [])
-    |> Keyword.take(@allowed_option_keys)
+  defp configured_opts(context) do
+    GovernedRuntimeConfig.standalone_application_opts(
+      context,
+      :jido_integration_v2_linear,
+      @config_key,
+      @allowed_option_keys
+    )
   end
 
   defp runtime_opts(context) do

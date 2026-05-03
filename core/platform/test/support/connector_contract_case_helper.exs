@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
+  alias Jido.Integration.V2.Connectors.GitHub.Fixtures, as: GitHubFixtures
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Platform.DurableSupport
 
@@ -77,7 +78,10 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
       sandbox: spec.sandbox
     ]
 
-    Keyword.merge(defaults, overrides)
+    capability_id
+    |> connector_runtime_opts()
+    |> Keyword.merge(defaults)
+    |> Keyword.merge(overrides)
   end
 
   def assert_review_surface!(result, spec, expected_lease_payload, secret_values) do
@@ -121,4 +125,10 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
   defp expires_at_for(secret, now) do
     if Map.has_key?(secret, :api_key), do: nil, else: DateTime.add(now, 7 * 24 * 3_600, :second)
   end
+
+  defp connector_runtime_opts("github." <> _capability_suffix) do
+    [github_client: GitHubFixtures.client_opts(nil)]
+  end
+
+  defp connector_runtime_opts(_capability_id), do: []
 end

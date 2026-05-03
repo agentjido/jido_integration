@@ -4,8 +4,6 @@ defmodule Jido.Integration.V2ReviewPacketRefsTest do
   alias Jido.Integration.V2
   alias Jido.Integration.V2.ArtifactBuilder
   alias Jido.Integration.V2.Connectors.GitHub
-  alias Jido.Integration.V2.Connectors.GitHub.ClientFactory
-  alias Jido.Integration.V2.Connectors.GitHub.Fixtures, as: GitHubFixtures
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.ReviewProjection
 
@@ -27,26 +25,6 @@ defmodule Jido.Integration.V2ReviewPacketRefsTest do
       allowed_tools: ["github.api.issue.create"]
     }
   }
-
-  setup do
-    previous = Application.get_env(:jido_integration_v2_github, ClientFactory)
-
-    Application.put_env(
-      :jido_integration_v2_github,
-      ClientFactory,
-      GitHubFixtures.client_opts(nil)
-    )
-
-    on_exit(fn ->
-      if is_nil(previous) do
-        Application.delete_env(:jido_integration_v2_github, ClientFactory)
-      else
-        Application.put_env(:jido_integration_v2_github, ClientFactory, previous)
-      end
-    end)
-
-    :ok
-  end
 
   test "review_packet exposes stable packet metadata refs over durable truth" do
     register_connector!(@github.connector)

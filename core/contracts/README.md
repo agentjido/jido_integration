@@ -146,6 +146,11 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `CredentialLease` carries only the execution-time payload needed for a
   bounded lease lifetime plus safe lineage such as `credential_id` and
   `profile_id`
+- `GovernedRuntimeConfig` is the shared guard for runtime code that needs
+  standalone application config compatibility; when a governed context carries
+  lease, credential, policy, run, attempt, or target markers, provider client
+  factories must ignore application-configured base URLs, transports, and SDK
+  options and use only explicit runtime opts plus leased credential material
 - `TargetDescriptor` matches against authored capability ids while remaining a
   compatibility and location advertisement rather than a second override plane
 - `TargetDescriptor.extensions["boundary"]` is the authored baseline boundary

@@ -20,6 +20,9 @@ evidence rather than hidden repo-wide behavior.
 - non-direct capabilities keep their authored runtime routing explicit
 - `connection_id` is the public auth binding
 - `credential_ref` remains behind auth and control-plane internals
+- governed connector runtime contexts ignore standalone application client
+  config; fixture transports, base URLs, and SDK options must arrive through
+  explicit invocation opts or authority materialization
 - hosted webhook and async behavior stays above the connector package when it
   is not the connector's own responsibility
 - unpublished first-party runtime deps may resolve from sibling paths locally

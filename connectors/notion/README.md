@@ -289,7 +289,10 @@ Read the detailed runbook in [`docs/live_acceptance.md`](docs/live_acceptance.md
 
 Runtime requests build `NotionSDK.Client` instances only from Jido-issued
 credential leases. The connector never uses `NotionSDK.OAuthTokenFile` as
-runtime truth.
+runtime truth. When a governed context carries a credential lease, the client
+factory ignores standalone application-configured base URLs, transports, Notion
+version, and SDK options; tests and hosts pass those values through explicit
+invocation opts instead.
 
 The generic operation handler:
 

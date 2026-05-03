@@ -149,7 +149,10 @@ See `docs/live_acceptance.md` for the full command contract.
 ## SDK Boundary
 
 Runtime requests build `LinearSDK.Client` instances only from Jido-issued
-credential leases.
+credential leases. When a governed context carries a credential lease, the
+client factory ignores standalone application-configured base URLs, transports,
+headers, and request options; tests and hosts pass those values through
+explicit invocation opts instead.
 
 The connector owns:
 
@@ -170,9 +173,9 @@ This connector depends on `prismatic` directly only for token-struct
 normalization inside `install_binding`; the runtime invoke path still stays
 lease-bound through `LinearSDK.Client`.
 
-Offline tests override the SDK transport with deterministic fixture responses.
-That seam keeps provider HTTP behavior in `linear_sdk` instead of recreating it
-inside `jido_integration`.
+Offline tests override the SDK transport with deterministic fixture responses
+through explicit runtime opts. That seam keeps provider HTTP behavior in
+`linear_sdk` instead of recreating it inside `jido_integration`.
 
 ## Package Boundary
 

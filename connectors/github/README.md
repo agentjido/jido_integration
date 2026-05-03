@@ -245,7 +245,10 @@ Read the detailed runbook in [`docs/live_acceptance.md`](docs/live_acceptance.md
 ## SDK Boundary
 
 Runtime requests build `GitHubEx.Client` instances only from Jido-issued
-credential leases.
+credential leases. When a governed context carries a credential lease, the
+client factory ignores standalone application-configured base URLs, transports,
+and SDK options; tests and hosts pass those values through explicit invocation
+opts instead.
 
 The connector owns:
 
@@ -261,9 +264,9 @@ The connector owns:
 - retry and rate-limit behavior
 - generated REST operation wrappers such as `GitHubEx.Issues.*`
 
-Live proofs override the connector client config to use the real SDK
-transport. Offline tests override the transport with fixture responses.
-Neither path moves provider HTTP logic back into `jido_integration`.
+Live proofs override the connector client opts to use the real SDK transport.
+Offline tests override the transport with fixture responses. Neither path moves
+provider HTTP logic back into `jido_integration`.
 
 ## Package Boundary
 

@@ -1,5 +1,5 @@
 defmodule Jido.Integration.V2.Connectors.Linear.ClientFactoryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Jido.Integration.V2.Connectors.Linear.ClientFactory
   alias Jido.Integration.V2.Connectors.Linear.Fixtures
@@ -50,7 +50,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.ClientFactoryTest do
 
   test "ignores configured and runtime oauth2 sources so invoke stays lease-bound" do
     previous_config =
-      Application.get_env(:jido_integration_v2_linear, ClientFactory, [])
+      Application.get_env(:jido_integration_v2_linear, ClientFactory)
 
     Application.put_env(
       :jido_integration_v2_linear,
@@ -76,5 +76,31 @@ defmodule Jido.Integration.V2.Connectors.Linear.ClientFactoryTest do
     assert {:ok, client} = ClientFactory.build(context)
     assert client.runtime.context.auth == {:header, "Authorization", Fixtures.api_key()}
     assert client.runtime.context.oauth2 == nil
+  end
+
+  test "ignores standalone application config once a governed credential lease is present" do
+    previous_config =
+      Application.get_env(:jido_integration_v2_linear, ClientFactory)
+
+    Application.put_env(
+      :jido_integration_v2_linear,
+      ClientFactory,
+      base_url: "https://shadow-linear-config.example.test/graphql",
+      headers: [{"x-shadow-config", "present"}]
+    )
+
+    on_exit(fn ->
+      case previous_config do
+        nil -> Application.delete_env(:jido_integration_v2_linear, ClientFactory)
+        value -> Application.put_env(:jido_integration_v2_linear, ClientFactory, value)
+      end
+    end)
+
+    context = Fixtures.execution_context("linear.users.get_self")
+
+    assert {:ok, client} = ClientFactory.build(context)
+    refute client.runtime.context.base_url == "https://shadow-linear-config.example.test/graphql"
+    refute client.runtime.context.headers == [{"x-shadow-config", "present"}]
+    assert client.runtime.context.auth == {:header, "Authorization", Fixtures.api_key()}
   end
 end
