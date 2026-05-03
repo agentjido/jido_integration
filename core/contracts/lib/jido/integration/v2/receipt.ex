@@ -42,6 +42,19 @@ defmodule Jido.Integration.V2.Receipt do
     "tool_name",
     "approval_id"
   ]
+  @metadata_key_aliases %{
+    "approval_id" => :approval_id,
+    "artifact_refs" => :artifact_refs,
+    "event_refs" => :event_refs,
+    "provider_item_id" => :provider_item_id,
+    "provider_message_id" => :provider_message_id,
+    "provider_refs" => :provider_refs,
+    "provider_request_id" => :provider_request_id,
+    "provider_session_id" => :provider_session_id,
+    "provider_tool_call_id" => :provider_tool_call_id,
+    "provider_turn_id" => :provider_turn_id,
+    "tool_name" => :tool_name
+  }
 
   @schema Zoi.struct(
             __MODULE__,
@@ -370,7 +383,7 @@ defmodule Jido.Integration.V2.Receipt do
   end
 
   defp metadata_value(%__MODULE__{metadata: metadata}, key) when is_binary(key) do
-    Map.get(metadata, key) || Map.get(metadata, String.to_atom(key))
+    bounded_value(metadata, key)
   end
 
   defp attempt_id(%Run{} = run, nil), do: "#{run.run_id}:run"
@@ -481,10 +494,18 @@ defmodule Jido.Integration.V2.Receipt do
   end
 
   defp payload_value(value, key) when is_map(value) and is_binary(key) do
-    Map.get(value, key) || Map.get(value, String.to_atom(key))
+    bounded_value(value, key)
   end
 
   defp payload_value(_value, _key), do: nil
+
+  defp bounded_value(map, key) when is_map(map) and is_binary(key) do
+    Map.get(map, key) ||
+      case Map.fetch(@metadata_key_aliases, key) do
+        {:ok, atom_key} -> Map.get(map, atom_key)
+        :error -> nil
+      end
+  end
 
   defp fetch_path(value, []), do: present_value(value)
 

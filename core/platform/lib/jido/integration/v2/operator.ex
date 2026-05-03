@@ -348,8 +348,11 @@ defmodule Jido.Integration.V2.Operator do
     end
   end
 
-  defp resolve_connection(%CredentialRef{metadata: metadata}) do
-    case Map.get(metadata, :connection_id) do
+  defp resolve_connection(%CredentialRef{} = credential_ref) do
+    connection_id =
+      credential_ref.connection_id || Contracts.get(credential_ref.metadata, :connection_id)
+
+    case connection_id do
       nil ->
         {:ok, nil}
 
@@ -363,7 +366,7 @@ defmodule Jido.Integration.V2.Operator do
 
   defp resolve_install(nil, %CredentialRef{metadata: metadata}) do
     metadata
-    |> Map.get(:install_id)
+    |> Contracts.get(:install_id)
     |> fetch_optional_install()
   end
 

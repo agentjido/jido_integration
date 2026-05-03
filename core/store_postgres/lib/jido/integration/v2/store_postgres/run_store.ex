@@ -130,8 +130,12 @@ defmodule Jido.Integration.V2.StorePostgres.RunStore do
 
     CredentialRef.new!(%{
       id: Serialization.fetch(map, :id),
+      connection_id: Serialization.fetch(map, :connection_id),
+      profile_id: Serialization.fetch(map, :profile_id),
       subject: Serialization.fetch(map, :subject),
+      current_credential_id: Serialization.fetch(map, :current_credential_id),
       scopes: Serialization.fetch(map, :scopes, []),
+      lease_fields: Serialization.fetch(map, :lease_fields, []),
       metadata: Serialization.fetch(map, :metadata, %{})
     })
   end

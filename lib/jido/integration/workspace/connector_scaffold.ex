@@ -4,10 +4,17 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
   import Mix.Generator
 
   @runtime_classes [:direct, :session, :stream]
+  @runtime_class_by_name Map.new(@runtime_classes, fn runtime_class ->
+                           {Atom.to_string(runtime_class), runtime_class}
+                         end)
   @default_runtime_class :direct
   @target_runtime_drivers %{
     session: ["asm", "jido_session"],
     stream: ["asm"]
+  }
+  @runtime_driver_atoms %{
+    "asm" => :asm,
+    "jido_session" => :jido_session
   }
 
   @type runtime_class :: :direct | :session | :stream
@@ -128,7 +135,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       runtime_driver_id: runtime_driver_id,
       runtime_driver_atom_literal:
         if(is_binary(runtime_driver_id),
-          do: inspect(String.to_atom(runtime_driver_id)),
+          do: inspect(runtime_driver_atom!(runtime_driver_id)),
           else: nil
         ),
       include_runtime_drivers: runtime_class in [:session, :stream],
@@ -475,7 +482,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
             resumable: true,
             approval_required: true,
             stream_capable: true,
-            lifecycle_owner: String.to_atom(runtime_driver_id),
+            lifecycle_owner: runtime_driver_atom!(runtime_driver_id),
             runtime_ref: :session
           },
           pretty: true,
@@ -639,7 +646,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
             resumable: false,
             approval_required: false,
             stream_capable: true,
-            lifecycle_owner: String.to_atom(runtime_driver_id),
+            lifecycle_owner: runtime_driver_atom!(runtime_driver_id),
             runtime_ref: :session
           },
           pretty: true,
@@ -775,20 +782,26 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
        do: runtime_class
 
   defp resolve_runtime_class!(runtime_class) do
-    runtime_class =
+    runtime_class_name =
       runtime_class
       |> to_string()
       |> String.trim()
       |> String.downcase()
-      |> String.to_existing_atom()
 
-    if runtime_class in @runtime_classes do
-      runtime_class
-    else
-      invalid_runtime_class!(runtime_class)
+    case Map.fetch(@runtime_class_by_name, runtime_class_name) do
+      {:ok, runtime_class} -> runtime_class
+      :error -> invalid_runtime_class!(runtime_class)
     end
-  rescue
-    ArgumentError -> invalid_runtime_class!(runtime_class)
+  end
+
+  defp runtime_driver_atom!(runtime_driver_id) do
+    case Map.fetch(@runtime_driver_atoms, runtime_driver_id) do
+      {:ok, atom} ->
+        atom
+
+      :error ->
+        Mix.raise("Invalid runtime driver atom mapping: #{runtime_driver_id}")
+    end
   end
 
   @spec invalid_runtime_class!(term()) :: no_return()

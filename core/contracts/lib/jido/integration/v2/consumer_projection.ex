@@ -617,7 +617,7 @@ defmodule Jido.Integration.V2.ConsumerProjection do
   defp plugin_state_key(manifest) do
     manifest.connector
     |> normalize_identifier()
-    |> String.to_atom()
+    |> Contracts.normalize_atomish!("plugin_projection.state_key")
   end
 
   defp plugin_tags(manifest) do
@@ -672,7 +672,7 @@ defmodule Jido.Integration.V2.ConsumerProjection do
       |> projected_triggers()
       |> Enum.filter(&(&1.delivery_mode == :poll))
       |> Enum.map(fn trigger ->
-        {String.to_atom(sensor_name(trigger)), trigger_subscription_schema(trigger)}
+        {sensor_subscription_key!(trigger), trigger_subscription_schema(trigger)}
       end)
 
     Contracts.ordered_object!(fields)
@@ -713,6 +713,12 @@ defmodule Jido.Integration.V2.ConsumerProjection do
   end
 
   def validate_min_interval(_value, _args, _opts), do: :ok
+
+  defp sensor_subscription_key!(%TriggerSpec{} = trigger) do
+    trigger
+    |> sensor_name()
+    |> Contracts.normalize_atomish!("trigger.consumer_surface.sensor_name")
+  end
 
   defp sensor_runtime_schema(%Manifest{}, %TriggerSpec{delivery_mode: :webhook} = trigger) do
     trigger.config_schema

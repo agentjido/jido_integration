@@ -155,18 +155,36 @@ defmodule Jido.Integration.V2.StorePostgres.Repo.Migrations.CreateMemoryTierTabl
 
   defp create_embedding_dimension_check(table) do
     create(
-      constraint(table, :"#{table}_embedding_dimension_matches_vector_check",
+      constraint(table, embedding_dimension_constraint(table),
         check: "embedding IS NULL OR embedding_dimension = cardinality(embedding)"
       )
     )
 
     create(
-      constraint(table, :"#{table}_embedding_model_dimension_pair_check",
+      constraint(table, embedding_pair_constraint(table),
         check:
           "(embedding IS NULL AND embedding_model_ref IS NULL AND embedding_dimension IS NULL) OR (embedding IS NOT NULL AND embedding_model_ref IS NOT NULL AND embedding_dimension IS NOT NULL)"
       )
     )
   end
+
+  defp embedding_dimension_constraint(:memory_private),
+    do: :memory_private_embedding_dimension_matches_vector_check
+
+  defp embedding_dimension_constraint(:memory_shared),
+    do: :memory_shared_embedding_dimension_matches_vector_check
+
+  defp embedding_dimension_constraint(:memory_governed),
+    do: :memory_governed_embedding_dimension_matches_vector_check
+
+  defp embedding_pair_constraint(:memory_private),
+    do: :memory_private_embedding_model_dimension_pair_check
+
+  defp embedding_pair_constraint(:memory_shared),
+    do: :memory_shared_embedding_model_dimension_pair_check
+
+  defp embedding_pair_constraint(:memory_governed),
+    do: :memory_governed_embedding_model_dimension_pair_check
 
   defp create_optional_scope_gin_index do
     execute("""

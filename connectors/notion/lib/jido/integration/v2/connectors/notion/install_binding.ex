@@ -6,6 +6,13 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBinding do
   alias Pristine.OAuth2.Token
 
   @access_token_field "access_token"
+  @secret_keys %{
+    "access_token" => :access_token,
+    "bot_id" => :bot_id,
+    "refresh_token" => :refresh_token,
+    "workspace_id" => :workspace_id,
+    "workspace_name" => :workspace_name
+  }
 
   @type t :: %{
           secret: map(),
@@ -76,7 +83,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBinding do
     Enum.reduce(metadata_keys(), secret, fn key, acc ->
       case Map.get(other_params, key) do
         value when is_binary(value) and value != "" ->
-          Map.put(acc, String.to_atom(key), value)
+          Map.put(acc, secret_key!(key), value)
 
         _other ->
           acc
@@ -88,7 +95,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBinding do
 
   defp metadata(secret) do
     Enum.reduce(metadata_keys(), %{}, fn key, acc ->
-      atom_key = String.to_atom(key)
+      atom_key = secret_key!(key)
 
       case Map.get(secret, atom_key) do
         value when is_binary(value) and value != "" -> Map.put(acc, atom_key, value)
@@ -100,7 +107,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBinding do
   defp lease_fields(secret) do
     authored_lease_fields()
     |> Enum.filter(fn key ->
-      Map.has_key?(secret, String.to_atom(key)) or Map.has_key?(secret, key)
+      Map.has_key?(secret, secret_key!(key)) or Map.has_key?(secret, key)
     end)
   end
 
@@ -135,5 +142,12 @@ defmodule Jido.Integration.V2.Connectors.Notion.InstallBinding do
 
   defp drop_nil_values(map) do
     Map.reject(map, fn {_key, value} -> is_nil(value) end)
+  end
+
+  defp secret_key!(key) do
+    case Map.fetch(@secret_keys, key) do
+      {:ok, atom_key} -> atom_key
+      :error -> raise ArgumentError, "unknown Notion secret field: #{inspect(key)}"
+    end
   end
 end

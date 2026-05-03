@@ -5,6 +5,17 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaValidator do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Redaction
 
+  @path_keys %{
+    "filter" => :filter,
+    "parent" => :parent,
+    "properties" => :properties,
+    "sorts" => :sorts
+  }
+  @filter_branch_keys %{
+    "and" => :and,
+    "or" => :or
+  }
+
   @spec validate_input(String.t(), map(), map(), SchemaContext.t() | nil) :: :ok | {:error, map()}
   def validate_input(_capability_id, _metadata, _params, nil), do: :ok
 
@@ -90,7 +101,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaValidator do
   defp validate_sorts(_sorts, _path, _source, _schema_context), do: []
 
   defp path_get(map, [segment | rest]) when is_map(map) do
-    case Contracts.get(map, String.to_atom(segment)) do
+    case get_bounded(map, segment, @path_keys) do
       nil -> nil
       value when rest == [] -> value
       value when is_map(value) -> path_get(value, rest)
@@ -148,7 +159,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaValidator do
   end
 
   defp branch_filters(filter, branch) do
-    case Contracts.get(filter, String.to_atom(branch)) do
+    case get_bounded(filter, branch, @filter_branch_keys) do
       filters when is_list(filters) -> filters
       _other -> []
     end
@@ -187,4 +198,12 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaValidator do
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp get_bounded(map, key, key_lookup) when is_map(map) and is_binary(key) do
+    Map.get(map, key) ||
+      case Map.fetch(key_lookup, key) do
+        {:ok, atom_key} -> Map.get(map, atom_key)
+        :error -> nil
+      end
+  end
 end

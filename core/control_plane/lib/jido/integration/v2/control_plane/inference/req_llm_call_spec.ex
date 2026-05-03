@@ -15,6 +15,16 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
             options: %{},
             observability: %{}
 
+  @known_option_keys %{
+    "frequency_penalty" => :frequency_penalty,
+    "max_tokens" => :max_tokens,
+    "presence_penalty" => :presence_penalty,
+    "provider_options" => :provider_options,
+    "system_prompt" => :system_prompt,
+    "temperature" => :temperature,
+    "top_p" => :top_p
+  }
+
   @type t :: %__MODULE__{
           model_spec: map() | String.t(),
           operation: :generate_text | :stream_text,
@@ -146,7 +156,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
   defp normalize_option_key(key) when is_binary(key) do
     key
     |> String.replace("?", "")
-    |> String.to_atom()
+    |> then(&Map.get(@known_option_keys, &1, &1))
   end
 
   defp protocol_provider(:openai_chat_completions), do: :openai

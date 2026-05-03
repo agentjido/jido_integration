@@ -373,14 +373,24 @@ defmodule Jido.Integration.V2.Connectors.Notion.GeneratedConsumerSurfaceTest do
   defp request_body(request, key) do
     request
     |> request_body_map()
-    |> then(fn body -> body[key] || body[String.to_atom(key)] || body[to_string(key)] end)
+    |> body_value(key)
   end
 
   defp request_body(request, key, nested_key) do
     nested = request_body(request, key)
-    nested[nested_key] || nested[String.to_atom(nested_key)] || nested[to_string(nested_key)]
+    body_value(nested, nested_key)
   end
 
   defp request_body_map(%{body: body}) when is_binary(body), do: Jason.decode!(body)
   defp request_body_map(%{body: body}) when is_map(body), do: body
+
+  defp body_value(body, key) when is_map(body) and is_atom(key) do
+    Map.get(body, key) || Map.get(body, Atom.to_string(key))
+  end
+
+  defp body_value(body, key) when is_map(body) do
+    Map.get(body, key) || Map.get(body, to_string(key))
+  end
+
+  defp body_value(_body, _key), do: nil
 end

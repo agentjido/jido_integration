@@ -217,7 +217,7 @@ defmodule Jido.Integration.V2.StorePostgres.Repo.Migrations.AddM7ANodeOrderingTo
       modify(:source_node_ref, :text, null: false)
     end
 
-    create(constraint(table, :"#{table}_source_node_ref_non_empty_check",
+    create(constraint(table, source_node_ref_constraint(table),
       check: "length(source_node_ref) > 0"
     ))
   end
@@ -299,10 +299,19 @@ defmodule Jido.Integration.V2.StorePostgres.Repo.Migrations.AddM7ANodeOrderingTo
   end
 
   defp remove_memory_source_node(table) do
-    drop(constraint(table, :"#{table}_source_node_ref_non_empty_check"))
+    drop(constraint(table, source_node_ref_constraint(table)))
 
     alter table(table) do
       remove(:source_node_ref)
     end
   end
+
+  defp source_node_ref_constraint(:memory_private),
+    do: :memory_private_source_node_ref_non_empty_check
+
+  defp source_node_ref_constraint(:memory_shared),
+    do: :memory_shared_source_node_ref_non_empty_check
+
+  defp source_node_ref_constraint(:memory_governed),
+    do: :memory_governed_source_node_ref_non_empty_check
 end

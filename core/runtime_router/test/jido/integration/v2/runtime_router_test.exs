@@ -225,7 +225,8 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
                    provider: :codex,
                    options: %{
                      "lane" => "sdk",
-                     "approval_mode" => "manual"
+                     "approval_mode" => "manual",
+                     "provider_authored_option" => "must stay out of opts"
                    }
                  }
                }),
@@ -237,11 +238,13 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     assert start_opts[:provider] == :codex
     assert start_opts[:lane] == "sdk"
     assert start_opts[:approval_mode] == "manual"
+    refute Keyword.has_key?(start_opts, :provider_authored_option)
 
     assert_receive {:authored_driver_run, "authored-session", "hello", run_opts}
     assert run_opts[:provider] == :codex
     assert run_opts[:lane] == "sdk"
     assert run_opts[:approval_mode] == "manual"
+    refute Keyword.has_key?(run_opts, :provider_authored_option)
   end
 
   test "requires an authored runtime driver for non-direct capabilities" do

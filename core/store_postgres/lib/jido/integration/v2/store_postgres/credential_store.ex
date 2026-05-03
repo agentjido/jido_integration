@@ -11,6 +11,22 @@ defmodule Jido.Integration.V2.StorePostgres.CredentialStore do
   alias Jido.Integration.V2.StorePostgres.Schemas.CredentialRecord
   alias Jido.Integration.V2.StorePostgres.Serialization
 
+  @auth_types %{
+    "api_key" => :api_key,
+    "api_token" => :api_token,
+    "app_installation" => :app_installation,
+    "none" => :none,
+    "oauth2" => :oauth2,
+    "session_token" => :session_token
+  }
+  @source_atoms %{
+    "external_secret" => :external_secret,
+    "hosted_callback" => :hosted_callback,
+    "manual" => :manual,
+    "provider_install" => :provider_install,
+    "refresh" => :refresh
+  }
+
   @impl true
   def store_credential(%Credential{} = credential) do
     credential
@@ -111,12 +127,14 @@ defmodule Jido.Integration.V2.StorePostgres.CredentialStore do
   defp normalize_auth_type(nil), do: :oauth2
 
   defp normalize_auth_type(auth_type) when is_binary(auth_type),
-    do: String.to_existing_atom(auth_type)
+    do: load_atom!(auth_type, @auth_types, "credential.auth_type")
 
   defp normalize_auth_type(auth_type), do: auth_type
 
   defp normalize_optional_atom(nil), do: nil
-  defp normalize_optional_atom(value) when is_binary(value), do: String.to_existing_atom(value)
+
+  defp normalize_optional_atom(value) when is_binary(value),
+    do: load_atom!(value, @source_atoms, "credential.source")
 
   defp dump_optional_atom(nil), do: nil
   defp dump_optional_atom(value) when is_atom(value), do: Atom.to_string(value)
@@ -126,4 +144,11 @@ defmodule Jido.Integration.V2.StorePostgres.CredentialStore do
 
   defp load_optional_map(nil), do: nil
   defp load_optional_map(value), do: Serialization.load(value)
+
+  defp load_atom!(value, lookup, field_name) when is_binary(value) do
+    case Map.fetch(lookup, value) do
+      {:ok, atom} -> atom
+      :error -> raise ArgumentError, "unknown #{field_name}: #{inspect(value)}"
+    end
+  end
 end

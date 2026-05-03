@@ -38,6 +38,14 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     "jido_session" => Jido.Session.RuntimeControlDriver
   }
   @target_driver_ids @target_driver_modules |> Map.keys() |> Enum.sort()
+  @runtime_option_key_aliases %{
+    "app_server" => :app_server,
+    "approval_mode" => :approval_mode,
+    "driver" => :driver,
+    "driver_module" => :driver_module,
+    "lane" => :lane,
+    "provider" => :provider
+  }
 
   @type resolution :: %{
           driver_id: String.t(),
@@ -827,7 +835,10 @@ defmodule Jido.Integration.V2.RuntimeRouter do
         Keyword.put(acc, key, value)
 
       {key, value}, acc when is_binary(key) and byte_size(key) > 0 ->
-        Keyword.put(acc, String.to_atom(key), value)
+        case Map.fetch(@runtime_option_key_aliases, key) do
+          {:ok, atom_key} -> Keyword.put(acc, atom_key, value)
+          :error -> acc
+        end
 
       {_key, _value}, acc ->
         acc
@@ -855,7 +866,9 @@ defmodule Jido.Integration.V2.RuntimeRouter do
 
   defp normalize_optional_atom(nil), do: nil
   defp normalize_optional_atom(value) when is_atom(value), do: value
-  defp normalize_optional_atom(value) when is_binary(value), do: String.to_atom(value)
+
+  defp normalize_optional_atom(value) when is_binary(value),
+    do: Contracts.normalize_atomish!(value, "runtime.provider")
 
   defp configured_driver_modules do
     :jido_integration_v2_control_plane

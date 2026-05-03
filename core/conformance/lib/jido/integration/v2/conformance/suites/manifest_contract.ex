@@ -6,6 +6,29 @@ defmodule Jido.Integration.V2.Conformance.Suites.ManifestContract do
   alias Jido.Integration.V2.Conformance.SuiteResult
   alias Jido.Integration.V2.Conformance.SuiteSupport
 
+  @known_manifest_atoms [
+    :api_token,
+    :app,
+    :app_installation,
+    :authorization_code,
+    :external_secret,
+    :hosted,
+    :installation,
+    :manual,
+    :manual_token,
+    :none,
+    :oauth2,
+    :provider_app,
+    :refresh_token,
+    :session_token,
+    :tenant,
+    :user,
+    :workspace
+  ]
+  @known_manifest_atoms_by_string Map.new(@known_manifest_atoms, fn atom ->
+                                    {Atom.to_string(atom), atom}
+                                  end)
+
   @spec run(map()) :: SuiteResult.t()
   def run(%{manifest: manifest}) do
     manifest_map = Map.from_struct(manifest)
@@ -338,7 +361,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.ManifestContract do
     values
     |> Enum.map(fn
       value when is_atom(value) -> value
-      value when is_binary(value) -> String.to_atom(value)
+      value when is_binary(value) -> known_manifest_atom(value)
       value -> value
     end)
     |> Enum.uniq()
@@ -520,7 +543,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.ManifestContract do
     values
     |> Enum.map(fn
       value when is_atom(value) -> value
-      value when is_binary(value) -> String.to_atom(value)
+      value when is_binary(value) -> known_manifest_atom(value)
       value -> value
     end)
     |> Enum.uniq()
@@ -528,6 +551,10 @@ defmodule Jido.Integration.V2.Conformance.Suites.ManifestContract do
   end
 
   defp normalize_grant_types(_values), do: []
+
+  defp known_manifest_atom(value) when is_binary(value) do
+    Map.get(@known_manifest_atoms_by_string, value, value)
+  end
 
   defp lease_projection_valid?(
          false,

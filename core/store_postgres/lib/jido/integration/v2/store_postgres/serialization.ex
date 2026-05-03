@@ -1,6 +1,31 @@
 defmodule Jido.Integration.V2.StorePostgres.Serialization do
   @moduledoc false
 
+  @restored_key_lookup %{
+    "actor_id" => :actor_id,
+    "attempt_id" => :attempt_id,
+    "auth_binding" => :auth_binding,
+    "capability_id" => :capability_id,
+    "client_secret" => :client_secret,
+    "connector" => :connector,
+    "connector_id" => :connector_id,
+    "content_encoding" => :content_encoding,
+    "environment" => :environment,
+    "install_id" => :install_id,
+    "items" => :items,
+    "metadata" => :metadata,
+    "producer" => :producer,
+    "provider" => :provider,
+    "run_id" => :run_id,
+    "seq" => :seq,
+    "source" => :source,
+    "surface" => :surface,
+    "target_id" => :target_id,
+    "tenant_id" => :tenant_id,
+    "trace_id" => :trace_id,
+    "venue" => :venue
+  }
+
   def dump(%DateTime{} = value), do: DateTime.to_iso8601(value)
 
   def dump(%_{} = struct) do
@@ -49,9 +74,7 @@ defmodule Jido.Integration.V2.StorePostgres.Serialization do
   defp normalize_key(key), do: inspect(key)
 
   defp restore_key(key) when is_binary(key) do
-    String.to_existing_atom(key)
-  rescue
-    ArgumentError -> key
+    Map.get(@restored_key_lookup, key, key)
   end
 
   defp restore_key(key), do: key

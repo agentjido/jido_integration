@@ -15,6 +15,22 @@ defmodule Jido.Integration.V2.WebhookRouter do
 
   @default_storage_dir Path.join(System.tmp_dir!(), "jido_integration_v2_webhook_router")
   @state_file "routes.bin"
+  @lookup_segment_aliases %{
+    "body" => :body,
+    "event" => :event,
+    "external_id" => :external_id,
+    "headers" => :headers,
+    "installation_id" => :installation_id,
+    "name" => :name,
+    "owner" => :owner,
+    "params" => :params,
+    "path" => :path,
+    "query" => :query,
+    "repository" => :repository,
+    "source" => :source,
+    "tenant_id" => :tenant_id,
+    "workspace_id" => :workspace_id
+  }
 
   @type route_error ::
           :route_not_found
@@ -342,14 +358,10 @@ defmodule Jido.Integration.V2.WebhookRouter do
         value
 
       :error ->
-        atom_key =
-          try do
-            String.to_existing_atom(segment)
-          rescue
-            ArgumentError -> nil
-          end
-
-        if atom_key && Map.has_key?(source, atom_key), do: Map.get(source, atom_key), else: nil
+        case Map.fetch(@lookup_segment_aliases, segment) do
+          {:ok, atom_key} -> Map.get(source, atom_key)
+          :error -> nil
+        end
     end
   end
 

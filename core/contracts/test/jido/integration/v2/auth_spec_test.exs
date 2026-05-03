@@ -132,6 +132,29 @@ defmodule Jido.Integration.V2.AuthSpecTest do
     end
   end
 
+  test "rejects unknown grant type strings" do
+    assert_raise ArgumentError, ~r/auth.supported_profiles.grant_types/, fn ->
+      AuthSpec.new!(%{
+        binding_kind: :connection_id,
+        default_profile: "broken",
+        supported_profiles: [
+          %{
+            id: "broken",
+            auth_type: :oauth2,
+            subject_kind: :user,
+            install_required: true,
+            grant_types: ["provider_authored_grant"],
+            callback_required: true,
+            durable_secret_fields: ["access_token"],
+            lease_fields: ["access_token"],
+            management_modes: [:manual]
+          }
+        ],
+        secret_names: []
+      })
+    end
+  end
+
   test "allows explicit external-only lease fields for provider-managed refresh flows" do
     auth =
       AuthSpec.new!(%{

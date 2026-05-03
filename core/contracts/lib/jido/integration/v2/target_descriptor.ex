@@ -45,6 +45,12 @@ defmodule Jido.Integration.V2.TargetDescriptor do
     :accepted_event_schema_versions
   ]
   @runtime_override_requirement_keys [:runtime, :driver, :provider, :options]
+  @requirement_key_lookup Map.new(
+                            @compatibility_requirement_keys ++ @runtime_override_requirement_keys,
+                            fn key ->
+                              {Atom.to_string(key), key}
+                            end
+                          )
 
   @schema Zoi.struct(
             __MODULE__,
@@ -497,10 +503,7 @@ defmodule Jido.Integration.V2.TargetDescriptor do
   defp normalize_requirement_key(key) when key in @runtime_override_requirement_keys, do: key
 
   defp normalize_requirement_key(key) when is_binary(key) do
-    key
-    |> String.to_existing_atom()
-  rescue
-    ArgumentError -> key
+    Map.get(@requirement_key_lookup, key, key)
   end
 
   defp normalize_requirement_key(key), do: key

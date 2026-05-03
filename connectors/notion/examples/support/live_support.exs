@@ -451,9 +451,20 @@ defmodule Jido.Integration.V2.Connectors.Notion.LiveSupport do
     "#{prefix} #{System.system_time(:second)}"
   end
 
-  defp secret_value(secret, key) when is_map(secret) do
-    Map.get(secret, key) || Map.get(secret, String.to_atom(key))
-  end
+  defp secret_value(secret, "access_token") when is_map(secret),
+    do: Map.get(secret, "access_token") || Map.get(secret, :access_token)
+
+  defp secret_value(secret, "refresh_token") when is_map(secret),
+    do: Map.get(secret, "refresh_token") || Map.get(secret, :refresh_token)
+
+  defp secret_value(secret, "workspace_id") when is_map(secret),
+    do: Map.get(secret, "workspace_id") || Map.get(secret, :workspace_id)
+
+  defp secret_value(secret, "workspace_name") when is_map(secret),
+    do: Map.get(secret, "workspace_name") || Map.get(secret, :workspace_name)
+
+  defp secret_value(secret, "bot_id") when is_map(secret),
+    do: Map.get(secret, "bot_id") || Map.get(secret, :bot_id)
 
   defp secret_value(_secret, _key), do: nil
 

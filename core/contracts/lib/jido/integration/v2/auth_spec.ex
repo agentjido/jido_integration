@@ -10,6 +10,7 @@ defmodule Jido.Integration.V2.AuthSpec do
   @auth_types [:oauth2, :api_token, :session_token, :app_installation, :none]
   @subject_kinds [:user, :workspace, :app, :installation, :tenant, :none]
   @profile_management_modes [:hosted, :manual, :external_secret, :provider_app]
+  @grant_types [:authorization_code, :manual_token, :refresh_token]
   @legacy_default_profile "default"
 
   @schema Zoi.struct(
@@ -629,14 +630,11 @@ defmodule Jido.Integration.V2.AuthSpec do
           "auth.supported_profiles.grant_types must be a list, got: #{inspect(grant_types)}"
   end
 
-  defp normalize_grant_type(grant_type) when is_atom(grant_type), do: grant_type
+  defp normalize_grant_type(grant_type) when is_atom(grant_type),
+    do: validate_enum!(grant_type, @grant_types, "auth.supported_profiles.grant_types")
 
-  defp normalize_grant_type(grant_type) when is_binary(grant_type) do
-    String.to_existing_atom(grant_type)
-  rescue
-    ArgumentError ->
-      String.to_atom(grant_type)
-  end
+  defp normalize_grant_type(grant_type) when is_binary(grant_type),
+    do: validate_enum!(grant_type, @grant_types, "auth.supported_profiles.grant_types")
 
   defp normalize_grant_type(grant_type) do
     raise ArgumentError, "invalid grant_type: #{inspect(grant_type)}"
@@ -713,12 +711,10 @@ defmodule Jido.Integration.V2.AuthSpec do
   end
 
   defp validate_enum!(value, allowed, field_name) when is_binary(value) do
-    value
-    |> String.to_existing_atom()
-    |> validate_enum!(allowed, field_name)
-  rescue
-    _error in ArgumentError ->
-      reraise ArgumentError.exception("invalid #{field_name}: #{inspect(value)}"), __STACKTRACE__
+    case Enum.find(allowed, &(Atom.to_string(&1) == value)) do
+      nil -> raise ArgumentError, "invalid #{field_name}: #{inspect(value)}"
+      atom -> atom
+    end
   end
 
   defp validate_enum!(value, _allowed, field_name) do

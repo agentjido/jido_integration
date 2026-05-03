@@ -12,6 +12,28 @@ defmodule Jido.Integration.V2.StorePostgres.InstallStore do
   alias Jido.Integration.V2.StorePostgres.Schemas.InstallRecord
   alias Jido.Integration.V2.StorePostgres.Serialization
 
+  @auth_types %{
+    "api_key" => :api_key,
+    "api_token" => :api_token,
+    "app_installation" => :app_installation,
+    "none" => :none,
+    "oauth2" => :oauth2,
+    "session_token" => :session_token
+  }
+  @flow_kinds %{
+    "manual" => :manual,
+    "manual_callback" => :manual_callback,
+    "provider_install" => :provider_install
+  }
+  @states %{
+    "awaiting_callback" => :awaiting_callback,
+    "cancelled" => :cancelled,
+    "completed" => :completed,
+    "expired" => :expired,
+    "failed" => :failed,
+    "installing" => :installing
+  }
+
   @impl true
   def store_install(%Install{} = install) do
     attrs =
@@ -121,11 +143,11 @@ defmodule Jido.Integration.V2.StorePostgres.InstallStore do
       tenant_id: record.tenant_id,
       connector_id: record.connector_id,
       actor_id: record.actor_id,
-      auth_type: String.to_existing_atom(record.auth_type),
+      auth_type: load_atom!(record.auth_type, @auth_types, "install.auth_type"),
       profile_id: record.profile_id,
       subject: record.subject,
-      state: String.to_existing_atom(record.state),
-      flow_kind: load_optional_atom(record.flow_kind),
+      state: load_atom!(record.state, @states, "install.state"),
+      flow_kind: load_optional_atom(record.flow_kind, @flow_kinds, "install.flow_kind"),
       callback_token: record.callback_token,
       state_token: record.state_token,
       pkce_verifier_digest: record.pkce_verifier_digest,
@@ -147,6 +169,13 @@ defmodule Jido.Integration.V2.StorePostgres.InstallStore do
   defp dump_optional_atom(nil), do: nil
   defp dump_optional_atom(value) when is_atom(value), do: Atom.to_string(value)
 
-  defp load_optional_atom(nil), do: nil
-  defp load_optional_atom(value) when is_binary(value), do: String.to_existing_atom(value)
+  defp load_optional_atom(nil, _lookup, _field_name), do: nil
+  defp load_optional_atom(value, lookup, field_name), do: load_atom!(value, lookup, field_name)
+
+  defp load_atom!(value, lookup, field_name) when is_binary(value) do
+    case Map.fetch(lookup, value) do
+      {:ok, atom} -> atom
+      :error -> raise ArgumentError, "unknown #{field_name}: #{inspect(value)}"
+    end
+  end
 end

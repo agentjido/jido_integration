@@ -12,6 +12,33 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
   alias Jido.Integration.V2.StorePostgres.Schemas.ConnectionRecord
   alias Jido.Integration.V2.StorePostgres.Serialization
 
+  @auth_types %{
+    "api_key" => :api_key,
+    "api_token" => :api_token,
+    "app_installation" => :app_installation,
+    "none" => :none,
+    "oauth2" => :oauth2,
+    "session_token" => :session_token
+  }
+  @optional_atoms %{
+    "error" => :error,
+    "external_ref" => :external_ref,
+    "external_secret" => :external_secret,
+    "hosted" => :hosted,
+    "hosted_callback" => :hosted_callback,
+    "manual" => :manual,
+    "ok" => :ok,
+    "provider_app" => :provider_app
+  }
+  @states %{
+    "connected" => :connected,
+    "degraded" => :degraded,
+    "disabled" => :disabled,
+    "installing" => :installing,
+    "reauth_required" => :reauth_required,
+    "revoked" => :revoked
+  }
+
   @impl true
   def store_connection(%Connection{} = connection) do
     attrs =
@@ -129,10 +156,10 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
       connection_id: record.connection_id,
       tenant_id: record.tenant_id,
       connector_id: record.connector_id,
-      auth_type: String.to_existing_atom(record.auth_type),
+      auth_type: load_atom!(record.auth_type, @auth_types, "connection.auth_type"),
       profile_id: record.profile_id,
       subject: record.subject,
-      state: String.to_existing_atom(record.state),
+      state: load_atom!(record.state, @states, "connection.state"),
       credential_ref_id: record.credential_ref_id,
       current_credential_ref_id: record.current_credential_ref_id,
       current_credential_id: record.current_credential_id,
@@ -166,8 +193,17 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
   defp dump_optional_map(value), do: Serialization.dump(value)
 
   defp load_optional_atom(nil), do: nil
-  defp load_optional_atom(value) when is_binary(value), do: String.to_existing_atom(value)
+
+  defp load_optional_atom(value) when is_binary(value),
+    do: load_atom!(value, @optional_atoms, "connection.optional_atom")
 
   defp load_optional_map(nil), do: nil
   defp load_optional_map(value), do: Serialization.load(value)
+
+  defp load_atom!(value, lookup, field_name) when is_binary(value) do
+    case Map.fetch(lookup, value) do
+      {:ok, atom} -> atom
+      :error -> raise ArgumentError, "unknown #{field_name}: #{inspect(value)}"
+    end
+  end
 end

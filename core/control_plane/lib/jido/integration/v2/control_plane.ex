@@ -34,6 +34,39 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
 
+  @runtime_replay_atom_aliases %{
+    "actor_id" => :actor_id,
+    "allowed_operations" => :allowed_operations,
+    "attempt_id" => :attempt_id,
+    "base_url" => :base_url,
+    "connection_id" => :connection_id,
+    "credential_ref" => :credential_ref,
+    "credential_ref_id" => :credential_ref_id,
+    "environment" => :environment,
+    "extensions" => :extensions,
+    "fail_attempts" => :fail_attempts,
+    "headers" => :headers,
+    "input" => :input,
+    "lease_id" => :lease_id,
+    "messages" => :messages,
+    "metadata" => :metadata,
+    "model" => :model,
+    "model_id" => :model_id,
+    "operation" => :operation,
+    "options" => :options,
+    "profile_id" => :profile_id,
+    "prompt" => :prompt,
+    "provider" => :provider,
+    "run_id" => :run_id,
+    "sandbox" => :sandbox,
+    "target_id" => :target_id,
+    "tenant_id" => :tenant_id,
+    "tool_choice" => :tool_choice,
+    "tools" => :tools,
+    "trace_id" => :trace_id,
+    "value" => :value
+  }
+
   @type invoke_preflight_error ::
           :unknown_capability
           | :connection_required
@@ -422,9 +455,7 @@ defmodule Jido.Integration.V2.ControlPlane do
   end
 
   defp existing_atom(key) when is_binary(key) do
-    String.to_existing_atom(key)
-  rescue
-    ArgumentError -> nil
+    Map.get(@runtime_replay_atom_aliases, key)
   end
 
   defp evaluate_policy(capability, resolved_credential, credential_ref, input, opts) do

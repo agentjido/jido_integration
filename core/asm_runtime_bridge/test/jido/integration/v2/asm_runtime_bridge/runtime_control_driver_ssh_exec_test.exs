@@ -183,12 +183,18 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
   end
 
   defp codex_success_script(text) do
+    item_completed =
+      Jason.encode!(%{
+        type: "item.completed",
+        item: %{id: "item_1", type: "agent_message", text: text}
+      })
+
     """
     #!/usr/bin/env bash
     set -euo pipefail
     echo '{"type":"thread.started","thread_id":"thread-1"}'
     echo '{"type":"turn.started"}'
-    echo '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"#{text}"}}'
+    printf '%s\n' #{inspect(item_completed)}
     echo '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}'
     """
   end

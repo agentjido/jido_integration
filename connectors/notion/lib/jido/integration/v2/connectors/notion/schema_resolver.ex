@@ -4,6 +4,11 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaResolver do
   alias Jido.Integration.V2.Connectors.Notion.SchemaContext
   alias Jido.Integration.V2.Contracts
 
+  @path_keys %{
+    "data_source_id" => :data_source_id,
+    "parent" => :parent
+  }
+
   @spec resolve_for_input(map(), NotionSDK.Client.t(), map()) ::
           {:ok, SchemaContext.t() | nil} | {:error, term()}
   def resolve_for_input(metadata, client, params)
@@ -171,7 +176,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaResolver do
   end
 
   defp path_get(map, [segment | rest]) when is_map(map) do
-    case Contracts.get(map, String.to_atom(segment)) do
+    case get_bounded(map, segment) do
       nil -> nil
       value when rest == [] -> value
       value when is_map(value) -> path_get(value, rest)
@@ -210,5 +215,13 @@ defmodule Jido.Integration.V2.Connectors.Notion.SchemaResolver do
 
   defp page_id_from_page(page, params) do
     Contracts.get(page, :id) || Contracts.get(params, :page_id)
+  end
+
+  defp get_bounded(map, key) when is_map(map) and is_binary(key) do
+    Map.get(map, key) ||
+      case Map.fetch(@path_keys, key) do
+        {:ok, atom_key} -> Map.get(map, atom_key)
+        :error -> nil
+      end
   end
 end

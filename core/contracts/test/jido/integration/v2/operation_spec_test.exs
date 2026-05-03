@@ -181,6 +181,75 @@ defmodule Jido.Integration.V2.OperationSpecTest do
                  end
   end
 
+  test "rejects unknown runtime provider strings without creating atoms" do
+    assert_raise ArgumentError,
+                 ~r/operation.runtime.provider must be a non-empty string or atom when declared/,
+                 fn ->
+                   operation_spec_with(%{
+                     runtime_class: :session,
+                     transport_mode: :stdio,
+                     input_schema:
+                       Zoi.object(%{
+                         prompt: Zoi.string()
+                       }),
+                     output_schema:
+                       Zoi.object(%{
+                         text: Zoi.string()
+                       }),
+                     runtime: %{driver: "asm", provider: "provider_authored_name"},
+                     consumer_surface: %{
+                       mode: :common,
+                       normalized_id: "codex.session.turn",
+                       action_name: "codex_session_turn"
+                     },
+                     schema_policy: %{input: :defined, output: :defined},
+                     metadata: %{
+                       runtime_family: %{
+                         session_affinity: :connection,
+                         resumable: true,
+                         approval_required: true,
+                         stream_capable: true,
+                         lifecycle_owner: :asm,
+                         runtime_ref: :session
+                       }
+                     }
+                   })
+                 end
+  end
+
+  test "rejects unknown runtime family enum strings without creating atoms" do
+    assert_raise ArgumentError, ~r/operation.metadata.runtime_family.lifecycle_owner/, fn ->
+      operation_spec_with(%{
+        runtime_class: :session,
+        transport_mode: :stdio,
+        input_schema:
+          Zoi.object(%{
+            prompt: Zoi.string()
+          }),
+        output_schema:
+          Zoi.object(%{
+            text: Zoi.string()
+          }),
+        runtime: %{driver: "asm", provider: "codex"},
+        consumer_surface: %{
+          mode: :connector_local,
+          reason: "Provider-specific stream state stays off the common surface"
+        },
+        schema_policy: %{input: :defined, output: :defined},
+        metadata: %{
+          runtime_family: %{
+            session_affinity: "connection",
+            resumable: true,
+            approval_required: true,
+            stream_capable: true,
+            lifecycle_owner: "provider_authored_driver",
+            runtime_ref: "session"
+          }
+        }
+      })
+    end
+  end
+
   test "keeps connector-local non-direct operations as an explicit authored exception" do
     operation =
       operation_spec_with(%{

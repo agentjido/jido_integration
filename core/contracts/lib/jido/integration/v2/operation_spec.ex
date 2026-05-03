@@ -598,9 +598,7 @@ defmodule Jido.Integration.V2.OperationSpec do
   defp normalize_runtime_provider(value) when is_atom(value), do: value
 
   defp normalize_runtime_provider(value) when is_binary(value) do
-    value
-    |> Contracts.validate_non_empty_string!("operation.runtime.provider")
-    |> String.to_atom()
+    Contracts.normalize_atomish!(value, "operation.runtime.provider")
   end
 
   defp normalize_runtime_provider(value) do
@@ -695,13 +693,7 @@ defmodule Jido.Integration.V2.OperationSpec do
   end
 
   defp normalize_runtime_family_enum(value, allowed_values, field_name) when is_binary(value) do
-    atom_value = String.to_atom(value)
-
-    if atom_value in allowed_values do
-      atom_value
-    else
-      raise ArgumentError, "#{field_name} must be one of #{inspect(allowed_values)}"
-    end
+    Contracts.validate_enum_atomish!(value, allowed_values, field_name)
   end
 
   defp normalize_runtime_family_enum(_value, allowed_values, field_name) do

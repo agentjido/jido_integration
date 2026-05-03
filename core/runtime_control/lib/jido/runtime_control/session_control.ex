@@ -65,6 +65,14 @@ defmodule Jido.RuntimeControl.SessionControl do
     "route_id",
     "attach_grant_id"
   ]
+  @lineage_atom_keys %{
+    "attach_grant_id" => :attach_grant_id,
+    "boundary_session_id" => :boundary_session_id,
+    "lane_session_id" => :lane_session_id,
+    "provider_session_id" => :provider_session_id,
+    "route_id" => :route_id,
+    "semantic_session_id" => :semantic_session_id
+  }
 
   @doc "Returns the current Session Control schema version."
   @spec version() :: String.t()
@@ -93,13 +101,12 @@ defmodule Jido.RuntimeControl.SessionControl do
   @doc "Extracts normalized lineage from runtime or status metadata."
   @spec lineage(map()) :: map()
   def lineage(metadata) when is_map(metadata) do
-    boundary =
-      Map.get(metadata, @boundary_metadata_key, Map.get(metadata, String.to_atom(@boundary_metadata_key), %{}))
+    boundary = Map.get(metadata, @boundary_metadata_key, Map.get(metadata, :boundary, %{}))
 
     boundary = if is_map(boundary), do: boundary, else: %{}
 
     Enum.reduce(@lineage_metadata_keys, %{}, fn key, acc ->
-      case Map.get(boundary, key, Map.get(boundary, String.to_atom(key))) do
+      case lineage_value(boundary, key) do
         nil -> acc
         value -> Map.put(acc, key, value)
       end
@@ -109,8 +116,7 @@ defmodule Jido.RuntimeControl.SessionControl do
   @doc "Puts normalized lineage into boundary metadata without widening public structs."
   @spec put_lineage(map(), map()) :: map()
   def put_lineage(metadata, lineage) when is_map(metadata) and is_map(lineage) do
-    existing_boundary =
-      Map.get(metadata, @boundary_metadata_key, Map.get(metadata, String.to_atom(@boundary_metadata_key), %{}))
+    existing_boundary = Map.get(metadata, @boundary_metadata_key, Map.get(metadata, :boundary, %{}))
 
     boundary =
       existing_boundary
@@ -118,5 +124,13 @@ defmodule Jido.RuntimeControl.SessionControl do
       |> Map.merge(Map.take(Map.new(lineage, fn {key, value} -> {to_string(key), value} end), @lineage_metadata_keys))
 
     Map.put(metadata, @boundary_metadata_key, boundary)
+  end
+
+  defp lineage_value(boundary, key) do
+    Map.get(boundary, key) ||
+      case Map.fetch(@lineage_atom_keys, key) do
+        {:ok, atom_key} -> Map.get(boundary, atom_key)
+        :error -> nil
+      end
   end
 end

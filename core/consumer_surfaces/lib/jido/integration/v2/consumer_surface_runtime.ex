@@ -116,7 +116,12 @@ defmodule Jido.Integration.V2.ConsumerSurfaceRuntime do
       sensor_projection =
         ConsumerProjection.sensor_projection!(projection.connector_module, trigger.trigger_id)
 
-      subscription_key = String.to_atom(sensor_projection.sensor_name)
+      subscription_key =
+        Contracts.normalize_atomish!(
+          sensor_projection.sensor_name,
+          "plugin.trigger_subscriptions"
+        )
+
       subscription_config = lookup_subscription(trigger_subscriptions, subscription_key)
 
       if subscription_enabled?(subscription_config) do
