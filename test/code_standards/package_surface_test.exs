@@ -177,6 +177,25 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     end
   end
 
+  test "unpublished runtime packages use git fallbacks for downstream Weld consumers" do
+    resolver_source =
+      repo_root()
+      |> Path.join("build_support/dependency_resolver.exs")
+      |> File.read!()
+
+    assert resolver_source =~ ~S[github: "nshkrdotcom/inference"],
+           "Inference fallback must use its source repository instead of the package registry"
+
+    assert resolver_source =~ ~S[subdir: "apps/inference"],
+           "Inference fallback must point at its package subdirectory"
+
+    assert resolver_source =~ ~S[github: "nshkrdotcom/execution_plane"],
+           "Execution Plane fallback must use its source repository instead of the package registry"
+
+    assert resolver_source =~ ~S[subdir: "core/execution_plane"],
+           "Execution Plane fallback must point at its package subdirectory"
+  end
+
   test "workspace commands prefer the repo-local mix wrapper on PATH" do
     workspace = MixProject.project()[:blitz_workspace]
     env = Blitz.MixWorkspace.command_env(workspace, ".", :compile)
