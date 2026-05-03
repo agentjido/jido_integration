@@ -29,6 +29,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     :tools,
     :top_p
   ]
+  @default_token_budget_max_tokens 2_048
   @default_accepted_runtime_kinds [:client, :task, :service]
 
   @type route_result :: %{
@@ -455,7 +456,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   end
 
   defp execute_generate_text(input, context, route, model_spec, call_opts, opts) do
-    with {:ok, response} <- ReqLLM.generate_text(model_spec, input, call_opts) do
+    token_budget_call_opts = call_opts
+
+    with {:ok, response} <- ReqLLM.generate_text(model_spec, input, token_budget_call_opts) do
       response_text = Response.text(response)
 
       {:ok,
@@ -489,7 +492,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   end
 
   defp execute_stream_text(input, context, route, model_spec, call_opts, request, opts) do
-    with {:ok, stream_response} <- ReqLLM.stream_text(model_spec, input, call_opts) do
+    token_budget_call_opts = call_opts
+
+    with {:ok, stream_response} <- ReqLLM.stream_text(model_spec, input, token_budget_call_opts) do
       chunks = Enum.to_list(stream_response.stream)
       summary = ResponseStream.summarize(chunks)
       stream_id = Contracts.next_id("stream")
@@ -651,8 +656,19 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
     call_spec.options
     |> Map.merge(Map.delete(user_opts, :req_http_options))
+    |> put_default_token_budget()
     |> maybe_put(:req_http_options, req_http_options)
     |> Map.to_list()
+  end
+
+  defp put_default_token_budget(%{} = opts) do
+    case Map.get(opts, :max_tokens) do
+      max_tokens when is_integer(max_tokens) and max_tokens > 0 ->
+        opts
+
+      _missing_or_invalid ->
+        Map.put(opts, :max_tokens, @default_token_budget_max_tokens)
+    end
   end
 
   defp normalize_req_http_options(req_http_options) when is_list(req_http_options),

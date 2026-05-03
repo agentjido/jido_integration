@@ -7,8 +7,6 @@ defmodule Jido.Integration.V2.ClusterInvalidation do
 
   @contract_name "Platform.ClusterInvalidation.V1"
   @contract_version "1.0.0"
-  @topic_segment_regex ~r/\A[a-z0-9_-]+\z/
-  @topic_regex ~r/\A[a-z0-9_-]+(\.[a-z0-9_-]+)*\z/
   @global_tenant_ref "tenant://global"
   @global_installation_ref "installation://global"
 
@@ -180,7 +178,7 @@ defmodule Jido.Integration.V2.ClusterInvalidation do
   end
 
   defp topic!(topic, key) when is_binary(topic) do
-    if Regex.match?(@topic_regex, topic) do
+    if topic_name?(topic) do
       topic
     else
       raise ArgumentError, "#{field(key)} must use lowercase ASCII topic segments"
@@ -194,7 +192,7 @@ defmodule Jido.Integration.V2.ClusterInvalidation do
   defp segment!(segment) do
     segment = required_string(segment, :topic_segment)
 
-    if Regex.match?(@topic_segment_regex, segment) do
+    if topic_segment?(segment) do
       segment
     else
       raise ArgumentError, "#{field(:topic_segment)} is invalid: #{inspect(segment)}"
@@ -211,6 +209,19 @@ defmodule Jido.Integration.V2.ClusterInvalidation do
 
   defp kind_segment!(kind) do
     raise ArgumentError, "#{field(:kind)} is invalid: #{inspect(kind)}"
+  end
+
+  defp topic_name?(topic) do
+    topic
+    |> String.split(".")
+    |> then(fn segments -> segments != [] and Enum.all?(segments, &topic_segment?/1) end)
+  end
+
+  defp topic_segment?(segment) do
+    segment != "" and
+      segment
+      |> :binary.bin_to_list()
+      |> Enum.all?(fn byte -> byte in ?a..?z or byte in ?0..?9 or byte in [?_, ?-] end)
   end
 
   defp positive_epoch!(epoch) when is_integer(epoch) and epoch > 0, do: Integer.to_string(epoch)

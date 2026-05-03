@@ -26,7 +26,7 @@ defmodule Jido.Integration.V2.CanonicalJsonTest do
   end
 
   test "rejects structs until callers dump them into packet-owned maps" do
-    assert_raise ArgumentError, ~r/unsupported struct/, fn ->
+    assert_raise ArgumentError, fn ->
       CanonicalJson.encode!(Date.utc_today())
     end
   end

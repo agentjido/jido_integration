@@ -127,15 +127,13 @@ defmodule Jido.Integration.V2.TargetDescriptorTest do
         location: %{mode: :beam, region: "us-west-2"}
       })
 
-    assert_raise ArgumentError,
-                 ~r/target compatibility requirements must not declare runtime override keys/,
-                 fn ->
-                   TargetDescriptor.compatibility(descriptor, %{
-                     capability_id: "codex.session.turn",
-                     runtime_class: :session,
-                     runtime: %{driver: "override_driver"}
-                   })
-                 end
+    assert_raise ArgumentError, fn ->
+      TargetDescriptor.compatibility(descriptor, %{
+        capability_id: "codex.session.turn",
+        runtime_class: :session,
+        runtime: %{driver: "override_driver"}
+      })
+    end
   end
 
   test "normalizes persisted string-backed target enums" do

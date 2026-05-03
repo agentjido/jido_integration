@@ -799,8 +799,21 @@ defmodule Jido.Integration.V2.ConsumerProjection do
   defp normalize_identifier(value) do
     value
     |> to_string()
-    |> String.replace(~r/[^a-zA-Z0-9_]/, "_")
+    |> safe_identifier_chars()
     |> Contracts.validate_non_empty_string!("generated consumer identifier")
+  end
+
+  defp safe_identifier_chars(value) do
+    value
+    |> :binary.bin_to_list()
+    |> Enum.map(fn byte ->
+      if byte in ?A..?Z or byte in ?a..?z or byte in ?0..?9 or byte == ?_ do
+        byte
+      else
+        ?_
+      end
+    end)
+    |> List.to_string()
   end
 
   defp filter_actions!(actions, enabled_actions) do

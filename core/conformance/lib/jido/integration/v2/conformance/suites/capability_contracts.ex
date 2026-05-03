@@ -192,7 +192,16 @@ defmodule Jido.Integration.V2.Conformance.Suites.CapabilityContracts do
   end
 
   defp session_control_id?(capability_id) when is_binary(capability_id) do
-    Regex.match?(~r/\.session\.(start|status|cancel|approve|tool\.respond)$/, capability_id)
+    Enum.any?(
+      [
+        ".session.start",
+        ".session.status",
+        ".session.cancel",
+        ".session.approve",
+        ".session.tool.respond"
+      ],
+      &String.ends_with?(capability_id, &1)
+    )
   end
 
   defp session_control_id?(_capability_id), do: false

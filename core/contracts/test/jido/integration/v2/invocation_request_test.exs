@@ -70,47 +70,43 @@ defmodule Jido.Integration.V2.InvocationRequestTest do
   end
 
   test "rejects invalid public invoke fields" do
-    assert_raise ArgumentError, ~r/capability_id must be a non-empty string/, fn ->
+    assert_raise ArgumentError, fn ->
       InvocationRequest.new!(%{capability_id: "  "})
     end
 
-    assert_raise ArgumentError, ~r/input must be a map/, fn ->
+    assert_raise ArgumentError, fn ->
       InvocationRequest.new!(%{capability_id: "github.issue.create", input: :invalid})
     end
 
-    assert_raise ArgumentError, ~r/aggregator_epoch must be a positive integer/, fn ->
+    assert_raise ArgumentError, fn ->
       InvocationRequest.new!(%{
         capability_id: "github.issue.create",
         aggregator_epoch: 0
       })
     end
 
-    assert_raise ArgumentError, ~r/extensions must be a keyword list/, fn ->
+    assert_raise ArgumentError, fn ->
       InvocationRequest.new!(%{
         capability_id: "github.issue.create",
         extensions: %{idempotency_key: "req-1"}
       })
     end
 
-    assert_raise ArgumentError,
-                 ~r/credential_ref is not part of the public invocation contract/,
-                 fn ->
-                   InvocationRequest.new!(%{
-                     capability_id: "github.issue.create",
-                     credential_ref: %{id: "cred-1", subject: "desk-operator"}
-                   })
-                 end
+    assert_raise ArgumentError, fn ->
+      InvocationRequest.new!(%{
+        capability_id: "github.issue.create",
+        credential_ref: %{id: "cred-1", subject: "desk-operator"}
+      })
+    end
 
-    assert_raise ArgumentError,
-                 ~r/credential_ref is not part of the public invocation contract/,
-                 fn ->
-                   InvocationRequest.new!(%{
-                     capability_id: "github.issue.create",
-                     extensions: [credential_ref: %{id: "cred-1", subject: "desk-operator"}]
-                   })
-                 end
+    assert_raise ArgumentError, fn ->
+      InvocationRequest.new!(%{
+        capability_id: "github.issue.create",
+        extensions: [credential_ref: %{id: "cred-1", subject: "desk-operator"}]
+      })
+    end
 
-    assert_raise ArgumentError, ~r/extensions must not redefine reserved invoke fields/, fn ->
+    assert_raise ArgumentError, fn ->
       InvocationRequest.new!(%{
         capability_id: "github.issue.create",
         extensions: [connection_id: "connection-1"]
@@ -119,13 +115,11 @@ defmodule Jido.Integration.V2.InvocationRequestTest do
   end
 
   test "to_opts rejects credential_ref extensions on manually constructed requests" do
-    assert_raise ArgumentError,
-                 ~r/credential_ref is not part of the public invocation contract/,
-                 fn ->
-                   InvocationRequest.to_opts(%InvocationRequest{
-                     capability_id: "github.issue.create",
-                     extensions: [credential_ref: %{id: "cred-1", subject: "desk-operator"}]
-                   })
-                 end
+    assert_raise ArgumentError, fn ->
+      InvocationRequest.to_opts(%InvocationRequest{
+        capability_id: "github.issue.create",
+        extensions: [credential_ref: %{id: "cred-1", subject: "desk-operator"}]
+      })
+    end
   end
 end

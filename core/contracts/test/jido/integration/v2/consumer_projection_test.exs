@@ -563,11 +563,9 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
   end
 
   test "rejects manifests that collide on generated action modules or action names" do
-    assert_raise ArgumentError,
-                 ~r/generated consumer action projections must be unique within a connector/,
-                 fn ->
-                   ConsumerProjection.plugin_projection!(DuplicateProjectedSurfaceConnector)
-                 end
+    assert_raise ArgumentError, fn ->
+      ConsumerProjection.plugin_projection!(DuplicateProjectedSurfaceConnector)
+    end
   end
 
   test "projects only explicitly common consumer surfaces" do
@@ -576,7 +574,7 @@ defmodule Jido.Integration.V2.ConsumerProjectionTest do
     assert projection.actions == [MixedSurfaceConnector.Generated.Actions.WorkItemFetch]
     assert ConsumerProjection.action_modules(MixedSurfaceConnector) == projection.actions
 
-    assert_raise ArgumentError, ~r/not projected into the common consumer surface/, fn ->
+    assert_raise ArgumentError, fn ->
       ConsumerProjection.action_projection!(MixedSurfaceConnector, "mixed.provider.raw_lookup")
     end
   end

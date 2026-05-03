@@ -768,7 +768,7 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
   defp normalize_connector_name!(connector_name) do
     connector_name = connector_name |> to_string() |> String.trim()
 
-    if Regex.match?(~r/^[a-z][a-z0-9_]*$/, connector_name) do
+    if connector_name?(connector_name) do
       connector_name
     else
       Mix.raise(
@@ -776,6 +776,15 @@ defmodule Jido.Integration.Workspace.ConnectorScaffold do
       )
     end
   end
+
+  defp connector_name?(<<first, rest::binary>>) do
+    first in ?a..?z and
+      rest
+      |> :binary.bin_to_list()
+      |> Enum.all?(fn byte -> byte in ?a..?z or byte in ?0..?9 or byte == ?_ end)
+  end
+
+  defp connector_name?(_name), do: false
 
   defp resolve_runtime_class!(runtime_class)
        when is_atom(runtime_class) and runtime_class in @runtime_classes,

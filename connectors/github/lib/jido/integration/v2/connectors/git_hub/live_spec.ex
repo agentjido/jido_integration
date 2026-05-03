@@ -1,7 +1,6 @@
 defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
   @moduledoc false
 
-  @repo_regex ~r/\A[^\/\s]+\/[^\/\s]+\z/
   @modes [:auth, :read, :write, :all]
 
   @defaults %{
@@ -191,7 +190,23 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
   defp validate_repo(_flag, nil), do: :ok
 
   defp validate_repo(flag, repo) do
-    if repo =~ @repo_regex, do: :ok, else: {:error, {:invalid_repo, flag, repo}}
+    if repo_name?(repo), do: :ok, else: {:error, {:invalid_repo, flag, repo}}
+  end
+
+  defp repo_name?(repo) when is_binary(repo) do
+    case String.split(repo, "/", parts: 3) do
+      [owner, name] -> repo_part?(owner) and repo_part?(name)
+      _other -> false
+    end
+  end
+
+  defp repo_name?(_repo), do: false
+
+  defp repo_part?(part) do
+    part != "" and
+      part
+      |> String.to_charlist()
+      |> Enum.all?(fn char -> char not in [?\s, ?/] end)
   end
 
   defp build(mode, opts) do

@@ -7,8 +7,6 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.RuntimeResult
 
-  @repo_regex ~r/\A[^\/\s]+\/[^\/\s]+\z/
-
   @spec run(map(), map()) :: {:ok, RuntimeResult.t()} | {:error, map(), RuntimeResult.t()}
   def run(input, context) when is_map(input) and is_map(context) do
     metadata = Map.fetch!(context.capability, :metadata)
@@ -738,7 +736,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
   defp repo_params(input) do
     case repo_value(input) do
       repo when is_binary(repo) ->
-        if repo =~ @repo_regex do
+        if repo_name?(repo) do
           [owner, repo_name] = String.split(repo, "/", parts: 2)
           {:ok, %{owner: owner, repo: repo_name}}
         else
@@ -748,6 +746,20 @@ defmodule Jido.Integration.V2.Connectors.GitHub.Operation do
       other ->
         {:error, {:invalid_repo, other}}
     end
+  end
+
+  defp repo_name?(repo) do
+    case String.split(repo, "/", parts: 3) do
+      [owner, name] -> repo_part?(owner) and repo_part?(name)
+      _other -> false
+    end
+  end
+
+  defp repo_part?(part) do
+    part != "" and
+      part
+      |> String.to_charlist()
+      |> Enum.all?(fn char -> char not in [?\s, ?/] end)
   end
 
   defp repo_value(input) do

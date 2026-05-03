@@ -23,5 +23,5 @@ defmodule Jido.Integration.Docs.ContractsReadmeTest do
            "#{@readme_path} must describe the runtime-merged live capability view"
   end
 
-  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+  defp normalize_whitespace(text), do: text |> String.split() |> Enum.join(" ")
 end

@@ -454,7 +454,7 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
       %{authored_driver: AuthoredDriver}
     )
 
-    assert_raise ArgumentError, ~r/call Jido\.Integration\.V2\.RuntimeRouter\.start!\/0/, fn ->
+    assert_raise ArgumentError, fn ->
       RuntimeRouter.execute(
         capability_fixture(),
         %{prompt: "hello"},

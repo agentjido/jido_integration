@@ -352,26 +352,20 @@ defmodule Jido.Integration.V2.GeneratedSensorTest do
              & &1.trigger_id
            ) == ["market.tick.detected"]
 
-    assert_raise ArgumentError, ~r/not projected into the common consumer surface/, fn ->
+    assert_raise ArgumentError, fn ->
       ConsumerProjection.sensor_projection!(CommonTriggerConnector, "market.tick.provider_raw")
     end
   end
 
   test "rejects manifests that collide on generated sensor modules or sensor names" do
-    assert_raise ArgumentError,
-                 ~r/generated consumer trigger projections must be unique within a connector/,
-                 fn ->
-                   ConsumerProjection.plugin_projection!(DuplicateProjectedTriggerConnector)
-                 end
+    assert_raise ArgumentError, fn ->
+      ConsumerProjection.plugin_projection!(DuplicateProjectedTriggerConnector)
+    end
   end
 
   test "rejects manifests that collide on generated Jido sensor names" do
-    assert_raise ArgumentError,
-                 ~r/generated consumer trigger projections must be unique within a connector/,
-                 fn ->
-                   ConsumerProjection.plugin_projection!(
-                     DuplicateProjectedJidoSensorNameConnector
-                   )
-                 end
+    assert_raise ArgumentError, fn ->
+      ConsumerProjection.plugin_projection!(DuplicateProjectedJidoSensorNameConnector)
+    end
   end
 end

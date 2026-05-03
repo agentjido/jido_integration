@@ -43,5 +43,5 @@ defmodule Jido.Integration.Docs.ConformanceWorkflowTest do
     assert guide =~ "generated actions, plugins, and sensors remain derivative common projections"
   end
 
-  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+  defp normalize_whitespace(text), do: text |> String.split() |> Enum.join(" ")
 end

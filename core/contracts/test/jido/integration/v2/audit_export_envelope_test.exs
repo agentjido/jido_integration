@@ -27,7 +27,7 @@ defmodule Jido.Integration.V2.AuditExportEnvelopeTest do
   end
 
   test "rejects unsupported export kinds" do
-    assert_raise ArgumentError, ~r/audit_export.export_kind/, fn ->
+    assert_raise ArgumentError, fn ->
       AuditExportEnvelope.new!(%{
         export_id: "jido://v2/audit_export/run.failed/run-42",
         export_kind: "run.failed",

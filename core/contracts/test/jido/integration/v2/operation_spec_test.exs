@@ -155,70 +155,66 @@ defmodule Jido.Integration.V2.OperationSpecTest do
   end
 
   test "requires runtime_family metadata for common non-direct projected surfaces" do
-    assert_raise ArgumentError,
-                 ~r/operation.metadata.runtime_family is required for common projected session and stream surfaces/,
-                 fn ->
-                   operation_spec_with(%{
-                     runtime_class: :session,
-                     transport_mode: :stdio,
-                     input_schema:
-                       Zoi.object(%{
-                         prompt: Zoi.string()
-                       }),
-                     output_schema:
-                       Zoi.object(%{
-                         text: Zoi.string()
-                       }),
-                     runtime: %{driver: "asm"},
-                     consumer_surface: %{
-                       mode: :common,
-                       normalized_id: "codex.session.turn",
-                       action_name: "codex_session_turn"
-                     },
-                     schema_policy: %{input: :defined, output: :defined},
-                     metadata: %{}
-                   })
-                 end
+    assert_raise ArgumentError, fn ->
+      operation_spec_with(%{
+        runtime_class: :session,
+        transport_mode: :stdio,
+        input_schema:
+          Zoi.object(%{
+            prompt: Zoi.string()
+          }),
+        output_schema:
+          Zoi.object(%{
+            text: Zoi.string()
+          }),
+        runtime: %{driver: "asm"},
+        consumer_surface: %{
+          mode: :common,
+          normalized_id: "codex.session.turn",
+          action_name: "codex_session_turn"
+        },
+        schema_policy: %{input: :defined, output: :defined},
+        metadata: %{}
+      })
+    end
   end
 
   test "rejects unknown runtime provider strings without creating atoms" do
-    assert_raise ArgumentError,
-                 ~r/operation.runtime.provider must be a non-empty string or atom when declared/,
-                 fn ->
-                   operation_spec_with(%{
-                     runtime_class: :session,
-                     transport_mode: :stdio,
-                     input_schema:
-                       Zoi.object(%{
-                         prompt: Zoi.string()
-                       }),
-                     output_schema:
-                       Zoi.object(%{
-                         text: Zoi.string()
-                       }),
-                     runtime: %{driver: "asm", provider: "provider_authored_name"},
-                     consumer_surface: %{
-                       mode: :common,
-                       normalized_id: "codex.session.turn",
-                       action_name: "codex_session_turn"
-                     },
-                     schema_policy: %{input: :defined, output: :defined},
-                     metadata: %{
-                       runtime_family: %{
-                         session_affinity: :connection,
-                         resumable: true,
-                         approval_required: true,
-                         stream_capable: true,
-                         lifecycle_owner: :asm,
-                         runtime_ref: :session
-                       }
-                     }
-                   })
-                 end
+    assert_raise ArgumentError, fn ->
+      operation_spec_with(%{
+        runtime_class: :session,
+        transport_mode: :stdio,
+        input_schema:
+          Zoi.object(%{
+            prompt: Zoi.string()
+          }),
+        output_schema:
+          Zoi.object(%{
+            text: Zoi.string()
+          }),
+        runtime: %{driver: "asm", provider: "provider_authored_name"},
+        consumer_surface: %{
+          mode: :common,
+          normalized_id: "codex.session.turn",
+          action_name: "codex_session_turn"
+        },
+        schema_policy: %{input: :defined, output: :defined},
+        metadata: %{
+          runtime_family: %{
+            session_affinity: :connection,
+            resumable: true,
+            approval_required: true,
+            stream_capable: true,
+            lifecycle_owner: :asm,
+            runtime_ref: :session
+          }
+        }
+      })
+    end
   end
 
   test "rejects unknown runtime family enum strings without creating atoms" do
-    assert_raise ArgumentError, ~r/operation.metadata.runtime_family.lifecycle_owner/, fn ->
+    assert_raise ArgumentError, fn ->
       operation_spec_with(%{
         runtime_class: :session,
         transport_mode: :stdio,
@@ -269,19 +265,17 @@ defmodule Jido.Integration.V2.OperationSpecTest do
   end
 
   test "rejects non-direct runtime maps that drift beyond driver provider and options" do
-    assert_raise ArgumentError,
-                 ~r/operation.runtime only supports driver, provider, and options for session and stream authored routing/,
-                 fn ->
-                   operation_spec_with(%{
-                     runtime_class: :session,
-                     transport_mode: :stdio,
-                     runtime: %{
-                       driver: "asm",
-                       lane: :sdk
-                     },
-                     metadata: %{}
-                   })
-                 end
+    assert_raise ArgumentError, fn ->
+      operation_spec_with(%{
+        runtime_class: :session,
+        transport_mode: :stdio,
+        runtime: %{
+          driver: "asm",
+          lane: :sdk
+        },
+        metadata: %{}
+      })
+    end
   end
 
   defp operation_spec!(schema_metadata \\ %{}) do

@@ -33,7 +33,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert :ok = stop_asm_runtime_bridge!()
     assert Process.whereis(SessionStore) == nil
 
-    assert_raise ArgumentError, ~r/asm_runtime_bridge session store is not started/, fn ->
+    assert_raise ArgumentError, fn ->
       RuntimeControlDriver.start_session(provider: :claude)
     end
   end

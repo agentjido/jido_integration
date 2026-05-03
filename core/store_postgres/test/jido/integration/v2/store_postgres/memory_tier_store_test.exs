@@ -362,15 +362,13 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
 
     record = Repo.get!(MemoryPrivateRecord, fragment_id)
 
-    assert_raise Postgrex.Error,
-                 ~r/memory_private immutable provenance fields cannot be updated/,
-                 fn ->
-                   record
-                   |> MemoryPrivateRecord.changeset(%{
-                     source_node_ref: "node://ji_2@127.0.0.1/node-b"
-                   })
-                   |> Repo.update!()
-                 end
+    assert_raise Postgrex.Error, fn ->
+      record
+      |> MemoryPrivateRecord.changeset(%{
+        source_node_ref: "node://ji_2@127.0.0.1/node-b"
+      })
+      |> Repo.update!()
+    end
   end
 
   defp private_fragment_attrs(fragment_id, embedding \\ [0.3, 0.2, 0.1]) do

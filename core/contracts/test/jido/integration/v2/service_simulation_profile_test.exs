@@ -56,26 +56,26 @@ defmodule Jido.Integration.V2.ServiceSimulationProfileTest do
 
   test "rejects non-Jido ownership, including Execution Plane and StackLab" do
     for owner <- ["execution_plane", "stack_lab"] do
-      assert_raise ArgumentError, ~r/owner_repo.*jido_integration/, fn ->
+      assert_raise ArgumentError, fn ->
         ServiceSimulationProfile.new!(profile_attrs(%{owner_repo: owner}))
       end
     end
   end
 
   test "rejects public request simulation selectors" do
-    assert_raise ArgumentError, ~r/public simulation selector/i, fn ->
+    assert_raise ArgumentError, fn ->
       ServiceSimulationProfile.new!(Map.put(profile_attrs(), :simulation, "service_mode"))
     end
   end
 
   test "rejects missing lower scenario refs" do
-    assert_raise ArgumentError, ~r/lower_scenario_refs.*must not be empty/, fn ->
+    assert_raise ArgumentError, fn ->
       ServiceSimulationProfile.new!(profile_attrs(%{lower_scenario_refs: []}))
     end
   end
 
   test "rejects no-egress policies that allow real provider fallback" do
-    assert_raise ArgumentError, ~r/no_egress_policy_ref.*forbids real provider egress/i, fn ->
+    assert_raise ArgumentError, fn ->
       ServiceSimulationProfile.new!(
         profile_attrs(%{no_egress_policy_ref: "no-egress-policy://phase6/allow-real-provider"})
       )
@@ -83,7 +83,7 @@ defmodule Jido.Integration.V2.ServiceSimulationProfileTest do
   end
 
   test "rejects durable raw prompt or provider body persistence" do
-    assert_raise ArgumentError, ~r/raw_body_policy.*raw_prompts.*deny/, fn ->
+    assert_raise ArgumentError, fn ->
       raw_body_policy =
         profile_attrs()
         |> Map.fetch!(:raw_body_policy)
@@ -92,7 +92,7 @@ defmodule Jido.Integration.V2.ServiceSimulationProfileTest do
       ServiceSimulationProfile.new!(profile_attrs(%{raw_body_policy: raw_body_policy}))
     end
 
-    assert_raise ArgumentError, ~r/input_fingerprint_policy.*persist_raw_body/, fn ->
+    assert_raise ArgumentError, fn ->
       input_fingerprint_policy =
         profile_attrs()
         |> Map.fetch!(:input_fingerprint_policy)

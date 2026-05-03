@@ -79,7 +79,7 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
       refute readme =~ "Jido.RuntimeControl",
              "#{path} must not describe a runtime-control-routed path"
 
-      refute Regex.match?(~r/\bbridge(?:d|s)?\b/i, readme),
+      refute bridge_word?(readme),
              "#{path} must not preserve removed bridge wording"
     end
   end
@@ -148,5 +148,16 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
 
   defp readme(path), do: File.read!(path)
 
-  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+  defp normalize_whitespace(text), do: text |> String.split() |> Enum.join(" ")
+
+  defp bridge_word?(text) do
+    text
+    |> String.downcase()
+    |> String.split()
+    |> Enum.any?(fn word ->
+      word
+      |> String.trim(".,;:!()[]{}\"'")
+      |> then(&(&1 in ["bridge", "bridged", "bridges"]))
+    end)
+  end
 end

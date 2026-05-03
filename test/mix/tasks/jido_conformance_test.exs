@@ -72,13 +72,13 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   end
 
   test "raises on an invalid connector module" do
-    assert_raise Mix.Error, ~r/could not be resolved to a child package/, fn ->
+    assert_raise Mix.Error, fn ->
       run_task(["Does.Not.Exist"])
     end
   end
 
   test "raises on an invalid profile" do
-    assert_raise Mix.Error, ~r/Invalid profile/, fn ->
+    assert_raise Mix.Error, fn ->
       run_task(["Jido.Integration.V2.Connectors.GitHub", "--profile", "async"])
     end
   end

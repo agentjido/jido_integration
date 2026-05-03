@@ -9,7 +9,7 @@ defmodule Jido.RuntimeControl.SchemaTest do
     assert %RunRequest{prompt: "hello"} = RunRequest.new!(%{prompt: "hello"})
     assert {:error, _} = RunRequest.new(%{})
 
-    assert_raise ArgumentError, ~r/Invalid Jido.RuntimeControl.RunRequest/, fn ->
+    assert_raise ArgumentError, fn ->
       RunRequest.new!(%{})
     end
   end

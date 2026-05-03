@@ -75,7 +75,7 @@ defmodule Jido.Integration.Docs.ConnectorScaffoldingTest do
     refute guide =~ "/home/home/p/g/n/"
   end
 
-  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+  defp normalize_whitespace(text), do: text |> String.split() |> Enum.join(" ")
 
   defp removed_session_bridge_id, do: removed_bridge_id("session")
   defp removed_stream_bridge_id, do: removed_bridge_id("stream")

@@ -24,7 +24,7 @@ defmodule Jido.Integration.V2.ClusterInvalidationTest do
              "memory.policy.#{ClusterInvalidation.hash_segment("tenant://alpha")}.#{ClusterInvalidation.hash_segment("installation://app-a")}.read.#{ClusterInvalidation.hash_segment("policy://read/default")}.7"
 
     for segment <- String.split(topic, ".") do
-      assert segment =~ ~r/\A[a-z0-9_-]+\z/
+      assert topic_segment?(segment)
       refute String.contains?(segment, "://")
     end
   end
@@ -77,4 +77,18 @@ defmodule Jido.Integration.V2.ClusterInvalidationTest do
 
     assert error.message =~ "cluster_invalidation.topic"
   end
+
+  defp topic_segment?(segment) when is_binary(segment) and byte_size(segment) > 0 do
+    segment
+    |> :binary.bin_to_list()
+    |> Enum.all?(fn
+      char when char in ?a..?z -> true
+      char when char in ?0..?9 -> true
+      ?_ -> true
+      ?- -> true
+      _other -> false
+    end)
+  end
+
+  defp topic_segment?(_segment), do: false
 end

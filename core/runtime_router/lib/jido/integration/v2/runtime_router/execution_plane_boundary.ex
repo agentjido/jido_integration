@@ -176,11 +176,24 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary do
     suffix =
       attestation_classes
       |> Enum.join("+")
-      |> String.replace(~r/[^A-Za-z0-9_.-]+/, "_")
+      |> safe_request_suffix()
 
     ["ep", projection.execution_governance_id, suffix, rung]
     |> Enum.reject(&is_nil/1)
     |> Enum.join(":")
+  end
+
+  defp safe_request_suffix(value) do
+    value
+    |> :binary.bin_to_list()
+    |> Enum.map(fn byte ->
+      if byte in ?A..?Z or byte in ?a..?z or byte in ?0..?9 or byte in [?., ?_, ?-] do
+        byte
+      else
+        ?_
+      end
+    end)
+    |> List.to_string()
   end
 
   defp success_attempt(rung, attestation_class, request, result) do

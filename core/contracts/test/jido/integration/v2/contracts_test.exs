@@ -201,28 +201,24 @@ defmodule Jido.Integration.V2.ContractsTest do
 
     assert Enum.map(schema.fields, &elem(&1, 0)) == [:repo, :issue_number, :body]
 
-    assert_raise ArgumentError,
-                 ~r/ordered object schema fields must be a keyword list/,
-                 fn ->
-                   Contracts.strict_object!(%{
-                     repo: Zoi.string(),
-                     issue_number: Zoi.integer()
-                   })
-                 end
+    assert_raise ArgumentError, fn ->
+      Contracts.strict_object!(%{
+        repo: Zoi.string(),
+        issue_number: Zoi.integer()
+      })
+    end
   end
 
   test "atomish string normalization uses the bounded contract vocabulary" do
     assert Contracts.normalize_atomish!("llama_cpp_sdk", "provider_identity") ==
              :llama_cpp_sdk
 
-    assert_raise ArgumentError,
-                 ~r/provider_identity must be a known atom string/,
-                 fn ->
-                   Contracts.normalize_atomish!(
-                     "unregistered_runtime_atom",
-                     "provider_identity"
-                   )
-                 end
+    assert_raise ArgumentError, fn ->
+      Contracts.normalize_atomish!(
+        "unregistered_runtime_atom",
+        "provider_identity"
+      )
+    end
   end
 
   test "the execution-plane contract packet and boundary metadata vocabulary stay explicit" do

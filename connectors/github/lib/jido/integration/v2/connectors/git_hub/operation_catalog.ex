@@ -5,8 +5,6 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.OperationSpec
 
-  @repo_regex ~r/\A[^\/\s]+\/[^\/\s]+\z/
-
   @permission_bundle ["repo"]
   @policy_defaults %{
     environment: %{allowed: [:prod, :staging]},
@@ -1250,7 +1248,30 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationCatalog do
 
   defp repo_schema do
     Zoi.string(description: "Repository in owner/repo form")
-    |> Zoi.regex(@repo_regex, message: "Repository must be in owner/repo form")
+    |> Zoi.refine({__MODULE__, :validate_repo_name_refine, []})
+  end
+
+  @doc false
+  @spec validate_repo_name_refine(term(), keyword()) :: :ok | {:error, String.t()}
+  def validate_repo_name_refine(repo, _opts) when is_binary(repo) do
+    if repo_name?(repo), do: :ok, else: {:error, "Repository must be in owner/repo form"}
+  end
+
+  def validate_repo_name_refine(_repo, _opts),
+    do: {:error, "Repository must be in owner/repo form"}
+
+  defp repo_name?(repo) do
+    case String.split(repo, "/", parts: 3) do
+      [owner, name] -> repo_part?(owner) and repo_part?(name)
+      _other -> false
+    end
+  end
+
+  defp repo_part?(part) do
+    part != "" and
+      part
+      |> String.to_charlist()
+      |> Enum.all?(fn char -> char not in [?\s, ?/] end)
   end
 
   defp request_opts_schema do

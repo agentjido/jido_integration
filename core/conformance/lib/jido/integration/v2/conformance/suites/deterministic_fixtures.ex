@@ -334,7 +334,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
       SuiteSupport.fetch(
         fixture.context,
         :run_id,
-        "run-conformance-" <> String.replace(capability.id, ~r/[^a-zA-Z0-9]+/, "-")
+        "run-conformance-" <> ascii_alnum_dash(capability.id)
       )
 
     default_context = %{
@@ -504,6 +504,25 @@ defmodule Jido.Integration.V2.Conformance.Suites.DeterministicFixtures do
   end
 
   defp normalize_string_list(_values), do: []
+
+  defp ascii_alnum_dash(value) do
+    value
+    |> to_string()
+    |> :binary.bin_to_list()
+    |> Enum.reduce({[], false}, &append_ascii_slug_char/2)
+    |> elem(0)
+    |> Enum.reverse()
+    |> List.to_string()
+    |> String.trim("-")
+  end
+
+  defp append_ascii_slug_char(byte, {chars, _previous_dash?})
+       when byte in ?A..?Z or byte in ?a..?z or byte in ?0..?9,
+       do: {[byte | chars], false}
+
+  defp append_ascii_slug_char(_byte, {chars, true}), do: {chars, true}
+
+  defp append_ascii_slug_char(_byte, {chars, false}), do: {[?- | chars], true}
 
   defp deep_merge(left, right) when is_map(left) and is_map(right) do
     Map.merge(left, right, fn _key, left_value, right_value ->

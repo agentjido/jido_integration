@@ -7,7 +7,6 @@ defmodule Jido.Integration.V2.AuthorityAuditEnvelope do
   alias Jido.Integration.V2.Contracts
 
   @contract_version "v1"
-  @decision_hash_regex ~r/\A[0-9a-f]{64}\z/
 
   @type t :: %__MODULE__{
           contract_version: String.t(),
@@ -161,7 +160,7 @@ defmodule Jido.Integration.V2.AuthorityAuditEnvelope do
     do: Contracts.validate_non_empty_string!(value, field_name)
 
   defp validate_decision_hash!(value) when is_binary(value) do
-    if Regex.match?(@decision_hash_regex, value) do
+    if lower_hex_64?(value) do
       value
     else
       raise ArgumentError,
@@ -172,6 +171,13 @@ defmodule Jido.Integration.V2.AuthorityAuditEnvelope do
   defp validate_decision_hash!(value) do
     raise ArgumentError,
           "authority_audit.decision_hash must be lowercase SHA-256 hex, got: #{inspect(value)}"
+  end
+
+  defp lower_hex_64?(value) do
+    byte_size(value) == 64 and
+      value
+      |> :binary.bin_to_list()
+      |> Enum.all?(fn byte -> byte in ?0..?9 or byte in ?a..?f end)
   end
 
   defp validate_extensions!(value) do

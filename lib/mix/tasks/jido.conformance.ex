@@ -376,10 +376,23 @@ defmodule Mix.Tasks.Jido.Conformance do
     project_name =
       project_root
       |> Path.relative_to(repo_root())
-      |> String.replace(~r/[^a-zA-Z0-9]+/, "_")
+      |> ascii_alnum_underscore()
       |> String.trim("_")
 
     "#{project_name}_#{digest}"
+  end
+
+  defp ascii_alnum_underscore(value) do
+    value
+    |> :binary.bin_to_list()
+    |> Enum.map(fn byte ->
+      if byte in ?A..?Z or byte in ?a..?z or byte in ?0..?9 do
+        byte
+      else
+        ?_
+      end
+    end)
+    |> List.to_string()
   end
 
   defp project_cache_fingerprint(project_root) do

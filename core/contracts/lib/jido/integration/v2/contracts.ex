@@ -100,7 +100,6 @@ defmodule Jido.Integration.V2.Contracts do
           causation_id: String.t() | nil
         }
 
-  @checksum_regex ~r/\Asha256:[0-9a-f]{64}\z/
   @known_atomish_values [
     :acme,
     :action,
@@ -417,7 +416,7 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec validate_checksum!(checksum()) :: checksum()
   def validate_checksum!(checksum) when is_binary(checksum) do
-    if checksum =~ @checksum_regex do
+    if sha256_ref?(checksum) do
       checksum
     else
       raise ArgumentError,
@@ -1213,6 +1212,21 @@ defmodule Jido.Integration.V2.Contracts do
   defp local_payload_ref?(store, key) do
     store in ["file", "filesystem", "local", "local_file"] or
       String.starts_with?(key, "/") or
-      String.match?(key, ~r/\A[A-Za-z]:[\\\/]/)
+      windows_absolute_path?(key)
   end
+
+  defp sha256_ref?(<<"sha256:", digest::binary-size(64)>>), do: lower_hex?(digest)
+  defp sha256_ref?(_checksum), do: false
+
+  defp lower_hex?(value) do
+    value
+    |> :binary.bin_to_list()
+    |> Enum.all?(fn byte -> byte in ?0..?9 or byte in ?a..?f end)
+  end
+
+  defp windows_absolute_path?(<<drive, ?:, separator, _rest::binary>>) do
+    (drive in ?A..?Z or drive in ?a..?z) and separator in [?\\, ?/]
+  end
+
+  defp windows_absolute_path?(_value), do: false
 end

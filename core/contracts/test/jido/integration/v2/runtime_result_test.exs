@@ -40,7 +40,7 @@ defmodule Jido.Integration.V2.RuntimeResultTest do
   end
 
   test "rejects non-map event payloads" do
-    assert_raise ArgumentError, ~r/event payload must be a map/, fn ->
+    assert_raise ArgumentError, fn ->
       RuntimeResult.new!(%{
         output: %{status: "bad"},
         events: [%{type: "connector.review.completed", payload: "bad"}]

@@ -769,8 +769,9 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     assert attempt.output["backend_manifest"]["backend"] == "ollama"
     refute Map.has_key?(attempt.output["inference_result"]["metadata"], "text")
 
-    assert attempt.output["inference_result"]["metadata"]["text_artifact_ref"]["content_hash"] =~
-             ~r/\Asha256:[0-9a-f]{64}\z/i
+    assert sha256_ref?(
+             attempt.output["inference_result"]["metadata"]["text_artifact_ref"]["content_hash"]
+           )
 
     assert attempt.output["compatibility_result"]["resolved_management_mode"] ==
              "externally_managed"
@@ -790,4 +791,17 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
       ]
     )
   end
+
+  defp sha256_ref?("sha256:" <> digest) when byte_size(digest) == 64 do
+    digest
+    |> String.downcase()
+    |> :binary.bin_to_list()
+    |> Enum.all?(fn
+      char when char in ?0..?9 -> true
+      char when char in ?a..?f -> true
+      _other -> false
+    end)
+  end
+
+  defp sha256_ref?(_value), do: false
 end

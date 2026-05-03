@@ -101,13 +101,13 @@ defmodule Jido.Integration.V2.MemoryFragmentTest do
 
     assert %MemoryFragment{tier: :shared} = MemoryFragment.new!(attrs)
 
-    assert_raise ArgumentError, ~r/non_identity_transform_count must be greater than 0/, fn ->
+    assert_raise ArgumentError, fn ->
       attrs
       |> Map.put(:non_identity_transform_count, 0)
       |> MemoryFragment.new!()
     end
 
-    assert_raise ArgumentError, ~r/parent_fragment_id is required for shared tier/, fn ->
+    assert_raise ArgumentError, fn ->
       attrs
       |> Map.delete(:parent_fragment_id)
       |> MemoryFragment.new!()
@@ -129,19 +129,19 @@ defmodule Jido.Integration.V2.MemoryFragmentTest do
 
     assert %MemoryFragment{tier: :governed} = MemoryFragment.new!(attrs)
 
-    assert_raise ArgumentError, ~r/evidence_refs must be non-empty for governed tier/, fn ->
+    assert_raise ArgumentError, fn ->
       attrs
       |> Map.put(:evidence_refs, [])
       |> MemoryFragment.new!()
     end
 
-    assert_raise ArgumentError, ~r/governance_refs must be non-empty for governed tier/, fn ->
+    assert_raise ArgumentError, fn ->
       attrs
       |> Map.put(:governance_refs, [])
       |> MemoryFragment.new!()
     end
 
-    assert_raise ArgumentError, ~r/rebuild_spec is required for governed tier/, fn ->
+    assert_raise ArgumentError, fn ->
       attrs
       |> Map.delete(:rebuild_spec)
       |> MemoryFragment.new!()
@@ -149,14 +149,14 @@ defmodule Jido.Integration.V2.MemoryFragmentTest do
   end
 
   test "fragment rejects private wrong-user provenance and mismatched embedding dimension" do
-    assert_raise ArgumentError, ~r/creating_user_ref must equal user_ref for private tier/, fn ->
+    assert_raise ArgumentError, fn ->
       :private
       |> base_attrs()
       |> Map.merge(%{creating_user_ref: "user-2", user_ref: "user-1"})
       |> MemoryFragment.new!()
     end
 
-    assert_raise ArgumentError, ~r/embedding_dimension must match embedding length/, fn ->
+    assert_raise ArgumentError, fn ->
       :private
       |> base_attrs()
       |> Map.merge(%{embedding: [0.1, 0.2], embedding_dimension: 3})

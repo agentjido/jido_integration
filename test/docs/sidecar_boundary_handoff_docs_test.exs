@@ -34,5 +34,5 @@ defmodule Jido.Integration.Docs.SidecarBoundaryHandoffDocsTest do
            "#{@contracts_doc} must make the Phase 9 handoff explicit"
   end
 
-  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+  defp normalize_whitespace(text), do: text |> String.split() |> Enum.join(" ")
 end

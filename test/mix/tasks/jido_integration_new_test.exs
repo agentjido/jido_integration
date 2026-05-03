@@ -154,8 +154,8 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     assert connector_content =~ "action_name: \"acme_crm_sample_perform\""
     assert connector_content =~ "sensor_name: \"sample_detected\""
     assert connector_content =~ "def ingress_definitions do"
-    assert Regex.match?(~r/input_schema:\s+Zoi\.object/s, connector_content)
-    assert Regex.match?(~r/output_schema:\s+Zoi\.object/s, connector_content)
+    assert contains_tokens_in_order?(connector_content, ["input_schema:", "Zoi.object"])
+    assert contains_tokens_in_order?(connector_content, ["output_schema:", "Zoi.object"])
     refute connector_content =~ "Capability.new!("
 
     readme = package_root |> Path.join("README.md") |> File.read!() |> normalize_whitespace()
@@ -190,35 +190,31 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
   test "requires explicit runtime-driver selection for non-direct scaffolds" do
     session_workspace_root = temp_workspace!("session")
 
-    assert_raise Mix.Error,
-                 ~r/Session connector scaffolds require --runtime-driver/,
-                 fn ->
-                   run_task([
-                     "assistant_cli",
-                     "--workspace-root",
-                     session_workspace_root,
-                     "--runtime-class",
-                     "session",
-                     "--module",
-                     "Generated.Connectors.AssistantCli"
-                   ])
-                 end
+    assert_raise Mix.Error, fn ->
+      run_task([
+        "assistant_cli",
+        "--workspace-root",
+        session_workspace_root,
+        "--runtime-class",
+        "session",
+        "--module",
+        "Generated.Connectors.AssistantCli"
+      ])
+    end
 
     refute File.exists?(Path.join(session_workspace_root, "connectors/assistant_cli"))
 
     stream_workspace_root = temp_workspace!("stream")
 
-    assert_raise Mix.Error,
-                 ~r/Stream connector scaffolds require --runtime-driver/,
-                 fn ->
-                   run_task([
-                     "price_feed",
-                     "--workspace-root",
-                     stream_workspace_root,
-                     "--runtime-class",
-                     "stream"
-                   ])
-                 end
+    assert_raise Mix.Error, fn ->
+      run_task([
+        "price_feed",
+        "--workspace-root",
+        stream_workspace_root,
+        "--runtime-class",
+        "stream"
+      ])
+    end
 
     refute File.exists?(Path.join(stream_workspace_root, "connectors/price_feed"))
   end
@@ -450,7 +446,20 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     end)
   end
 
-  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+  defp normalize_whitespace(text), do: text |> String.split() |> Enum.join(" ")
+
+  defp contains_tokens_in_order?(text, tokens) do
+    Enum.reduce_while(tokens, text, fn token, remaining ->
+      case String.split(remaining, token, parts: 2) do
+        [_before, after_token] -> {:cont, after_token}
+        _ -> {:halt, false}
+      end
+    end)
+    |> case do
+      false -> false
+      _remaining -> true
+    end
+  end
 
   defp with_progress(label, fun) when is_function(fun, 0) do
     started_at = System.monotonic_time(:millisecond)

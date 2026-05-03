@@ -22,5 +22,5 @@ defmodule Jido.RuntimeControl.ReadmeTest do
            "#{@readme_path} must not describe the removed provider-adapter config"
   end
 
-  defp normalize_whitespace(text), do: String.replace(text, ~r/\s+/, " ")
+  defp normalize_whitespace(text), do: text |> String.split() |> Enum.join(" ")
 end

@@ -73,7 +73,20 @@ defmodule Jido.Integration.TestTmpDir do
   defp normalize_segment(value) do
     value
     |> to_string()
-    |> String.replace(~r/[^a-zA-Z0-9._-]+/u, "_")
+    |> safe_segment_chars()
     |> String.trim("_")
+  end
+
+  defp safe_segment_chars(value) do
+    value
+    |> :binary.bin_to_list()
+    |> Enum.map(fn byte ->
+      if byte in ?A..?Z or byte in ?a..?z or byte in ?0..?9 or byte in [?., ?_, ?-] do
+        byte
+      else
+        ?_
+      end
+    end)
+    |> List.to_string()
   end
 end

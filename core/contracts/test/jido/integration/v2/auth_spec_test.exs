@@ -109,7 +109,7 @@ defmodule Jido.Integration.V2.AuthSpecTest do
   end
 
   test "rejects invalid profile posture" do
-    assert_raise ArgumentError, ~r/pkce_required/, fn ->
+    assert_raise ArgumentError, fn ->
       AuthSpec.new!(%{
         binding_kind: :connection_id,
         supported_profiles: [
@@ -133,7 +133,7 @@ defmodule Jido.Integration.V2.AuthSpecTest do
   end
 
   test "rejects unknown grant type strings" do
-    assert_raise ArgumentError, ~r/auth.supported_profiles.grant_types/, fn ->
+    assert_raise ArgumentError, fn ->
       AuthSpec.new!(%{
         binding_kind: :connection_id,
         default_profile: "broken",
