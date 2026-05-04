@@ -89,6 +89,85 @@ defmodule Jido.Integration.V2.ConnectorRegistryTest do
     assert Enum.sort(forbidden) == [:default_client, :raw_token]
   end
 
+  test "admits generated and companion SDK lanes with ref-only metadata" do
+    entries =
+      [
+        generated_attrs(:github_ex, "github_ex", "github", "http", :generated_sdk_client, [
+          :classic_pat,
+          :fine_grained_pat,
+          :installation_token,
+          :oauth_user_token
+        ]),
+        generated_attrs(:notion_sdk, "notion_sdk", "notion", "http", :generated_sdk_client, [
+          :bearer,
+          :oauth
+        ]),
+        generated_attrs(:linear_sdk, "linear_sdk", "linear", "graphql", :generated_sdk_client, [
+          :api_token,
+          :oauth_app_user
+        ]),
+        generated_attrs(
+          :pristine,
+          "apps/pristine_runtime",
+          "http",
+          "http",
+          :companion_connector,
+          [
+            :bearer,
+            :oauth_token_source
+          ]
+        ),
+        generated_attrs(
+          :prismatic,
+          "apps/prismatic_runtime",
+          "graphql",
+          "graphql",
+          :companion_connector,
+          [:api_token, :oauth_app_user]
+        )
+      ]
+      |> Enum.map(fn attrs ->
+        assert {:ok, entry} = ConnectorRegistry.register(attrs)
+        entry
+      end)
+
+    assert Enum.map(entries, & &1.owner_repo) == [
+             "github_ex",
+             "notion_sdk",
+             "linear_sdk",
+             "pristine",
+             "prismatic"
+           ]
+
+    assert Enum.all?(entries, fn entry ->
+             assert {:ok, receipt} = ConnectorRegistry.companion_admission(entry)
+
+             receipt.credential_handle_ref == entry.credential_handle_ref and
+               receipt.conformance_suite_ref == entry.conformance_suite_ref and
+               receipt.binding_shape.requires_connector_binding_ref
+           end)
+  end
+
+  test "generated SDK lane can upgrade to official connector without changing identity refs" do
+    assert {:ok, generated} =
+             :github_ex
+             |> generated_attrs("github_ex", "github", "http", :generated_sdk_client, [
+               :classic_pat
+             ])
+             |> ConnectorRegistry.register()
+
+    assert {:ok, official} =
+             ConnectorRegistry.upgrade_to_official(generated,
+               connector_ref: "connector://github/official-rest",
+               package_path: "connectors/github",
+               conformance_suite_ref: "conformance-suite://github/official-rest"
+             )
+
+    assert official.connector_category == :official_connector
+    assert official.connector_ref == "connector://github/official-rest"
+    assert ConnectorRegistry.identity_key(official) == ConnectorRegistry.identity_key(generated)
+  end
+
   defp selection_attrs do
     %{
       tenant_ref: "tenant://tenant-1",
@@ -124,6 +203,35 @@ defmodule Jido.Integration.V2.ConnectorRegistryTest do
       supported_operations: [:rest_request],
       binding_shape: %{requires_connector_binding_ref: true},
       product_boundary: %{governed_hot_path: true}
+    }
+  end
+
+  defp generated_attrs(owner, package_path, provider, family, category, auth_methods) do
+    provider_name = Atom.to_string(owner)
+
+    %{
+      tenant_ref: "tenant://tenant-1",
+      policy_revision_ref: "policy-revision://tenant-1/auth/1",
+      provider_ref: "provider://#{provider}",
+      provider_family: family,
+      provider_account_ref: "provider-account://tenant-1/#{provider}/default",
+      provider_account_status: :known,
+      connector_ref: "connector://#{provider_name}/generated-sdk",
+      connector_instance_ref: "connector-instance://tenant-1/#{provider_name}/generated-sdk",
+      connector_category: category,
+      credential_handle_ref: "credential-handle://tenant-1/#{provider}/default",
+      target_ref: "target://tenant-1/#{provider}/default",
+      operation_policy_ref: "operation-policy://tenant-1/#{provider}/default",
+      owner_repo: provider_name,
+      package_path: package_path,
+      conformance_suite_ref: "conformance-suite://#{provider_name}/generated-sdk",
+      env_remediation_state: :governed_clean,
+      auth_methods: auth_methods,
+      supported_operations: [:governed_request],
+      target_refs: ["target://tenant-1/#{provider}/default"],
+      credential_handle_refs: ["credential-handle://tenant-1/#{provider}/default"],
+      binding_shape: %{requires_connector_binding_ref: true},
+      product_boundary: %{governed_hot_path: true, companion_lane: true}
     }
   end
 end

@@ -212,7 +212,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
 
   defp response_new(attrs) do
     if Code.ensure_loaded?(Inference.Response) and function_exported?(Inference.Response, :new, 1) do
-      apply(Inference.Response, :new, [attrs])
+      Inference.Response.new(attrs)
     else
       Map.new(attrs)
     end
@@ -223,7 +223,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
   defp normalize_error(reason) do
     if Code.ensure_loaded?(Inference.Error) and
          function_exported?(Inference.Error, :provider_error, 2) do
-      apply(Inference.Error, :provider_error, [reason, [adapter: __MODULE__]])
+      Inference.Error.provider_error(reason, adapter: __MODULE__)
     else
       reason
     end
@@ -232,7 +232,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
   defp adapter_exception(exception) do
     if Code.ensure_loaded?(Inference.Error) and
          function_exported?(Inference.Error, :adapter_exception, 2) do
-      apply(Inference.Error, :adapter_exception, [exception, [adapter: __MODULE__]])
+      Inference.Error.adapter_exception(exception, adapter: __MODULE__)
     else
       exception
     end

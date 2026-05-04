@@ -214,6 +214,41 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
     }
   end
 
+  @spec companion_admission(entry()) :: {:ok, map()} | {:error, term()}
+  def companion_admission(%Entry{} = entry) do
+    if entry.connector_category in [:companion_connector, :generated_sdk_client] do
+      {:ok,
+       %{
+         admission_ref: companion_admission_ref(entry),
+         provider_ref: entry.provider_ref,
+         provider_family: entry.provider_family,
+         connector_ref: entry.connector_ref,
+         connector_instance_ref: entry.connector_instance_ref,
+         connector_category: entry.connector_category,
+         owner_repo: entry.owner_repo,
+         package_path: entry.package_path,
+         credential_handle_ref: entry.credential_handle_ref,
+         target_ref: entry.target_ref,
+         operation_policy_ref: entry.operation_policy_ref,
+         conformance_suite_ref: entry.conformance_suite_ref,
+         env_remediation_state: entry.env_remediation_state,
+         binding_shape: entry.binding_shape,
+         product_boundary: entry.product_boundary
+       }}
+    else
+      {:error, {:not_companion_lane, entry.connector_category}}
+    end
+  end
+
+  @spec upgrade_to_official(entry(), map() | keyword()) :: {:ok, entry()} | {:error, term()}
+  def upgrade_to_official(%Entry{} = entry, attrs) when is_map(attrs) or is_list(attrs) do
+    entry
+    |> Map.from_struct()
+    |> Map.merge(normalize(attrs))
+    |> Map.put(:connector_category, :official_connector)
+    |> register()
+  end
+
   defp selection_required_refs do
     [
       :tenant_ref,
@@ -364,4 +399,17 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
   defp present?(value) when is_binary(value), do: String.trim(value) != ""
   defp present?(value) when is_list(value), do: value != []
   defp present?(value), do: not is_nil(value)
+
+  defp companion_admission_ref(%Entry{} = entry) do
+    Enum.join(
+      [
+        "connector-admission://",
+        entry.tenant_ref,
+        entry.owner_repo,
+        entry.package_path,
+        Atom.to_string(entry.connector_category)
+      ],
+      "/"
+    )
+  end
 end

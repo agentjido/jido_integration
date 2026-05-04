@@ -90,9 +90,8 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrix do
   @spec validate_registry_entry(ConnectorRegistry.entry()) :: :ok | {:error, term()}
   def validate_registry_entry(%ConnectorRegistry.Entry{} = entry) do
     with {:ok, row} <- row(provider_from_ref(entry.provider_ref)),
-         :ok <- validate_connector_category(entry.connector_category),
-         :ok <- validate_provider_family(entry.provider_family, row.family) do
-      :ok
+         :ok <- validate_connector_category(entry.connector_category) do
+      validate_provider_family(entry.provider_family, row.family)
     end
   end
 

@@ -1088,9 +1088,8 @@ defmodule Jido.Integration.V2.Auth do
       with :ok <- require_governed_lease_fields(context),
            :ok <- validate_governed_provider_family(context),
            :ok <- validate_governed_operation_class(context),
-           :ok <- validate_governed_rotation_epoch(context),
-           :ok <- authorize_context_tenant(connection.tenant_id, Map.get(context, :tenant_id)) do
-        :ok
+           :ok <- validate_governed_rotation_epoch(context) do
+        authorize_context_tenant(connection.tenant_id, Map.get(context, :tenant_id))
       end
     else
       :ok

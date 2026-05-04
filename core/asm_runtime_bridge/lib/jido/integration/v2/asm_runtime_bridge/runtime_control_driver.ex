@@ -628,7 +628,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
 
   defp runtime_auth_option_keys do
     if Code.ensure_loaded?(RuntimeAuth) and function_exported?(RuntimeAuth, :option_keys, 0) do
-      apply(RuntimeAuth, :option_keys, [])
+      RuntimeAuth.option_keys()
     else
       []
     end

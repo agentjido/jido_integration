@@ -81,7 +81,8 @@ defmodule Jido.Integration.V2.Connectors.Notion.LiveEnv do
   end
 
   @spec validate(mode()) :: :ok | {:error, [String.t()]}
-  def validate(mode), do: validate(mode, Application.get_env(:jido_integration_v2_notion, :live_env, %{}))
+  def validate(mode),
+    do: validate(mode, Application.get_env(:jido_integration_v2_notion, :live_env, %{}))
 
   @spec validate(mode(), map()) :: :ok | {:error, [String.t()]}
 
