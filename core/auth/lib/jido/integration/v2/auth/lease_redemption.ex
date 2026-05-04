@@ -11,16 +11,19 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
 
   @type rejection_reason ::
           :authority_scope_widening
+          | :attach_grant_mismatch
           | :connector_mismatch
           | :expired_lease
           | :max_calls_exceeded
           | :max_tokens_exceeded
           | :model_not_allowed
           | :network_policy_mismatch
+          | :operation_policy_mismatch
           | :provider_account_mismatch
           | :secret_material_return_forbidden
           | :stale_installation_revision
           | :standalone_context_cannot_govern
+          | :target_mismatch
           | :tenant_mismatch
 
   @type evidence :: %{
@@ -54,6 +57,15 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
              :provider_account_ref,
              :provider_account_mismatch
            ),
+         :ok <- ensure_metadata_match(lease, context, :target_ref, :target_mismatch),
+         :ok <- ensure_metadata_match(lease, context, :attach_grant_ref, :attach_grant_mismatch),
+         :ok <-
+           ensure_metadata_match(
+             lease,
+             context,
+             :operation_policy_ref,
+             :operation_policy_mismatch
+           ),
          :ok <- ensure_installation_revision(lease, context),
          :ok <- ensure_max_calls(lease, context),
          :ok <- ensure_max_tokens(lease, context),
@@ -84,6 +96,9 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
       connector_instance_ref: optional_string(context, :connector_instance_ref),
       provider_account_ref: optional_string(context, :provider_account_ref),
       execution_context_ref: optional_string(context, :execution_context_ref),
+      target_ref: optional_string(context, :target_ref),
+      attach_grant_ref: optional_string(context, :attach_grant_ref),
+      operation_policy_ref: optional_string(context, :operation_policy_ref),
       execution_context_scope: map_value(context, :execution_context_scope),
       authority_ref: optional_string(context, :authority_ref),
       authority_decision_ref: optional_string(context, :authority_decision_ref),
@@ -256,6 +271,9 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
       connector_instance_ref: optional_metadata_string(lease, :connector_instance_ref),
       provider_account_ref: optional_metadata_string(lease, :provider_account_ref),
       execution_context_ref: optional_metadata_string(lease, :execution_context_ref),
+      target_ref: optional_metadata_string(lease, :target_ref),
+      attach_grant_ref: optional_metadata_string(lease, :attach_grant_ref),
+      operation_policy_ref: optional_metadata_string(lease, :operation_policy_ref),
       authority_ref: optional_metadata_string(lease, :authority_ref),
       redacted: true
     }

@@ -70,6 +70,29 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
              LeaseRedemption.authorize(lease, base_redemption_context(%{tenant_id: "tenant-2"}))
   end
 
+  test "rejects target, attach grant, and operation policy substitution" do
+    {_install, connection, _credential_ref} = install_codex_connection()
+    assert {:ok, lease} = request_codex_lease(connection)
+
+    assert {:error, :target_mismatch} =
+             LeaseRedemption.authorize(
+               lease,
+               base_redemption_context(%{target_ref: "target://sandbox/b"})
+             )
+
+    assert {:error, :attach_grant_mismatch} =
+             LeaseRedemption.authorize(
+               lease,
+               base_redemption_context(%{attach_grant_ref: "attach-grant://tenant-1/sandbox/b"})
+             )
+
+    assert {:error, :operation_policy_mismatch} =
+             LeaseRedemption.authorize(
+               lease,
+               base_redemption_context(%{operation_policy_ref: "operation-policy://codex/admin"})
+             )
+  end
+
   test "enforces max calls, model, token, and network constraints" do
     {_install, connection, _credential_ref} = install_codex_connection()
 
@@ -184,6 +207,9 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
           connector_instance_ref: "connector-instance://tenant-1/codex/a",
           provider_account_ref: "provider-account://codex/redacted",
           execution_context_ref: "execution-context://tenant-1/codex/run-1",
+          target_ref: "target://sandbox/a",
+          attach_grant_ref: "attach-grant://tenant-1/sandbox/a",
+          operation_policy_ref: "operation-policy://codex/run",
           execution_context_scope: :governed,
           authority_ref: "citadel://authority/decision-1",
           authority_decision_ref: "citadel://authority/decision-1",
@@ -206,6 +232,9 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
         tenant_id: "tenant-1",
         connector_instance_ref: "connector-instance://tenant-1/codex/a",
         provider_account_ref: "provider-account://codex/redacted",
+        target_ref: "target://sandbox/a",
+        attach_grant_ref: "attach-grant://tenant-1/sandbox/a",
+        operation_policy_ref: "operation-policy://codex/run",
         requested_model: "gpt-5.4",
         requested_tokens: 100,
         network_target: :provider,
