@@ -15,6 +15,18 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.TriggerRecord
 
+  @control_plane_store_keys [
+    :run_store,
+    :attempt_store,
+    :event_store,
+    :artifact_store,
+    :claim_check_store,
+    :target_store,
+    :ingress_store,
+    :profile_registry_store
+  ]
+  @auth_store_keys [:credential_store, :lease_store, :connection_store, :install_store]
+
   defmodule ScriptedCapability do
     def run(input, context) do
       trigger = fetch(input, :trigger)
@@ -168,12 +180,14 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
   end
 
   setup do
+    previous_env = force_in_memory_stores!()
     storage_dir = tmp_dir!()
     ControlPlane.reset!()
     assert :ok = ControlPlane.register_connector(TestConnector)
 
     on_exit(fn ->
       ControlPlane.reset!()
+      restore_env(previous_env)
       File.rm_rf!(storage_dir)
     end)
 
@@ -652,5 +666,43 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
 
   def handle_telemetry_event(event, measurements, metadata, test_pid) do
     send(test_pid, {:telemetry_event, event, measurements, metadata})
+  end
+
+  defp force_in_memory_stores! do
+    previous_env = %{
+      control_plane: snapshot_keys(:jido_integration_v2_control_plane, @control_plane_store_keys),
+      auth: snapshot_keys(:jido_integration_v2_auth, @auth_store_keys)
+    }
+
+    Enum.each(@control_plane_store_keys, fn key ->
+      Application.put_env(
+        :jido_integration_v2_control_plane,
+        key,
+        Jido.Integration.V2.ControlPlane.RunLedger
+      )
+    end)
+
+    Enum.each(@auth_store_keys, fn key ->
+      Application.put_env(:jido_integration_v2_auth, key, Jido.Integration.V2.Auth.Store)
+    end)
+
+    previous_env
+  end
+
+  defp snapshot_keys(app, keys) do
+    Map.new(keys, fn key -> {key, Application.fetch_env(app, key)} end)
+  end
+
+  defp restore_env(previous_env) do
+    restore_keys(:jido_integration_v2_control_plane, previous_env.control_plane)
+    restore_keys(:jido_integration_v2_auth, previous_env.auth)
+    :ok
+  end
+
+  defp restore_keys(app, snapshot) do
+    Enum.each(snapshot, fn
+      {key, {:ok, value}} -> Application.put_env(app, key, value)
+      {key, :error} -> Application.delete_env(app, key)
+    end)
   end
 end

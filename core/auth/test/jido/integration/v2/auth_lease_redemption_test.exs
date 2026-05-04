@@ -140,6 +140,149 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
              )
   end
 
+  test "rejects credential handle, operation class, policy revision, rotation, fence, and stale target mismatches" do
+    {_install, connection, _credential_ref} = install_codex_connection()
+    assert {:ok, lease} = request_codex_lease(connection)
+
+    assert {:error, :credential_handle_mismatch} =
+             LeaseRedemption.authorize(
+               lease,
+               base_redemption_context(%{
+                 credential_handle_ref: "credential-handle://tenant-1/codex/other"
+               })
+             )
+
+    assert {:error, :operation_class_mismatch} =
+             LeaseRedemption.authorize(
+               lease,
+               base_redemption_context(%{operation_class: "http"})
+             )
+
+    assert {:error, :stale_policy_revision} =
+             LeaseRedemption.authorize(
+               lease,
+               base_redemption_context(%{
+                 current_policy_revision_ref: "policy-revision://tenant-1/codex/2"
+               })
+             )
+
+    assert {:error, :rotation_epoch_mismatch} =
+             LeaseRedemption.authorize(
+               lease,
+               base_redemption_context(%{current_rotation_epoch: 2})
+             )
+
+    assert {:error, :fence_token_mismatch} =
+             LeaseRedemption.authorize(
+               lease,
+               base_redemption_context(%{fence_token: "fence://tenant-1/codex/a/2"})
+             )
+
+    assert {:error, :stale_target_grant} =
+             LeaseRedemption.authorize(
+               lease,
+               base_redemption_context(%{
+                 current_target_grant_revision: "target-grant-revision://tenant-1/sandbox/2"
+               })
+             )
+  end
+
+  test "governed lease lifecycle issues, redeems, renews, revokes, cleans, audits, and fences without secret material" do
+    {_install, connection, _credential_ref} = install_codex_connection()
+
+    assert {:ok, lease} =
+             Auth.request_governed_lease(connection.connection_id, governed_lease_context())
+
+    assert {:ok, redemption} = Auth.redeem_lease(lease.lease_id, base_redemption_context(%{}))
+    assert redemption.redacted
+
+    assert {:ok, audit} = Auth.lease_audit_event("provider_auth.lease.redeemed", lease)
+    assert audit.redacted
+    refute inspect(audit) =~ "phase4a-runtime-token"
+
+    assert {:ok, fence} = Auth.lease_fence_event(lease)
+    assert fence.lease_id == lease.lease_id
+    refute Map.has_key?(fence, :payload)
+
+    assert {:ok, renewed} =
+             Auth.renew_lease(lease.lease_id, %{
+               now: ~U[2026-03-09 12:02:00Z],
+               ttl_seconds: 120,
+               fence_token: "fence://tenant-1/codex/a/2"
+             })
+
+    assert renewed.metadata.renewed_from_lease_id == lease.lease_id
+
+    assert {:ok, revoked_event} =
+             Auth.revoke_lease(lease.lease_id, %{
+               now: ~U[2026-03-09 12:02:30Z],
+               revocation_ref: "revocation://tenant-1/codex/lease-1"
+             })
+
+    assert revoked_event.status == :revoked
+
+    assert {:error, :expired_lease} =
+             Auth.fetch_lease(lease.lease_id, %{
+               tenant_id: "tenant-1",
+               now: ~U[2026-03-09 12:02:31Z]
+             })
+
+    assert {:ok, cleanup_event} =
+             Auth.cleanup_lease(lease.lease_id, %{
+               now: ~U[2026-03-09 12:03:00Z],
+               cleanup_ref: "cleanup://tenant-1/codex/lease-1"
+             })
+
+    assert cleanup_event.status == :cleaned
+    refute inspect(cleanup_event) =~ "phase4a-runtime-token"
+  end
+
+  test "governed leases cover every provider family and operation class with bounded metadata" do
+    {_install, connection, _credential_ref} = install_codex_connection()
+
+    cases = [
+      {"codex", "cli"},
+      {"github", "http"},
+      {"linear", "graphql"},
+      {"realtime", "realtime"},
+      {"inference", "inference"}
+    ]
+
+    for {provider_family, operation_class} <- cases do
+      context =
+        governed_lease_context(%{
+          provider_family: provider_family,
+          operation_class: operation_class,
+          provider_account_ref: "provider-account://tenant-1/#{provider_family}/account-a",
+          credential_handle_ref: "credential-handle://tenant-1/#{provider_family}/account-a",
+          operation_policy_ref:
+            "operation-policy://tenant-1/#{provider_family}/#{operation_class}",
+          policy_revision_ref: "policy-revision://tenant-1/#{provider_family}/1",
+          target_grant_revision: "target-grant-revision://tenant-1/#{provider_family}/1",
+          fence_token: "fence://tenant-1/#{provider_family}/#{operation_class}/1"
+        })
+
+      assert {:ok, lease} = Auth.request_governed_lease(connection.connection_id, context)
+      assert lease.metadata.provider_family == provider_family
+      assert lease.metadata.operation_class == operation_class
+
+      assert {:ok, _evidence} =
+               Auth.redeem_lease(
+                 lease.lease_id,
+                 base_redemption_context(%{
+                   provider_family: provider_family,
+                   operation_class: operation_class,
+                   provider_account_ref: context.provider_account_ref,
+                   credential_handle_ref: context.credential_handle_ref,
+                   operation_policy_ref: context.operation_policy_ref,
+                   current_policy_revision_ref: context.policy_revision_ref,
+                   current_target_grant_revision: context.target_grant_revision,
+                   fence_token: context.fence_token
+                 })
+               )
+    end
+  end
+
   test "standalone contexts and secret material returns cannot satisfy governed redemption" do
     {_install, connection, _credential_ref} = install_codex_connection()
 
@@ -196,45 +339,61 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
   end
 
   defp request_codex_lease(%Connection{} = connection, attrs \\ %{}) do
-    context =
-      Map.merge(
-        %{
-          tenant_id: "tenant-1",
-          actor_id: "runtime-1",
-          required_scopes: ["codex:run"],
-          ttl_seconds: 300,
-          now: ~U[2026-03-09 12:01:00Z],
-          connector_instance_ref: "connector-instance://tenant-1/codex/a",
-          provider_account_ref: "provider-account://codex/redacted",
-          execution_context_ref: "execution-context://tenant-1/codex/run-1",
-          target_ref: "target://sandbox/a",
-          attach_grant_ref: "attach-grant://tenant-1/sandbox/a",
-          operation_policy_ref: "operation-policy://codex/run",
-          execution_context_scope: :governed,
-          authority_ref: "citadel://authority/decision-1",
-          authority_decision_ref: "citadel://authority/decision-1",
-          authority_scope: ["codex:run"],
-          installation_revision: "install-rev-1",
-          max_calls: 3,
-          max_tokens: :unlimited,
-          allowed_models: :any,
-          network_policy: :provider_only
-        },
-        attrs
-      )
+    Auth.request_lease(connection.connection_id, governed_lease_context(attrs))
+  end
 
-    Auth.request_lease(connection.connection_id, context)
+  defp governed_lease_context(attrs \\ %{}) do
+    Map.merge(
+      %{
+        tenant_id: "tenant-1",
+        actor_id: "runtime-1",
+        required_scopes: ["codex:run"],
+        ttl_seconds: 300,
+        now: ~U[2026-03-09 12:01:00Z],
+        authority_mode: :governed,
+        provider_family: "codex",
+        provider_account_ref: "provider-account://codex/redacted",
+        connector_instance_ref: "connector-instance://tenant-1/codex/a",
+        credential_handle_ref: "credential-handle://tenant-1/codex/account-a",
+        operation_class: "cli",
+        execution_context_ref: "execution-context://tenant-1/codex/run-1",
+        target_ref: "target://sandbox/a",
+        attach_grant_ref: "attach-grant://tenant-1/sandbox/a",
+        operation_policy_ref: "operation-policy://codex/run",
+        policy_revision_ref: "policy-revision://tenant-1/codex/1",
+        target_grant_revision: "target-grant-revision://tenant-1/sandbox/1",
+        rotation_epoch: 1,
+        fence_token: "fence://tenant-1/codex/a/1",
+        execution_context_scope: :governed,
+        authority_ref: "citadel://authority/decision-1",
+        authority_decision_ref: "citadel://authority/decision-1",
+        authority_scope: ["codex:run"],
+        installation_revision: "install-rev-1",
+        max_calls: 3,
+        max_tokens: :unlimited,
+        allowed_models: :any,
+        network_policy: :provider_only
+      },
+      attrs
+    )
   end
 
   defp base_redemption_context(attrs) do
     Map.merge(
       %{
         tenant_id: "tenant-1",
+        provider_family: "codex",
         connector_instance_ref: "connector-instance://tenant-1/codex/a",
         provider_account_ref: "provider-account://codex/redacted",
+        credential_handle_ref: "credential-handle://tenant-1/codex/account-a",
+        operation_class: "cli",
         target_ref: "target://sandbox/a",
         attach_grant_ref: "attach-grant://tenant-1/sandbox/a",
         operation_policy_ref: "operation-policy://codex/run",
+        current_policy_revision_ref: "policy-revision://tenant-1/codex/1",
+        current_rotation_epoch: 1,
+        current_target_grant_revision: "target-grant-revision://tenant-1/sandbox/1",
+        fence_token: "fence://tenant-1/codex/a/1",
         requested_model: "gpt-5.4",
         requested_tokens: 100,
         network_target: :provider,

@@ -17,6 +17,35 @@ defmodule Jido.Integration.V2.Auth do
 
   @default_install_ttl_seconds 600
   @default_lease_ttl_seconds 300
+  @governed_provider_families [
+    "amp",
+    "claude",
+    "codex",
+    "gemini",
+    "github",
+    "graphql",
+    "http",
+    "inference",
+    "linear",
+    "notion",
+    "realtime"
+  ]
+  @governed_operation_classes ["cli", "http", "graphql", "realtime", "inference"]
+  @governed_lease_required_fields [
+    :tenant_id,
+    :provider_family,
+    :provider_account_ref,
+    :connector_instance_ref,
+    :credential_handle_ref,
+    :operation_class,
+    :target_ref,
+    :attach_grant_ref,
+    :operation_policy_ref,
+    :policy_revision_ref,
+    :target_grant_revision,
+    :rotation_epoch,
+    :fence_token
+  ]
 
   @type refresh_handler ::
           (Connection.t(), Credential.t() ->
@@ -328,7 +357,9 @@ defmodule Jido.Integration.V2.Auth do
            ),
          {:ok, refreshed_connection, refreshed_credential} <-
            maybe_refresh(connection, credential, now),
-         :ok <- validate_required_scopes(refreshed_connection, context) do
+         :ok <- validate_required_scopes(refreshed_connection, context),
+         :ok <-
+           validate_governed_lease_context(refreshed_connection, refreshed_credential, context) do
       requested_scopes = requested_scopes(refreshed_connection, context)
       payload_keys = payload_keys(refreshed_connection, refreshed_credential, context)
       ttl_seconds = Map.get(context, :ttl_seconds, @default_lease_ttl_seconds)
@@ -361,6 +392,15 @@ defmodule Jido.Integration.V2.Auth do
         {:ok, build_lease(lease_record, lease_connection, refreshed_credential, payload)}
       end
     end
+  end
+
+  @spec request_governed_lease(String.t(), map()) :: {:ok, CredentialLease.t()} | {:error, term()}
+  def request_governed_lease(connection_id, context)
+      when is_binary(connection_id) and is_map(context) do
+    context
+    |> Map.put(:authority_mode, :governed)
+    |> Map.put_new(:execution_context_scope, :governed)
+    |> then(&request_lease(connection_id, &1))
   end
 
   @spec resolve_connection_binding(String.t(), map()) ::
@@ -446,7 +486,7 @@ defmodule Jido.Integration.V2.Auth do
     context = Map.new(context)
     now = now(context)
 
-    with {:ok, lease_record} <- Stores.lease_store().fetch_lease(lease_id),
+    with {:ok, %LeaseRecord{} = lease_record} <- Stores.lease_store().fetch_lease(lease_id),
          :ok <- authorize_context_tenant(lease_record.tenant_id, Map.get(context, :tenant_id)),
          :ok <- ensure_lease_active(lease_record, now),
          {:ok, connection} <-
@@ -469,6 +509,150 @@ defmodule Jido.Integration.V2.Auth do
            ) do
       {:ok, build_lease(lease_record, lease_connection, credential, payload)}
     end
+  end
+
+  @spec redeem_lease(String.t(), map()) :: {:ok, LeaseRedemption.evidence()} | {:error, term()}
+  def redeem_lease(lease_id, context) when is_binary(lease_id) and is_map(context) do
+    with {:ok, lease} <- fetch_lease(lease_id, context) do
+      LeaseRedemption.authorize(lease, context)
+    end
+  end
+
+  @spec renew_lease(String.t(), map()) :: {:ok, CredentialLease.t()} | {:error, term()}
+  def renew_lease(lease_id, attrs) when is_binary(lease_id) and is_map(attrs) do
+    attrs = Map.new(attrs)
+    now = now(attrs)
+
+    with {:ok, %LeaseRecord{} = lease_record} <- Stores.lease_store().fetch_lease(lease_id),
+         :ok <- authorize_context_tenant(lease_record.tenant_id, Map.get(attrs, :tenant_id)),
+         :ok <- ensure_lease_active(lease_record, now) do
+      context =
+        lease_record.metadata
+        |> Map.merge(%{
+          tenant_id: lease_record.tenant_id,
+          required_scopes: lease_record.scopes,
+          payload_keys: lease_record.payload_keys,
+          ttl_seconds: Map.get(attrs, :ttl_seconds, @default_lease_ttl_seconds),
+          now: now,
+          renewed_from_lease_id: lease_record.lease_id
+        })
+        |> Map.merge(attrs)
+
+      request_lease(lease_record.connection_id, context)
+    end
+  end
+
+  @spec revoke_lease(String.t(), map()) :: {:ok, map()} | {:error, term()}
+  def revoke_lease(lease_id, attrs) when is_binary(lease_id) and is_map(attrs) do
+    attrs = Map.new(attrs)
+    now = now(attrs)
+
+    with {:ok, %LeaseRecord{} = lease_record} <- Stores.lease_store().fetch_lease(lease_id),
+         revocation_ref when is_binary(revocation_ref) and revocation_ref != "" <-
+           Map.get(attrs, :revocation_ref) || {:error, :revocation_ref_required} do
+      revoked_record = %LeaseRecord{
+        lease_record
+        | revoked_at: now,
+          metadata:
+            lease_record.metadata
+            |> Map.merge(%{
+              status: :revoked,
+              revocation_ref: revocation_ref,
+              revoked_at: now,
+              revoked_by: Map.get(attrs, :actor_id)
+            })
+            |> drop_empty_values()
+      }
+
+      :ok = Stores.lease_store().store_lease(revoked_record)
+
+      {:ok,
+       lease_record_event("provider_auth.lease.revoked", revoked_record)
+       |> Map.put(:revocation_ref, revocation_ref)
+       |> Map.put(:status, :revoked)}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @spec cleanup_lease(String.t(), map()) :: {:ok, map()} | {:error, term()}
+  def cleanup_lease(lease_id, attrs) when is_binary(lease_id) and is_map(attrs) do
+    attrs = Map.new(attrs)
+    now = now(attrs)
+
+    with {:ok, %LeaseRecord{} = lease_record} <- Stores.lease_store().fetch_lease(lease_id),
+         cleanup_ref when is_binary(cleanup_ref) and cleanup_ref != "" <-
+           Map.get(attrs, :cleanup_ref) || {:error, :cleanup_ref_required},
+         :ok <- ensure_cleanup_allowed(lease_record, now) do
+      cleaned_record = %LeaseRecord{
+        lease_record
+        | metadata:
+            lease_record.metadata
+            |> Map.merge(%{
+              status: :cleaned,
+              cleanup_ref: cleanup_ref,
+              cleaned_at: now
+            })
+            |> drop_empty_values()
+      }
+
+      :ok = Stores.lease_store().store_lease(cleaned_record)
+
+      {:ok,
+       lease_record_event("provider_auth.lease.cleaned", cleaned_record)
+       |> Map.put(:cleanup_ref, cleanup_ref)
+       |> Map.put(:status, :cleaned)}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @spec lease_audit_event(String.t(), CredentialLease.t()) :: {:ok, map()} | {:error, term()}
+  def lease_audit_event(event_name, %CredentialLease{} = lease)
+      when is_binary(event_name) and event_name != "" do
+    {:ok,
+     %{
+       event: event_name,
+       lease_id: lease.lease_id,
+       tenant_id: lease.tenant_id,
+       credential_ref_id: lease.credential_ref_id,
+       credential_id: lease.credential_id,
+       connection_id: lease.connection_id,
+       provider_family: metadata_value(lease.metadata, :provider_family, nil),
+       provider_account_ref: metadata_value(lease.metadata, :provider_account_ref, nil),
+       credential_handle_ref: metadata_value(lease.metadata, :credential_handle_ref, nil),
+       operation_class: metadata_value(lease.metadata, :operation_class, nil),
+       target_ref: metadata_value(lease.metadata, :target_ref, nil),
+       attach_grant_ref: metadata_value(lease.metadata, :attach_grant_ref, nil),
+       operation_policy_ref: metadata_value(lease.metadata, :operation_policy_ref, nil),
+       redacted: true
+     }
+     |> drop_empty_values()}
+  end
+
+  @spec lease_fence_event(CredentialLease.t()) :: {:ok, map()} | {:error, term()}
+  def lease_fence_event(%CredentialLease{} = lease) do
+    {:ok,
+     %{
+       event: "provider_auth.lease.fenced",
+       lease_id: lease.lease_id,
+       tenant_id: lease.tenant_id,
+       credential_ref_id: lease.credential_ref_id,
+       connection_id: lease.connection_id,
+       provider_family: metadata_value(lease.metadata, :provider_family, nil),
+       provider_account_ref: metadata_value(lease.metadata, :provider_account_ref, nil),
+       credential_handle_ref: metadata_value(lease.metadata, :credential_handle_ref, nil),
+       operation_class: metadata_value(lease.metadata, :operation_class, nil),
+       target_ref: metadata_value(lease.metadata, :target_ref, nil),
+       attach_grant_ref: metadata_value(lease.metadata, :attach_grant_ref, nil),
+       operation_policy_ref: metadata_value(lease.metadata, :operation_policy_ref, nil),
+       policy_revision_ref: metadata_value(lease.metadata, :policy_revision_ref, nil),
+       target_grant_revision: metadata_value(lease.metadata, :target_grant_revision, nil),
+       rotation_epoch: metadata_value(lease.metadata, :rotation_epoch, nil),
+       fence_token: metadata_value(lease.metadata, :fence_token, nil),
+       redacted: true
+     }
+     |> drop_empty_values()}
   end
 
   @spec resolve(CredentialRef.t(), map()) ::
@@ -890,11 +1074,89 @@ defmodule Jido.Integration.V2.Auth do
     %{
       actor_id: Map.get(context, :actor_id),
       connection_id: connection.connection_id,
-      connector_id: connection.connector_id
+      connector_id: connection.connector_id,
+      status: :issued,
+      renewed_from_lease_id: Map.get(context, :renewed_from_lease_id)
     }
     |> Map.merge(LeaseRedemption.redacted_metadata(context))
     |> Enum.reject(fn {_key, value} -> value in [nil, [], %{}] end)
     |> Map.new()
+  end
+
+  defp validate_governed_lease_context(%Connection{} = connection, %Credential{}, context) do
+    if governed_context?(context) do
+      with :ok <- require_governed_lease_fields(context),
+           :ok <- validate_governed_provider_family(context),
+           :ok <- validate_governed_operation_class(context),
+           :ok <- validate_governed_rotation_epoch(context),
+           :ok <- authorize_context_tenant(connection.tenant_id, Map.get(context, :tenant_id)) do
+        :ok
+      end
+    else
+      :ok
+    end
+  end
+
+  defp governed_context?(context) do
+    Map.get(context, :authority_mode) in [:governed, "governed"] or
+      Map.get(context, :execution_context_scope) in [:governed, "governed"]
+  end
+
+  defp require_governed_lease_fields(context) do
+    missing =
+      Enum.reject(@governed_lease_required_fields, fn field ->
+        present?(Map.get(context, field, Map.get(context, Atom.to_string(field))))
+      end)
+
+    case missing do
+      [] -> :ok
+      fields -> {:error, {:missing_governed_lease_fields, fields}}
+    end
+  end
+
+  defp validate_governed_provider_family(context) do
+    case Map.get(context, :provider_family) do
+      family when family in @governed_provider_families -> :ok
+      family -> {:error, {:unsupported_provider_family, family}}
+    end
+  end
+
+  defp validate_governed_operation_class(context) do
+    case Map.get(context, :operation_class) do
+      operation_class when operation_class in @governed_operation_classes -> :ok
+      operation_class -> {:error, {:unsupported_operation_class, operation_class}}
+    end
+  end
+
+  defp validate_governed_rotation_epoch(context) do
+    case Map.get(context, :rotation_epoch) do
+      epoch when is_integer(epoch) and epoch >= 0 -> :ok
+      epoch -> {:error, {:invalid_rotation_epoch, epoch}}
+    end
+  end
+
+  defp ensure_cleanup_allowed(%LeaseRecord{} = lease_record, now) do
+    case ensure_lease_active(lease_record, now) do
+      :ok -> {:error, :active_lease_cleanup_rejected}
+      {:error, :expired_lease} -> :ok
+    end
+  end
+
+  defp lease_record_event(event_name, %LeaseRecord{} = lease_record) do
+    %{
+      event: event_name,
+      lease_id: lease_record.lease_id,
+      tenant_id: lease_record.tenant_id,
+      credential_ref_id: lease_record.credential_ref_id,
+      credential_id: lease_record.credential_id,
+      connection_id: lease_record.connection_id,
+      provider_family: metadata_value(lease_record.metadata, :provider_family, nil),
+      provider_account_ref: metadata_value(lease_record.metadata, :provider_account_ref, nil),
+      credential_handle_ref: metadata_value(lease_record.metadata, :credential_handle_ref, nil),
+      operation_class: metadata_value(lease_record.metadata, :operation_class, nil),
+      redacted: true
+    }
+    |> drop_empty_values()
   end
 
   defp requested_scopes(%Connection{}, %{required_scopes: required_scopes})
@@ -1676,6 +1938,16 @@ defmodule Jido.Integration.V2.Auth do
   defp drop_nil_values(map) when is_map(map) do
     Map.reject(map, fn {_key, value} -> is_nil(value) end)
   end
+
+  defp drop_empty_values(map) when is_map(map) do
+    Map.reject(map, fn {_key, value} -> value in [nil, [], %{}] end)
+  end
+
+  defp present?(nil), do: false
+  defp present?(""), do: false
+  defp present?([]), do: false
+  defp present?(%{}), do: false
+  defp present?(_value), do: true
 
   defp reset_store(module) do
     if function_exported?(module, :reset!, 0) do

@@ -13,15 +13,24 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
           :authority_scope_widening
           | :attach_grant_mismatch
           | :connector_mismatch
+          | :credential_handle_mismatch
           | :expired_lease
+          | :fence_token_mismatch
           | :max_calls_exceeded
           | :max_tokens_exceeded
           | :model_not_allowed
           | :network_policy_mismatch
+          | :operation_class_mismatch
           | :operation_policy_mismatch
+          | :provider_family_mismatch
           | :provider_account_mismatch
+          | :revoked_lease
+          | :rotated_lease
+          | :rotation_epoch_mismatch
           | :secret_material_return_forbidden
+          | :stale_policy_revision
           | :stale_installation_revision
+          | :stale_target_grant
           | :standalone_context_cannot_govern
           | :target_mismatch
           | :tenant_mismatch
@@ -31,8 +40,11 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
           required(:tenant_id) => String.t(),
           required(:credential_ref_id) => String.t(),
           required(:connection_id) => String.t() | nil,
+          required(:provider_family) => String.t() | nil,
           required(:connector_instance_ref) => String.t() | nil,
           required(:provider_account_ref) => String.t() | nil,
+          required(:credential_handle_ref) => String.t() | nil,
+          required(:operation_class) => String.t() | nil,
           required(:execution_context_ref) => String.t() | nil,
           required(:authority_ref) => String.t() | nil,
           required(:redacted) => true
@@ -44,10 +56,12 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
     context = Map.new(context)
 
     with :ok <- reject_secret_material_return(context),
+         :ok <- ensure_not_revoked_or_rotated(lease),
          :ok <- ensure_unexpired(lease, context),
          :ok <- ensure_tenant(lease, context),
          :ok <- ensure_context_not_elevated(lease, context),
          :ok <- ensure_authority_not_widened(lease, context),
+         :ok <- ensure_metadata_match(lease, context, :provider_family, :provider_family_mismatch),
          :ok <-
            ensure_metadata_match(lease, context, :connector_instance_ref, :connector_mismatch),
          :ok <-
@@ -57,6 +71,14 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
              :provider_account_ref,
              :provider_account_mismatch
            ),
+         :ok <-
+           ensure_metadata_match(
+             lease,
+             context,
+             :credential_handle_ref,
+             :credential_handle_mismatch
+           ),
+         :ok <- ensure_metadata_match(lease, context, :operation_class, :operation_class_mismatch),
          :ok <- ensure_metadata_match(lease, context, :target_ref, :target_mismatch),
          :ok <- ensure_metadata_match(lease, context, :attach_grant_ref, :attach_grant_mismatch),
          :ok <-
@@ -66,6 +88,31 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
              :operation_policy_ref,
              :operation_policy_mismatch
            ),
+         :ok <-
+           ensure_metadata_context_match(
+             lease,
+             context,
+             :policy_revision_ref,
+             :current_policy_revision_ref,
+             :stale_policy_revision
+           ),
+         :ok <-
+           ensure_metadata_context_match(
+             lease,
+             context,
+             :target_grant_revision,
+             :current_target_grant_revision,
+             :stale_target_grant
+           ),
+         :ok <-
+           ensure_metadata_context_match(
+             lease,
+             context,
+             :rotation_epoch,
+             :current_rotation_epoch,
+             :rotation_epoch_mismatch
+           ),
+         :ok <- ensure_metadata_match(lease, context, :fence_token, :fence_token_mismatch),
          :ok <- ensure_installation_revision(lease, context),
          :ok <- ensure_max_calls(lease, context),
          :ok <- ensure_max_tokens(lease, context),
@@ -94,11 +141,18 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
 
     %{
       connector_instance_ref: optional_string(context, :connector_instance_ref),
+      provider_family: optional_string(context, :provider_family),
       provider_account_ref: optional_string(context, :provider_account_ref),
+      credential_handle_ref: optional_string(context, :credential_handle_ref),
+      operation_class: optional_string(context, :operation_class),
       execution_context_ref: optional_string(context, :execution_context_ref),
       target_ref: optional_string(context, :target_ref),
       attach_grant_ref: optional_string(context, :attach_grant_ref),
       operation_policy_ref: optional_string(context, :operation_policy_ref),
+      policy_revision_ref: optional_string(context, :policy_revision_ref),
+      target_grant_revision: optional_string(context, :target_grant_revision),
+      rotation_epoch: optional_scalar(context, :rotation_epoch),
+      fence_token: optional_string(context, :fence_token),
       execution_context_scope: map_value(context, :execution_context_scope),
       authority_ref: optional_string(context, :authority_ref),
       authority_decision_ref: optional_string(context, :authority_decision_ref),
@@ -115,6 +169,14 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
       {:error, :secret_material_return_forbidden}
     else
       :ok
+    end
+  end
+
+  defp ensure_not_revoked_or_rotated(lease) do
+    case metadata_value(lease, :status) do
+      status when status in [:revoked, "revoked"] -> {:error, :revoked_lease}
+      status when status in [:rotated, "rotated"] -> {:error, :rotated_lease}
+      _other -> :ok
     end
   end
 
@@ -165,6 +227,18 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
     cond do
       is_nil(expected) or is_nil(actual) -> :ok
       expected == actual -> :ok
+      true -> {:error, reason}
+    end
+  end
+
+  defp ensure_metadata_context_match(lease, context, metadata_key, context_key, reason) do
+    expected = metadata_value(lease, metadata_key)
+    actual = map_value(context, context_key, map_value(context, metadata_key))
+
+    cond do
+      is_nil(expected) or is_nil(actual) -> :ok
+      expected == actual -> :ok
+      to_string(expected) == to_string(actual) -> :ok
       true -> {:error, reason}
     end
   end
@@ -268,12 +342,19 @@ defmodule Jido.Integration.V2.Auth.LeaseRedemption do
       tenant_id: lease.tenant_id,
       credential_ref_id: lease.credential_ref_id,
       connection_id: lease.connection_id,
+      provider_family: optional_metadata_string(lease, :provider_family),
       connector_instance_ref: optional_metadata_string(lease, :connector_instance_ref),
       provider_account_ref: optional_metadata_string(lease, :provider_account_ref),
+      credential_handle_ref: optional_metadata_string(lease, :credential_handle_ref),
+      operation_class: optional_metadata_string(lease, :operation_class),
       execution_context_ref: optional_metadata_string(lease, :execution_context_ref),
       target_ref: optional_metadata_string(lease, :target_ref),
       attach_grant_ref: optional_metadata_string(lease, :attach_grant_ref),
       operation_policy_ref: optional_metadata_string(lease, :operation_policy_ref),
+      policy_revision_ref: optional_metadata_string(lease, :policy_revision_ref),
+      target_grant_revision: optional_metadata_string(lease, :target_grant_revision),
+      rotation_epoch: metadata_value(lease, :rotation_epoch),
+      fence_token: optional_metadata_string(lease, :fence_token),
       authority_ref: optional_metadata_string(lease, :authority_ref),
       redacted: true
     }
