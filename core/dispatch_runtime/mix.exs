@@ -33,7 +33,7 @@ defmodule Jido.Integration.V2.DispatchRuntime.MixProject do
       DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_control_plane(),
       {:zoi, "~> 0.17"},
-      {:telemetry, "~> 1.0"},
+      {:telemetry, "~> 1.4"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

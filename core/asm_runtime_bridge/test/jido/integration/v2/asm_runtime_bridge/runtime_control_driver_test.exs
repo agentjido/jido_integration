@@ -695,7 +695,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
       connector_binding_ref: "jido-connector-binding://phase10/codex-1",
       connector_id: "codex-cli-phase10",
       provider_account_ref: "provider-account://codex/phase10/redacted",
-      provider_account_status: :known_redacted_ref,
+      provider_account_status: :known,
       authority_ref: "citadel-authority://phase10/decision-1",
       authority_decision_ref: "citadel-authority-decision://phase10/decision-1",
       credential_lease_ref: "jido-credential-lease://phase10/lease-1",
@@ -703,6 +703,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
       tenant_ref: "tenant://phase10",
       installation_ref: "installation://phase10",
       target_ref: "target://phase10/local",
+      operation_policy_ref: "operation-policy://phase10/codex/session-turn",
       workspace_root: "workspace://phase10/opaque",
       approval_posture: :manual,
       allowed_tools: ["codex.session.turn"]

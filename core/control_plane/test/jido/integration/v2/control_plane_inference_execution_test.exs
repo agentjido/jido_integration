@@ -11,6 +11,17 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceRequest
 
+  @control_plane_store_keys [
+    :run_store,
+    :attempt_store,
+    :event_store,
+    :artifact_store,
+    :claim_check_store,
+    :target_store,
+    :ingress_store,
+    :profile_registry_store
+  ]
+
   @socket_capable? (case :gen_tcp.listen(0, [
                            :binary,
                            packet: :raw,
@@ -341,6 +352,8 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   setup do
     Application.ensure_all_started(:inets)
     Application.ensure_all_started(:ssl)
+    previous_store_env = snapshot_control_plane_store_env()
+    reset_control_plane_store_env()
     ControlPlane.reset!()
     original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
 
@@ -355,6 +368,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
 
     on_exit(fn ->
       FakeSelfHostedEndpointProvider.cleanup!()
+      restore_control_plane_store_env(previous_store_env)
 
       if is_nil(original_asm_endpoint) do
         Application.delete_env(:agent_session_manager, ASM.InferenceEndpoint)
@@ -804,4 +818,23 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   end
 
   defp sha256_ref?(_value), do: false
+
+  defp snapshot_control_plane_store_env do
+    Map.new(@control_plane_store_keys, fn key ->
+      {key, Application.fetch_env(:jido_integration_v2_control_plane, key)}
+    end)
+  end
+
+  defp reset_control_plane_store_env do
+    Enum.each(@control_plane_store_keys, fn key ->
+      Application.delete_env(:jido_integration_v2_control_plane, key)
+    end)
+  end
+
+  defp restore_control_plane_store_env(previous_env) do
+    Enum.each(previous_env, fn
+      {key, {:ok, value}} -> Application.put_env(:jido_integration_v2_control_plane, key, value)
+      {key, :error} -> Application.delete_env(:jido_integration_v2_control_plane, key)
+    end)
+  end
 end

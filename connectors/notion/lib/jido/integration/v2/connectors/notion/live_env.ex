@@ -38,8 +38,15 @@ defmodule Jido.Integration.V2.Connectors.Notion.LiveEnv do
   @spec env_names() :: map()
   def env_names, do: @env_names
 
+  @spec spec() :: map()
+  def spec do
+    :jido_integration_v2_notion
+    |> Application.get_env(:live_env, %{})
+    |> spec()
+  end
+
   @spec spec(map()) :: map()
-  def spec(env \\ System.get_env()) when is_map(env) do
+  def spec(env) when is_map(env) do
     live_enabled? = enabled?(Map.get(env, @env_names.live))
 
     %{
@@ -73,8 +80,10 @@ defmodule Jido.Integration.V2.Connectors.Notion.LiveEnv do
     }
   end
 
+  @spec validate(mode()) :: :ok | {:error, [String.t()]}
+  def validate(mode), do: validate(mode, Application.get_env(:jido_integration_v2_notion, :live_env, %{}))
+
   @spec validate(mode(), map()) :: :ok | {:error, [String.t()]}
-  def validate(mode, env \\ System.get_env())
 
   def validate(mode, env) when mode in [:auth, :read, :write] and is_map(env) do
     env

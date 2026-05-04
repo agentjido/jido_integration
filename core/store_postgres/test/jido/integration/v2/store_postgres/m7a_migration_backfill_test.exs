@@ -6,10 +6,12 @@ defmodule Jido.Integration.V2.StorePostgres.M7AMigrationBackfillTest do
 
   @deployment_uuid "5c91c53b-4c41-4e49-9d78-5d8bc9f1e7a1"
   @migration_start_ns 1_776_999_600_000_000_000
-  @migration_path Path.expand(
-                    "../../../../../priv/repo/migrations/20260423190000_add_m7a_node_ordering_to_memory_foundation.exs",
-                    __DIR__
-                  )
+  @migration_file "20260423190000_add_m7a_node_ordering_to_memory_foundation.exs"
+  @migration_paths [
+    Path.expand("../../../../../priv/repo/migrations/#{@migration_file}", __DIR__),
+    Path.expand("../../../../../../priv/repo/migrations/#{@migration_file}", __DIR__)
+  ]
+  @migration_path Enum.find(@migration_paths, &File.exists?/1) || List.first(@migration_paths)
 
   test "registers a synthetic migration node identity" do
     assert %NodeIdentity{} =

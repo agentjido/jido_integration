@@ -8,20 +8,15 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
   credential scope, replay metadata, and review projection.
   """
 
-  @behaviour Inference.Adapter
-
-  alias Inference.{Client, Error, Request, Response, StreamEvent}
   alias Jido.Integration.V2.ControlPlane.Inference, as: GovernedInference
   alias Jido.Integration.V2.InferenceRequest
 
-  @impl true
-  def complete(%Client{} = client, %Request{} = request) do
+  def complete(client, request) do
     invoke(client, request, :generate_text)
     |> response_from_invocation(client, request)
   end
 
-  @impl true
-  def stream(%Client{} = client, %Request{} = request) do
+  def stream(client, request) do
     case invoke(client, request, :stream_text) do
       {:ok, result} ->
         {:ok,
@@ -34,18 +29,18 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     end
   end
 
-  defp invoke(%Client{} = client, %Request{} = request, operation) do
+  defp invoke(client, request, operation) do
     with {:ok, governed_request} <- governed_request(client, request, operation) do
-      invoke_fun = Keyword.get(client.adapter_opts, :invoke_fun, &GovernedInference.invoke/2)
+      invoke_fun = Keyword.get(adapter_opts(client), :invoke_fun, &GovernedInference.invoke/2)
       invoke_fun.(governed_request, invoke_opts(client, request))
     end
   rescue
-    exception -> {:error, Error.adapter_exception(exception, adapter: __MODULE__)}
+    exception -> {:error, adapter_exception(exception)}
   end
 
-  defp governed_request(%Client{} = client, %Request{} = request, operation) do
+  defp governed_request(client, request, operation) do
     InferenceRequest.new(
-      request_id: request.id || generated_request_id(),
+      request_id: field(request, :id) || generated_request_id(),
       operation: operation,
       messages: messages(request),
       prompt: prompt(client, request),
@@ -58,35 +53,38 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     )
   end
 
-  defp messages(%Request{messages: messages}) do
+  defp messages(request) do
+    messages = field(request, :messages) || []
+
     Enum.map(messages, fn message ->
       %{
-        role: Atom.to_string(message.role),
-        content: message.content
+        role: message |> field(:role) |> to_string(),
+        content: field(message, :content)
       }
-      |> maybe_put(:name, message.name)
-      |> maybe_put(:metadata, empty_to_nil(message.metadata))
+      |> maybe_put(:name, field(message, :name))
+      |> maybe_put(:metadata, message |> field(:metadata) |> empty_to_nil())
     end)
   end
 
-  defp prompt(%Client{} = client, %Request{} = request) do
+  defp prompt(client, request) do
     case option_value(client, request, :prompt) do
       prompt when is_binary(prompt) and prompt != "" -> prompt
       _other -> nil
     end
   end
 
-  defp model_preference(%Client{} = client, %Request{} = request) do
+  defp model_preference(client, request) do
     client
     |> option_map(request, :model_preference, %{})
-    |> Map.put_new(:provider, client.provider)
-    |> Map.put_new(:id, request.model || client.model)
+    |> Map.put_new(:provider, field(client, :provider))
+    |> Map.put_new(:id, field(request, :model) || field(client, :model))
     |> reject_nil_values()
   end
 
-  defp target_preference(%Client{} = client, %Request{} = request) do
+  defp target_preference(client, request) do
     client_target_preference =
-      client.adapter_opts
+      client
+      |> adapter_opts()
       |> Keyword.get(:target_preference, %{})
       |> map_or_empty()
 
@@ -95,7 +93,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     Map.merge(client_target_preference, request_target_preference)
   end
 
-  defp tool_policy(%Client{} = client, %Request{} = request) do
+  defp tool_policy(client, request) do
     request_options = request_options(client, request)
 
     client
@@ -104,7 +102,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     |> maybe_put(:tool_choice, Keyword.get(request_options, :tool_choice))
   end
 
-  defp output_constraints(%Client{} = client, %Request{} = request) do
+  defp output_constraints(client, request) do
     request_options = request_options(client, request)
 
     request_options
@@ -113,23 +111,26 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     |> maybe_put(:presence_penalty, Keyword.get(request_options, :presence_penalty))
     |> maybe_put(:provider_options, option_map(request_options, :provider_options, nil))
     |> maybe_put(:system_prompt, Keyword.get(request_options, :system_prompt))
-    |> maybe_put(:temperature, request.temperature)
-    |> maybe_put(:top_p, request.top_p)
-    |> maybe_put(:max_tokens, request.max_tokens)
-    |> maybe_put(:response_format, request.response_format)
+    |> maybe_put(:temperature, field(request, :temperature))
+    |> maybe_put(:top_p, field(request, :top_p))
+    |> maybe_put(:max_tokens, field(request, :max_tokens))
+    |> maybe_put(:response_format, field(request, :response_format))
   end
 
-  defp metadata(%Client{} = client, %Request{} = request) do
-    client.metadata
-    |> Map.merge(request.metadata)
-    |> maybe_put(:trace_context, request.trace_context)
-    |> maybe_put(:session, request.session)
+  defp metadata(client, request) do
+    client
+    |> field(:metadata)
+    |> map_or_empty()
+    |> Map.merge(request |> field(:metadata) |> map_or_empty())
+    |> maybe_put(:trace_context, field(request, :trace_context))
+    |> maybe_put(:session, field(request, :session))
   end
 
-  defp invoke_opts(%Client{} = client, %Request{} = request) do
+  defp invoke_opts(client, request) do
     request_options = request_options(client, request)
 
-    client.adapter_opts
+    client
+    |> adapter_opts()
     |> Keyword.get(:invoke_opts, [])
     |> Keyword.merge(Keyword.get(request_options, :invoke_opts, []))
     |> maybe_put(:trace_id, trace_value(request, :trace_id))
@@ -147,11 +148,11 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     |> maybe_put(:req_http_options, Keyword.get(request_options, :req_http_options))
   end
 
-  defp response_from_invocation({:ok, result}, %Client{} = client, %Request{} = request) do
+  defp response_from_invocation({:ok, result}, client, request) do
     {:ok,
-     Response.new(
-       provider: client.provider,
-       model: request.model || client.model,
+     response_new(
+       provider: field(client, :provider),
+       model: field(request, :model) || field(client, :model),
        text: response_text(result),
        usage: result_field(result, [:inference_result, :usage]),
        cost: result_cost(result),
@@ -165,10 +166,10 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
     {:error, normalize_error(reason)}
   end
 
-  defp response_metadata(result, %Client{} = client, %Request{} = request) do
+  defp response_metadata(result, client, request) do
     %{}
-    |> Map.merge(client.metadata)
-    |> Map.merge(request.metadata)
+    |> Map.merge(client |> field(:metadata) |> map_or_empty())
+    |> Map.merge(request |> field(:metadata) |> map_or_empty())
     |> maybe_put(:run_id, result_field(result, [:inference_result, :run_id]))
     |> maybe_put(:attempt_id, result_field(result, [:inference_result, :attempt_id]))
     |> maybe_put(:status, result_field(result, [:inference_result, :status]))
@@ -192,22 +193,52 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
       result_field(result, [:inference_result, :usage, :total_cost])
   end
 
-  defp stream_events(""), do: [%StreamEvent{type: :done, data: nil}]
+  defp stream_events(""), do: [stream_event(:done, nil)]
 
   defp stream_events(text) do
     [
-      %StreamEvent{type: :delta, data: text},
-      %StreamEvent{type: :done, data: nil}
+      stream_event(:delta, text),
+      stream_event(:done, nil)
     ]
   end
 
-  defp normalize_error(%Error{} = error), do: error
-
-  defp normalize_error(reason) do
-    Error.provider_error(reason, adapter: __MODULE__)
+  defp stream_event(type, data) do
+    if Code.ensure_loaded?(Inference.StreamEvent) do
+      struct(Inference.StreamEvent, type: type, data: data)
+    else
+      %{type: type, data: data}
+    end
   end
 
-  defp option_map(%Client{} = client, %Request{} = request, key, default),
+  defp response_new(attrs) do
+    if Code.ensure_loaded?(Inference.Response) and function_exported?(Inference.Response, :new, 1) do
+      apply(Inference.Response, :new, [attrs])
+    else
+      Map.new(attrs)
+    end
+  end
+
+  defp normalize_error(%{__struct__: Inference.Error} = error), do: error
+
+  defp normalize_error(reason) do
+    if Code.ensure_loaded?(Inference.Error) and
+         function_exported?(Inference.Error, :provider_error, 2) do
+      apply(Inference.Error, :provider_error, [reason, [adapter: __MODULE__]])
+    else
+      reason
+    end
+  end
+
+  defp adapter_exception(exception) do
+    if Code.ensure_loaded?(Inference.Error) and
+         function_exported?(Inference.Error, :adapter_exception, 2) do
+      apply(Inference.Error, :adapter_exception, [exception, [adapter: __MODULE__]])
+    else
+      exception
+    end
+  end
+
+  defp option_map(client, request, key, default),
     do: option_map(request_options(client, request), key, default)
 
   defp option_map(options, key, default) when is_list(options) do
@@ -224,15 +255,26 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
   defp map_or_empty(value) when is_list(value), do: Map.new(value)
   defp map_or_empty(_value), do: %{}
 
-  defp request_options(%Client{} = client, %Request{} = request) do
-    Keyword.merge(client.defaults, request.options)
+  defp request_options(client, request) do
+    Keyword.merge(defaults(client), field(request, :options) || [])
   end
 
-  defp trace_value(%Request{trace_context: trace_context}, key) when is_map(trace_context) do
-    trace_context[key] || trace_context[to_string(key)]
+  defp trace_value(request, key) do
+    trace_context = field(request, :trace_context)
+
+    if is_map(trace_context) do
+      trace_context[key] || trace_context[to_string(key)]
+    end
   end
 
-  defp trace_value(_request, _key), do: nil
+  defp adapter_opts(client), do: field(client, :adapter_opts) || []
+  defp defaults(client), do: field(client, :defaults) || []
+
+  defp option_value(client, request, key) do
+    client
+    |> request_options(request)
+    |> Keyword.get(key)
+  end
 
   defp result_field(result, path) do
     Enum.reduce_while(path, result, fn key, acc ->
@@ -255,16 +297,11 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.Adapter do
 
   defp field(_value, _key), do: nil
 
-  defp option_value(%Client{} = client, %Request{} = request, key) do
-    client
-    |> request_options(request)
-    |> Keyword.get(key)
-  end
-
   defp generated_request_id do
     "req-inference-" <> Integer.to_string(System.unique_integer([:positive]))
   end
 
+  defp empty_to_nil(nil), do: nil
   defp empty_to_nil(map) when map == %{}, do: nil
   defp empty_to_nil(map), do: map
 

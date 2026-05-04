@@ -10,7 +10,9 @@ defmodule Jido.Integration.Build.WeldContract do
     "core/runtime_control",
     "core/runtime_router",
     "core/asm_runtime_bridge",
-    "core/session_runtime"
+    "core/session_runtime",
+    "core/connector_registry",
+    "core/provider_feature_matrix"
   ]
 
   @source_only_monolith_test_support_projects [
@@ -28,6 +30,7 @@ defmodule Jido.Integration.Build.WeldContract do
     "connectors/linear",
     "connectors/notion",
     "core/auth",
+    "core/connector_registry",
     "core/consumer_surfaces",
     "core/contracts",
     "core/control_plane",
@@ -36,6 +39,7 @@ defmodule Jido.Integration.Build.WeldContract do
     "core/ingress",
     "core/platform",
     "core/policy",
+    "core/provider_feature_matrix",
     "core/store_local",
     "core/store_postgres",
     "core/webhook_router"
@@ -58,10 +62,25 @@ defmodule Jido.Integration.Build.WeldContract do
 
   @dependencies [
     agent_session_manager: [requirement: "~> 0.9.2"],
+    execution_plane: [
+      opts: [
+        github: "nshkrdotcom/execution_plane",
+        branch: "main",
+        subdir: "core/execution_plane"
+      ]
+    ],
     github_ex: [requirement: "~> 0.1.1"],
+    inference: [
+      opts: [
+        github: "nshkrdotcom/inference",
+        branch: "main",
+        subdir: "apps/inference"
+      ]
+    ],
     linear_sdk: [requirement: "~> 0.2.0"],
     notion_sdk: [requirement: "~> 0.2.1"],
-    req_llm: [requirement: "~> 1.9"]
+    req_llm: [requirement: "~> 1.9"],
+    telemetry: [requirement: "~> 1.4"]
   ]
 
   def manifest do

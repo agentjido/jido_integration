@@ -617,13 +617,21 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
 
   defp allowed_asm_session_option_keys(provider) do
     (@asm_session_option_keys ++
-       RuntimeAuth.option_keys() ++ allowed_provider_option_keys(provider))
+       runtime_auth_option_keys() ++ allowed_provider_option_keys(provider))
     |> Enum.uniq()
   end
 
   defp allowed_asm_run_option_keys(provider) do
-    (@asm_run_option_keys ++ RuntimeAuth.option_keys() ++ allowed_provider_option_keys(provider))
+    (@asm_run_option_keys ++ runtime_auth_option_keys() ++ allowed_provider_option_keys(provider))
     |> Enum.uniq()
+  end
+
+  defp runtime_auth_option_keys do
+    if Code.ensure_loaded?(RuntimeAuth) and function_exported?(RuntimeAuth, :option_keys, 0) do
+      apply(RuntimeAuth, :option_keys, [])
+    else
+      []
+    end
   end
 
   defp allowed_provider_option_keys(provider) do

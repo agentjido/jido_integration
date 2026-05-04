@@ -31,7 +31,25 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
   alias Jido.Integration.V2.InferenceResult
   alias Jido.Integration.V2.LeaseRef
 
+  @control_plane_store_keys [
+    :run_store,
+    :attempt_store,
+    :event_store,
+    :artifact_store,
+    :claim_check_store,
+    :target_store,
+    :ingress_store,
+    :profile_registry_store
+  ]
+
   setup do
+    previous_store_env = snapshot_control_plane_store_env()
+    reset_control_plane_store_env()
+
+    on_exit(fn ->
+      restore_control_plane_store_env(previous_store_env)
+    end)
+
     ControlPlane.reset!()
     :ok
   end
@@ -718,6 +736,25 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
 
   def handle_claim_check_telemetry(event, measurements, metadata, pid) do
     send(pid, {:claim_check_telemetry, event, measurements, metadata})
+  end
+
+  defp snapshot_control_plane_store_env do
+    Map.new(@control_plane_store_keys, fn key ->
+      {key, Application.fetch_env(:jido_integration_v2_control_plane, key)}
+    end)
+  end
+
+  defp reset_control_plane_store_env do
+    Enum.each(@control_plane_store_keys, fn key ->
+      Application.delete_env(:jido_integration_v2_control_plane, key)
+    end)
+  end
+
+  defp restore_control_plane_store_env(previous_env) do
+    Enum.each(previous_env, fn
+      {key, {:ok, value}} -> Application.put_env(:jido_integration_v2_control_plane, key, value)
+      {key, :error} -> Application.delete_env(:jido_integration_v2_control_plane, key)
+    end)
   end
 
   defp assert_claim_check_events(event_key, expected_count, assertion_fun) do

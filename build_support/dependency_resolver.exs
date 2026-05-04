@@ -19,6 +19,17 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_conformance(opts \\ []),
     do: resolve_internal(:jido_integration_v2_conformance, "core/conformance", opts)
 
+  def jido_integration_v2_connector_registry(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_connector_registry, "core/connector_registry", opts)
+
+  def jido_integration_v2_provider_feature_matrix(opts \\ []),
+    do:
+      resolve_internal(
+        :jido_integration_v2_provider_feature_matrix,
+        "core/provider_feature_matrix",
+        opts
+      )
+
   def jido_integration_v2_consumer_surfaces(opts \\ []),
     do: resolve_internal(:jido_integration_v2_consumer_surfaces, "core/consumer_surfaces", opts)
 

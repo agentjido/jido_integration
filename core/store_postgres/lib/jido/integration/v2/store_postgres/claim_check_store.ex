@@ -341,7 +341,7 @@ defmodule Jido.Integration.V2.StorePostgres.ClaimCheckStore do
 
   defp current_database_name do
     Application.get_env(:jido_integration_v2_store_postgres, Repo, [])[:database] ||
-      System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_dev")
+      "jido_integration_v2_dev"
   end
 
   defp maybe_stringify(nil), do: nil

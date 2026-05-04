@@ -196,22 +196,24 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
 
   @spec repo_config(keyword()) :: keyword()
   def repo_config(opts \\ []) do
+    configured = configured_repo_defaults()
+
     database =
       Keyword.get(
         opts,
         :database,
-        System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_test")
+        Keyword.get(configured, :database, "jido_integration_v2_test")
       )
 
     pool = Keyword.get(opts, :pool, Ecto.Adapters.SQL.Sandbox)
-    socket_dir = System.get_env("JIDO_INTEGRATION_V2_DB_SOCKET_DIR")
+    socket_dir = Keyword.get(configured, :socket_dir)
 
     [
-      username: System.get_env("JIDO_INTEGRATION_V2_DB_USER", "postgres"),
-      password: System.get_env("JIDO_INTEGRATION_V2_DB_PASSWORD", "postgres"),
+      username: Keyword.get(configured, :username, "postgres"),
+      password: Keyword.get(configured, :password, "postgres"),
       database: database,
       pool: pool,
-      pool_size: parse_integer(System.get_env("JIDO_INTEGRATION_V2_DB_POOL_SIZE", "10"), 10),
+      pool_size: Keyword.get(configured, :pool_size, 10),
       queue_target: 5_000,
       queue_interval: 1_000,
       timeout: 15_000,
@@ -259,7 +261,11 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   end
 
   defp claim_check_root(opts \\ []) do
-    System.get_env("JIDO_INTEGRATION_V2_CLAIM_CHECK_ROOT") || default_claim_check_root(opts)
+    Application.get_env(
+      :jido_integration_v2_store_postgres,
+      :claim_check_root,
+      default_claim_check_root(opts)
+    )
   end
 
   @spec default_claim_check_root(keyword()) :: String.t()
@@ -271,8 +277,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   end
 
   defp database_name(opts) do
-    repo_config(opts)[:database] ||
-      System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_test")
+    repo_config(opts)[:database] || "jido_integration_v2_test"
   end
 
   defp with_repo_ownership(opts, fun) do
@@ -335,6 +340,10 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
     Application.get_env(:jido_integration_v2_store_postgres, Repo, repo_config())
   end
 
+  defp configured_repo_defaults do
+    Application.get_env(:jido_integration_v2_store_postgres, Repo, [])
+  end
+
   defp restart_supervised_repo!(pid) do
     supervisor = Jido.Integration.V2.StorePostgres.Supervisor
 
@@ -353,24 +362,19 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
     end
   end
 
-  defp parse_integer(value, fallback) do
-    case Integer.parse(value) do
-      {parsed, ""} -> parsed
-      _ -> fallback
-    end
-  end
-
   defp connection_config(socket_dir) when is_binary(socket_dir) and socket_dir != "" do
     [
       socket_dir: socket_dir,
-      port: parse_integer(System.get_env("JIDO_INTEGRATION_V2_DB_PORT", "5432"), 5432)
+      port: Keyword.get(configured_repo_defaults(), :port, 5432)
     ]
   end
 
   defp connection_config(_socket_dir) do
+    configured = configured_repo_defaults()
+
     [
-      hostname: System.get_env("JIDO_INTEGRATION_V2_DB_HOST", "127.0.0.1"),
-      port: parse_integer(System.get_env("JIDO_INTEGRATION_V2_DB_PORT", "5432"), 5432)
+      hostname: Keyword.get(configured, :hostname, "127.0.0.1"),
+      port: Keyword.get(configured, :port, 5432)
     ]
   end
 end
