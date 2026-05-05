@@ -40,6 +40,40 @@ defmodule Jido.Integration.V2.ConnectorAdmissionTest do
     assert :admission_idempotency_key in fields
   end
 
+  test "emits ref-only admission projection for operators and product surfaces" do
+    assert {:ok, admission} =
+             admission_attrs(
+               status: :admitted,
+               connector_binding_ref: "connector-binding:tenant-alpha:github:v2",
+               provider_account_ref: "provider-account:tenant-alpha:github:main",
+               credential_lease_ref: "credential-lease:tenant-alpha:github:lease-1",
+               target_ref: "target:tenant-alpha:github-rest",
+               requested_operation: "issues.create",
+               operation_policy_ref: "operation-policy:tenant-alpha:github:issues-create",
+               proof_refs: ["proof:jido:connector-admission"],
+               scanner_refs: ["scanner:stack-lab:no-bypass"],
+               redaction_class: "ref_only"
+             )
+             |> ConnectorAdmission.new()
+
+    projection = ConnectorAdmission.projection(admission)
+
+    assert projection.connector_ref == "connector:github:v2"
+    assert projection.connector_binding_ref == "connector-binding:tenant-alpha:github:v2"
+    assert projection.provider_account_ref == "provider-account:tenant-alpha:github:main"
+    assert projection.credential_lease_ref == "credential-lease:tenant-alpha:github:lease-1"
+    assert projection.target_ref == "target:tenant-alpha:github-rest"
+    assert projection.tenant_ref == "tenant:alpha"
+    assert projection.requested_operation == "issues.create"
+    assert projection.admission_state == :admitted
+    assert projection.rejection_reason == nil
+    assert projection.proof_refs == ["proof:jido:connector-admission"]
+    assert projection.scanner_refs == ["scanner:stack-lab:no-bypass"]
+    assert projection.redaction_class == "ref_only"
+    refute Map.has_key?(projection, :raw_token)
+    refute inspect(projection) =~ "secret"
+  end
+
   defp admission_attrs(opts) do
     attrs = %{
       tenant_ref: "tenant:alpha",
