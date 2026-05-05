@@ -649,8 +649,37 @@ defmodule Jido.Integration.V2.Conformance.Suites.ConsumerSurfaceProjection do
 
   defp install_binding_module?(connector_module) do
     connector_module
-    |> Module.concat("InstallBinding")
-    |> Code.ensure_loaded?()
+    |> Atom.to_string()
+    |> Kernel.<>(".InstallBinding")
+    |> available_module_named?()
+  end
+
+  defp available_module_named?(module_name) do
+    loaded_module_named?(module_name) or load_available_module_named?(module_name)
+  end
+
+  defp loaded_module_named?(module_name) do
+    Enum.any?(:code.all_loaded(), fn {module, _path} ->
+      Atom.to_string(module) == module_name
+    end)
+  end
+
+  defp load_available_module_named?(module_name) do
+    Enum.any?(:code.all_available(), fn {available_name, beam_path, _loaded?} ->
+      List.to_string(available_name) == module_name and
+        load_beam_module_named?(module_name, List.to_string(beam_path))
+    end)
+  end
+
+  defp load_beam_module_named?(module_name, beam_path) do
+    beam_path
+    |> Path.rootname()
+    |> String.to_charlist()
+    |> :code.load_abs()
+    |> case do
+      {:module, module} -> Atom.to_string(module) == module_name
+      _ -> false
+    end
   end
 
   defp common_operation_surface_safe?(%OperationSpec{} = operation) do

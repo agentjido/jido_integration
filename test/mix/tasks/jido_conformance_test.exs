@@ -77,6 +77,19 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
     end
   end
 
+  test "rejects unknown connector module names without creating module atoms" do
+    before_count = :erlang.system_info(:atom_count)
+
+    unknown_module =
+      "Jido.Integration.V2.Connectors.UnknownAtomLeak#{System.unique_integer([:positive])}"
+
+    assert_raise Mix.Error, fn ->
+      run_task([unknown_module])
+    end
+
+    assert :erlang.system_info(:atom_count) == before_count
+  end
+
   test "raises on an invalid profile" do
     assert_raise Mix.Error, fn ->
       run_task(["Jido.Integration.V2.Connectors.GitHub", "--profile", "async"])

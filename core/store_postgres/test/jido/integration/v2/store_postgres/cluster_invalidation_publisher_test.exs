@@ -12,7 +12,7 @@ defmodule Jido.Integration.V2.StorePostgres.ClusterInvalidationPublisherTest do
   }
 
   test "configured Phoenix PubSub publisher broadcasts invalidation messages" do
-    pubsub = Module.concat(__MODULE__, PubSub)
+    pubsub = Jido.Integration.V2.StorePostgres.ClusterInvalidationPublisherTest.PubSub
     start_supervised!({Phoenix.PubSub, name: pubsub})
 
     previous_publisher =

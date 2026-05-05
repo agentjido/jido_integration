@@ -142,7 +142,7 @@ defmodule Jido.Integration.V2.Apps.DevopsIncidentResponseTest do
        %{runtime_root: runtime_root} do
     manifest = GitHubIssueConnector.manifest()
     [trigger] = manifest.triggers
-    conformance_module = Module.concat(GitHubIssueConnector, Conformance)
+    conformance_module = GitHubIssueConnector.Conformance
     sensor_module = ConsumerProjection.sensor_module(GitHubIssueConnector, trigger.trigger_id)
     plugin_module = ConsumerProjection.plugin_module(GitHubIssueConnector)
 

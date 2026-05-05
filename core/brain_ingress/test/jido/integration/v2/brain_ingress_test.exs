@@ -10,6 +10,8 @@ defmodule Jido.Integration.V2.BrainIngressTest do
   alias Jido.Integration.V2.SubmissionIdentity
   alias Jido.Integration.V2.SubmissionRejection
 
+  @lazy_ledger_module Jido.Integration.V2.BrainIngressTest.LazyLedger
+
   defmodule Ledger do
     @behaviour Jido.Integration.V2.BrainIngress.SubmissionLedger
 
@@ -396,22 +398,18 @@ defmodule Jido.Integration.V2.BrainIngressTest do
   end
 
   defp compile_lazy_ledger! do
-    module =
-      Module.concat(
-        __MODULE__,
-        :"LazyLedger#{unique_lazy_ledger_token()}"
-      )
-
+    module = @lazy_ledger_module
     root = Path.join(System.tmp_dir!(), "jido_integration_v2_brain_ingress_lazy_ledger")
     File.mkdir_p!(root)
-    beam_dir = Path.join(root, Atom.to_string(module))
+    beam_dir = Path.join(root, "fixed_lazy_ledger")
+    File.rm_rf!(beam_dir)
     File.mkdir_p!(beam_dir)
     source_path = Path.join(beam_dir, "lazy_ledger.ex")
 
     File.write!(
       source_path,
       """
-      defmodule #{inspect(module)} do
+      defmodule Jido.Integration.V2.BrainIngressTest.LazyLedger do
         @behaviour Jido.Integration.V2.BrainIngress.SubmissionLedger
 
         def accept_submission(_invocation, _opts) do
@@ -440,12 +438,5 @@ defmodule Jido.Integration.V2.BrainIngressTest do
       Kernel.ParallelCompiler.compile_to_path([source_path], beam_dir, return_diagnostics: true)
 
     module
-  end
-
-  defp unique_lazy_ledger_token do
-    :erlang.phash2(
-      {:os.getpid(), System.unique_integer([:positive]), System.monotonic_time(), make_ref()},
-      1_000_000_000
-    )
   end
 end

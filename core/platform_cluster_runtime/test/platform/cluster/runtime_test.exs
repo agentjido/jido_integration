@@ -15,8 +15,8 @@ defmodule Platform.Cluster.RuntimeTest do
   end
 
   test "declares canonical Horde registry and dynamic supervisor child specs" do
-    registry_name = Module.concat(__MODULE__, Registry)
-    supervisor_name = Module.concat(__MODULE__, DynamicSupervisor)
+    registry_name = Platform.Cluster.RuntimeTest.Registry
+    supervisor_name = Platform.Cluster.RuntimeTest.DynamicSupervisor
 
     assert [
              {Horde.Registry, registry_opts},

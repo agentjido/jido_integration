@@ -128,13 +128,59 @@ defmodule Jido.Integration.V2.Conformance do
   end
 
   defp load_connector_export(connector_module, export_name) do
-    companion_module = Module.concat(connector_module, "Conformance")
+    companion_name = Atom.to_string(connector_module) <> ".Conformance"
 
-    if Code.ensure_loaded?(companion_module) and
-         function_exported?(companion_module, export_name, 0) do
-      apply(companion_module, export_name, [])
-    else
-      []
+    case available_module_named(companion_name) do
+      {:ok, companion_module} ->
+        if function_exported?(companion_module, export_name, 0) do
+          apply(companion_module, export_name, [])
+        else
+          []
+        end
+
+      :error ->
+        []
+    end
+  end
+
+  defp available_module_named(module_name) do
+    case loaded_module_named(module_name) do
+      {:ok, module} -> {:ok, module}
+      :error -> load_available_module_named(module_name)
+    end
+  end
+
+  defp loaded_module_named(module_name) do
+    Enum.find_value(:code.all_loaded(), :error, fn {module, _path} ->
+      if Atom.to_string(module) == module_name do
+        {:ok, module}
+      end
+    end)
+  end
+
+  defp load_available_module_named(module_name) do
+    Enum.find_value(:code.all_available(), :error, fn {available_name, beam_path, _loaded?} ->
+      if List.to_string(available_name) == module_name do
+        load_beam_module(module_name, List.to_string(beam_path))
+      end
+    end)
+  end
+
+  defp load_beam_module(module_name, beam_path) do
+    beam_path
+    |> Path.rootname()
+    |> String.to_charlist()
+    |> :code.load_abs()
+    |> case do
+      {:module, module} ->
+        if Atom.to_string(module) == module_name do
+          {:ok, module}
+        else
+          :error
+        end
+
+      _ ->
+        :error
     end
   end
 

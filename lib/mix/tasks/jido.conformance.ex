@@ -438,13 +438,52 @@ defmodule Mix.Tasks.Jido.Conformance do
   defp restore_env(key, value), do: System.put_env(key, value)
 
   defp loaded_connector_module(normalized_module_name) do
-    module = Module.concat([normalized_module_name])
-
-    with true <- Code.ensure_loaded?(module),
+    with {:ok, module} <- available_module_named("Elixir." <> normalized_module_name),
          true <- function_exported?(module, :manifest, 0) do
       {:ok, module}
     else
       _ -> :error
+    end
+  end
+
+  defp available_module_named(module_name) do
+    case loaded_module_named(module_name) do
+      {:ok, module} -> {:ok, module}
+      :error -> load_available_module_named(module_name)
+    end
+  end
+
+  defp loaded_module_named(module_name) do
+    Enum.find_value(:code.all_loaded(), :error, fn {module, _path} ->
+      if Atom.to_string(module) == module_name do
+        {:ok, module}
+      end
+    end)
+  end
+
+  defp load_available_module_named(module_name) do
+    Enum.find_value(:code.all_available(), :error, fn {available_name, beam_path, _loaded?} ->
+      if List.to_string(available_name) == module_name do
+        load_beam_module(module_name, List.to_string(beam_path))
+      end
+    end)
+  end
+
+  defp load_beam_module(module_name, beam_path) do
+    beam_path
+    |> Path.rootname()
+    |> String.to_charlist()
+    |> :code.load_abs()
+    |> case do
+      {:module, module} ->
+        if Atom.to_string(module) == module_name do
+          {:ok, module}
+        else
+          :error
+        end
+
+      _ ->
+        :error
     end
   end
 

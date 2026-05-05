@@ -163,7 +163,7 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
 
     %{
       operation_id: operation_id,
-      sdk_module: Module.concat(NotionSDK, module_name),
+      sdk_module: sdk_module(module_name),
       sdk_function: function_atom(function_name),
       permission_bundle: Map.fetch!(@permission_overrides, key),
       event_suffix: operation_suffix,
@@ -182,6 +182,16 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationCatalog do
 
   defp operation_namespace("OAuth"), do: "oauth"
   defp operation_namespace(module_name), do: Macro.underscore(module_name)
+
+  defp sdk_module("Blocks"), do: NotionSDK.Blocks
+  defp sdk_module("Comments"), do: NotionSDK.Comments
+  defp sdk_module("Databases"), do: NotionSDK.Databases
+  defp sdk_module("DataSources"), do: NotionSDK.DataSources
+  defp sdk_module("FileUploads"), do: NotionSDK.FileUploads
+  defp sdk_module("OAuth"), do: NotionSDK.OAuth
+  defp sdk_module("Pages"), do: NotionSDK.Pages
+  defp sdk_module("Search"), do: NotionSDK.Search
+  defp sdk_module("Users"), do: NotionSDK.Users
 
   defp function_atom("append_children"), do: :append_children
   defp function_atom("complete"), do: :complete
