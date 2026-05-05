@@ -42,6 +42,30 @@ defmodule Jido.Integration.V2.ControlPlane.TestSupport.FakeSelfHostedEndpointPro
     :exit, _reason -> :ok
   end
 
+  def active_server_os_pids do
+    case Process.whereis(@registry) do
+      nil ->
+        []
+
+      pid ->
+        Agent.get(pid, fn state ->
+          state
+          |> Map.values()
+          |> Enum.map(&Map.get(&1, :os_pid))
+          |> Enum.reject(&is_nil/1)
+        end)
+    end
+  end
+
+  def os_pid_alive?(pid) when is_integer(pid) do
+    case System.cmd("kill", ["-0", Integer.to_string(pid)], stderr_to_stdout: true) do
+      {_output, 0} -> true
+      {_output, _status} -> false
+    end
+  end
+
+  def os_pid_alive?(_pid), do: false
+
   defp endpoint_and_backend(
          %InferenceRequest{} = request,
          %ConsumerManifest{} = consumer_manifest,
@@ -255,7 +279,7 @@ defmodule Jido.Integration.V2.ControlPlane.TestSupport.FakeSelfHostedEndpointPro
         env: env
       ])
 
-    %{port: port}
+    %{os_pid: os_pid(port), port: port}
   end
 
   defp wait_for_llama_health!(boot_spec, attempts_left \\ 40)
@@ -280,10 +304,55 @@ defmodule Jido.Integration.V2.ControlPlane.TestSupport.FakeSelfHostedEndpointPro
     end
   end
 
+  defp os_pid(port) do
+    case Port.info(port, :os_pid) do
+      {:os_pid, pid} when is_integer(pid) -> pid
+      _other -> nil
+    end
+  end
+
+  defp stop_llama_server(%{os_pid: os_pid, port: port}) when is_port(port) do
+    signal_os_pid(os_pid, "TERM")
+    Port.close(port)
+    wait_for_os_pid_exit(os_pid, 20)
+    force_stop_os_pid(os_pid)
+    :ok
+  catch
+    :exit, _reason -> :ok
+  end
+
   defp stop_llama_server(%{port: port}) when is_port(port) do
     Port.close(port)
     :ok
   catch
     :exit, _reason -> :ok
   end
+
+  defp signal_os_pid(pid, signal) when is_integer(pid) do
+    System.cmd("kill", ["-#{signal}", Integer.to_string(pid)], stderr_to_stdout: true)
+    :ok
+  end
+
+  defp signal_os_pid(_pid, _signal), do: :ok
+
+  defp wait_for_os_pid_exit(pid, attempts_left) when is_integer(pid) and attempts_left > 0 do
+    if os_pid_alive?(pid) do
+      Process.sleep(25)
+      wait_for_os_pid_exit(pid, attempts_left - 1)
+    else
+      :ok
+    end
+  end
+
+  defp wait_for_os_pid_exit(_pid, _attempts_left), do: :ok
+
+  defp force_stop_os_pid(pid) when is_integer(pid) do
+    if os_pid_alive?(pid) do
+      signal_os_pid(pid, "KILL")
+    end
+
+    :ok
+  end
+
+  defp force_stop_os_pid(_pid), do: :ok
 end

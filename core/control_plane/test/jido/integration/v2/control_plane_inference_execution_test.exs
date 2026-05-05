@@ -699,6 +699,12 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     assert attempt.output["endpoint_descriptor"]["provider_identity"] == "llama_cpp_sdk"
     assert attempt.output["compatibility_result"]["metadata"]["route"] == "self_hosted"
     assert attempt.output["lease_ref"]["lease_ref"] == result.lease_ref.lease_ref
+
+    [server_pid] = FakeSelfHostedEndpointProvider.active_server_os_pids()
+    assert FakeSelfHostedEndpointProvider.os_pid_alive?(server_pid)
+
+    FakeSelfHostedEndpointProvider.cleanup!()
+    refute FakeSelfHostedEndpointProvider.os_pid_alive?(server_pid)
   end
 
   test "invoke_inference/2 records durable attached-local truth through an ollama endpoint" do

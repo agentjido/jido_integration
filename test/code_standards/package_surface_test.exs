@@ -105,11 +105,8 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   end
 
   test "weld contract keeps the published docs surface package-facing" do
-    [{contract_module, _binary}] =
-      Code.require_file("build_support/weld.exs", repo_root())
-
     docs =
-      contract_module.artifact()
+      load_weld_contract!().artifact()
       |> Keyword.fetch!(:output)
       |> Keyword.fetch!(:docs)
 
@@ -329,6 +326,11 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   end
 
   defp repo_root, do: Path.expand("../..", __DIR__)
+
+  defp load_weld_contract! do
+    Code.require_file("build_support/weld.exs", repo_root())
+    Jido.Integration.Build.WeldContract
+  end
 
   defp normalize_whitespace(text), do: text |> String.split() |> Enum.join(" ")
 end

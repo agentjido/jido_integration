@@ -1,6 +1,9 @@
 defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
   use ExUnit.Case, async: true
 
+  Code.require_file("build_support/weld.exs", File.cwd!())
+
+  alias Jido.Integration.Build.WeldContract
   alias Jido.Integration.Build.WorkspaceContract
 
   test "enumerates the tooling-root projects in stable order" do
@@ -114,6 +117,13 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
     workspace_config = Mix.Project.config()[:blitz_workspace]
 
     assert workspace_config[:parallelism][:multiplier] == :auto
+  end
+
+  test "weld monolith skips Hex build while generated dependencies include git sources" do
+    verify_config = WeldContract.artifact()[:verify]
+
+    assert verify_config[:hex_build] == false
+    assert verify_config[:hex_publish] == false
   end
 
   test "derives stable, package-specific test database names" do

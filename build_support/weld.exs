@@ -137,7 +137,9 @@ defmodule Jido.Integration.Build.WeldContract do
         smoke: [
           enabled: true,
           entry_file: "packaging/weld/jido_integration/smoke.ex"
-        ]
+        ],
+        hex_build: false,
+        hex_publish: false
       ]
     ]
   end
