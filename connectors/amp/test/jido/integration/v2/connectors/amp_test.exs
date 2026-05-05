@@ -36,6 +36,7 @@ defmodule Jido.Integration.V2.Connectors.AmpTest do
     assert entry.provider_ref == "provider://amp"
     assert entry.provider_family == "cli"
     assert entry.connector_category == :official_connector
+    assert entry.connector_binding_ref == "connector-binding://tenant-1/amp/cli"
     assert entry.package_path == "connectors/amp"
     assert entry.binding_shape.requires_native_auth_assertion_ref == true
     assert entry.product_boundary.standalone_preserved == true

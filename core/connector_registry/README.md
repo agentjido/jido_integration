@@ -11,7 +11,10 @@ upgrade receipts.
 
 The registry is ref-only. Provider names, connector instances, and default SDK
 clients cannot select credential material without tenant, policy revision,
-provider account, and credential handle refs.
+provider account, connector instance, connector binding, credential handle,
+target, and operation policy refs. Connector admission receipts carry the
+connector binding ref so Phase 13 tool operations can prove selected identity
+before provider effects.
 
 ## QC
 

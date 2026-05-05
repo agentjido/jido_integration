@@ -152,6 +152,7 @@ defmodule Jido.Integration.V2.Connectors.Amp do
       provider_account_status: :asserted,
       connector_ref: "connector://amp/cli",
       connector_instance_ref: "connector-instance://tenant-1/amp/cli",
+      connector_binding_ref: "connector-binding://tenant-1/amp/cli",
       connector_category: :official_connector,
       credential_handle_ref: "credential-handle://tenant-1/amp/native-cli",
       target_ref: "target://tenant-1/cli/amp",

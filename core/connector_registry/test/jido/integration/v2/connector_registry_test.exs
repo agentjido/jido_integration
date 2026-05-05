@@ -10,6 +10,7 @@ defmodule Jido.Integration.V2.ConnectorRegistryTest do
              valid_attrs()
              |> Map.put(:provider_account_ref, "provider-account://tenant-1/github/account-b")
              |> Map.put(:connector_instance_ref, "connector-instance://tenant-1/github/rest-b")
+             |> Map.put(:connector_binding_ref, "connector-binding://tenant-1/github/rest-b")
              |> Map.put(
                :credential_handle_ref,
                "credential-handle://tenant-1/github/account-b/pat"
@@ -28,6 +29,7 @@ defmodule Jido.Integration.V2.ConnectorRegistryTest do
 
     assert :provider_account_ref in missing
     assert :connector_instance_ref in missing
+    assert :connector_binding_ref in missing
     assert :credential_handle_ref in missing
     assert :tenant_ref in missing
     assert :policy_revision_ref in missing
@@ -143,6 +145,7 @@ defmodule Jido.Integration.V2.ConnectorRegistryTest do
              assert {:ok, receipt} = ConnectorRegistry.companion_admission(entry)
 
              receipt.credential_handle_ref == entry.credential_handle_ref and
+               receipt.connector_binding_ref == entry.connector_binding_ref and
                receipt.conformance_suite_ref == entry.conformance_suite_ref and
                receipt.binding_shape.requires_connector_binding_ref
            end)
@@ -175,6 +178,7 @@ defmodule Jido.Integration.V2.ConnectorRegistryTest do
       provider_ref: "provider://github",
       provider_account_ref: "provider-account://tenant-1/github/account-a",
       connector_instance_ref: "connector-instance://tenant-1/github/rest-a",
+      connector_binding_ref: "connector-binding://tenant-1/github/rest-a",
       credential_handle_ref: "credential-handle://tenant-1/github/account-a/pat",
       target_ref: "target://tenant-1/http-client/a",
       operation_policy_ref: "operation-policy://tenant-1/github/rest"
@@ -191,6 +195,7 @@ defmodule Jido.Integration.V2.ConnectorRegistryTest do
       provider_account_status: :known,
       connector_ref: "connector://github/rest",
       connector_instance_ref: "connector-instance://tenant-1/github/rest-a",
+      connector_binding_ref: "connector-binding://tenant-1/github/rest-a",
       connector_category: :official_connector,
       credential_handle_ref: "credential-handle://tenant-1/github/account-a/pat",
       target_ref: "target://tenant-1/http-client/a",
@@ -218,6 +223,7 @@ defmodule Jido.Integration.V2.ConnectorRegistryTest do
       provider_account_status: :known,
       connector_ref: "connector://#{provider_name}/generated-sdk",
       connector_instance_ref: "connector-instance://tenant-1/#{provider_name}/generated-sdk",
+      connector_binding_ref: "connector-binding://tenant-1/#{provider_name}/generated-sdk",
       connector_category: category,
       credential_handle_ref: "credential-handle://tenant-1/#{provider}/default",
       target_ref: "target://tenant-1/#{provider}/default",

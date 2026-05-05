@@ -70,6 +70,7 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrixTest do
       provider_account_status: :known,
       connector_ref: "connector://github/rest",
       connector_instance_ref: "connector-instance://tenant-1/github/rest-a",
+      connector_binding_ref: "connector-binding://tenant-1/github/rest-a",
       connector_category: :official_connector,
       credential_handle_ref: "credential-handle://tenant-1/github/account-a/pat",
       target_ref: "target://tenant-1/http-client/a",

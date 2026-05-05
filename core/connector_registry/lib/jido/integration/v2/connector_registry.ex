@@ -46,6 +46,7 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
     :provider_account_status,
     :connector_ref,
     :connector_instance_ref,
+    :connector_binding_ref,
     :connector_category,
     :credential_handle_ref,
     :target_ref,
@@ -79,6 +80,7 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
     provider_account_ref: "provider-account://",
     connector_ref: "connector://",
     connector_instance_ref: "connector-instance://",
+    connector_binding_ref: "connector-binding://",
     credential_handle_ref: "credential-handle://",
     target_ref: "target://",
     operation_policy_ref: "operation-policy://",
@@ -97,6 +99,7 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
       :provider_account_status,
       :connector_ref,
       :connector_instance_ref,
+      :connector_binding_ref,
       :connector_category,
       :credential_handle_ref,
       :target_ref,
@@ -159,6 +162,7 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
          provider_account_status: status,
          connector_ref: value!(attrs, :connector_ref),
          connector_instance_ref: value!(attrs, :connector_instance_ref),
+         connector_binding_ref: value!(attrs, :connector_binding_ref),
          connector_category: category,
          credential_handle_ref: value!(attrs, :credential_handle_ref),
          target_ref: value!(attrs, :target_ref),
@@ -208,6 +212,7 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
       provider_ref: entry.provider_ref,
       provider_account_ref: entry.provider_account_ref,
       connector_instance_ref: entry.connector_instance_ref,
+      connector_binding_ref: entry.connector_binding_ref,
       credential_handle_ref: entry.credential_handle_ref,
       target_ref: entry.target_ref,
       operation_policy_ref: entry.operation_policy_ref
@@ -224,6 +229,7 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
          provider_family: entry.provider_family,
          connector_ref: entry.connector_ref,
          connector_instance_ref: entry.connector_instance_ref,
+         connector_binding_ref: entry.connector_binding_ref,
          connector_category: entry.connector_category,
          owner_repo: entry.owner_repo,
          package_path: entry.package_path,
@@ -256,6 +262,7 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
       :provider_ref,
       :provider_account_ref,
       :connector_instance_ref,
+      :connector_binding_ref,
       :credential_handle_ref,
       :target_ref,
       :operation_policy_ref
@@ -329,8 +336,11 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
   defp validate_distinct_refs(attrs) do
     comparisons = [
       {:provider_account_ref, :connector_instance_ref},
+      {:provider_account_ref, :connector_binding_ref},
       {:provider_account_ref, :credential_handle_ref},
-      {:connector_instance_ref, :credential_handle_ref}
+      {:connector_instance_ref, :connector_binding_ref},
+      {:connector_instance_ref, :credential_handle_ref},
+      {:connector_binding_ref, :credential_handle_ref}
     ]
 
     conflicts =
