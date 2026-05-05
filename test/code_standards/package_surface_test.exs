@@ -3,6 +3,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
   alias Jido.Integration.Build.{DependencyResolver, WorkspaceContract}
   alias Jido.Integration.Workspace.{MixProject, MonorepoRunner}
+  alias Mix.Tasks.Workspace.Impact.Ci
 
   @required_package_paths [
     ".formatter.exs",
@@ -30,7 +31,9 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   test "workspace root exposes the canonical monorepo quality aliases" do
     aliases = MixProject.project()[:aliases]
 
-    assert Keyword.fetch!(aliases, :ci) == [
+    assert Keyword.fetch!(aliases, :ci) == ["workspace.impact.ci"]
+
+    assert Keyword.fetch!(aliases, :"ci.full") == [
              "monorepo.deps.get",
              "monorepo.format --check-formatted",
              "monorepo.compile",
@@ -48,6 +51,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
           :"monorepo.credo",
           :"monorepo.dialyzer",
           :"monorepo.docs",
+          :"ci.full",
           :"mr.deps.get",
           :"mr.format",
           :"mr.compile",
@@ -79,6 +83,25 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       refute Keyword.has_key?(aliases, alias_name),
              "expected workspace alias #{inspect(alias_name)} to be removed"
     end
+  end
+
+  test "workspace root develops against the sibling Blitz impact runner" do
+    deps = MixProject.project()[:deps]
+
+    assert {:blitz, path: "../blitz", runtime: false} in deps,
+           "workspace root must use the sibling Blitz checkout until the v0.3.0 release is published"
+
+    assert Code.ensure_loaded?(Ci)
+
+    assert Ci.impact_policy() == [
+             workspace_invalidators: [
+               "build_support/dependency_resolver.exs",
+               "build_support/workspace_contract.exs"
+             ],
+             aggregate_docs_projects: [],
+             test_dependency_fanout: :source_only,
+             deps_get_lockfile_self_invalidation: false
+           ]
   end
 
   test "workspace root uses released Weld 0.7.2 and the repo-local publication contract" do

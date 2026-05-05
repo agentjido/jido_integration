@@ -35,7 +35,7 @@ defmodule Jido.Integration.Workspace.MixProject do
 
   defp deps do
     [
-      {:blitz, "~> 0.2.0", runtime: false},
+      {:blitz, path: "../blitz", runtime: false},
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_contracts(),
       DependencyResolver.req_llm(runtime: false),
@@ -69,7 +69,8 @@ defmodule Jido.Integration.Workspace.MixProject do
     ]
 
     [
-      ci: [
+      ci: ["workspace.impact.ci"],
+      "ci.full": [
         "monorepo.deps.get",
         "monorepo.format --check-formatted",
         "monorepo.compile",
