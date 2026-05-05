@@ -20,7 +20,7 @@ defmodule Jido.Integration.V2.OperationSpec do
     :runtime_ref
   ]
   @runtime_family_session_affinities [:none, :connection, :target]
-  @runtime_family_lifecycle_owners [:asm, :jido_session]
+  @runtime_family_lifecycle_owners [:asm, :cli_subprocess_core, :jido_session]
   @runtime_family_runtime_refs [:session, :run]
 
   @consumer_surface_schema Contracts.strict_object!(

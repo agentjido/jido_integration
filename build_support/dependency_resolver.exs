@@ -30,6 +30,9 @@ defmodule Jido.Integration.Build.DependencyResolver do
         opts
       )
 
+  def jido_integration_v2_tool_contracts(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_tool_contracts, "core/tool_contracts", opts)
+
   def jido_integration_v2_consumer_surfaces(opts \\ []),
     do: resolve_internal(:jido_integration_v2_consumer_surfaces, "core/consumer_surfaces", opts)
 
@@ -80,6 +83,9 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_codex_cli(opts \\ []),
     do: resolve_internal(:jido_integration_v2_codex_cli, "connectors/codex_cli", opts)
 
+  def jido_integration_v2_amp(opts \\ []),
+    do: resolve_internal(:jido_integration_v2_amp, "connectors/amp", opts)
+
   def jido_integration_v2_github(opts \\ []),
     do: resolve_internal(:jido_integration_v2_github, "connectors/github", opts)
 
@@ -110,6 +116,13 @@ defmodule Jido.Integration.Build.DependencyResolver do
     case local_root_path("../agent_session_manager") do
       nil -> {:agent_session_manager, "~> 0.9.2", opts}
       path -> {:agent_session_manager, Keyword.merge([path: path], opts)}
+    end
+  end
+
+  def amp_sdk(opts \\ []) do
+    case local_root_path("../amp_sdk") do
+      nil -> {:amp_sdk, "~> 0.1.0", opts}
+      path -> {:amp_sdk, Keyword.merge([path: path, override: true], opts)}
     end
   end
 

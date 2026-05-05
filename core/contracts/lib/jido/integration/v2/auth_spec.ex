@@ -6,11 +6,18 @@ defmodule Jido.Integration.V2.AuthSpec do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Schema
 
-  @binding_kinds [:connection_id, :tenant, :none]
-  @auth_types [:oauth2, :api_token, :session_token, :app_installation, :none]
-  @subject_kinds [:user, :workspace, :app, :installation, :tenant, :none]
-  @profile_management_modes [:hosted, :manual, :external_secret, :provider_app]
-  @grant_types [:authorization_code, :manual_token, :refresh_token]
+  @binding_kinds [:connection_id, :provider_account, :tenant, :none]
+  @auth_types [
+    :oauth2,
+    :api_token,
+    :session_token,
+    :app_installation,
+    :native_cli_assertion,
+    :none
+  ]
+  @subject_kinds [:user, :workspace, :app, :installation, :provider_account, :tenant, :none]
+  @profile_management_modes [:hosted, :manual, :external_secret, :provider_app, :provider_native]
+  @grant_types [:authorization_code, :manual_token, :native_cli_login, :refresh_token]
   @legacy_default_profile "default"
 
   @schema Zoi.struct(
@@ -50,8 +57,14 @@ defmodule Jido.Integration.V2.AuthSpec do
             coerce: true
           )
 
-  @type binding_kind :: :connection_id | :tenant | :none
-  @type auth_type :: :oauth2 | :api_token | :session_token | :app_installation | :none
+  @type binding_kind :: :connection_id | :provider_account | :tenant | :none
+  @type auth_type ::
+          :oauth2
+          | :api_token
+          | :session_token
+          | :app_installation
+          | :native_cli_assertion
+          | :none
 
   @type t :: unquote(Zoi.type_spec(@schema))
 
@@ -190,6 +203,7 @@ defmodule Jido.Integration.V2.AuthSpec do
         :api_token -> [:manual_token]
         :session_token -> [:manual_token]
         :app_installation -> [:manual_token]
+        :native_cli_assertion -> [:native_cli_login]
         :none -> nil
       end
 
@@ -746,9 +760,11 @@ defmodule Jido.Integration.V2.AuthSpec do
   defp legacy_subject_kind(:api_token), do: :user
   defp legacy_subject_kind(:session_token), do: :user
   defp legacy_subject_kind(:app_installation), do: :installation
+  defp legacy_subject_kind(:native_cli_assertion), do: :provider_account
   defp legacy_subject_kind(:none), do: :none
 
   defp legacy_management_modes(:none, _install), do: []
+  defp legacy_management_modes(:native_cli_assertion, _install), do: [:provider_native]
   defp legacy_management_modes(_auth_type, _install), do: [:manual]
 
   defp maybe_put(map, _key, nil), do: map

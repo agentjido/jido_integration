@@ -153,6 +153,28 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
     end
   end
 
+  test "auth specs support governed native CLI assertion profiles" do
+    auth =
+      AuthSpec.new!(%{
+        binding_kind: :provider_account,
+        auth_type: :native_cli_assertion,
+        install: %{required: true},
+        reauth: %{supported: true},
+        requested_scopes: ["cli:run"],
+        lease_fields: ["native_auth_assertion_ref", "credential_lease_ref"],
+        secret_names: []
+      })
+
+    assert auth.binding_kind == :provider_account
+    assert auth.auth_type == :native_cli_assertion
+    assert auth.default_profile == "default"
+    assert [profile] = auth.supported_profiles
+    assert profile.subject_kind == :provider_account
+    assert profile.grant_types == [:native_cli_login]
+    assert profile.management_modes == [:provider_native]
+    assert profile.lease_fields == ["credential_lease_ref", "native_auth_assertion_ref"]
+  end
+
   test "manifest requires auth requested scopes to cover authored operation and trigger scopes" do
     assert_raise ArgumentError, fn ->
       Manifest.new!(%{

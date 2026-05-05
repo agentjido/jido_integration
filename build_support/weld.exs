@@ -5,6 +5,7 @@ defmodule Jido.Integration.Build.WeldContract do
   @proof_projects ["apps/devops_incident_response", "apps/inference_ops"]
 
   @source_only_publication_projects [
+    "connectors/amp",
     "connectors/codex_cli",
     "connectors/market_data",
     "core/runtime_control",
@@ -12,20 +13,24 @@ defmodule Jido.Integration.Build.WeldContract do
     "core/asm_runtime_bridge",
     "core/session_runtime",
     "core/connector_registry",
-    "core/provider_feature_matrix"
+    "core/provider_feature_matrix",
+    "core/tool_contracts"
   ]
 
   @source_only_monolith_test_support_projects [
+    "connectors/amp",
     "connectors/codex_cli",
     "connectors/market_data",
     "core/conformance",
     "core/runtime_control",
     "core/runtime_router",
     "core/asm_runtime_bridge",
-    "core/session_runtime"
+    "core/session_runtime",
+    "core/tool_contracts"
   ]
 
   @published_roots [
+    "connectors/amp",
     "connectors/github",
     "connectors/linear",
     "connectors/notion",
@@ -40,6 +45,7 @@ defmodule Jido.Integration.Build.WeldContract do
     "core/platform",
     "core/policy",
     "core/provider_feature_matrix",
+    "core/tool_contracts",
     "core/store_local",
     "core/store_postgres",
     "core/webhook_router"
@@ -62,6 +68,8 @@ defmodule Jido.Integration.Build.WeldContract do
 
   @dependencies [
     agent_session_manager: [requirement: "~> 0.9.2"],
+    amp_sdk: [requirement: "~> 0.1.0"],
+    cli_subprocess_core: [requirement: "~> 0.1.0"],
     execution_plane: [
       opts: [
         github: "nshkrdotcom/execution_plane",
