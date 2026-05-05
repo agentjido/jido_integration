@@ -18,15 +18,13 @@ defmodule Jido.Integration.Build.WeldContract do
   ]
 
   @source_only_monolith_test_support_projects [
-    "connectors/amp",
     "connectors/codex_cli",
     "connectors/market_data",
     "core/conformance",
     "core/runtime_control",
     "core/runtime_router",
     "core/asm_runtime_bridge",
-    "core/session_runtime",
-    "core/tool_contracts"
+    "core/session_runtime"
   ]
 
   @published_roots [
