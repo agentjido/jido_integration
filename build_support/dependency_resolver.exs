@@ -46,6 +46,17 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_connector_registry(opts \\ []),
     do: resolve_internal(:jido_integration_v2_connector_registry, "core/connector_registry", opts)
 
+  def jido_model_provider_registry(opts \\ []),
+    do: resolve_internal(:jido_model_provider_registry, "core/model_provider_registry", opts)
+
+  def jido_inference_operation_policy(opts \\ []),
+    do:
+      resolve_internal(
+        :jido_inference_operation_policy,
+        "core/inference_operation_policy",
+        opts
+      )
+
   def jido_integration_v2_provider_feature_matrix(opts \\ []),
     do:
       resolve_internal(

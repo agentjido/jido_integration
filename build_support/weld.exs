@@ -15,6 +15,8 @@ defmodule Jido.Integration.Build.WeldContract do
     "core/session_runtime",
     "core/conformance_contracts",
     "core/connector_registry",
+    "core/inference_operation_policy",
+    "core/model_provider_registry",
     "core/provider_feature_matrix",
     "core/tool_contracts"
   ]
@@ -42,7 +44,9 @@ defmodule Jido.Integration.Build.WeldContract do
     "core/control_plane",
     "core/direct_runtime",
     "core/dispatch_runtime",
+    "core/inference_operation_policy",
     "core/ingress",
+    "core/model_provider_registry",
     "core/platform",
     "core/policy",
     "core/provider_feature_matrix",
