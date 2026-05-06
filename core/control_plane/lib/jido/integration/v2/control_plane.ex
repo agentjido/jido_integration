@@ -79,6 +79,16 @@ defmodule Jido.Integration.V2.ControlPlane do
           | :connection_revoked
           | :reauth_required
 
+  @replay_modes [
+    :exact,
+    :prompt_variant,
+    :model_variant,
+    :policy_variant,
+    :guard_variant,
+    :memory_variant
+  ]
+  @replay_support_classes [:fixture_only, :fixture_required, :not_replay_safe]
+
   @spec register_connector(module()) :: :ok | {:error, term()}
   def register_connector(connector) do
     manifest = connector.manifest()
@@ -352,6 +362,7 @@ defmodule Jido.Integration.V2.ControlPlane do
   defp continue_invoke(capability, run, input, opts, auth_binding) do
     with :ok <- validate_target_selection(run, capability),
          :ok <- validate_guard_bindings(capability, opts),
+         :ok <- validate_replay_submission(capability, opts),
          %PolicyDecision{status: :allowed} = policy_decision <-
            evaluate_policy(
              capability,
@@ -384,6 +395,7 @@ defmodule Jido.Integration.V2.ControlPlane do
          :ok <- validate_execution_status(run),
          :ok <- validate_target_selection(run, capability),
          :ok <- validate_guard_bindings(capability, opts),
+         :ok <- validate_replay_submission(capability, opts),
          {:ok, auth_binding} <- resolve_run_auth(run),
          %PolicyDecision{status: :allowed} = policy_decision <-
            evaluate_policy(
@@ -522,7 +534,17 @@ defmodule Jido.Integration.V2.ControlPlane do
          attempt_number \\ 1
        ) do
     attempt = build_attempt(run, credential_lease, opts, attempt_number)
-    context = build_context(run, attempt, opts, policy_decision, credential_lease, credential_ref)
+
+    context =
+      build_context(
+        capability,
+        run,
+        attempt,
+        opts,
+        policy_decision,
+        credential_lease,
+        credential_ref
+      )
 
     with :ok <- Stores.attempt_store().put_attempt(attempt),
          :ok <-
@@ -531,7 +553,7 @@ defmodule Jido.Integration.V2.ControlPlane do
              attempt,
              [%{type: "run.started"}] ++ guard_input_specs(context)
            ) do
-      case dispatch(capability, input, context) do
+      case dispatch_or_replay(capability, input, context) do
         {:ok, runtime_result} ->
           :ok =
             append_specs(run.run_id, attempt, guard_output_specs(context, runtime_result.output))
@@ -767,7 +789,15 @@ defmodule Jido.Integration.V2.ControlPlane do
     end
   end
 
-  defp build_context(run, attempt, opts, policy_decision, credential_lease, credential_ref) do
+  defp build_context(
+         capability,
+         run,
+         attempt,
+         opts,
+         policy_decision,
+         credential_lease,
+         credential_ref
+       ) do
     %{
       run_id: run.run_id,
       attempt: attempt.attempt,
@@ -782,9 +812,44 @@ defmodule Jido.Integration.V2.ControlPlane do
       },
       opts: Enum.into(opts, %{}),
       prompt_ref: ref_option(opts, :prompt_ref),
-      guard_chain_ref: ref_option(opts, :guard_chain_ref)
+      guard_chain_ref: ref_option(opts, :guard_chain_ref),
+      replay_mode: Keyword.get(opts, :replay_mode),
+      replay_support_class: replay_support_class(capability, opts),
+      cost_class: if(Keyword.get(opts, :replay_mode), do: :replay, else: :production)
     }
   end
+
+  defp dispatch_or_replay(capability, input, %{replay_mode: replay_mode} = context)
+       when replay_mode in @replay_modes do
+    _capability = capability
+    _input = input
+
+    {:ok,
+     RuntimeResult.new!(%{
+       output: %{
+         replay_mode: replay_mode,
+         replay_support_class: context.replay_support_class,
+         fixture_ref: "replay-fixture://#{context.run_id}/#{context.attempt}",
+         cost_class: :replay
+       },
+       runtime_ref_id: "replay-fixture-runtime://#{context.run_id}",
+       events: [
+         %{
+           type: "replay.submission.accepted",
+           stream: :control,
+           payload: %{
+             replay_mode: Atom.to_string(replay_mode),
+             replay_support_class: Atom.to_string(context.replay_support_class),
+             cost_class: "replay",
+             side_effect_policy: "suppress"
+           }
+         }
+       ],
+       artifacts: []
+     })}
+  end
+
+  defp dispatch_or_replay(capability, input, context), do: dispatch(capability, input, context)
 
   defp dispatch(%Capability{} = capability, input, context) do
     ExecutionRouter.execute(capability, input, context)
@@ -815,6 +880,30 @@ defmodule Jido.Integration.V2.ControlPlane do
     do: {:error, :guard_chain_ref_required}
 
   defp validate_guard_presence(_required?, _prompt_ref, _guard_chain_ref), do: :ok
+
+  defp validate_replay_submission(capability, opts) do
+    case Keyword.get(opts, :replay_mode) do
+      nil ->
+        :ok
+
+      replay_mode when replay_mode in @replay_modes ->
+        validate_replay_support(replay_support_class(capability, opts))
+
+      _replay_mode ->
+        {:error, :unknown_replay_mode}
+    end
+  end
+
+  defp validate_replay_support(:not_replay_safe), do: {:error, :connector_not_replay_safe}
+  defp validate_replay_support(class) when class in @replay_support_classes, do: :ok
+  defp validate_replay_support(_class), do: {:error, :unknown_replay_support_class}
+
+  defp replay_support_class(capability, opts) do
+    Keyword.get(opts, :replay_support_class) ||
+      capability.metadata
+      |> Contracts.get(:policy, %{})
+      |> Contracts.get(:replay_support_class, :fixture_required)
+  end
 
   defp guard_input_specs(%{prompt_ref: prompt_ref, guard_chain_ref: guard_chain_ref})
        when is_binary(prompt_ref) and is_binary(guard_chain_ref) do

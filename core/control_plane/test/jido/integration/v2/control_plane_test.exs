@@ -555,6 +555,54 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
            end)
   end
 
+  test "replay submissions route to fixture lane without live connector execution" do
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    assert {:ok, result} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "would-call-live-handler"},
+               invoke_opts(connection_id,
+                 replay_mode: :exact,
+                 replay_support_class: :fixture_required,
+                 prompt_ref: "prompt://tenant-1/test/system",
+                 guard_chain_ref: "guard-chain://tenant-1/test/default"
+               )
+             )
+
+    assert result.output.cost_class == :replay
+    assert result.output.fixture_ref == "replay-fixture://#{result.run.run_id}/1"
+    refute result.output == %{value: "would-call-live-handler"}
+
+    replay_event =
+      result.run.run_id
+      |> ControlPlane.events()
+      |> Enum.find(&(&1.type == "replay.submission.accepted"))
+
+    assert replay_event.payload.side_effect_policy == "suppress"
+  end
+
+  test "replay submissions reject unsafe connector replay classes" do
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    assert {:error, error} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "no-live"},
+               invoke_opts(connection_id,
+                 replay_mode: :exact,
+                 replay_support_class: :not_replay_safe,
+                 prompt_ref: "prompt://tenant-1/test/system",
+                 guard_chain_ref: "guard-chain://tenant-1/test/default"
+               )
+             )
+
+    assert error.reason == :connector_not_replay_safe
+    assert error.attempt == nil
+  end
+
   test "execute_run/3 rejects completed runs without mutating durable run truth" do
     connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
