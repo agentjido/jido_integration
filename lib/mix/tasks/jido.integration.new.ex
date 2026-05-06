@@ -33,6 +33,7 @@ defmodule Mix.Tasks.Jido.Integration.New do
   - `--package-name` - human-readable package name override used in docs and `mix.exs`
   """
 
+  alias Jido.Integration.ConnectorGenerator
   alias Jido.Integration.Workspace.ConnectorScaffold
 
   @shortdoc "Scaffold a new v2 connector package"
@@ -42,6 +43,7 @@ defmodule Mix.Tasks.Jido.Integration.New do
     {opts, positional, invalid} =
       OptionParser.parse(args,
         strict: [
+          external_companion: :boolean,
           runtime_class: :string,
           runtime_driver: :string,
           module: :string,
@@ -55,37 +57,68 @@ defmodule Mix.Tasks.Jido.Integration.New do
     validate_invalid_options!(invalid)
 
     connector_name = resolve_connector_name!(positional)
-    context = ConnectorScaffold.generate!(connector_name, opts)
+    external_companion? = Keyword.get(opts, :external_companion, false)
 
-    Mix.shell().info("""
+    context =
+      if external_companion? do
+        ConnectorGenerator.generate!(connector_name, opts)
+      else
+        ConnectorScaffold.generate!(connector_name, opts)
+      end
 
-    Connector #{context.connector_name} scaffolded successfully!
+    generated_paths =
+      if external_companion? do
+        context.generated_relative_paths
+      else
+        ConnectorScaffold.generated_relative_paths(context)
+      end
 
-    Generated files:
-    #{Enum.map_join(ConnectorScaffold.generated_relative_paths(context), "\n", &"  #{&1}")}
+    if external_companion? do
+      Mix.shell().info("""
 
-    Next steps:
-      1. Treat the generated package as a starting contract, not the finished connector package.
-      2. Replace the placeholder authored manifest entries and provider logic with the real connector contract.
-         Keep provider inventory connector-local unless you explicitly author it into the manifest.
-         Keep `supported_profiles`, `default_profile`, `install`, `reauth`, and connector-wide auth unions aligned.
-      3. If the connector wraps a provider SDK, add connector-local `install_binding` and `client_factory` helpers.
-         Keep install, reauth, manual-auth, and rotation normalization out of runtime paths.
-         Build provider clients from credential leases only during runtime execution.
-      4. Decide which authored operations or triggers belong on the curated common consumer surface.
-         Keep `consumer_surface.mode: :common` only for entries that should project into generated actions, sensors, or plugins.
-         Generated actions, sensors, and plugins are derivative only; they are never a second authoring plane.
-      5. Update #{Path.relative_to(Path.join(context.package_root, context.conformance_file), context.workspace_root)} so the deterministic fixture matches the real behavior and the published lease fields.
-      6. Update #{Path.join(context.package_root_relative, "README.md")} so it states the runtime family, supported auth profiles, install modes, published runtime slice, package-local verification commands, authored-vs-generated surface boundary, and live-proof status.
-         Target descriptors only advertise compatibility and location; they do not override authored runtime posture.
-      7. Keep connector-local proof code inside #{context.package_root_relative}; move hosted webhook or async composition into an app only when that behavior is not part of the connector contract.
-      8. Run: cd #{context.package_root_relative} && mix deps.get
-      9. Run: cd #{context.package_root_relative} && mix compile --warnings-as-errors
-      10. Run: cd #{context.package_root_relative} && mix test
-      11. Run: cd #{context.package_root_relative} && mix docs
-      12. Run: mix jido.conformance #{context.connector_module}
-      13. Run: mix ci
-    """)
+      Connector #{context.connector_name} external companion scaffolded successfully!
+
+      Generated files:
+      #{Enum.map_join(generated_paths, "\n", &"  #{&1}")}
+
+      Next steps:
+        1. Treat the generated package as an external companion starting point.
+        2. Replace placeholder manifest entries with the real connector contract.
+        3. Run package-local conformance tests through Jido.Integration.ConformanceContracts.
+        4. Admit the connector only through explicit host app config and connector admission records.
+        5. Do not rely on arbitrary package discovery for platform admission.
+      """)
+    else
+      Mix.shell().info("""
+
+      Connector #{context.connector_name} scaffolded successfully!
+
+      Generated files:
+      #{Enum.map_join(generated_paths, "\n", &"  #{&1}")}
+
+      Next steps:
+        1. Treat the generated package as a starting contract, not the finished connector package.
+        2. Replace the placeholder authored manifest entries and provider logic with the real connector contract.
+           Keep provider inventory connector-local unless you explicitly author it into the manifest.
+           Keep `supported_profiles`, `default_profile`, `install`, `reauth`, and connector-wide auth unions aligned.
+        3. If the connector wraps a provider SDK, add connector-local `install_binding` and `client_factory` helpers.
+           Keep install, reauth, manual-auth, and rotation normalization out of runtime paths.
+           Build provider clients from credential leases only during runtime execution.
+        4. Decide which authored operations or triggers belong on the curated common consumer surface.
+           Keep `consumer_surface.mode: :common` only for entries that should project into generated actions, sensors, or plugins.
+           Generated actions, sensors, and plugins are derivative only; they are never a second authoring plane.
+        5. Update #{Path.relative_to(Path.join(context.package_root, context.conformance_file), context.workspace_root)} so the deterministic fixture matches the real behavior and the published lease fields.
+        6. Update #{Path.join(context.package_root_relative, "README.md")} so it states the runtime family, supported auth profiles, install modes, published runtime slice, package-local verification commands, authored-vs-generated surface boundary, and live-proof status.
+           Target descriptors only advertise compatibility and location; they do not override authored runtime posture.
+        7. Keep connector-local proof code inside #{context.package_root_relative}; move hosted webhook or async composition into an app only when that behavior is not part of the connector contract.
+        8. Run: cd #{context.package_root_relative} && mix deps.get
+        9. Run: cd #{context.package_root_relative} && mix compile --warnings-as-errors
+        10. Run: cd #{context.package_root_relative} && mix test
+        11. Run: cd #{context.package_root_relative} && mix docs
+        12. Run: mix jido.conformance #{context.connector_module}
+        13. Run: mix ci
+      """)
+    end
   end
 
   defp validate_invalid_options!([]), do: :ok

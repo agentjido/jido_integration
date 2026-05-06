@@ -7,12 +7,13 @@ defmodule Jido.Integration.Build.WorkspaceContract do
   ]
 
   @active_project_globs [
-    ".",
-    "core/*",
-    "connectors/*",
-    @active_app_projects
-  ]
-  |> List.flatten()
+                          ".",
+                          "core/*",
+                          "scaffolds/*",
+                          "connectors/*",
+                          @active_app_projects
+                        ]
+                        |> List.flatten()
 
   def active_project_globs, do: @active_project_globs
   def active_app_projects, do: @active_app_projects

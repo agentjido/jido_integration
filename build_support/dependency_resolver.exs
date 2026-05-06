@@ -19,6 +19,30 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_conformance(opts \\ []),
     do: resolve_internal(:jido_integration_v2_conformance, "core/conformance", opts)
 
+  def jido_integration_conformance_contracts(opts \\ []),
+    do:
+      resolve_internal(
+        :jido_integration_conformance_contracts,
+        "core/conformance_contracts",
+        opts
+      )
+
+  def jido_integration_connector_admission_engine(opts \\ []),
+    do:
+      resolve_internal(
+        :jido_integration_connector_admission_engine,
+        "core/connector_admission_engine",
+        opts
+      )
+
+  def jido_integration_connector_generator(opts \\ []),
+    do:
+      resolve_internal(
+        :jido_integration_connector_generator,
+        "scaffolds/connector_generator",
+        opts
+      )
+
   def jido_integration_v2_connector_registry(opts \\ []),
     do: resolve_internal(:jido_integration_v2_connector_registry, "core/connector_registry", opts)
 

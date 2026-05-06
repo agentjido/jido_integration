@@ -1,7 +1,8 @@
 defmodule Jido.Integration.Build.WeldContract do
   @moduledoc false
 
-  @tooling_projects [".", "core/conformance"]
+  @tooling_projects [".", "core/conformance", "scaffolds/connector_generator"]
+  @internal_projects ["core/connector_admission_engine"]
   @proof_projects ["apps/devops_incident_response", "apps/inference_ops"]
 
   @source_only_publication_projects [
@@ -12,6 +13,7 @@ defmodule Jido.Integration.Build.WeldContract do
     "core/runtime_router",
     "core/asm_runtime_bridge",
     "core/session_runtime",
+    "core/conformance_contracts",
     "core/connector_registry",
     "core/provider_feature_matrix",
     "core/tool_contracts"
@@ -33,6 +35,7 @@ defmodule Jido.Integration.Build.WeldContract do
     "connectors/linear",
     "connectors/notion",
     "core/auth",
+    "core/connector_admission_engine",
     "core/connector_registry",
     "core/consumer_surfaces",
     "core/contracts",
@@ -99,7 +102,7 @@ defmodule Jido.Integration.Build.WeldContract do
         proofs: @proof_projects
       ],
       publication: [
-        internal_only: @tooling_projects,
+        internal_only: @tooling_projects ++ @internal_projects,
         separate: @source_only_publication_projects
       ],
       dependencies: @dependencies,

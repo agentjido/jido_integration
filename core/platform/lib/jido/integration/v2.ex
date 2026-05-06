@@ -38,6 +38,7 @@ defmodule Jido.Integration.V2 do
   control-plane, and operator truth still remain owned by `jido_integration`.
   """
 
+  alias Jido.Integration.ConnectorAdmissionEngine
   alias Jido.Integration.V2.ArtifactRef
   alias Jido.Integration.V2.AttachGrant
   alias Jido.Integration.V2.Attempt
@@ -64,6 +65,53 @@ defmodule Jido.Integration.V2 do
   """
   @spec register_connector(module()) :: :ok | {:error, term()}
   defdelegate register_connector(connector), to: ControlPlane
+
+  @doc """
+  Admit a connector manifest through explicit app config and conformance proof.
+
+  This helper records connector admission only. It does not grant authority,
+  issue credentials, attach targets, or discover packages.
+  """
+  @spec admit_connector(Jido.Integration.V2.Manifest.t() | module(), keyword() | map()) ::
+          {:ok, ConnectorAdmissionEngine.admission_record()}
+          | {:error, ConnectorAdmissionEngine.admission_record()}
+  def admit_connector(connector_or_manifest, opts \\ [])
+
+  def admit_connector(%Jido.Integration.V2.Manifest{} = manifest, opts) do
+    ConnectorAdmissionEngine.admit(manifest, opts)
+  end
+
+  def admit_connector(connector_module, opts) when is_atom(connector_module) do
+    with :ok <- register_connector(connector_module) do
+      connector_module.manifest()
+      |> ConnectorAdmissionEngine.admit(opts)
+    end
+  end
+
+  @doc """
+  Return explicit companion connector candidates from app config.
+
+  Arbitrary package discovery is intentionally absent. Only maps or keyword
+  entries listed in the `:companion_connectors` config key are candidates.
+  """
+  @spec companion_connector_candidates(keyword() | [map()] | nil) :: [map()]
+  def companion_connector_candidates(
+        config \\ Application.get_env(:jido_integration_v2, :companion_connectors, [])
+      )
+
+  def companion_connector_candidates(nil), do: []
+
+  def companion_connector_candidates(config) when is_list(config) do
+    config
+    |> Enum.map(&normalize_companion_candidate/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Auto-discovery is not a platform feature.
+  """
+  @spec companion_auto_discovery?() :: false
+  def companion_auto_discovery?, do: false
 
   @doc """
   List all registered capabilities.
@@ -413,6 +461,32 @@ defmodule Jido.Integration.V2 do
           {:ok, DerivedStateAttachment.t()}
           | {:error, :unknown_run | :unknown_attempt}
   defdelegate derived_state_attachment(run_id, opts \\ %{}), to: Operator
+
+  defp normalize_companion_candidate(candidate) when is_list(candidate) do
+    if Keyword.keyword?(candidate), do: normalize_companion_candidate(Map.new(candidate))
+  end
+
+  defp normalize_companion_candidate(%{} = candidate) do
+    module = Map.get(candidate, :module) || Map.get(candidate, "module")
+    package = Map.get(candidate, :package) || Map.get(candidate, "package")
+    tenant_ref = Map.get(candidate, :tenant_ref) || Map.get(candidate, "tenant_ref")
+
+    if is_atom(module) and not is_nil(package) and present_string?(tenant_ref) do
+      %{
+        module: module,
+        package: package,
+        tenant_ref: tenant_ref,
+        app_config_ref:
+          Map.get(candidate, :app_config_ref) ||
+            Map.get(candidate, "app_config_ref") ||
+            "app-config://companion/#{tenant_ref}/#{inspect(package)}"
+      }
+    end
+  end
+
+  defp normalize_companion_candidate(_candidate), do: nil
+
+  defp present_string?(value), do: is_binary(value) and String.trim(value) != ""
 
   @doc """
   Reset in-memory state for tests and local exploration.

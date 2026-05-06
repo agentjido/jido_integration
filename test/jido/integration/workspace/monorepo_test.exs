@@ -13,6 +13,8 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "core/auth",
              "core/brain_ingress",
              "core/conformance",
+             "core/conformance_contracts",
+             "core/connector_admission_engine",
              "core/connector_registry",
              "core/consumer_surfaces",
              "core/contracts",
@@ -31,6 +33,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              "core/store_postgres",
              "core/tool_contracts",
              "core/webhook_router",
+             "scaffolds/connector_generator",
              "connectors/amp",
              "connectors/codex_cli",
              "connectors/github",
@@ -46,6 +49,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
     assert WorkspaceContract.active_project_globs() == [
              ".",
              "core/*",
+             "scaffolds/*",
              "connectors/*",
              "apps/devops_incident_response",
              "apps/inference_ops"

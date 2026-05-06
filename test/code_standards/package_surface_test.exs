@@ -253,13 +253,16 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       |> Path.join("build_support/dependency_resolver.exs")
       |> File.read!()
 
-    assert resolver_source =~ ~S[local_root_path("../pristine/apps/pristine_runtime")],
+    assert String.contains?(
+             resolver_source,
+             ~S[local_root_path("../pristine/apps/pristine_runtime")]
+           ),
            "root Pristine resolver must prefer the sibling Pristine runtime checkout"
 
-    refute resolver_source =~ ~S[System.get_env],
+    refute String.contains?(resolver_source, ~S[System.get_env]),
            "root Pristine resolver must not depend on environment-variable path selectors"
 
-    assert resolver_source =~ ~s({:pristine, "~> 0.2.1", opts}),
+    assert String.contains?(resolver_source, ~s({:pristine, "~> 0.2.1", opts})),
            "root Pristine resolver must keep a Hex fallback for publishable contexts"
 
     pristine_runtime_path = Path.expand("../pristine/apps/pristine_runtime", repo_root())
@@ -283,16 +286,16 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       |> Path.join("build_support/dependency_resolver.exs")
       |> File.read!()
 
-    assert resolver_source =~ ~S[github: "nshkrdotcom/inference"],
+    assert String.contains?(resolver_source, ~S[github: "nshkrdotcom/inference"]),
            "Inference fallback must use its source repository instead of the package registry"
 
-    assert resolver_source =~ ~S[subdir: "apps/inference"],
+    assert String.contains?(resolver_source, ~S[subdir: "apps/inference"]),
            "Inference fallback must point at its package subdirectory"
 
-    assert resolver_source =~ ~S[github: "nshkrdotcom/execution_plane"],
+    assert String.contains?(resolver_source, ~S[github: "nshkrdotcom/execution_plane"]),
            "Execution Plane fallback must use its source repository instead of the package registry"
 
-    assert resolver_source =~ ~S[subdir: "core/execution_plane"],
+    assert String.contains?(resolver_source, ~S[subdir: "core/execution_plane"]),
            "Execution Plane fallback must point at its package subdirectory"
   end
 
@@ -312,6 +315,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     assert WorkspaceContract.active_project_globs() == [
              ".",
              "core/*",
+             "scaffolds/*",
              "connectors/*",
              "apps/devops_incident_response",
              "apps/inference_ops"
@@ -345,7 +349,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       mix_exs = File.read!(mix_path)
 
       for snippet <- @required_package_mix_snippets do
-        assert mix_exs =~ snippet,
+        assert String.contains?(mix_exs, snippet),
                "#{Path.relative_to(mix_path, repo_root())} is missing #{inspect(snippet)}"
       end
     end
@@ -365,18 +369,20 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       |> File.read!()
       |> normalize_whitespace()
 
-    assert asm_runtime_bridge_mix =~
-             "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)",
+    assert String.contains?(
+             asm_runtime_bridge_mix,
+             "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)"
+           ),
            "core/asm_runtime_bridge/mix.exs must load the shared dependency resolver"
 
     for required_snippet <- [
           "DependencyResolver.agent_session_manager(env: :dev)"
         ] do
-      assert asm_runtime_bridge_mix =~ required_snippet,
+      assert String.contains?(asm_runtime_bridge_mix, required_snippet),
              "core/asm_runtime_bridge/mix.exs is missing #{required_snippet}"
     end
 
-    refute asm_runtime_bridge_mix =~ "DependencyResolver.boundary(",
+    refute String.contains?(asm_runtime_bridge_mix, "DependencyResolver.boundary("),
            "core/asm_runtime_bridge/mix.exs must not depend on agent_session_manager/vendor/boundary"
 
     control_plane_mix =
@@ -385,13 +391,13 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       |> File.read!()
       |> normalize_whitespace()
 
-    refute control_plane_mix =~ "agent_session_manager_path =",
+    refute String.contains?(control_plane_mix, "agent_session_manager_path ="),
            "core/control_plane/mix.exs must not own agent_session_manager directly"
 
-    refute control_plane_mix =~ "{:agent_session_manager,",
+    refute String.contains?(control_plane_mix, "{:agent_session_manager,"),
            "core/control_plane/mix.exs must route ASM through asm_runtime_bridge instead of depending on it directly"
 
-    refute control_plane_mix =~ "{:boundary,",
+    refute String.contains?(control_plane_mix, "{:boundary,"),
            "core/control_plane/mix.exs must not expose ASM's boundary compiler directly"
   end
 
@@ -402,20 +408,22 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
       |> File.read!()
       |> normalize_whitespace()
 
-    assert control_plane_mix =~
-             "DependencyResolver.jido_integration_v2_runtime_router(only: :test)",
+    assert String.contains?(
+             control_plane_mix,
+             "DependencyResolver.jido_integration_v2_runtime_router(only: :test)"
+           ),
            "core/control_plane/mix.exs must keep the runtime router behind a test-only package dependency"
 
-    refute control_plane_mix =~ "DependencyResolver.jido_session()",
+    refute String.contains?(control_plane_mix, "DependencyResolver.jido_session()"),
            "core/control_plane/mix.exs must not depend on the session runtime package directly"
 
-    refute control_plane_mix =~ "../../../jido_session",
+    refute String.contains?(control_plane_mix, "../../../jido_session"),
            "core/control_plane/mix.exs must not depend on a sibling jido_session repo checkout"
   end
 
   defp child_package_roots do
     repo_root()
-    |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
+    |> Path.join("{core,bridges,connectors,apps,scaffolds}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.map(&Path.dirname/1)
     |> Enum.sort()
@@ -423,7 +431,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
   defp child_package_mix_paths do
     repo_root()
-    |> Path.join("{core,bridges,connectors,apps}/*/mix.exs")
+    |> Path.join("{core,bridges,connectors,apps,scaffolds}/*/mix.exs")
     |> Path.wildcard()
     |> Enum.sort()
   end

@@ -24,6 +24,14 @@ unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
       def jido_integration_v2_conformance(opts \\ []),
         do: git_dep(:jido_integration_v2_conformance, "core/conformance", opts)
 
+      def jido_integration_connector_admission_engine(opts \\ []),
+        do:
+          git_dep(
+            :jido_integration_connector_admission_engine,
+            "core/connector_admission_engine",
+            opts
+          )
+
       def jido_integration_v2_consumer_surfaces(opts \\ []),
         do: git_dep(:jido_integration_v2_consumer_surfaces, "core/consumer_surfaces", opts)
 
@@ -183,6 +191,7 @@ defmodule Jido.Integration.V2.Platform.MixProject do
       DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_v2_auth(),
       DependencyResolver.jido_integration_v2_brain_ingress(),
+      DependencyResolver.jido_integration_connector_admission_engine(),
       DependencyResolver.jido_integration_v2_control_plane(),
       DependencyResolver.jido_integration_v2_runtime_router(only: :test),
       DependencyResolver.jido_integration_v2_store_postgres(only: :test),
