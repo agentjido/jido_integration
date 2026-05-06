@@ -35,10 +35,12 @@ use to verify changes.
     the thing you changed
 12. root `mix ci`
 
-`mix ci` uses Blitz impact state. After a clean passing baseline, unchanged
-commands are skipped and dirty changes are mapped to the affected Mix project
-and reverse local dependency surface. Use `mix ci --dry-run` to inspect the
-plan, and use `mix ci.full` when a full historical gate is required. The local
+`mix ci` uses Blitz impact state. The root task fingerprints the sibling Blitz
+path dependency and recompiles it when that checkout changes, then plans against
+the current workspace graph. After a clean passing baseline, unchanged commands
+are skipped and dirty changes are mapped to the affected Mix project and reverse
+local dependency surface. Use `mix ci --dry-run` to inspect the plan, and use
+`mix ci.full` when a full historical gate is required. The local
 `.blitz/test_state_v1` directory stores the compact baseline and task-state
 evidence; it is developer state and should remain uncommitted unless explicitly
 reviewed.

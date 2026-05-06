@@ -354,8 +354,10 @@ The default root workspace gate is explicit about that scope.
 globs that run under `mix mr.*` and `mix ci`.
 
 `mix ci` is impact-aware through the sibling Blitz checkout while Blitz `0.3.0`
-is being finalized. A clean passing run writes local evidence under
-`.blitz/test_state_v1`; a second clean run should skip the already-proven
+is being finalized. The task fingerprints the local Blitz path dependency and
+forces a Blitz recompile when that sibling checkout changes, so the planner does
+not run stale compiled impact code. A clean passing run writes local evidence
+under `.blitz/test_state_v1`; a second clean run should skip the already-proven
 surface. Dirty runs use the git diff and the current Mix project dependency
 graph to rerun only the affected project/task frontier. For example, a
 package-local README edit should affect that package docs task, while an

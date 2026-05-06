@@ -104,6 +104,80 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            ]
   end
 
+  test "workspace impact CI tracks the sibling Blitz source fingerprint" do
+    assert Ci.local_blitz_dep_path(MixProject.project()) == Path.expand("../blitz", repo_root())
+
+    fingerprint = Ci.local_blitz_source_fingerprint(Ci.local_blitz_dep_path(MixProject.project()))
+
+    assert is_binary(fingerprint)
+    assert byte_size(fingerprint) == 64
+  end
+
+  test "workspace impact CI recompiles local Blitz only when source changes" do
+    tmp_root =
+      System.tmp_dir!()
+      |> Path.join("jido_blitz_fingerprint_#{System.unique_integer([:positive])}")
+
+    stamp_path = Path.join([tmp_root, "_build", "stamp"])
+    parent = self()
+
+    File.rm_rf!(tmp_root)
+    File.mkdir_p!(Path.join(tmp_root, "lib"))
+    File.mkdir_p!(Path.join(tmp_root, "_build"))
+    File.mkdir_p!(Path.join(tmp_root, ".blitz"))
+    File.write!(Path.join(tmp_root, "mix.exs"), "defmodule Demo.MixProject do\nend\n")
+    File.write!(Path.join(tmp_root, "lib/demo.ex"), "defmodule Demo do\nend\n")
+
+    compile_fun = fn path ->
+      send(parent, {:compiled, path})
+      :ok
+    end
+
+    try do
+      assert Ci.ensure_local_blitz_current!(
+               path: tmp_root,
+               stamp_path: stamp_path,
+               compile_fun: compile_fun
+             ) == :compiled
+
+      assert_receive {:compiled, ^tmp_root}
+
+      assert Ci.ensure_local_blitz_current!(
+               path: tmp_root,
+               stamp_path: stamp_path,
+               compile_fun: compile_fun
+             ) == :current
+
+      refute_receive {:compiled, _}
+
+      File.write!(Path.join(tmp_root, ".blitz/state"), "generated\n")
+      File.write!(Path.join(tmp_root, "_build/state"), "generated\n")
+
+      assert Ci.ensure_local_blitz_current!(
+               path: tmp_root,
+               stamp_path: stamp_path,
+               compile_fun: compile_fun
+             ) == :current
+
+      refute_receive {:compiled, _}
+
+      File.write!(
+        Path.join(tmp_root, "lib/demo.ex"),
+        "defmodule Demo do\n  def changed?, do: true\nend\n"
+      )
+
+      assert Ci.ensure_local_blitz_current!(
+               path: tmp_root,
+               stamp_path: stamp_path,
+               compile_fun: compile_fun
+             ) == :compiled
+
+      assert_receive {:compiled, ^tmp_root}
+    after
+      File.rm_rf!(tmp_root)
+    end
+  end
+
   test "workspace root uses released Weld 0.7.2 and the repo-local publication contract" do
     deps = MixProject.project()[:deps]
 

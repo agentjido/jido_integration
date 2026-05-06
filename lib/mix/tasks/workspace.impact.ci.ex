@@ -30,8 +30,12 @@ defmodule Mix.Tasks.Workspace.Impact.Ci do
 
   def impact_policy, do: @impact_policy
 
+  @fingerprint_excluded_segments [".git", ".blitz", "_build", "deps", "doc"]
+
   @impl Mix.Task
   def run(args) do
+    ensure_local_blitz_current!()
+
     {opts, extra_args, invalid} =
       OptionParser.parse(args,
         strict: [
@@ -62,6 +66,77 @@ defmodule Mix.Tasks.Workspace.Impact.Ci do
     Impact.run_many!(workspace, ci_task_specs(workspace, runner_args ++ extra_args), impact_opts)
   after
     Mix.Task.reenable("workspace.impact.ci")
+  end
+
+  def ensure_local_blitz_current!(opts \\ []) do
+    path = Keyword.get(opts, :path) || local_blitz_dep_path()
+
+    cond do
+      is_nil(path) ->
+        :current
+
+      not File.dir?(path) ->
+        :current
+
+      true ->
+        stamp_path = Keyword.get(opts, :stamp_path, local_blitz_stamp_path())
+        compile_fun = Keyword.get(opts, :compile_fun, &compile_local_blitz!/1)
+        fingerprint = local_blitz_source_fingerprint(path)
+
+        case File.read(stamp_path) do
+          {:ok, ^fingerprint} ->
+            :current
+
+          _other ->
+            compile_fun.(path)
+            File.mkdir_p!(Path.dirname(stamp_path))
+            File.write!(stamp_path, fingerprint)
+            :compiled
+        end
+    end
+  end
+
+  def local_blitz_dep_path(project_config \\ Mix.Project.config()) do
+    project_config
+    |> Keyword.get(:deps, [])
+    |> Enum.find_value(fn
+      {:blitz, opts} when is_list(opts) ->
+        Keyword.get(opts, :path)
+
+      {:blitz, _requirement, opts} when is_list(opts) ->
+        Keyword.get(opts, :path)
+
+      _other ->
+        nil
+    end)
+    |> case do
+      nil -> nil
+      path -> Path.expand(path, project_root(project_config))
+    end
+  end
+
+  def local_blitz_source_fingerprint(path) do
+    root = Path.expand(path)
+
+    entries =
+      root
+      |> Path.join("**/*")
+      |> Path.wildcard(match_dot: true)
+      |> Enum.filter(&File.regular?/1)
+      |> Enum.map(&Path.relative_to(&1, root))
+      |> Enum.reject(&fingerprint_excluded?/1)
+      |> Enum.sort()
+      |> Enum.map(fn relative_path ->
+        absolute_path = Path.join(root, relative_path)
+
+        %{
+          path: relative_path,
+          hash: :crypto.hash(:sha256, File.read!(absolute_path)) |> Base.encode16(case: :lower)
+        }
+      end)
+
+    :crypto.hash(:sha256, :erlang.term_to_binary(entries))
+    |> Base.encode16(case: :lower)
   end
 
   defp ci_task_specs(workspace, extra_args) do
@@ -101,5 +176,31 @@ defmodule Mix.Tasks.Workspace.Impact.Ci do
 
   defp validate_invalid!(invalid) do
     Mix.raise("Invalid options: #{inspect(invalid)}")
+  end
+
+  defp compile_local_blitz!(_path) do
+    Mix.Task.reenable("deps.compile")
+    Mix.Task.run("deps.compile", ["blitz", "--force"])
+    :ok
+  end
+
+  defp local_blitz_stamp_path do
+    Path.join(Mix.Project.build_path(), ".blitz_local_source_fingerprint")
+  end
+
+  defp project_root(project_config) do
+    case Keyword.get(project_config, :blitz_workspace) do
+      workspace when is_list(workspace) ->
+        Keyword.get(workspace, :root) || Path.dirname(Mix.Project.project_file())
+
+      _other ->
+        Path.dirname(Mix.Project.project_file())
+    end
+  end
+
+  defp fingerprint_excluded?(relative_path) do
+    relative_path
+    |> Path.split()
+    |> Enum.any?(&(&1 in @fingerprint_excluded_segments))
   end
 end
