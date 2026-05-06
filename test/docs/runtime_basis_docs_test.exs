@@ -21,12 +21,17 @@ defmodule Jido.Integration.Docs.RuntimeBasisDocsTest do
     Enum.each(@runtime_basis_docs, fn path ->
       doc = File.read!(path)
 
-      assert doc =~ "`jido_runtime_control`",
+      assert String.contains?(doc, "`jido_runtime_control`"),
              "#{path} must cite the runtime_control package by name"
 
-      assert doc =~ "`agent_session_manager`", "#{path} must cite the ASM repo by name"
-      assert doc =~ "`cli_subprocess_core`", "#{path} must cite the CLI subprocess repo by name"
-      refute doc =~ @absolute_checkout_prefix, "#{path} must not bake in a local checkout path"
+      assert String.contains?(doc, "`agent_session_manager`"),
+             "#{path} must cite the ASM repo by name"
+
+      assert String.contains?(doc, "`cli_subprocess_core`"),
+             "#{path} must cite the CLI subprocess repo by name"
+
+      refute String.contains?(doc, @absolute_checkout_prefix),
+             "#{path} must not bake in a local checkout path"
     end)
   end
 end

@@ -78,7 +78,7 @@ defmodule Jido.Integration.V2.LowerTruthIntegrityContractsTest do
                  system_actor_ref: nil
              })
 
-    assert message =~ "requires principal_ref or system_actor_ref"
+    assert String.contains?(message, "requires principal_ref or system_actor_ref")
 
     assert {:error, %ArgumentError{message: message}} =
              LowerEventPosition.new(%{
@@ -88,7 +88,7 @@ defmodule Jido.Integration.V2.LowerTruthIntegrityContractsTest do
                  conflict_ref: nil
              })
 
-    assert message =~ "conflict_ref is required"
+    assert String.contains?(message, "conflict_ref is required")
   end
 
   test "lower event position rejects string-keyed contract drift" do
@@ -98,7 +98,7 @@ defmodule Jido.Integration.V2.LowerTruthIntegrityContractsTest do
       |> Map.put("contract_name", "JidoIntegration.LegacyLowerEventPosition.v0")
 
     assert {:error, %ArgumentError{message: message}} = LowerEventPosition.new(attrs)
-    assert message =~ "lower_event_position.contract_name"
+    assert String.contains?(message, "lower_event_position.contract_name")
   end
 
   test "claim check lifecycle accepts quarantine evidence" do
@@ -142,12 +142,12 @@ defmodule Jido.Integration.V2.LowerTruthIntegrityContractsTest do
                  quarantine_reason: nil
              })
 
-    assert message =~ "quarantine_reason is required"
+    assert String.contains?(message, "quarantine_reason is required")
 
     assert {:error, %ArgumentError{message: message}} =
              ClaimCheckLifecycle.new(%{base_claim_check_lifecycle() | payload_hash: "bad"})
 
-    assert message =~ "sha256"
+    assert String.contains?(message, "sha256")
   end
 
   test "claim check lifecycle rejects string-keyed contract drift" do
@@ -157,7 +157,7 @@ defmodule Jido.Integration.V2.LowerTruthIntegrityContractsTest do
       |> Map.put("contract_version", "0.0.0")
 
     assert {:error, %ArgumentError{message: message}} = ClaimCheckLifecycle.new(attrs)
-    assert message =~ "claim_check_lifecycle.contract_version"
+    assert String.contains?(message, "claim_check_lifecycle.contract_version")
   end
 
   test "installation revision epoch accepts current fence evidence" do
@@ -199,7 +199,7 @@ defmodule Jido.Integration.V2.LowerTruthIntegrityContractsTest do
                  attempted_installation_revision: 41
              })
 
-    assert message =~ "accepted fences must use stale_reason none"
+    assert String.contains?(message, "accepted fences must use stale_reason none")
 
     assert {:error, %ArgumentError{message: message}} =
              InstallationRevisionEpoch.new(%{
@@ -209,7 +209,7 @@ defmodule Jido.Integration.V2.LowerTruthIntegrityContractsTest do
                  attempted_installation_revision: 41
              })
 
-    assert message =~ "rejected fences require stale attempted evidence"
+    assert String.contains?(message, "rejected fences require stale attempted evidence")
 
     assert {:error, %ArgumentError{message: message}} =
              InstallationRevisionEpoch.new(%{
@@ -218,7 +218,7 @@ defmodule Jido.Integration.V2.LowerTruthIntegrityContractsTest do
                  system_actor_ref: nil
              })
 
-    assert message =~ "requires principal_ref or system_actor_ref"
+    assert String.contains?(message, "requires principal_ref or system_actor_ref")
   end
 
   test "lease revocation accepts revocation propagation evidence" do
@@ -259,12 +259,12 @@ defmodule Jido.Integration.V2.LowerTruthIntegrityContractsTest do
                  system_actor_ref: nil
              })
 
-    assert message =~ "requires principal_ref or system_actor_ref"
+    assert String.contains?(message, "requires principal_ref or system_actor_ref")
 
     assert {:error, %ArgumentError{message: message}} =
              LeaseRevocation.new(%{base_lease_revocation() | lease_scope: %{}})
 
-    assert message =~ "non-empty JSON object"
+    assert String.contains?(message, "non-empty JSON object")
   end
 
   test "contracts facade names lower truth integrity contracts" do

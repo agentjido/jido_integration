@@ -205,12 +205,12 @@ defmodule Jido.Integration.V2.AuthTest do
     assert {:ok, %Install{state: :failed} = failed_install} =
              Auth.fetch_install(install.install_id)
 
-    assert failed_install.failure_reason =~ "access_denied"
+    assert String.contains?(failed_install.failure_reason, "access_denied")
 
     assert {:ok, %Connection{state: :disabled} = disabled_connection} =
              Auth.connection_status(connection.connection_id)
 
-    assert disabled_connection.disabled_reason =~ "callback"
+    assert String.contains?(disabled_connection.disabled_reason, "callback")
     assert {:error, :connection_disabled} = Auth.request_lease(connection.connection_id, %{})
   end
 
@@ -346,8 +346,8 @@ defmodule Jido.Integration.V2.AuthTest do
 
     assert {:ok, resolved_credential} = Auth.resolve(binding.credential_ref, %{})
     assert resolved_credential.secret == %{}
-    refute inspect(resolved_credential) =~ "gho_fresh_secret"
-    refute inspect(resolved_credential) =~ "ghr_rotated_refresh_secret"
+    refute String.contains?(inspect(resolved_credential), "gho_fresh_secret")
+    refute String.contains?(inspect(resolved_credential), "ghr_rotated_refresh_secret")
   end
 
   test "resolves a specific secret value through the auth boundary" do
@@ -623,7 +623,7 @@ defmodule Jido.Integration.V2.AuthTest do
     assert expired_install.state == :expired
     assert expired_install.failure_reason == "install_ttl_elapsed"
     assert disabled_conn.state == :disabled
-    assert disabled_conn.disabled_reason =~ "install_ttl_elapsed"
+    assert String.contains?(disabled_conn.disabled_reason, "install_ttl_elapsed")
 
     assert {:error, :connection_disabled} =
              Auth.request_lease(connection.connection_id, %{
@@ -672,7 +672,7 @@ defmodule Jido.Integration.V2.AuthTest do
     assert {:ok, %Connection{state: :degraded} = degraded_connection} =
              Auth.connection_status(connection.connection_id)
 
-    assert degraded_connection.degraded_reason =~ "external_secret"
+    assert String.contains?(degraded_connection.degraded_reason, "external_secret")
     assert degraded_connection.metadata.external_secret_resolution.status == :error
     assert degraded_connection.metadata.external_secret_resolution.stage == :lease
 

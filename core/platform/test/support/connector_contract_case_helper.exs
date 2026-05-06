@@ -114,7 +114,7 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
     inspected = inspect(term)
 
     Enum.each(secret_values, fn secret ->
-      refute inspected =~ secret
+      refute String.contains?(inspected, secret)
     end)
   end
 

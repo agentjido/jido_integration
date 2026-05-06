@@ -39,8 +39,8 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.GeneratedConsumerSurfaceTest d
     assert Code.ensure_loaded?(CodexSessionStatus)
     assert Code.ensure_loaded?(CodexSessionStream)
     assert CodexSessionTurn in GeneratedPlugin.actions()
-    refute Enum.any?(GeneratedPlugin.actions(), &(to_string(&1) =~ "ToolRespond"))
-    refute Enum.any?(GeneratedPlugin.actions(), &(to_string(&1) =~ "Approve"))
+    refute Enum.any?(GeneratedPlugin.actions(), &String.contains?(to_string(&1), "ToolRespond"))
+    refute Enum.any?(GeneratedPlugin.actions(), &String.contains?(to_string(&1), "Approve"))
 
     sample_input = %{
       prompt: "Summarize the review packet",

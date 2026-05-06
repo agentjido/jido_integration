@@ -12,16 +12,16 @@ defmodule Jido.Integration.Docs.BoundaryRuntimeDocsTest do
     Enum.each(@docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 
-      assert doc =~ "`asm`",
+      assert String.contains?(doc, "`asm`"),
              "#{path} must name the asm runtime lane explicitly"
 
-      assert doc =~ "`jido_session`",
+      assert String.contains?(doc, "`jido_session`"),
              "#{path} must name the jido_session runtime lane explicitly"
 
-      refute doc =~ "boundary-backed `asm`",
+      refute String.contains?(doc, "boundary-backed `asm`"),
              "#{path} must not describe asm as boundary-backed anymore"
 
-      refute doc =~ "boundary-backed `jido_session`",
+      refute String.contains?(doc, "boundary-backed `jido_session`"),
              "#{path} must not describe jido_session as boundary-backed anymore"
     end)
   end

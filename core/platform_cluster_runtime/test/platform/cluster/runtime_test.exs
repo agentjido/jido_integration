@@ -74,7 +74,7 @@ defmodule Platform.Cluster.RuntimeTest do
         )
       )
 
-    refute source =~ ":global"
+    refute String.contains?(source, ":global")
     assert Code.ensure_loaded?(Runtime)
     assert function_exported?(Runtime, :register_singleton, 3)
     assert function_exported?(Runtime, :locate, 2)

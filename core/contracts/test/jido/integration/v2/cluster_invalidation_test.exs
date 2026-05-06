@@ -75,7 +75,7 @@ defmodule Jido.Integration.V2.ClusterInvalidationTest do
                published_at: ~U[2026-04-23 12:00:00Z]
              })
 
-    assert error.message =~ "cluster_invalidation.topic"
+    assert String.contains?(error.message, "cluster_invalidation.topic")
   end
 
   defp topic_segment?(segment) when is_binary(segment) and byte_size(segment) > 0 do

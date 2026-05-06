@@ -13,10 +13,17 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
     Enum.each(@readmes, fn path ->
       readme = File.read!(path)
 
-      assert readme =~ "## Runtime And Auth Posture", "#{path} is missing runtime/auth posture"
-      assert readme =~ "## Package Verification", "#{path} is missing package verification"
-      assert readme =~ "## Live Proof Status", "#{path} is missing live-proof status"
-      assert readme =~ "## Package Boundary", "#{path} is missing package boundary"
+      assert String.contains?(readme, "## Runtime And Auth Posture"),
+             "#{path} is missing runtime/auth posture"
+
+      assert String.contains?(readme, "## Package Verification"),
+             "#{path} is missing package verification"
+
+      assert String.contains?(readme, "## Live Proof Status"),
+             "#{path} is missing live-proof status"
+
+      assert String.contains?(readme, "## Package Boundary"),
+             "#{path} is missing package boundary"
     end)
   end
 
@@ -24,40 +31,60 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
     Enum.each(@readmes, fn path ->
       readme = File.read!(path)
 
-      assert readme =~ "mix compile --warnings-as-errors",
+      assert String.contains?(readme, "mix compile --warnings-as-errors"),
              "#{path} must document package-local compile verification"
 
-      assert readme =~ "mix test", "#{path} must document package-local test verification"
-      assert readme =~ "mix docs", "#{path} must document package-local docs verification"
-      assert readme =~ "mix jido.conformance", "#{path} must document root conformance"
-      assert readme =~ "mix ci", "#{path} must document root acceptance"
+      assert String.contains?(readme, "mix test"),
+             "#{path} must document package-local test verification"
+
+      assert String.contains?(readme, "mix docs"),
+             "#{path} must document package-local docs verification"
+
+      assert String.contains?(readme, "mix jido.conformance"),
+             "#{path} must document root conformance"
+
+      assert String.contains?(readme, "mix ci"), "#{path} must document root acceptance"
     end)
 
-    assert readme(Path.expand("../../connectors/github/README.md", __DIR__)) =~
+    assert String.contains?(
+             readme(Path.expand("../../connectors/github/README.md", __DIR__)),
              "Package-local live proofs exist"
+           )
 
-    assert readme(Path.expand("../../connectors/notion/README.md", __DIR__)) =~
+    assert String.contains?(
+             readme(Path.expand("../../connectors/notion/README.md", __DIR__)),
              "Package-local live proofs exist"
+           )
 
-    assert readme(Path.expand("../../connectors/linear/README.md", __DIR__)) =~
+    assert String.contains?(
+             readme(Path.expand("../../connectors/linear/README.md", __DIR__)),
              "Package-local live proof entry points now live"
+           )
 
-    assert readme(Path.expand("../../connectors/codex_cli/README.md", __DIR__)) =~
+    assert String.contains?(
+             readme(Path.expand("../../connectors/codex_cli/README.md", __DIR__)),
              "No package-local live proof exists yet"
+           )
 
-    assert readme(Path.expand("../../connectors/market_data/README.md", __DIR__)) =~
+    assert String.contains?(
+             readme(Path.expand("../../connectors/market_data/README.md", __DIR__)),
              "No package-local live proof exists yet"
+           )
   end
 
   test "market_data README keeps generated sensor references on the public projection contract" do
     market_data_readme =
       readme(Path.expand("../../connectors/market_data/README.md", __DIR__))
 
-    refute market_data_readme =~
+    refute String.contains?(
+             market_data_readme,
              "Jido.Integration.V2.Connectors.MarketData.Generated.Sensors.MarketAlertsDetected"
+           )
 
-    assert market_data_readme =~
+    assert String.contains?(
+             market_data_readme,
              "`Jido.Integration.V2.ConsumerProjection.sensor_module/2`"
+           )
   end
 
   test "direct connector READMEs keep the provider-SDK boundary explicit" do
@@ -68,15 +95,18 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
         ] do
       readme = path |> readme() |> normalize_whitespace()
 
-      assert readme =~ "stays on the direct provider-SDK path",
+      assert String.contains?(readme, "stays on the direct provider-SDK path"),
              "#{path} must describe the direct provider-SDK lane explicitly"
 
-      assert readme =~ "does not inherit session or stream runtime-kernel coupling",
+      assert String.contains?(
+               readme,
+               "does not inherit session or stream runtime-kernel coupling"
+             ),
              "#{path} must reject non-direct runtime coupling explicitly"
 
-      assert readme =~ sdk_dep, "#{path} must name its provider SDK boundary"
+      assert String.contains?(readme, sdk_dep), "#{path} must name its provider SDK boundary"
 
-      refute readme =~ "Jido.RuntimeControl",
+      refute String.contains?(readme, "Jido.RuntimeControl"),
              "#{path} must not describe a runtime-control-routed path"
 
       refute bridge_word?(readme),
@@ -89,61 +119,94 @@ defmodule Jido.Integration.Docs.ConnectorReadmesTest do
       readme(Path.expand("../../connectors/github/README.md", __DIR__))
       |> normalize_whitespace()
 
-    assert github_readme =~
+    assert String.contains?(
+             github_readme,
              "the manifest is the authored source of truth for `supported_profiles`, install modes, and reauth posture"
+           )
 
-    assert github_readme =~
+    assert String.contains?(
+             github_readme,
              "supports manual token entry or external-secret completion with no callback"
+           )
 
-    assert github_readme =~
+    assert String.contains?(
+             github_readme,
              "supports browser OAuth plus hosted or manual callback completion with state correlation"
+           )
 
-    assert github_readme =~
+    assert String.contains?(
+             github_readme,
              "builds `GitHubEx.Client` instances from those leases only"
+           )
 
-    assert github_readme =~
+    assert String.contains?(
+             github_readme,
              "Those generated outputs are derivative only."
+           )
 
     linear_readme =
       readme(Path.expand("../../connectors/linear/README.md", __DIR__))
       |> normalize_whitespace()
 
-    assert linear_readme =~
+    assert String.contains?(
+             linear_readme,
              "the manifest is the authored source of truth for `supported_profiles`, install modes, and reauth posture"
+           )
 
-    assert linear_readme =~
+    assert String.contains?(
+             linear_readme,
              "supports manual API key entry or external-secret completion with no callback"
+           )
 
-    assert linear_readme =~
+    assert String.contains?(
+             linear_readme,
              "supports browser OAuth plus hosted or manual callback completion with state correlation"
+           )
 
-    assert linear_readme =~ "builds `LinearSDK.Client` instances from those leases only"
+    assert String.contains?(
+             linear_readme,
+             "builds `LinearSDK.Client` instances from those leases only"
+           )
 
-    assert linear_readme =~
+    assert String.contains?(
+             linear_readme,
              "`install_binding` remains connector-local and only feeds install, reauth, manual-auth, or rotation completion flows"
+           )
 
-    assert linear_readme =~
+    assert String.contains?(
+             linear_readme,
              "`Jido.Integration.V2 -> DirectRuntime -> connector -> linear_sdk -> prismatic`"
+           )
 
-    refute linear_readme =~ "linear_sdk -> pristine"
+    refute String.contains?(linear_readme, "linear_sdk -> pristine")
 
-    assert linear_readme =~
+    assert String.contains?(
+             linear_readme,
              "Those generated actions and plugin exports are derivative only."
+           )
 
     notion_readme =
       readme(Path.expand("../../connectors/notion/README.md", __DIR__))
       |> normalize_whitespace()
 
-    assert notion_readme =~
+    assert String.contains?(
+             notion_readme,
              "the manifest is the authored source of truth for `supported_profiles`, install modes, and reauth posture"
+           )
 
-    assert notion_readme =~ "browser OAuth with hosted callback completion"
-    assert notion_readme =~ "browser OAuth with manual callback completion"
-    assert notion_readme =~ "external-secret completion"
-    assert notion_readme =~ "builds `NotionSDK.Client` instances from those leases only"
+    assert String.contains?(notion_readme, "browser OAuth with hosted callback completion")
+    assert String.contains?(notion_readme, "browser OAuth with manual callback completion")
+    assert String.contains?(notion_readme, "external-secret completion")
 
-    assert notion_readme =~
+    assert String.contains?(
+             notion_readme,
+             "builds `NotionSDK.Client` instances from those leases only"
+           )
+
+    assert String.contains?(
+             notion_readme,
              "Those generated actions, sensors, and plugin subscriptions are derivative only."
+           )
   end
 
   defp readme(path), do: File.read!(path)

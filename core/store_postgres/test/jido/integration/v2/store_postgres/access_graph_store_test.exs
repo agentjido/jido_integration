@@ -320,7 +320,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
                source_node_ref: "node://ji_1@127.0.0.1/node-a"
              )
 
-    assert message =~ "granting_authority_ref is required"
+    assert String.contains?(message, "granting_authority_ref is required")
 
     assert {:error, %ArgumentError{message: message}} =
              AccessGraphStore.insert_edges(
@@ -331,7 +331,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
                scope_hierarchy_edges: [{"scope-a", "scope-b"}, {"scope-b", "scope-a"}]
              )
 
-    assert message =~ "scope hierarchy cycle"
+    assert String.contains?(message, "scope hierarchy cycle")
 
     assert {:ok, %{edges: [edge]}} =
              AccessGraphStore.insert_edges(
@@ -383,7 +383,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStoreTest do
                cause: "missing_node"
              )
 
-    assert message =~ "source_node_ref"
+    assert String.contains?(message, "source_node_ref")
 
     assert {:ok, %{epoch: 1}} =
              AccessGraphStore.insert_edges(

@@ -54,11 +54,14 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationTest do
       assert artifact.metadata.capability_id == spec.capability_id
       assert artifact.metadata.auth_binding == Fixtures.auth_binding()
 
-      refute inspect(%{
-               output: first_result.output,
-               events: first_result.events,
-               artifact: artifact
-             }) =~ Fixtures.api_key()
+      refute String.contains?(
+               inspect(%{
+                 output: first_result.output,
+                 events: first_result.events,
+                 artifact: artifact
+               }),
+               Fixtures.api_key()
+             )
     end
   end
 
@@ -118,8 +121,10 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationTest do
     assert artifact.payload_ref.key ==
              "linear/run-linear-test/run-linear-test:1/issues_retrieve_error.term"
 
-    refute inspect(%{error: mapped_error, result: result, artifact: artifact}) =~
+    refute String.contains?(
+             inspect(%{error: mapped_error, result: result, artifact: artifact}),
              Fixtures.api_key()
+           )
   end
 
   test "rejects empty Linear issue updates before calling linear_sdk" do
@@ -158,7 +163,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationTest do
 
     assert mapped_error.code == "linear.preflight_validation"
     assert mapped_error.class == "invalid_request"
-    assert mapped_error.message =~ "exactly one operation"
+    assert String.contains?(mapped_error.message, "exactly one operation")
 
     refute_receive {:transport_request, _payload, _context, _opts}
   end
@@ -180,7 +185,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationTest do
 
     assert mapped_error.code == "linear.preflight_validation"
     assert mapped_error.class == "invalid_request"
-    assert mapped_error.message =~ "operation_name"
+    assert String.contains?(mapped_error.message, "operation_name")
 
     refute_receive {:transport_request, _payload, _context, _opts}
   end

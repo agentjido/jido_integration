@@ -56,8 +56,8 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrixTest do
     rows = ProviderFeatureMatrix.docs_rows()
 
     assert Enum.all?(rows, &Map.has_key?(&1, :features))
-    refute inspect(rows) =~ "raw_token"
-    refute inspect(rows) =~ "authorization_header"
+    refute String.contains?(inspect(rows), "raw_token")
+    refute String.contains?(inspect(rows), "authorization_header")
   end
 
   defp registry_attrs do

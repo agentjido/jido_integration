@@ -6,19 +6,19 @@ defmodule Jido.RuntimeControl.ReadmeTest do
   test "readme keeps boundary metadata carriage explicit and runtime-neutral" do
     readme = @readme_path |> File.read!() |> normalize_whitespace()
 
-    assert readme =~ "runtime-driver seam",
+    assert String.contains?(readme, "runtime-driver seam"),
            "#{@readme_path} must describe the retained runtime-driver scope"
 
-    assert readme =~ "boundary-backed",
+    assert String.contains?(readme, "boundary-backed"),
            "#{@readme_path} must describe boundary-backed runtime carriage"
 
-    assert readme =~ "`metadata[\"boundary\"]`",
+    assert String.contains?(readme, "`metadata[\"boundary\"]`"),
            "#{@readme_path} must name the boundary metadata namespace"
 
-    assert readme =~ "does not own sandbox policy",
+    assert String.contains?(readme, "does not own sandbox policy"),
            "#{@readme_path} must keep sandbox policy ownership outside Runtime Control"
 
-    refute readme =~ ":providers",
+    refute String.contains?(readme, ":providers"),
            "#{@readme_path} must not describe the removed provider-adapter config"
   end
 

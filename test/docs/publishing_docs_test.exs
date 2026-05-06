@@ -11,22 +11,22 @@ defmodule Jido.Integration.Docs.PublishingDocsTest do
     Enum.each(@docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 
-      assert doc =~ "mix release.prepare",
+      assert String.contains?(doc, "mix release.prepare"),
              "#{path} must describe bundle preparation explicitly"
 
-      assert doc =~ "mix release.track",
+      assert String.contains?(doc, "mix release.track"),
              "#{path} must describe projection tracking explicitly"
 
-      assert doc =~ "mix release.publish",
+      assert String.contains?(doc, "mix release.publish"),
              "#{path} must describe publish-from-bundle explicitly"
 
-      assert doc =~ "mix release.archive",
+      assert String.contains?(doc, "mix release.archive"),
              "#{path} must describe archive-after-publish explicitly"
 
-      refute doc =~ "WELD_PATH",
+      refute String.contains?(doc, "WELD_PATH"),
              "#{path} must not describe committed Weld path overrides anymore"
 
-      refute doc =~ "WELD_GIT_REF",
+      refute String.contains?(doc, "WELD_GIT_REF"),
              "#{path} must not describe committed Weld git-ref overrides anymore"
     end)
   end

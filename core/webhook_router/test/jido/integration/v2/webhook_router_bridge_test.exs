@@ -194,8 +194,8 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
     assert metadata.request.headers["authorization"] == Redaction.redacted()
     assert metadata.request.body.access_token == Redaction.redacted()
     assert metadata.route.verification.secret_ref == Redaction.redacted()
-    refute inspect(metadata) =~ "webhook-secret"
-    refute inspect(metadata) =~ "super-secret"
+    refute String.contains?(inspect(metadata), "webhook-secret")
+    refute String.contains?(inspect(metadata), "super-secret")
   end
 
   test "emits failure telemetry for route lookup and signature errors", %{
@@ -260,7 +260,7 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
     assert metadata.route.route_id == route.route_id
     assert metadata.request.headers["authorization"] == Redaction.redacted()
     assert metadata.request.body.client_secret == Redaction.redacted()
-    refute inspect(metadata) =~ "invalid-secret"
+    refute String.contains?(inspect(metadata), "invalid-secret")
   end
 
   test "routes a signed webhook through auth secret lookup, ingress admission, and dispatch runtime",

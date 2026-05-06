@@ -47,8 +47,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
 
     assert_eventually(fn -> File.exists?(manifest_path) end)
     manifest = File.read!(manifest_path)
-    assert manifest =~ "destination=bridge.ssh.example"
-    assert manifest =~ "port=2222"
+    assert String.contains?(manifest, "destination=bridge.ssh.example")
+    assert String.contains?(manifest, "port=2222")
     assert :ok = RuntimeControlDriver.stop_session(session)
     assert :error = SessionStore.fetch(session.session_id)
   end
@@ -95,7 +95,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
 
     assert :ok = Task.await(task, 2_000)
     assert_eventually(fn -> File.exists?(manifest_path) end)
-    assert File.read!(manifest_path) =~ "destination=bridge.cancel.example"
+    assert String.contains?(File.read!(manifest_path), "destination=bridge.cancel.example")
   end
 
   test "run/3 maps failed ssh_exec runs into failed execution results" do
@@ -125,11 +125,11 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
              RuntimeControlDriver.run(session, request, cli_path: cli_path)
 
     assert result.status == :failed
-    assert result.error["message"] =~ "CLI exited with code 42"
+    assert String.contains?(result.error["message"], "CLI exited with code 42")
     assert result.error["kind"] == "unknown"
     assert result.error["domain"] == "runtime"
     assert_eventually(fn -> File.exists?(manifest_path) end)
-    assert File.read!(manifest_path) =~ "destination=bridge.fail.example"
+    assert String.contains?(File.read!(manifest_path), "destination=bridge.fail.example")
   end
 
   defp create_fake_ssh!(manifest_path) do

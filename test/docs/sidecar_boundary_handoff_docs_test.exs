@@ -12,12 +12,16 @@ defmodule Jido.Integration.Docs.SidecarBoundaryHandoffDocsTest do
     Enum.each(@root_docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 
-      assert doc =~
-               "higher-order sidecars such as `jido_memory`, `jido_skill`, and `jido_eval` stay on the `core/contracts` seam and may persist only derived state",
+      assert String.contains?(
+               doc,
+               "higher-order sidecars such as `jido_memory` and `jido_eval` stay on the `core/contracts` seam and may persist only derived state"
+             ),
              "#{path} must keep higher-order repos on the contracts seam"
 
-      assert doc =~
-               "Phase 9 provider-factory work builds on that already-correct ownership split instead of reopening control-plane, catalog, or review authority in those repos",
+      assert String.contains?(
+               doc,
+               "Phase 9 provider-factory work builds on that already-correct ownership split instead of reopening control-plane, catalog, or review authority in those repos"
+             ),
              "#{path} must keep the Phase 9 handoff explicit"
     end)
   end
@@ -25,12 +29,16 @@ defmodule Jido.Integration.Docs.SidecarBoundaryHandoffDocsTest do
   test "contracts docs freeze the sidecar seam as the Phase 9 foundation" do
     doc = @contracts_doc |> File.read!() |> normalize_whitespace()
 
-    assert doc =~
-             "`core/contracts` is the only intended shared dependency seam for higher-order repos such as `jido_memory`, `jido_skill`, and `jido_eval`",
+    assert String.contains?(
+             doc,
+             "`core/contracts` is the only intended shared dependency seam for higher-order repos such as `jido_memory` and `jido_eval`"
+           ),
            "#{@contracts_doc} must name the contracts seam explicitly"
 
-    assert doc =~
-             "provider-factory work in Phase 9 scales on top of that seam instead of widening those repos into platform, control-plane, or store-postgres dependencies",
+    assert String.contains?(
+             doc,
+             "provider-factory work in Phase 9 scales on top of that seam instead of widening those repos into platform, control-plane, or store-postgres dependencies"
+           ),
            "#{@contracts_doc} must make the Phase 9 handoff explicit"
   end
 

@@ -76,13 +76,13 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
                now: DateTime.add(now, 60, :second)
              })
 
-    refute inspect(completed_install) =~ "secret-token"
-    refute inspect(connected_connection) =~ "secret-token"
+    refute String.contains?(inspect(completed_install), "secret-token")
+    refute String.contains?(inspect(connected_connection), "secret-token")
 
     credential_row = Repo.get!(CredentialRecord, credential_ref.id)
-    refute inspect(credential_row.secret_envelope) =~ "secret-token"
-    refute inspect(credential_row.secret_envelope) =~ "refresh-secret"
-    refute inspect(credential_row.secret_envelope) =~ "client-secret"
+    refute String.contains?(inspect(credential_row.secret_envelope), "secret-token")
+    refute String.contains?(inspect(credential_row.secret_envelope), "refresh-secret")
+    refute String.contains?(inspect(credential_row.secret_envelope), "client-secret")
     assert credential_row.secret_envelope["ciphertext"]
     assert credential_row.secret_envelope["tag"]
     assert credential_row.secret_envelope["iv"]
@@ -108,8 +108,8 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
     assert lease_row.credential_id == credential_ref.id
     assert lease_row.profile_id == "default"
     assert lease_row.payload_keys == ["access_token"]
-    refute inspect(lease_row) =~ "secret-token"
-    refute inspect(lease_row) =~ "refresh-secret"
+    refute String.contains?(inspect(lease_row), "secret-token")
+    refute String.contains?(inspect(lease_row), "refresh-secret")
 
     assert :ok = restart_repo!(:auto)
 
@@ -184,12 +184,12 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
     assert credential_row.credential_ref_id == credential_ref.id
     assert credential_row.version == 2
     assert credential_row.supersedes_credential_id == credential_ref.id
-    refute inspect(credential_row.secret_envelope) =~ "fresh-access-token"
-    refute inspect(credential_row.secret_envelope) =~ "rotated-refresh-token"
+    refute String.contains?(inspect(credential_row.secret_envelope), "fresh-access-token")
+    refute String.contains?(inspect(credential_row.secret_envelope), "rotated-refresh-token")
     assert lease_row.credential_id == refreshed_connection.current_credential_id
     assert lease_row.credential_ref_id == credential_ref.id
-    refute inspect(lease_row) =~ "fresh-access-token"
-    refute inspect(lease_row) =~ "rotated-refresh-token"
+    refute String.contains?(inspect(lease_row), "fresh-access-token")
+    refute String.contains?(inspect(lease_row), "rotated-refresh-token")
     assert lease_row.payload_keys == ["access_token"]
   end
 

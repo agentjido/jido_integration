@@ -175,7 +175,7 @@ defmodule Jido.Integration.V2.ReceiptContractTest do
              "approval_id" => "approval-1"
            }
 
-    refute inspect(lower_receipt) =~ "raw_provider_body"
+    refute String.contains?(inspect(lower_receipt), "raw_provider_body")
   end
 
   test "lower receipts carry S0 session, turn, workspace, route, outcome, and authority refs" do

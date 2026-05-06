@@ -53,11 +53,14 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationTest do
       assert artifact.metadata.capability_id == spec.capability_id
       assert artifact.metadata.auth_binding == Fixtures.auth_binding()
 
-      refute inspect(%{
-               output: first_result.output,
-               events: first_result.events,
-               artifact: artifact
-             }) =~ Fixtures.access_token()
+      refute String.contains?(
+               inspect(%{
+                 output: first_result.output,
+                 events: first_result.events,
+                 artifact: artifact
+               }),
+               Fixtures.access_token()
+             )
     end
   end
 
@@ -115,8 +118,10 @@ defmodule Jido.Integration.V2.Connectors.GitHub.OperationTest do
     assert artifact.payload_ref.key ==
              "github/run-github-test/run-github-test:1/issue_fetch_error.term"
 
-    refute inspect(%{error: mapped_error, result: result, artifact: artifact}) =~
+    refute String.contains?(
+             inspect(%{error: mapped_error, result: result, artifact: artifact}),
              Fixtures.access_token()
+           )
   end
 
   test "rejects malformed repo shapes and non-positive numeric inputs before calling github_ex" do

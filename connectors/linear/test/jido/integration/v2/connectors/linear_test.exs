@@ -188,7 +188,7 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
       assert {:ok, _parsed_input} = Zoi.parse(operation.input_schema, spec.input)
       assert {:ok, _parsed_output} = Zoi.parse(operation.output_schema, spec.output)
       assert is_binary(operation.display_name)
-      refute operation.description =~ "Scaffolded"
+      refute String.contains?(operation.description, "Scaffolded")
     end)
 
     assert {:error, _reason} =
@@ -242,7 +242,7 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
                allowed_tools: ["linear.api.graphql.execute"]
              )
 
-    assert Exception.message(error) =~ "not present in Citadel allowed_operations"
+    assert String.contains?(Exception.message(error), "not present in Citadel allowed_operations")
   end
 
   defp assert_surface_contract(operation) do

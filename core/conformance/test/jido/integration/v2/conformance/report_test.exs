@@ -22,9 +22,9 @@ defmodule Jido.Integration.V2.Conformance.ReportTest do
              "ingress_definition_discipline"
            ]
 
-    assert human =~ "Connector: github"
-    assert human =~ "[PASS] manifest_contract"
-    assert human =~ "[SKIP] ingress_definition_discipline"
+    assert String.contains?(human, "Connector: github")
+    assert String.contains?(human, "[PASS] manifest_contract")
+    assert String.contains?(human, "[SKIP] ingress_definition_discipline")
   end
 
   defp sample_report do

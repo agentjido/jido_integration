@@ -188,7 +188,7 @@ defmodule Jido.Integration.V2.StorePostgres.MemoryTierStoreTest do
                })
              )
 
-    assert message =~ "memory_invalidation.reason"
+    assert String.contains?(message, "memory_invalidation.reason")
   end
 
   test "cascades invalidations through parent chains and exposes durable rows for reconciliation" do

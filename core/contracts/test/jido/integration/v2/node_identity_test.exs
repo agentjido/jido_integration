@@ -26,7 +26,7 @@ defmodule Jido.Integration.V2.NodeIdentityTest do
         started_at: ~U[2026-04-23 12:01:00Z]
       )
 
-    assert identity.node_ref =~ "node://ji_1@127.0.0.1/"
+    assert String.contains?(identity.node_ref, "node://ji_1@127.0.0.1/")
     assert restarted.node_ref == identity.node_ref
     assert restarted.node_instance_id != identity.node_instance_id
     assert restarted.boot_generation == identity.boot_generation + 1

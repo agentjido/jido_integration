@@ -245,8 +245,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
                run_id: "bridge-run-dynamic-tools-rejected"
              )
 
-    assert error.message =~ "ASM bridge stream_run/3 failed"
-    assert error.details.error =~ "not present in Citadel allowed_operations"
+    assert String.contains?(error.message, "ASM bridge stream_run/3 failed")
+    assert String.contains?(error.details.error, "not present in Citadel allowed_operations")
   end
 
   test "stream_run/3 carries governed Codex evidence into ASM strict materialization" do
@@ -282,17 +282,17 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert metadata["codex_materialization"]["credential_lease_ref"] == "[REDACTED]"
     assert metadata["codex_materialization"]["env_keys"] == ["CODEX_HOME"]
 
-    refute inspect(events) =~ "/materialized/bin/codex"
-    refute inspect(events) =~ "/materialized/phase10/workspace"
-    refute inspect(events) =~ "/materialized/phase10/codex-home"
-    refute inspect(events) =~ "phase10-secret"
+    refute String.contains?(inspect(events), "/materialized/bin/codex")
+    refute String.contains?(inspect(events), "/materialized/phase10/workspace")
+    refute String.contains?(inspect(events), "/materialized/phase10/codex-home")
+    refute String.contains?(inspect(events), "phase10-secret")
 
     assert_receive {:governed_codex_backend_cleanup, cleanup}
     assert cleanup.cleanup_status == :completed
     assert cleanup.materialized_command == :redacted_materialized_command
     assert cleanup.credential_lease_ref == "jido-credential-lease://phase10/lease-1"
     assert cleanup.env_keys == ["CODEX_HOME"]
-    refute inspect(cleanup) =~ "/materialized"
+    refute String.contains?(inspect(cleanup), "/materialized")
   end
 
   test "governed Codex bridge rejects provider-only calls without authority evidence" do
@@ -304,7 +304,11 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
              )
 
     assert error.kind == :config_invalid
-    assert error.message =~ "governed runtime_auth requires governed context source"
+
+    assert String.contains?(
+             error.message,
+             "governed runtime_auth requires governed context source"
+           )
   end
 
   test "governed Codex bridge rejects ambient auth before deterministic provider launch" do
@@ -353,7 +357,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
 
     assert {:ok, session_ref} = SessionStore.fetch(session.session_id)
     assert {:ok, info} = ASM.session_info(session_ref)
-    refute inspect(Keyword.get(info.options, :env)) =~ "must-not-cross"
+    refute String.contains?(inspect(Keyword.get(info.options, :env)), "must-not-cross")
 
     request = RunRequest.new!(%{prompt: "hello", metadata: %{}})
 
@@ -368,8 +372,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert Enum.to_list(stream) != []
 
     assert_receive {:stream_scripted_driver_context, context}
-    refute inspect(Map.get(context, :env)) =~ "must-not-cross"
-    refute inspect(Keyword.get(context.provider_opts, :env)) =~ "must-not-cross"
+    refute String.contains?(inspect(Map.get(context, :env)), "must-not-cross")
+    refute String.contains?(inspect(Keyword.get(context.provider_opts, :env)), "must-not-cross")
   end
 
   test "stream_run/3 rejects host tools for unsupported providers with a Jido-facing error" do
@@ -392,8 +396,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
                run_id: "bridge-run-host-tools-rejected"
              )
 
-    assert Exception.message(error) =~ "host_tools"
-    assert Exception.message(error) =~ "gemini"
+    assert String.contains?(Exception.message(error), "host_tools")
+    assert String.contains?(Exception.message(error), "gemini")
   end
 
   test "normalizer projects host tool events and redacts raw provider evidence" do

@@ -59,6 +59,6 @@ defmodule Jido.Integration.V2.Connectors.AmpTest do
            ] = Conformance.fixtures()
 
     assert refs.native_auth_assertion_ref == "native-auth-assertion://amp/fixture"
-    refute inspect(refs) =~ "AMP_API_KEY"
+    refute String.contains?(inspect(refs), "AMP_API_KEY")
   end
 end

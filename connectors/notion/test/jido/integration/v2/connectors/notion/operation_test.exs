@@ -60,11 +60,14 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationTest do
     assert artifact.metadata.capability_id == "notion.pages.retrieve"
     assert artifact.metadata.auth_binding == Fixtures.auth_binding()
 
-    refute inspect(%{
-             output: first_result.output,
-             events: first_result.events,
-             artifact: artifact
-           }) =~ Fixtures.access_token()
+    refute String.contains?(
+             inspect(%{
+               output: first_result.output,
+               events: first_result.events,
+               artifact: artifact
+             }),
+             Fixtures.access_token()
+           )
   end
 
   test "normalizes Notion provider errors into the Jido taxonomy and redacts auth material" do
@@ -110,8 +113,10 @@ defmodule Jido.Integration.V2.Connectors.Notion.OperationTest do
     assert artifact.payload_ref.key ==
              "notion/run-notion-test/run-notion-test:1/pages_retrieve_error.term"
 
-    refute inspect(%{error: mapped_error, result: result, artifact: artifact}) =~
+    refute String.contains?(
+             inspect(%{error: mapped_error, result: result, artifact: artifact}),
              Fixtures.access_token()
+           )
   end
 
   test "resolves parent data-source schema before notion.pages.create and records schema context" do

@@ -42,8 +42,8 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
 
     assert evidence.redacted
     assert evidence.connector_instance_ref == "connector-instance://tenant-1/codex/a"
-    refute inspect(evidence) =~ "phase4a-runtime-token"
-    refute inspect(lease.metadata) =~ "phase4a-runtime-token"
+    refute String.contains?(inspect(evidence), "phase4a-runtime-token")
+    refute String.contains?(inspect(lease.metadata), "phase4a-runtime-token")
   end
 
   test "rejects wrong connector, provider account, and tenant before materialization" do
@@ -198,7 +198,7 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
 
     assert {:ok, audit} = Auth.lease_audit_event("provider_auth.lease.redeemed", lease)
     assert audit.redacted
-    refute inspect(audit) =~ "phase4a-runtime-token"
+    refute String.contains?(inspect(audit), "phase4a-runtime-token")
 
     assert {:ok, fence} = Auth.lease_fence_event(lease)
     assert fence.lease_id == lease.lease_id
@@ -234,7 +234,7 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
              })
 
     assert cleanup_event.status == :cleaned
-    refute inspect(cleanup_event) =~ "phase4a-runtime-token"
+    refute String.contains?(inspect(cleanup_event), "phase4a-runtime-token")
   end
 
   test "governed leases cover every provider family and operation class with bounded metadata" do

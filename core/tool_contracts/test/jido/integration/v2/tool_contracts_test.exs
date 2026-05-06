@@ -67,8 +67,8 @@ defmodule Jido.Integration.V2.ToolContractsTest do
       assert binding.provider_family == row.family
       assert binding.requested_operation == row.operation
       assert binding.tool_sandbox == "strict"
-      assert binding.connector_binding_ref =~ "connector-binding://"
-      refute inspect(binding) =~ "secret"
+      assert String.contains?(binding.connector_binding_ref, "connector-binding://")
+      refute String.contains?(inspect(binding), "secret")
     end)
   end
 
@@ -221,7 +221,7 @@ defmodule Jido.Integration.V2.ToolContractsTest do
     assert receipt.raw_material_present? == false
     assert receipt.provider_payload_redacted? == true
     assert receipt.result_ref == "tool-result://tenant-1/github/http/github.issue.list"
-    refute inspect(receipt) =~ "secret"
+    refute String.contains?(inspect(receipt), "secret")
 
     assert {:error, {:forbidden_tool_result_fields, [:provider_payload, :raw_token]}} =
              ToolContracts.operation_result_receipt(binding,

@@ -353,7 +353,7 @@ defmodule Jido.Integration.V2.ContractsTest do
     assert String.starts_with?(attach_grant.attach_grant_id, "attach_grant-")
     assert receipt.receipt_id == Contracts.receipt_id(run.run_id, attempt.attempt_id, "handoff")
     assert recovery_task.task_id == "route:#{route.route_id}:ambiguous_ack"
-    assert review_bundle.review_projection.packet_ref =~ run.run_id
+    assert String.contains?(review_bundle.review_projection.packet_ref, run.run_id)
     assert review_bundle.receipts == [receipt]
     assert review_bundle.recovery_tasks == [recovery_task]
   end

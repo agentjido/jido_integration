@@ -71,7 +71,7 @@ defmodule Jido.Integration.V2.ConnectorAdmissionTest do
     assert projection.scanner_refs == ["scanner:stack-lab:no-bypass"]
     assert projection.redaction_class == "ref_only"
     refute Map.has_key?(projection, :raw_token)
-    refute inspect(projection) =~ "secret"
+    refute String.contains?(inspect(projection), "secret")
   end
 
   defp admission_attrs(opts) do

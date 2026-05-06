@@ -248,7 +248,7 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
                allowed_tools: ["github.api.pr.fetch"]
              )
 
-    assert Exception.message(error) =~ "requires allowed tools"
+    assert String.contains?(Exception.message(error), "requires allowed tools")
   end
 
   test "authors the A0 slice as rich operation specs and derives the executable catalog from them" do
@@ -271,7 +271,7 @@ defmodule Jido.Integration.V2.Connectors.GitHubTest do
       assert {:ok, _parsed_input} = Zoi.parse(operation.input_schema, spec.input)
       assert {:ok, _parsed_output} = Zoi.parse(operation.output_schema, spec.output)
       assert is_binary(operation.display_name)
-      refute operation.description =~ "GitHub API projection for"
+      refute String.contains?(operation.description, "GitHub API projection for")
     end)
 
     assert {:error, _reason} =

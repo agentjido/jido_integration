@@ -64,20 +64,20 @@ defmodule Jido.Integration.V2.StorePostgres.M7AMigrationBackfillTest do
   test "migration SQL captures real LSNs and deterministic HLCs instead of legacy placeholders" do
     contents = File.read!(@migration_path)
 
-    refute contents =~ "node://migration@m7a/legacy"
-    refute contents =~ "commit_lsn = '0/0'"
-    assert contents =~ "pg_current_wal_lsn()::text"
-    assert contents =~ "row_number() OVER"
-    assert contents =~ "jsonb_build_object('w'"
-    assert contents =~ "row_batch_index"
+    refute String.contains?(contents, "node://migration@m7a/legacy")
+    refute String.contains?(contents, "commit_lsn = '0/0'")
+    assert String.contains?(contents, "pg_current_wal_lsn()::text")
+    assert String.contains?(contents, "row_number() OVER")
+    assert String.contains?(contents, "jsonb_build_object('w'")
+    assert String.contains?(contents, "row_batch_index")
 
     for table <- ~w(access_graph_epochs access_graph_edges memory_invalidations) do
-      assert contents =~ "UPDATE #{table}"
-      assert contents =~ "WHERE source_node_ref IS NULL"
+      assert String.contains?(contents, "UPDATE #{table}")
+      assert String.contains?(contents, "WHERE source_node_ref IS NULL")
     end
 
     for table <- ~w(memory_private memory_shared memory_governed) do
-      assert contents =~ "add_memory_source_node(:#{table})"
+      assert String.contains?(contents, "add_memory_source_node(:#{table})")
     end
   end
 end

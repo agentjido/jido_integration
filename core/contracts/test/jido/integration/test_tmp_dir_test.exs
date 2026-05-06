@@ -16,7 +16,7 @@ defmodule Jido.Integration.TestTmpDirTest do
     assert File.dir?(first)
     assert File.dir?(second)
     assert Path.dirname(first) == Path.expand(System.tmp_dir!())
-    assert Path.basename(first) =~ "contracts_test"
+    assert String.contains?(Path.basename(first), "contracts_test")
   end
 
   test "removes temp directories during cleanup" do

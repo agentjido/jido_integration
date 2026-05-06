@@ -54,7 +54,7 @@ defmodule Jido.Integration.V2.StoreLocal.AuthStoreContractTest do
     assert {:error, :unknown_install} = InstallStore.fetch_install("install-missing")
     assert {:error, :unknown_lease} = LeaseStore.fetch_lease("lease-missing")
 
-    refute File.read!(Server.storage_path()) =~ "rotated-token"
+    refute String.contains?(File.read!(Server.storage_path()), "rotated-token")
   end
 
   test "recovers auth truth after store restart" do

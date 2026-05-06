@@ -10,17 +10,22 @@ defmodule Jido.Integration.Docs.RootBoundaryDocsTest do
     Enum.each(@root_docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 
-      assert doc =~ "GitHub, Linear, and Notion stay on the direct provider-SDK path",
+      assert String.contains?(
+               doc,
+               "GitHub, Linear, and Notion stay on the direct provider-SDK path"
+             ),
              "#{path} must keep direct connectors on the direct path explicitly"
 
-      assert doc =~ "do not inherit session or stream runtime-kernel coupling",
+      assert String.contains?(doc, "do not inherit session or stream runtime-kernel coupling"),
              "#{path} must reject runtime-kernel coupling for direct connectors"
 
-      assert doc =~
-               "Only actual `:session` and `:stream` capabilities use `jido_runtime_control` via `Jido.RuntimeControl`.",
+      assert String.contains?(
+               doc,
+               "Only actual `:session` and `:stream` capabilities use `jido_runtime_control` via `Jido.RuntimeControl`."
+             ),
              "#{path} must keep Jido.RuntimeControl scoped to actual non-direct capabilities"
 
-      refute doc =~ "/home/home/p/g/n/",
+      refute String.contains?(doc, "/home/home/p/g/n/"),
              "#{path} must not bake in a machine-local checkout path"
     end)
   end
@@ -29,8 +34,10 @@ defmodule Jido.Integration.Docs.RootBoundaryDocsTest do
     Enum.each(@root_docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 
-      assert doc =~
-               "Phase 6A removed the old `core/session_kernel` and `core/stream_runtime` bridge packages. They are not part of the repo or the target runtime architecture.",
+      assert String.contains?(
+               doc,
+               "Phase 6A removed the old `core/session_kernel` and `core/stream_runtime` bridge packages. They are not part of the repo or the target runtime architecture."
+             ),
              "#{path} must describe the bridge packages as removed"
     end)
   end
@@ -39,8 +46,10 @@ defmodule Jido.Integration.Docs.RootBoundaryDocsTest do
     Enum.each(@root_docs, fn path ->
       doc = path |> File.read!() |> normalize_whitespace()
 
-      assert doc =~
-               "`asm` routes through `core/asm_runtime_bridge` into `agent_session_manager` and `cli_subprocess_core`, while `jido_session` routes through `core/session_runtime` via `Jido.Session.RuntimeControlDriver`.",
+      assert String.contains?(
+               doc,
+               "`asm` routes through `core/asm_runtime_bridge` into `agent_session_manager` and `cli_subprocess_core`, while `jido_session` routes through `core/session_runtime` via `Jido.Session.RuntimeControlDriver`."
+             ),
              "#{path} must describe both supported non-direct runtime targets explicitly"
     end)
   end

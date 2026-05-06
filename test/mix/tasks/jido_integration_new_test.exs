@@ -17,32 +17,46 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     package_root = Path.join(workspace_root, "connectors/acme_crm")
 
-    assert output =~ "Connector acme_crm scaffolded successfully"
-    assert output =~ "starting contract, not the finished connector package"
+    assert String.contains?(output, "Connector acme_crm scaffolded successfully")
+    assert String.contains?(output, "starting contract, not the finished connector package")
 
-    assert output =~
+    assert String.contains?(
+             output,
              "Keep provider inventory connector-local unless you explicitly author it into the manifest."
+           )
 
-    assert output =~
+    assert String.contains?(
+             output,
              "Target descriptors only advertise compatibility and location; they do not override authored runtime posture."
+           )
 
-    assert output =~
+    assert String.contains?(
+             output,
              "Update connectors/acme_crm/README.md so it states the runtime family, supported auth profiles, install modes, published runtime slice, package-local verification commands, authored-vs-generated surface boundary, and live-proof status."
+           )
 
-    assert output =~
+    assert String.contains?(
+             output,
              "Keep `supported_profiles`, `default_profile`, `install`, `reauth`, and connector-wide auth unions aligned."
+           )
 
-    assert output =~
+    assert String.contains?(
+             output,
              "If the connector wraps a provider SDK, add connector-local `install_binding` and `client_factory` helpers."
+           )
 
-    assert output =~
+    assert String.contains?(
+             output,
              "Build provider clients from credential leases only during runtime execution."
+           )
 
-    assert output =~
+    assert String.contains?(
+             output,
              "Generated actions, sensors, and plugins are derivative only; they are never a second authoring plane."
+           )
 
-    assert output =~ "Keep connector-local proof code inside connectors/acme_crm"
-    assert output =~ "Run: mix ci"
+    assert String.contains?(output, "Keep connector-local proof code inside connectors/acme_crm")
+    assert String.contains?(output, "Run: mix ci")
 
     assert File.exists?(Path.join(package_root, ".formatter.exs"))
     assert File.exists?(Path.join(package_root, ".gitignore"))
@@ -104,87 +118,118 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
 
     mix_content = File.read!(Path.join(package_root, "mix.exs"))
 
-    assert mix_content =~
+    assert String.contains?(
+             mix_content,
              "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)"
+           )
 
-    assert mix_content =~ "alias Jido.Integration.Build.DependencyResolver"
-    assert mix_content =~ "DependencyResolver.jido_integration_contracts(override: true)"
+    assert String.contains?(mix_content, "alias Jido.Integration.Build.DependencyResolver")
 
-    assert mix_content =~
+    assert String.contains?(
+             mix_content,
+             "DependencyResolver.jido_integration_contracts(override: true)"
+           )
+
+    assert String.contains?(
+             mix_content,
              "DependencyResolver.jido_integration_v2_consumer_surfaces(override: true)"
+           )
 
-    assert mix_content =~ "{:zoi, \"~> 0.17\"}"
+    assert String.contains?(mix_content, "{:zoi, \"~> 0.17\"}")
 
-    assert mix_content =~ "DependencyResolver.jido_integration_v2_direct_runtime(override: true)"
+    assert String.contains?(
+             mix_content,
+             "DependencyResolver.jido_integration_v2_direct_runtime(override: true)"
+           )
 
-    assert mix_content =~
+    assert String.contains?(
+             mix_content,
              "DependencyResolver.jido_integration_v2_conformance(only: :test, runtime: false)"
+           )
 
-    assert mix_content =~ "{:jido, \"~> 2.1\"}"
-    assert mix_content =~ "{:jido_action, \"~> 2.1\"}"
-    assert mix_content =~ ~s(elixir: "~> 1.19")
-    assert mix_content =~ "dialyzer: dialyzer()"
-    assert mix_content =~ "defp dialyzer do"
-    assert mix_content =~ "docs: docs()"
-    assert mix_content =~ "defp docs do"
-    assert mix_content =~ ~s(extras: ["README.md"])
-    refute mix_content =~ "../../guides/architecture.md"
-    assert mix_content =~ "{:credo,"
-    assert mix_content =~ "{:dialyxir,"
-    assert mix_content =~ "{:ex_doc,"
-    assert mix_content =~ "name:"
-    assert mix_content =~ "description:"
-    refute mix_content =~ "jido_integration_workspace"
+    assert String.contains?(mix_content, "{:jido, \"~> 2.1\"}")
+    assert String.contains?(mix_content, "{:jido_action, \"~> 2.1\"}")
+    assert String.contains?(mix_content, ~s(elixir: "~> 1.19"))
+    assert String.contains?(mix_content, "dialyzer: dialyzer()")
+    assert String.contains?(mix_content, "defp dialyzer do")
+    assert String.contains?(mix_content, "docs: docs()")
+    assert String.contains?(mix_content, "defp docs do")
+    assert String.contains?(mix_content, ~s(extras: ["README.md"]))
+    refute String.contains?(mix_content, "../../guides/architecture.md")
+    assert String.contains?(mix_content, "{:credo,")
+    assert String.contains?(mix_content, "{:dialyxir,")
+    assert String.contains?(mix_content, "{:ex_doc,")
+    assert String.contains?(mix_content, "name:")
+    assert String.contains?(mix_content, "description:")
+    refute String.contains?(mix_content, "jido_integration_workspace")
 
     connector_content =
       File.read!(Path.join(package_root, "lib/jido/integration/v2/connectors/acme_crm.ex"))
 
-    assert connector_content =~ "defmodule Jido.Integration.V2.Connectors.AcmeCrm do"
-    assert connector_content =~ "Manifest.new!("
-    assert connector_content =~ "AuthSpec.new!("
-    assert connector_content =~ "supported_profiles:"
-    assert connector_content =~ ~s(default_profile: "default_manual_secret")
-    assert connector_content =~ "management_modes: [:external_secret, :manual]"
-    assert connector_content =~ "durable_secret_fields: [\"api_token\"]"
-    assert connector_content =~ "CatalogSpec.new!("
-    assert connector_content =~ "OperationSpec.new!("
-    assert connector_content =~ "TriggerSpec.new!("
-    assert connector_content =~ "runtime_families: [:direct]"
-    assert connector_content =~ "mode: :common"
-    assert connector_content =~ "action_name: \"acme_crm_sample_perform\""
-    assert connector_content =~ "sensor_name: \"sample_detected\""
-    assert connector_content =~ "def ingress_definitions do"
+    assert String.contains?(
+             connector_content,
+             "defmodule Jido.Integration.V2.Connectors.AcmeCrm do"
+           )
+
+    assert String.contains?(connector_content, "Manifest.new!(")
+    assert String.contains?(connector_content, "AuthSpec.new!(")
+    assert String.contains?(connector_content, "supported_profiles:")
+    assert String.contains?(connector_content, ~s(default_profile: "default_manual_secret"))
+    assert String.contains?(connector_content, "management_modes: [:external_secret, :manual]")
+    assert String.contains?(connector_content, "durable_secret_fields: [\"api_token\"]")
+    assert String.contains?(connector_content, "CatalogSpec.new!(")
+    assert String.contains?(connector_content, "OperationSpec.new!(")
+    assert String.contains?(connector_content, "TriggerSpec.new!(")
+    assert String.contains?(connector_content, "runtime_families: [:direct]")
+    assert String.contains?(connector_content, "mode: :common")
+    assert String.contains?(connector_content, "action_name: \"acme_crm_sample_perform\"")
+    assert String.contains?(connector_content, "sensor_name: \"sample_detected\"")
+    assert String.contains?(connector_content, "def ingress_definitions do")
     assert contains_tokens_in_order?(connector_content, ["input_schema:", "Zoi.object"])
     assert contains_tokens_in_order?(connector_content, ["output_schema:", "Zoi.object"])
-    refute connector_content =~ "Capability.new!("
+    refute String.contains?(connector_content, "Capability.new!(")
 
     readme = package_root |> Path.join("README.md") |> File.read!() |> normalize_whitespace()
 
-    assert readme =~ "## Scaffold Output"
-    assert readme =~ "## What You Must Author"
-    assert readme =~ "## Proof Code Homes"
-    assert readme =~ "mix ci"
+    assert String.contains?(readme, "## Scaffold Output")
+    assert String.contains?(readme, "## What You Must Author")
+    assert String.contains?(readme, "## Proof Code Homes")
+    assert String.contains?(readme, "mix ci")
 
-    assert readme =~
+    assert String.contains?(
+             readme,
              "do not rely on provider-local hidden rules or repo-local conventions"
+           )
 
-    assert readme =~
+    assert String.contains?(
+             readme,
              "add connector-local `install_binding.ex` and `client_factory.ex`"
+           )
 
-    assert readme =~
+    assert String.contains?(
+             readme,
              "published runtime slice, generated-vs-connector-local boundary"
+           )
 
-    assert readme =~
+    assert String.contains?(
+             readme,
              "Generated actions, sensors, and plugins remain derivative of the authored manifest."
+           )
 
-    assert readme =~
+    assert String.contains?(
+             readme,
              "Keep provider inventory, parity catalogs, and long-tail SDK helpers connector-local unless you explicitly publish them through the manifest."
+           )
 
-    assert readme =~
+    assert String.contains?(
+             readme,
              "Target descriptors advertise compatibility and location only. They do not override authored runtime.driver, runtime.provider, or runtime.options."
+           )
 
-    assert readme =~
+    assert String.contains?(
+             readme,
              "Keep deterministic fixtures, companion modules, examples, scripts, and live acceptance inside this package."
+           )
   end
 
   test "requires explicit runtime-driver selection for non-direct scaffolds" do
@@ -266,14 +311,14 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
     session_readme = File.read!(Path.join(session_package_root, "README.md"))
     stream_readme = File.read!(Path.join(stream_package_root, "README.md"))
 
-    assert session_connector =~ ~s(driver: "jido_session")
-    assert stream_connector =~ ~s(driver: "asm")
-    assert session_connector =~ "mode: :common"
-    assert stream_connector =~ "mode: :common"
-    assert session_connector =~ "runtime_family"
-    assert stream_connector =~ "runtime_family"
-    refute session_connector =~ removed_session_bridge_id()
-    refute stream_connector =~ removed_stream_bridge_id()
+    assert String.contains?(session_connector, ~s(driver: "jido_session"))
+    assert String.contains?(stream_connector, ~s(driver: "asm"))
+    assert String.contains?(session_connector, "mode: :common")
+    assert String.contains?(stream_connector, "mode: :common")
+    assert String.contains?(session_connector, "runtime_family")
+    assert String.contains?(stream_connector, "runtime_family")
+    refute String.contains?(session_connector, removed_session_bridge_id())
+    refute String.contains?(stream_connector, removed_stream_bridge_id())
 
     assert File.exists?(
              Path.join(
@@ -289,16 +334,21 @@ defmodule Mix.Tasks.Jido.Integration.NewTest do
              )
            )
 
-    refute session_mix =~ ~s(["lib", "test_support"])
-    refute stream_mix =~ ~s(["lib", "test_support"])
-    assert session_mix =~ "DependencyResolver.jido_runtime_control(override: true)"
-    assert stream_mix =~ "DependencyResolver.jido_runtime_control(override: true)"
-    assert session_mix =~ "override: true"
-    assert stream_mix =~ "override: true"
-    refute session_readme =~ removed_session_bridge_id()
-    refute session_readme =~ removed_stream_bridge_id()
-    refute stream_readme =~ removed_session_bridge_id()
-    refute stream_readme =~ removed_stream_bridge_id()
+    refute String.contains?(session_mix, ~s(["lib", "test_support"]))
+    refute String.contains?(stream_mix, ~s(["lib", "test_support"]))
+
+    assert String.contains?(
+             session_mix,
+             "DependencyResolver.jido_runtime_control(override: true)"
+           )
+
+    assert String.contains?(stream_mix, "DependencyResolver.jido_runtime_control(override: true)")
+    assert String.contains?(session_mix, "override: true")
+    assert String.contains?(stream_mix, "override: true")
+    refute String.contains?(session_readme, removed_session_bridge_id())
+    refute String.contains?(session_readme, removed_stream_bridge_id())
+    refute String.contains?(stream_readme, removed_session_bridge_id())
+    refute String.contains?(stream_readme, removed_stream_bridge_id())
   end
 
   @tag :scaffold_validation

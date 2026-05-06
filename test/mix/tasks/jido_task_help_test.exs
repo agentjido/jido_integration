@@ -15,9 +15,9 @@ defmodule Mix.Tasks.Jido.TaskHelpTest do
       |> normalize_whitespace()
       |> String.downcase()
 
-    assert output =~ "connector acceptance contract"
-    assert output =~ "package-local fixtures stay package-local"
-    assert output =~ "mix ci"
+    assert String.contains?(output, "connector acceptance contract")
+    assert String.contains?(output, "package-local fixtures stay package-local")
+    assert String.contains?(output, "mix ci")
   end
 
   test "jido.integration.new help describes the authored-vs-generated scaffold boundary" do
@@ -29,9 +29,9 @@ defmodule Mix.Tasks.Jido.TaskHelpTest do
       end)
       |> normalize_whitespace()
 
-    assert output =~ "generated starting contract"
-    assert output =~ "still must be authored by hand"
-    assert output =~ "proof code belongs in the generated connector package"
+    assert String.contains?(output, "generated starting contract")
+    assert String.contains?(output, "still must be authored by hand")
+    assert String.contains?(output, "proof code belongs in the generated connector package")
   end
 
   test "jido_integration.release.publish help describes bundle-first publication" do
@@ -43,9 +43,9 @@ defmodule Mix.Tasks.Jido.TaskHelpTest do
       end)
       |> normalize_whitespace()
 
-    assert output =~ "prepared welded release bundle"
-    assert output =~ "publishes from the prepared bundle snapshot"
-    assert output =~ "mix release.prepare"
+    assert String.contains?(output, "prepared welded release bundle")
+    assert String.contains?(output, "publishes from the prepared bundle snapshot")
+    assert String.contains?(output, "mix release.prepare")
   end
 
   defp normalize_whitespace(text), do: text |> String.split() |> Enum.join(" ")

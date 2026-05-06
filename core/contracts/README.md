@@ -166,7 +166,7 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `SubjectRef`, `EvidenceRef`, and `GovernanceRef` are the only intended
   cross-repo reference seam for higher-order repos
 - `core/contracts` is the only intended shared dependency seam for higher-order
-  repos such as `jido_memory`, `jido_skill`, and `jido_eval`
+  repos such as `jido_memory` and `jido_eval`
 - durable brain-to-lower-gateway carriage also stays on this seam:
   - `CanonicalJson` defines the lower-gateway-owned canonicalization and hashing basis
     for submission identity

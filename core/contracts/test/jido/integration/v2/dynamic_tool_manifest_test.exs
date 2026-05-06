@@ -60,7 +60,7 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
                allowed_tools: ["github.api.pr.create"]
              )
 
-    assert Exception.message(error) =~ "not present in Citadel allowed_operations"
+    assert String.contains?(Exception.message(error), "not present in Citadel allowed_operations")
   end
 
   test "rejects multi-operation tool declarations" do
@@ -79,7 +79,7 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
                allowed_tools: ["linear.api.graphql.execute", "github.api.pr.create"]
              )
 
-    assert Exception.message(error) =~ "maps to multiple operations"
+    assert String.contains?(Exception.message(error), "maps to multiple operations")
   end
 
   test "rejects undeclared catalog operations" do
@@ -91,7 +91,7 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
                allowed_tools: ["linear.api.graphql.execute"]
              )
 
-    assert Exception.message(error) =~ "not present in connector catalogs"
+    assert String.contains?(Exception.message(error), "not present in connector catalogs")
   end
 
   defp manifest(connector, operation_id) do

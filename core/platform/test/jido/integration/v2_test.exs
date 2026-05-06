@@ -691,7 +691,7 @@ defmodule Jido.Integration.V2Test do
       assert result.run.runtime_class == :direct
       assert result.attempt.status == :completed
       assert result.attempt.runtime_ref_id == nil
-      assert result.output.auth_binding =~ "sha256:"
+      assert String.contains?(result.output.auth_binding, "sha256:")
 
       assert_github_output(capability_spec.capability_id, capability_spec.input, result.output)
 
@@ -788,8 +788,8 @@ defmodule Jido.Integration.V2Test do
 
     assert first.run.runtime_class == :session
     assert first.attempt.runtime_ref_id == second.attempt.runtime_ref_id
-    assert first.output.text =~ "turn 1"
-    assert second.output.text =~ "turn 2"
+    assert String.contains?(first.output.text, "turn 1")
+    assert String.contains?(second.output.text, "turn 2")
     assert second.output.provider_session_id == "codex-thread-conformance"
     assert second.output.status == :completed
 

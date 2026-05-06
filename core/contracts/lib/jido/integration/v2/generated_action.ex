@@ -4,10 +4,11 @@ defmodule Jido.Integration.V2.GeneratedAction do
   """
 
   alias Jido.Integration.V2.ConsumerProjection
+  alias Jido.Integration.V2.GeneratedOptions
   @runtime_module :"Elixir.Jido.Integration.V2.ConsumerSurfaceRuntime"
 
   defmacro __using__(opts_ast) do
-    {opts, _binding} = Code.eval_quoted(opts_ast, [], __CALLER__)
+    opts = GeneratedOptions.keyword!(opts_ast, __CALLER__, [:connector, :operation_id])
     connector_module = Keyword.fetch!(opts, :connector)
     operation_id = Keyword.fetch!(opts, :operation_id)
 

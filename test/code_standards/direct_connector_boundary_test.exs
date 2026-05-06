@@ -58,31 +58,41 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
          } ->
         mix_exs = File.read!(mix_path)
 
-        assert mix_exs =~ "WorkspaceDependencyResolver.jido_integration_v2_direct_runtime()",
+        assert String.contains?(
+                 mix_exs,
+                 "WorkspaceDependencyResolver.jido_integration_v2_direct_runtime()"
+               ),
                "#{mix_path} must depend on direct_runtime"
 
-        assert mix_exs =~
-                 "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)",
+        assert String.contains?(
+                 mix_exs,
+                 "Code.require_file(\"../../build_support/dependency_resolver.exs\", __DIR__)"
+               ),
                "#{mix_path} must load the shared workspace dependency resolver"
 
-        assert mix_exs =~ "Code.require_file(\"build_support/dependency_resolver.exs\", __DIR__)",
+        assert String.contains?(
+                 mix_exs,
+                 "Code.require_file(\"build_support/dependency_resolver.exs\", __DIR__)"
+               ),
                "#{mix_path} must load its provider-specific dependency resolver"
 
-        assert mix_exs =~ sdk_resolver_call,
+        assert String.contains?(mix_exs, sdk_resolver_call),
                "#{mix_path} must resolve its provider SDK through DependencyResolver"
 
-        refute mix_exs =~ "pristine_runtime(",
+        refute String.contains?(mix_exs, "pristine_runtime("),
                "#{mix_path} must not carry a direct pristine runtime dependency"
 
-        refute mix_exs =~ ":jido_runtime_control",
+        refute String.contains?(mix_exs, ":jido_runtime_control"),
                "#{mix_path} must not depend on jido_runtime_control"
 
-        refute mix_exs =~ "agent_session_manager", "#{mix_path} must not depend on ASM directly"
+        refute String.contains?(mix_exs, "agent_session_manager"),
+               "#{mix_path} must not depend on ASM directly"
 
-        refute mix_exs =~ "cli_subprocess_core",
+        refute String.contains?(mix_exs, "cli_subprocess_core"),
                "#{mix_path} must not depend on CLI subprocess core"
 
-        refute mix_exs =~ "jido_session", "#{mix_path} must not depend on jido_session"
+        refute String.contains?(mix_exs, "jido_session"),
+               "#{mix_path} must not depend on jido_session"
       end
     )
   end
@@ -100,29 +110,29 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         mix_exs = File.read!(mix_path)
         resolver = File.read!(resolver_path)
 
-        refute mix_exs =~ "deps/github_ex",
+        refute String.contains?(mix_exs, "deps/github_ex"),
                "#{mix_path} must not vendor provider SDKs under deps/"
 
-        refute mix_exs =~ "deps/notion_sdk",
+        refute String.contains?(mix_exs, "deps/notion_sdk"),
                "#{mix_path} must not vendor provider SDKs under deps/"
 
-        refute mix_exs =~ "deps/linear_sdk",
+        refute String.contains?(mix_exs, "deps/linear_sdk"),
                "#{mix_path} must not vendor provider SDKs under deps/"
 
-        refute mix_exs =~ "deps/pristine",
+        refute String.contains?(mix_exs, "deps/pristine"),
                "#{mix_path} must not vendor pristine under deps/"
 
-        refute mix_exs =~ "deps/prismatic",
+        refute String.contains?(mix_exs, "deps/prismatic"),
                "#{mix_path} must not vendor prismatic under deps/"
 
-        assert resolver =~ sdk_hex_dep,
+        assert String.contains?(resolver, sdk_hex_dep),
                "#{resolver_path} must fall back to a Hex dependency for its provider SDK"
 
-        assert resolver =~ sdk_local_path,
+        assert String.contains?(resolver, sdk_local_path),
                "#{resolver_path} must prefer the sibling provider SDK path when present"
 
         Enum.each(forbidden_sdk_fallbacks, fn forbidden_sdk_fallback ->
-          refute resolver =~ forbidden_sdk_fallback,
+          refute String.contains?(resolver, forbidden_sdk_fallback),
                  "#{resolver_path} must not carry non-Hex, non-local SDK fallback #{inspect(forbidden_sdk_fallback)}"
         end)
       end
@@ -135,10 +145,10 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
       fn %{mix_path: mix_path} ->
         mix_exs = File.read!(mix_path)
 
-        refute mix_exs =~ "WorkspaceDependencyResolver.pristine(",
+        refute String.contains?(mix_exs, "WorkspaceDependencyResolver.pristine("),
                "#{mix_path} must rely on provider SDK transitive auth deps instead of declaring pristine directly"
 
-        refute mix_exs =~ "ConnectorDependencyResolver.prismatic(",
+        refute String.contains?(mix_exs, "ConnectorDependencyResolver.prismatic("),
                "#{mix_path} must rely on provider SDK transitive auth deps instead of declaring prismatic directly"
       end
     )
@@ -148,13 +158,13 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
     Enum.each(@direct_connectors, fn %{catalog_path: catalog_path} ->
       catalog = File.read!(catalog_path)
 
-      assert catalog =~ "runtime_class: :direct",
+      assert String.contains?(catalog, "runtime_class: :direct"),
              "#{catalog_path} must publish direct runtime classes"
 
-      refute catalog =~ "runtime_class: :session",
+      refute String.contains?(catalog, "runtime_class: :session"),
              "#{catalog_path} must not publish session runtime classes"
 
-      refute catalog =~ "runtime_class: :stream",
+      refute String.contains?(catalog, "runtime_class: :stream"),
              "#{catalog_path} must not publish stream runtime classes"
     end)
   end
@@ -174,22 +184,22 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         |> Path.wildcard()
         |> Enum.map_join("\n", &File.read!/1)
 
-      refute proof_suite =~ session_kernel_module,
+      refute String.contains?(proof_suite, session_kernel_module),
              "#{package_root} must not mention SessionKernel in proofs or example support"
 
-      refute proof_suite =~ stream_runtime_module,
+      refute String.contains?(proof_suite, stream_runtime_module),
              "#{package_root} must not mention StreamRuntime in proofs or example support"
 
-      refute proof_suite =~ session_kernel_app,
+      refute String.contains?(proof_suite, session_kernel_app),
              "#{package_root} must not boot the removed session bridge app"
 
-      refute proof_suite =~ stream_runtime_app,
+      refute String.contains?(proof_suite, stream_runtime_app),
              "#{package_root} must not boot the removed stream bridge app"
 
-      refute proof_suite =~ "Jido.RuntimeControl",
+      refute String.contains?(proof_suite, "Jido.RuntimeControl"),
              "#{test_root} must not route direct connector proofs through Jido.RuntimeControl"
 
-      refute proof_suite =~ "RuntimeRouter.SessionStore",
+      refute String.contains?(proof_suite, "RuntimeRouter.SessionStore"),
              "#{package_root} must not name RuntimeRouter.SessionStore in direct proofs or example support"
     end)
   end

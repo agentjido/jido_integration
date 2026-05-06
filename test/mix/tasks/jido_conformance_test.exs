@@ -11,10 +11,10 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
   test "prints a human-readable conformance report by default" do
     output = run_task(["Jido.Integration.V2.Connectors.GitHub"])
 
-    assert output =~ "Connector: github"
-    assert output =~ "Profile: connector_foundation"
-    assert output =~ "[PASS] manifest_contract"
-    assert output =~ "[SKIP] ingress_definition_discipline"
+    assert String.contains?(output, "Connector: github")
+    assert String.contains?(output, "Profile: connector_foundation")
+    assert String.contains?(output, "[PASS] manifest_contract")
+    assert String.contains?(output, "[SKIP] ingress_definition_discipline")
   end
 
   @tag timeout: 180_000
@@ -31,25 +31,25 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
         output_path
       ])
 
-    assert output =~ "\"connector_id\": \"github\""
-    assert output =~ "\"profile\": \"connector_foundation\""
-    assert File.read!(output_path) =~ "\"deterministic_fixtures\""
+    assert String.contains?(output, "\"connector_id\": \"github\"")
+    assert String.contains?(output, "\"profile\": \"connector_foundation\"")
+    assert String.contains?(File.read!(output_path), "\"deterministic_fixtures\"")
   end
 
   @tag timeout: 180_000
   test "loads connector packages that depend on package-local external deps" do
     output = run_task(["Jido.Integration.V2.Connectors.Notion"])
 
-    assert output =~ "Connector: notion"
-    assert output =~ "[PASS] deterministic_fixtures"
+    assert String.contains?(output, "Connector: notion")
+    assert String.contains?(output, "[PASS] deterministic_fixtures")
   end
 
   @tag timeout: 180_000
   test "loads the Linear connector package through the root conformance task" do
     output = run_task(["Jido.Integration.V2.Connectors.Linear"])
 
-    assert output =~ "Connector: linear"
-    assert output =~ "[PASS] deterministic_fixtures"
+    assert String.contains?(output, "Connector: linear")
+    assert String.contains?(output, "[PASS] deterministic_fixtures")
   end
 
   @tag timeout: 180_000
@@ -58,8 +58,8 @@ defmodule Mix.Tasks.Jido.ConformanceTest do
 
     output = run_task(["Jido.Integration.V2.Connectors.CodexCli"])
 
-    assert output =~ "Connector: codex_cli"
-    assert output =~ "[PASS] deterministic_fixtures"
+    assert String.contains?(output, "Connector: codex_cli")
+    assert String.contains?(output, "[PASS] deterministic_fixtures")
   end
 
   @tag timeout: 180_000
