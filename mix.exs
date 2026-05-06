@@ -35,7 +35,7 @@ defmodule Jido.Integration.Workspace.MixProject do
 
   defp deps do
     [
-      {:blitz, path: "../blitz", runtime: false},
+      {:blitz, "~> 0.3.0", runtime: false},
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_contracts(),
       DependencyResolver.req_llm(runtime: false),

@@ -85,11 +85,14 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     end
   end
 
-  test "workspace root develops against the sibling Blitz impact runner" do
+  test "workspace root uses the published Blitz impact runner by default" do
     deps = MixProject.project()[:deps]
 
-    assert {:blitz, path: "../blitz", runtime: false} in deps,
-           "workspace root must use the sibling Blitz checkout until the v0.3.0 release is published"
+    assert {:blitz, "~> 0.3.0", runtime: false} in deps,
+           "workspace root must default to the published Blitz 0.3.0 release line"
+
+    assert Ci.local_blitz_dep_path(MixProject.project()) == nil
+    assert Ci.ensure_local_blitz_current!() == :current
 
     assert Code.ensure_loaded?(Ci)
 
@@ -104,10 +107,13 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            ]
   end
 
-  test "workspace impact CI tracks the sibling Blitz source fingerprint" do
-    assert Ci.local_blitz_dep_path(MixProject.project()) == Path.expand("../blitz", repo_root())
+  test "workspace impact CI still supports local Blitz path overrides" do
+    project_config =
+      Keyword.put(MixProject.project(), :deps, [{:blitz, path: "../blitz", runtime: false}])
 
-    fingerprint = Ci.local_blitz_source_fingerprint(Ci.local_blitz_dep_path(MixProject.project()))
+    assert Ci.local_blitz_dep_path(project_config) == Path.expand("../blitz", repo_root())
+
+    fingerprint = Ci.local_blitz_source_fingerprint(Ci.local_blitz_dep_path(project_config))
 
     assert is_binary(fingerprint)
     assert byte_size(fingerprint) == 64
