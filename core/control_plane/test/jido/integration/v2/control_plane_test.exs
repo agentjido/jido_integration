@@ -525,6 +525,36 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert Enum.all?(events, &(&1.attempt_id == result.attempt.attempt_id))
   end
 
+  test "prompt and guard refs are recorded around connector dispatch" do
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    opts =
+      invoke_opts(connection_id,
+        prompt_ref: "prompt://tenant-1/test/system",
+        guard_chain_ref: "guard-chain://tenant-1/test/default"
+      )
+
+    assert {:ok, result} = ControlPlane.invoke("test.echo", %{value: "ok"}, opts)
+
+    guard_events =
+      result.run.run_id
+      |> ControlPlane.events()
+      |> Enum.filter(fn event ->
+        event.type in ["guard.input.evaluated", "guard.output.evaluated"]
+      end)
+
+    assert Enum.map(guard_events, & &1.type) == [
+             "guard.input.evaluated",
+             "guard.output.evaluated"
+           ]
+
+    assert Enum.all?(guard_events, fn event ->
+             event.payload.prompt_ref == "prompt://tenant-1/test/system" and
+               event.payload.guard_chain_ref == "guard-chain://tenant-1/test/default"
+           end)
+  end
+
   test "execute_run/3 rejects completed runs without mutating durable run truth" do
     connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
     assert :ok = ControlPlane.register_connector(TestConnector)
@@ -1022,9 +1052,9 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert {:ok, stored_attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
     events = ControlPlane.events(result.run.run_id)
 
-    refute inspect(stored_run.result) =~ "gho_never_persist_me"
-    refute inspect(stored_attempt.output) =~ "gho_never_persist_me"
-    refute Enum.any?(events, &(inspect(&1.payload) =~ "gho_never_persist_me"))
+    refute String.contains?(inspect(stored_run.result), "gho_never_persist_me")
+    refute String.contains?(inspect(stored_attempt.output), "gho_never_persist_me")
+    refute Enum.any?(events, &String.contains?(inspect(&1.payload), "gho_never_persist_me"))
 
     assert stored_attempt.output.credential_lease == Redaction.redacted()
     assert stored_attempt.output.echoed_secret == Redaction.redacted()

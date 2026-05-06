@@ -351,6 +351,7 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   defp continue_invoke(capability, run, input, opts, auth_binding) do
     with :ok <- validate_target_selection(run, capability),
+         :ok <- validate_guard_bindings(capability, opts),
          %PolicyDecision{status: :allowed} = policy_decision <-
            evaluate_policy(
              capability,
@@ -382,6 +383,7 @@ defmodule Jido.Integration.V2.ControlPlane do
     with {:ok, input} <- runtime_replay_input(run),
          :ok <- validate_execution_status(run),
          :ok <- validate_target_selection(run, capability),
+         :ok <- validate_guard_bindings(capability, opts),
          {:ok, auth_binding} <- resolve_run_auth(run),
          %PolicyDecision{status: :allowed} = policy_decision <-
            evaluate_policy(
@@ -523,9 +525,17 @@ defmodule Jido.Integration.V2.ControlPlane do
     context = build_context(run, attempt, opts, policy_decision, credential_lease, credential_ref)
 
     with :ok <- Stores.attempt_store().put_attempt(attempt),
-         :ok <- append_specs(run.run_id, attempt, [%{type: "run.started"}]) do
+         :ok <-
+           append_specs(
+             run.run_id,
+             attempt,
+             [%{type: "run.started"}] ++ guard_input_specs(context)
+           ) do
       case dispatch(capability, input, context) do
         {:ok, runtime_result} ->
+          :ok =
+            append_specs(run.run_id, attempt, guard_output_specs(context, runtime_result.output))
+
           complete_attempt(run, attempt, runtime_result)
 
         {:error, reason, runtime_result} ->
@@ -770,13 +780,78 @@ defmodule Jido.Integration.V2.ControlPlane do
         admission: policy_decision.audit_context,
         execution: policy_decision.execution_policy
       },
-      opts: Enum.into(opts, %{})
+      opts: Enum.into(opts, %{}),
+      prompt_ref: ref_option(opts, :prompt_ref),
+      guard_chain_ref: ref_option(opts, :guard_chain_ref)
     }
   end
 
   defp dispatch(%Capability{} = capability, input, context) do
     ExecutionRouter.execute(capability, input, context)
   end
+
+  defp validate_guard_bindings(capability, opts) do
+    guard_policy =
+      capability.metadata
+      |> Contracts.get(:policy, %{})
+      |> Contracts.get(:guard, %{})
+
+    prompt_ref = ref_option(opts, :prompt_ref)
+    guard_chain_ref = ref_option(opts, :guard_chain_ref)
+    required? = Contracts.get(guard_policy, :required, false) == true
+
+    validate_guard_presence(required?, prompt_ref, guard_chain_ref)
+  end
+
+  defp validate_guard_presence(true, nil, _guard_chain_ref),
+    do: {:error, :guard_prompt_ref_required}
+
+  defp validate_guard_presence(true, _prompt_ref, nil), do: {:error, :guard_chain_ref_required}
+
+  defp validate_guard_presence(_required?, nil, guard_chain_ref) when not is_nil(guard_chain_ref),
+    do: {:error, :guard_prompt_ref_required}
+
+  defp validate_guard_presence(_required?, prompt_ref, nil) when not is_nil(prompt_ref),
+    do: {:error, :guard_chain_ref_required}
+
+  defp validate_guard_presence(_required?, _prompt_ref, _guard_chain_ref), do: :ok
+
+  defp guard_input_specs(%{prompt_ref: prompt_ref, guard_chain_ref: guard_chain_ref})
+       when is_binary(prompt_ref) and is_binary(guard_chain_ref) do
+    [
+      %{
+        type: "guard.input.evaluated",
+        stream: :control,
+        payload: %{
+          prompt_ref: prompt_ref,
+          guard_chain_ref: guard_chain_ref,
+          payload_kind: "tool_input",
+          decision_class: "allow"
+        }
+      }
+    ]
+  end
+
+  defp guard_input_specs(_context), do: []
+
+  defp guard_output_specs(%{prompt_ref: prompt_ref, guard_chain_ref: guard_chain_ref}, output)
+       when is_binary(prompt_ref) and is_binary(guard_chain_ref) do
+    [
+      %{
+        type: "guard.output.evaluated",
+        stream: :control,
+        payload: %{
+          prompt_ref: prompt_ref,
+          guard_chain_ref: guard_chain_ref,
+          payload_kind: "tool_output",
+          decision_class: "allow",
+          output_shape_ref: output_shape_ref(output)
+        }
+      }
+    ]
+  end
+
+  defp guard_output_specs(_context, _output), do: []
 
   defp resolve_invoke_auth(capability, opts) do
     case Keyword.get(opts, :connection_id) do
@@ -852,6 +927,28 @@ defmodule Jido.Integration.V2.ControlPlane do
       raise ArgumentError, "credential_ref is not part of the public invoke contract"
     end
   end
+
+  defp ref_option(opts, key) do
+    case Keyword.get(opts, key) do
+      value when is_binary(value) and value != "" -> value
+      _other -> nil
+    end
+  end
+
+  defp output_shape_ref(output) when is_map(output) do
+    keys =
+      output
+      |> Map.keys()
+      |> Enum.map(&to_string/1)
+      |> Enum.sort()
+      |> Enum.join(":")
+
+    "tool-output-shape://sha256/" <> sha256(keys)
+  end
+
+  defp output_shape_ref(_output), do: "tool-output-shape://sha256/" <> sha256("unsupported")
+
+  defp sha256(value), do: :crypto.hash(:sha256, value) |> Base.encode16(case: :lower)
 
   defp issue_credential_lease(
          %CredentialRef{id: "cred-anon", subject: "anonymous"} = credential_ref,
