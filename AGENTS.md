@@ -176,6 +176,8 @@ mix ci
 ```
 
 `mix ci` is the main acceptance gate. If it fails, the repo is not done.
+It is Blitz impact-aware: clean baselines write compact untracked `.blitz/`
+state, clean reruns should skip, docs edits stay owner-local, and source or `mix.exs` edits cascade through reverse package deps.
 
 For connector-facing slices, also run the root conformance task against every
 affected connector module, for example:

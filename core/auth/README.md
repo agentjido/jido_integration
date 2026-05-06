@@ -88,3 +88,4 @@ lease`.
 - [Architecture](../../guides/architecture.md)
 - [Durability](../../guides/durability.md)
 - [Connector Lifecycle](../../guides/connector_lifecycle.md)
+
