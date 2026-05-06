@@ -44,6 +44,22 @@ defmodule Jido.Integration.V2.Capability do
     Map.get(metadata, :required_scopes, [])
   end
 
+  @spec emitted_cost_classes(t()) :: [atom()]
+  def emitted_cost_classes(%__MODULE__{metadata: metadata}) do
+    metadata
+    |> Contracts.get(:cost, %{})
+    |> Contracts.get(:emitted_cost_classes, [:production, :replay])
+    |> normalize_cost_classes()
+  end
+
+  @spec required_budget_classes(t()) :: [atom()]
+  def required_budget_classes(%__MODULE__{metadata: metadata}) do
+    metadata
+    |> Contracts.get(:cost, %{})
+    |> Contracts.get(:required_budget_classes, [:per_run])
+    |> normalize_budget_classes()
+  end
+
   @spec from_operation!(String.t(), OperationSpec.t()) :: t()
   def from_operation!(connector_id, %OperationSpec{} = operation_spec) do
     required_scopes =
@@ -95,13 +111,78 @@ defmodule Jido.Integration.V2.Capability do
           upstream: operation_spec.upstream,
           consumer_surface: operation_spec.consumer_surface,
           schema_policy: operation_spec.schema_policy,
-          jido: operation_spec.jido
+          jido: operation_spec.jido,
+          cost:
+            operation_spec.metadata
+            |> Contracts.get(:cost, %{})
+            |> normalize_cost_contract()
         })
     })
   end
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp normalize_cost_contract(cost_contract) when is_map(cost_contract) do
+    %{
+      emitted_cost_classes:
+        cost_contract
+        |> Contracts.get(:emitted_cost_classes, [:production, :replay])
+        |> normalize_cost_classes(),
+      required_budget_classes:
+        cost_contract
+        |> Contracts.get(:required_budget_classes, [:per_run])
+        |> normalize_budget_classes()
+    }
+  end
+
+  defp normalize_cost_contract(_cost_contract) do
+    %{emitted_cost_classes: [:production, :replay], required_budget_classes: [:per_run]}
+  end
+
+  defp normalize_cost_classes(values) when is_list(values),
+    do: Enum.map(values, &normalize_cost_class/1)
+
+  defp normalize_cost_classes(_values), do: [:production, :replay]
+
+  defp normalize_cost_class(value)
+       when value in [:production, :replay, :eval, :simulation, :infrastructure],
+       do: value
+
+  defp normalize_cost_class(value) when is_binary(value) do
+    case value do
+      "production" -> :production
+      "replay" -> :replay
+      "eval" -> :eval
+      "simulation" -> :simulation
+      "infrastructure" -> :infrastructure
+      _value -> :production
+    end
+  end
+
+  defp normalize_cost_class(_value), do: :production
+
+  defp normalize_budget_classes(values) when is_list(values),
+    do: Enum.map(values, &normalize_budget_class/1)
+
+  defp normalize_budget_classes(_values), do: [:per_run]
+
+  defp normalize_budget_class(value)
+       when value in [:per_run, :per_skill, :per_day, :per_tenant, :per_authority],
+       do: value
+
+  defp normalize_budget_class(value) when is_binary(value) do
+    case value do
+      "per_run" -> :per_run
+      "per_skill" -> :per_skill
+      "per_day" -> :per_day
+      "per_tenant" -> :per_tenant
+      "per_authority" -> :per_authority
+      _value -> :per_run
+    end
+  end
+
+  defp normalize_budget_class(_value), do: :per_run
 
   @spec from_trigger!(String.t(), TriggerSpec.t()) :: t()
   def from_trigger!(connector_id, %TriggerSpec{} = trigger_spec) do

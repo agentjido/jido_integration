@@ -519,10 +519,37 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
              %Event{attempt: 1, seq: 0, type: "run.started"},
              %Event{attempt: 1, seq: 1, type: "attempt.started"},
              %Event{attempt: 1, seq: 2, type: "attempt.completed"},
-             %Event{attempt: 1, seq: 3, type: "run.completed"}
+             %Event{attempt: 1, seq: 3, type: "cost.recorded"},
+             %Event{attempt: 1, seq: 4, type: "run.completed"}
            ] = events = ControlPlane.events(result.run.run_id)
 
     assert Enum.all?(events, &(&1.attempt_id == result.attempt.attempt_id))
+    cost_event = Enum.find(events, &(&1.type == "cost.recorded"))
+    assert cost_event.payload.cost_meter_ref == "meter://control-plane-test"
+    assert cost_event.payload.budget_refs == ["budget://control-plane-test/per-run"]
+  end
+
+  test "submission acceptance requires cost meter and active budget refs" do
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    assert {:error, missing_budget} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "ok"},
+               invoke_opts(connection_id, budget_refs: [])
+             )
+
+    assert missing_budget.reason == :budget_ref_required
+
+    assert {:error, missing_meter} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "ok"},
+               invoke_opts(connection_id, cost_meter_ref: nil)
+             )
+
+    assert missing_meter.reason == :cost_meter_ref_required
   end
 
   test "prompt and guard refs are recorded around connector dispatch" do
@@ -581,6 +608,14 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
       |> Enum.find(&(&1.type == "replay.submission.accepted"))
 
     assert replay_event.payload.side_effect_policy == "suppress"
+
+    cost_event =
+      result.run.run_id
+      |> ControlPlane.events()
+      |> Enum.find(&(&1.type == "cost.recorded"))
+
+    assert cost_event.payload.cost_class == "replay"
+    assert cost_event.payload.cost_meter_ref == "meter://control-plane-test"
   end
 
   test "replay submissions reject unsafe connector replay classes" do
@@ -1307,6 +1342,8 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
       tenant_id: "tenant-1",
       environment: :prod,
       trace_id: "trace-control-plane-test",
+      cost_meter_ref: "meter://control-plane-test",
+      budget_refs: ["budget://control-plane-test/per-run"],
       allowed_operations: ["test.echo", "leaky.echo"],
       sandbox: %{
         level: :strict,

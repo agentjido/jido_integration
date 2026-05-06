@@ -88,6 +88,7 @@ defmodule Jido.Integration.V2.ControlPlane do
     :memory_variant
   ]
   @replay_support_classes [:fixture_only, :fixture_required, :not_replay_safe]
+  @cost_classes [:production, :replay, :eval, :simulation, :infrastructure]
 
   @spec register_connector(module()) :: :ok | {:error, term()}
   def register_connector(connector) do
@@ -360,9 +361,12 @@ defmodule Jido.Integration.V2.ControlPlane do
   end
 
   defp continue_invoke(capability, run, input, opts, auth_binding) do
+    opts = default_cost_budget_opts(run, opts)
+
     with :ok <- validate_target_selection(run, capability),
          :ok <- validate_guard_bindings(capability, opts),
          :ok <- validate_replay_submission(capability, opts),
+         :ok <- validate_cost_budget_submission(capability, opts),
          %PolicyDecision{status: :allowed} = policy_decision <-
            evaluate_policy(
              capability,
@@ -391,11 +395,14 @@ defmodule Jido.Integration.V2.ControlPlane do
   end
 
   defp continue_execute_run(capability, run, attempt_number, opts) do
+    opts = default_cost_budget_opts(run, opts)
+
     with {:ok, input} <- runtime_replay_input(run),
          :ok <- validate_execution_status(run),
          :ok <- validate_target_selection(run, capability),
          :ok <- validate_guard_bindings(capability, opts),
          :ok <- validate_replay_submission(capability, opts),
+         :ok <- validate_cost_budget_submission(capability, opts),
          {:ok, auth_binding} <- resolve_run_auth(run),
          %PolicyDecision{status: :allowed} = policy_decision <-
            evaluate_policy(
@@ -815,7 +822,9 @@ defmodule Jido.Integration.V2.ControlPlane do
       guard_chain_ref: ref_option(opts, :guard_chain_ref),
       replay_mode: Keyword.get(opts, :replay_mode),
       replay_support_class: replay_support_class(capability, opts),
-      cost_class: if(Keyword.get(opts, :replay_mode), do: :replay, else: :production)
+      cost_meter_ref: ref_option(opts, :cost_meter_ref),
+      budget_refs: budget_refs(opts),
+      cost_class: cost_class(opts)
     }
   end
 
@@ -830,7 +839,9 @@ defmodule Jido.Integration.V2.ControlPlane do
          replay_mode: replay_mode,
          replay_support_class: context.replay_support_class,
          fixture_ref: "replay-fixture://#{context.run_id}/#{context.attempt}",
-         cost_class: :replay
+         cost_class: :replay,
+         cost_meter_ref: context.cost_meter_ref,
+         budget_refs: context.budget_refs
        },
        runtime_ref_id: "replay-fixture-runtime://#{context.run_id}",
        events: [
@@ -841,7 +852,18 @@ defmodule Jido.Integration.V2.ControlPlane do
              replay_mode: Atom.to_string(replay_mode),
              replay_support_class: Atom.to_string(context.replay_support_class),
              cost_class: "replay",
+             cost_meter_ref: context.cost_meter_ref,
+             budget_refs: context.budget_refs,
              side_effect_policy: "suppress"
+           }
+         },
+         %{
+           type: "cost.recorded",
+           stream: :control,
+           payload: %{
+             cost_class: "replay",
+             cost_meter_ref: context.cost_meter_ref,
+             budget_refs: context.budget_refs
            }
          }
        ],
@@ -849,7 +871,15 @@ defmodule Jido.Integration.V2.ControlPlane do
      })}
   end
 
-  defp dispatch_or_replay(capability, input, context), do: dispatch(capability, input, context)
+  defp dispatch_or_replay(capability, input, context) do
+    case dispatch(capability, input, context) do
+      {:ok, runtime_result} ->
+        {:ok, attach_cost_event(runtime_result, context)}
+
+      {:error, reason, runtime_result} ->
+        {:error, reason, attach_cost_event(runtime_result, context)}
+    end
+  end
 
   defp dispatch(%Capability{} = capability, input, context) do
     ExecutionRouter.execute(capability, input, context)
@@ -897,6 +927,78 @@ defmodule Jido.Integration.V2.ControlPlane do
   defp validate_replay_support(:not_replay_safe), do: {:error, :connector_not_replay_safe}
   defp validate_replay_support(class) when class in @replay_support_classes, do: :ok
   defp validate_replay_support(_class), do: {:error, :unknown_replay_support_class}
+
+  defp validate_cost_budget_submission(capability, opts) do
+    with :ok <- require_cost_meter_ref(opts),
+         :ok <- require_budget_refs(opts),
+         {:ok, cost_class} <- validate_cost_class(opts),
+         :ok <- validate_declared_cost_class(capability, cost_class) do
+      validate_replay_cost_class(opts, cost_class)
+    end
+  end
+
+  defp require_cost_meter_ref(opts) do
+    case ref_option(opts, :cost_meter_ref) do
+      nil -> {:error, :cost_meter_ref_required}
+      _ref -> :ok
+    end
+  end
+
+  defp require_budget_refs(opts) do
+    case budget_refs(opts) do
+      [] -> {:error, :budget_ref_required}
+      _refs -> :ok
+    end
+  end
+
+  defp default_cost_budget_opts(%Run{} = run, opts) do
+    opts
+    |> default_cost_meter_ref(run)
+    |> default_budget_refs(run)
+  end
+
+  defp default_cost_meter_ref(opts, %Run{} = run) do
+    if Keyword.has_key?(opts, :cost_meter_ref) do
+      opts
+    else
+      Keyword.put(opts, :cost_meter_ref, "meter://jido-integration/#{run.run_id}")
+    end
+  end
+
+  defp default_budget_refs(opts, %Run{} = run) do
+    if Keyword.has_key?(opts, :budget_refs) or Keyword.has_key?(opts, :budget_ref) do
+      opts
+    else
+      Keyword.put(opts, :budget_refs, ["budget://jido-integration/#{run.run_id}/per-run"])
+    end
+  end
+
+  defp validate_cost_class(opts) do
+    value = cost_class(opts)
+
+    if value in @cost_classes do
+      {:ok, value}
+    else
+      {:error, :unknown_cost_class}
+    end
+  end
+
+  defp validate_declared_cost_class(capability, cost_class) do
+    if cost_class in Capability.emitted_cost_classes(capability) do
+      :ok
+    else
+      {:error, :undeclared_capability_cost_class}
+    end
+  end
+
+  defp validate_replay_cost_class(opts, :production) do
+    case Keyword.get(opts, :replay_mode) do
+      nil -> :ok
+      _replay_mode -> {:error, :replay_production_cost_forbidden}
+    end
+  end
+
+  defp validate_replay_cost_class(_opts, _cost_class), do: :ok
 
   defp replay_support_class(capability, opts) do
     Keyword.get(opts, :replay_support_class) ||
@@ -1022,6 +1124,46 @@ defmodule Jido.Integration.V2.ControlPlane do
       value when is_binary(value) and value != "" -> value
       _other -> nil
     end
+  end
+
+  defp budget_refs(opts) do
+    values =
+      case Keyword.get(opts, :budget_refs) do
+        refs when is_list(refs) -> refs
+        nil -> List.wrap(Keyword.get(opts, :budget_ref))
+        ref -> [ref]
+      end
+
+    Enum.filter(values, &(is_binary(&1) and &1 != ""))
+  end
+
+  defp cost_class(opts) do
+    case Keyword.get(opts, :cost_class) do
+      value when value in @cost_classes -> value
+      value when is_binary(value) -> cost_class_from_string(value)
+      _value -> if Keyword.get(opts, :replay_mode), do: :replay, else: :production
+    end
+  end
+
+  defp cost_class_from_string("production"), do: :production
+  defp cost_class_from_string("replay"), do: :replay
+  defp cost_class_from_string("eval"), do: :eval
+  defp cost_class_from_string("simulation"), do: :simulation
+  defp cost_class_from_string("infrastructure"), do: :infrastructure
+  defp cost_class_from_string(_value), do: :unknown
+
+  defp attach_cost_event(%RuntimeResult{} = runtime_result, context) do
+    event = %{
+      type: "cost.recorded",
+      stream: :control,
+      payload: %{
+        cost_class: Atom.to_string(context.cost_class),
+        cost_meter_ref: context.cost_meter_ref,
+        budget_refs: context.budget_refs
+      }
+    }
+
+    %{runtime_result | events: runtime_result.events ++ [event]}
   end
 
   defp output_shape_ref(output) when is_map(output) do

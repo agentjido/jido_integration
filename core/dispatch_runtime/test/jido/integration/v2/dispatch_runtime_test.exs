@@ -149,7 +149,10 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
          },
          aggregator_id: "dispatch_runtime_test",
          aggregator_epoch: attempt,
-         trace_id: "dispatch-runtime-attempt-#{attempt}"
+         trace_id: "dispatch-runtime-attempt-#{attempt}",
+         cost_meter_ref: "meter://dispatch-runtime-test/#{trigger.dedupe_key}/#{attempt}",
+         budget_refs: ["budget://dispatch-runtime-test/#{trigger.tenant_id}/per-run"],
+         cost_class: :production
        ]}
     end
   end
@@ -223,8 +226,9 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     assert metadata.status == :accepted
     assert metadata.trigger.payload["authorization"] == Redaction.redacted()
     assert metadata.trigger.payload["nested"]["client_secret"] == Redaction.redacted()
-    refute inspect(metadata) =~ "dispatch-secret"
-    refute inspect(metadata) =~ "nested-secret"
+    metadata_text = inspect(metadata)
+    refute String.contains?(metadata_text, "dispatch-secret")
+    refute String.contains?(metadata_text, "nested-secret")
 
     completed_dispatch =
       wait_for_dispatch(runtime, dispatch.dispatch_id, &(&1.status == :completed))
@@ -275,7 +279,7 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
     assert metadata.status == :retry_scheduled
     assert metadata.attempts == 1
     assert metadata.trigger.payload["api_token"] == Redaction.redacted()
-    refute inspect(metadata) =~ "dispatch-token"
+    refute String.contains?(inspect(metadata), "dispatch-token")
 
     assert_receive {:telemetry_event, event, %{attempts: 2}, metadata}, 1_000
     assert event == DispatchTelemetry.event(:dead_letter)
@@ -375,7 +379,8 @@ defmodule Jido.Integration.V2.DispatchRuntimeTest do
              %{attempt: 1, seq: 0, type: "run.started"},
              %{attempt: 1, seq: 1, type: "attempt.started"},
              %{attempt: 1, seq: 2, type: "attempt.completed"},
-             %{attempt: 1, seq: 3, type: "run.completed"}
+             %{attempt: 1, seq: 3, type: "cost.recorded"},
+             %{attempt: 1, seq: 4, type: "run.completed"}
            ] = Enum.map(ControlPlane.events(run.run_id), &Map.take(&1, [:attempt, :seq, :type]))
   end
 
