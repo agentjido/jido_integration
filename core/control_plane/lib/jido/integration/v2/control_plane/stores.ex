@@ -1,72 +1,52 @@
 defmodule Jido.Integration.V2.ControlPlane.Stores do
   @moduledoc false
 
-  @default_run_store Jido.Integration.V2.ControlPlane.RunLedger
-  @default_attempt_store Jido.Integration.V2.ControlPlane.RunLedger
-  @default_event_store Jido.Integration.V2.ControlPlane.RunLedger
-  @default_artifact_store Jido.Integration.V2.ControlPlane.RunLedger
-  @default_claim_check_store Jido.Integration.V2.ControlPlane.RunLedger
-  @default_target_store Jido.Integration.V2.ControlPlane.RunLedger
-  @default_ingress_store Jido.Integration.V2.ControlPlane.RunLedger
-  @default_profile_registry_store Jido.Integration.V2.ControlPlane.RunLedger
+  alias Jido.Integration.V2.ControlPlane.Persistence
 
   @spec run_store() :: module()
   def run_store do
-    Application.get_env(:jido_integration_v2_control_plane, :run_store, @default_run_store)
+    configured_store(:run_store)
   end
 
   @spec attempt_store() :: module()
   def attempt_store do
-    Application.get_env(
-      :jido_integration_v2_control_plane,
-      :attempt_store,
-      @default_attempt_store
-    )
+    configured_store(:attempt_store)
   end
 
   @spec event_store() :: module()
   def event_store do
-    Application.get_env(:jido_integration_v2_control_plane, :event_store, @default_event_store)
+    configured_store(:event_store)
   end
 
   @spec artifact_store() :: module()
   def artifact_store do
-    Application.get_env(
-      :jido_integration_v2_control_plane,
-      :artifact_store,
-      @default_artifact_store
-    )
+    configured_store(:artifact_store)
   end
 
   @spec claim_check_store() :: module()
   def claim_check_store do
-    Application.get_env(
-      :jido_integration_v2_control_plane,
-      :claim_check_store,
-      @default_claim_check_store
-    )
+    configured_store(:claim_check_store)
   end
 
   @spec target_store() :: module()
   def target_store do
-    Application.get_env(:jido_integration_v2_control_plane, :target_store, @default_target_store)
+    configured_store(:target_store)
   end
 
   @spec ingress_store() :: module()
   def ingress_store do
-    Application.get_env(
-      :jido_integration_v2_control_plane,
-      :ingress_store,
-      @default_ingress_store
-    )
+    configured_store(:ingress_store)
   end
 
   @spec profile_registry_store() :: module()
   def profile_registry_store do
-    Application.get_env(
-      :jido_integration_v2_control_plane,
-      :profile_registry_store,
-      @default_profile_registry_store
-    )
+    configured_store(:profile_registry_store)
+  end
+
+  defp configured_store(key) do
+    case Application.fetch_env(:jido_integration_v2_control_plane, key) do
+      {:ok, store} -> store
+      :error -> Persistence.store_module(key)
+    end
   end
 end

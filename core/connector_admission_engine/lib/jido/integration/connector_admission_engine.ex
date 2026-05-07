@@ -3,6 +3,7 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
   Memory-default connector admission records.
   """
 
+  alias GroundPlane.PersistencePolicy
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.Manifest
 
@@ -33,6 +34,16 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     "status" => :status,
     "tenant_ref" => :tenant_ref,
     "trace_ref" => :trace_ref
+  }
+  @profile_aliases %{
+    "memory-default" => :mickey_mouse,
+    "mickey_mouse" => :mickey_mouse,
+    "memory_debug" => :memory_debug,
+    "local_restart_safe" => :local_restart_safe,
+    "integration_postgres" => :integration_postgres,
+    "ops_durable" => :ops_durable,
+    "full_debug_tracked" => :full_debug_tracked,
+    "distributed_partitioned" => :distributed_partitioned
   }
 
   defmodule AdmissionRecord do
@@ -78,7 +89,7 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     app_config = map_field(attrs, :app_config)
     tenant_ref = value(attrs, :tenant_ref) || value(app_config, :tenant_ref)
     conformance = map_field(attrs, :conformance)
-    persistence_profile = value(attrs, :persistence_profile) || "memory-default"
+    persistence_profile = value(attrs, :persistence_profile) || :mickey_mouse
     trace_ref = value(attrs, :trace_ref) || "trace://connector-admission/#{manifest.connector}"
 
     release_manifest_ref =
@@ -260,12 +271,32 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
 
   defp conformance_status(conformance), do: value(conformance, :status) || "missing"
 
-  defp durable_adapter_missing?("memory-default", _attrs), do: false
-
   defp durable_adapter_missing?(persistence_profile, attrs) do
-    registered = list_field(attrs, :registered_durable_adapters)
-    persistence_profile not in registered
+    case PersistencePolicy.resolve(profile: normalize_profile(persistence_profile)) do
+      {:ok, %{durable?: false}} ->
+        false
+
+      {:ok, %{id: profile_id, durable?: true}} ->
+        registered = list_field(attrs, :registered_durable_adapters)
+        not adapter_registered?(registered, persistence_profile, profile_id)
+
+      {:error, _reason} ->
+        persistence_profile not in list_field(attrs, :registered_durable_adapters)
+    end
   end
+
+  defp adapter_registered?(registered, original_profile, profile_id) do
+    profile_name = Atom.to_string(profile_id)
+
+    Enum.any?(registered, fn adapter ->
+      adapter in [original_profile, profile_id, profile_name]
+    end)
+  end
+
+  defp normalize_profile(profile) when is_binary(profile),
+    do: Map.get(@profile_aliases, profile, profile)
+
+  defp normalize_profile(profile), do: profile
 
   defp rejection_status(:manifest_collision), do: :rejected_manifest_collision
   defp rejection_status(:duplicate_capability), do: :rejected_duplicate_capability

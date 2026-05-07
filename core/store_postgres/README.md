@@ -28,6 +28,11 @@ without provisioning Postgres. Use `core/store_postgres` when the environment
 needs the canonical shared durable tier, migrations, sandbox support, and
 database-backed operational guarantees.
 
+Postgres selection is explicit. The package exposes a GroundPlane
+`:postgres_shared` capability, and durable preflight returns
+`{:error, {:missing_store_capability, :postgres_shared}}` before store mutation
+when `:integration_postgres` is selected without that capability.
+
 ## Current Control-Plane Durability
 
 - runs, attempts, and append-only run events

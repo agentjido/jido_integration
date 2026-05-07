@@ -3,6 +3,9 @@ defmodule Jido.Integration.V2.StoreLocal do
   Local durable adapter package for auth and control-plane store behaviours.
   """
 
+  alias GroundPlane.PersistencePolicy
+  alias Jido.Integration.V2.Auth.Persistence, as: AuthPersistence
+  alias Jido.Integration.V2.ControlPlane.Persistence, as: ControlPlanePersistence
   alias Jido.Integration.V2.StoreLocal.ArtifactStore
   alias Jido.Integration.V2.StoreLocal.AttemptStore
   alias Jido.Integration.V2.StoreLocal.ConnectionStore
@@ -21,6 +24,9 @@ defmodule Jido.Integration.V2.StoreLocal do
 
   @spec configure_defaults!(keyword()) :: :ok
   def configure_defaults!(opts \\ []) do
+    profile = Keyword.get(opts, :persistence_profile, :local_restart_safe)
+    {:ok, capability} = store_capability()
+
     if storage_dir = opts[:storage_dir] do
       Application.put_env(
         :jido_integration_v2_store_local,
@@ -29,22 +35,69 @@ defmodule Jido.Integration.V2.StoreLocal do
       )
     end
 
-    Application.put_env(:jido_integration_v2_auth, :credential_store, CredentialStore)
-    Application.put_env(:jido_integration_v2_auth, :lease_store, LeaseStore)
-    Application.put_env(:jido_integration_v2_auth, :connection_store, ConnectionStore)
-    Application.put_env(:jido_integration_v2_auth, :install_store, InstallStore)
+    auth_store_modules = auth_store_modules()
+    control_plane_store_modules = control_plane_store_modules()
 
-    Application.put_env(:jido_integration_v2_control_plane, :run_store, RunStore)
-    Application.put_env(:jido_integration_v2_control_plane, :attempt_store, AttemptStore)
-    Application.put_env(:jido_integration_v2_control_plane, :event_store, EventStore)
-    Application.put_env(:jido_integration_v2_control_plane, :artifact_store, ArtifactStore)
-    Application.put_env(:jido_integration_v2_control_plane, :target_store, TargetStore)
-    Application.put_env(:jido_integration_v2_control_plane, :ingress_store, IngressStore)
+    Application.put_env(
+      :jido_integration_v2_auth,
+      :credential_store,
+      auth_store_modules.credential_store
+    )
+
+    Application.put_env(:jido_integration_v2_auth, :lease_store, auth_store_modules.lease_store)
+
+    Application.put_env(
+      :jido_integration_v2_auth,
+      :connection_store,
+      auth_store_modules.connection_store
+    )
+
+    Application.put_env(
+      :jido_integration_v2_auth,
+      :install_store,
+      auth_store_modules.install_store
+    )
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :run_store,
+      control_plane_store_modules.run_store
+    )
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :attempt_store,
+      control_plane_store_modules.attempt_store
+    )
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :event_store,
+      control_plane_store_modules.event_store
+    )
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :artifact_store,
+      control_plane_store_modules.artifact_store
+    )
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :target_store,
+      control_plane_store_modules.target_store
+    )
+
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :ingress_store,
+      control_plane_store_modules.ingress_store
+    )
 
     Application.put_env(
       :jido_integration_v2_control_plane,
       :profile_registry_store,
-      ProfileRegistryStore
+      control_plane_store_modules.profile_registry_store
     )
 
     Application.put_env(
@@ -53,7 +106,38 @@ defmodule Jido.Integration.V2.StoreLocal do
       Jido.Integration.V2.StoreLocal.SubmissionLedger
     )
 
+    :ok =
+      AuthPersistence.configure!(
+        profile: profile,
+        capabilities: [capability],
+        store_modules: auth_store_modules
+      )
+
+    :ok =
+      ControlPlanePersistence.configure!(
+        profile: profile,
+        capabilities: [capability],
+        store_modules: control_plane_store_modules
+      )
+
     :ok
+  end
+
+  @spec store_capability() :: {:ok, PersistencePolicy.StoreCapability.t()} | {:error, term()}
+  def store_capability do
+    PersistencePolicy.StoreCapability.new(
+      store_ref: :jido_integration_store_local,
+      tier: :local_restart_safe,
+      data_classes: [:auth_truth, :control_plane_truth, :submission_ledger],
+      adapter: :jido_integration_store_local,
+      restart_safe?: true,
+      partitions: [
+        %PersistencePolicy.Partition{
+          data_class: :jido_integration,
+          retention_class: :restart_safe_local
+        }
+      ]
+    )
   end
 
   @spec storage_dir() :: String.t()
@@ -71,5 +155,27 @@ defmodule Jido.Integration.V2.StoreLocal do
   @spec reset!() :: :ok
   def reset! do
     Server.reset!()
+  end
+
+  defp auth_store_modules do
+    %{
+      credential_store: CredentialStore,
+      lease_store: LeaseStore,
+      connection_store: ConnectionStore,
+      install_store: InstallStore
+    }
+  end
+
+  defp control_plane_store_modules do
+    %{
+      run_store: RunStore,
+      attempt_store: AttemptStore,
+      event_store: EventStore,
+      artifact_store: ArtifactStore,
+      claim_check_store: Jido.Integration.V2.ControlPlane.RunLedger,
+      target_store: TargetStore,
+      ingress_store: IngressStore,
+      profile_registry_store: ProfileRegistryStore
+    }
   end
 end

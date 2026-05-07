@@ -60,6 +60,10 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
 - `AccessGraph.Edge`
 - `AccessGraph`
 - `MemoryFragment`
+- `Jido.Integration.Store.Memory`
+- `Jido.Integration.Store.Null`
+- `Jido.Integration.Store.Local`
+- `Jido.Integration.Store.Postgres`
 
 ## Core Guarantees
 
@@ -68,6 +72,9 @@ allowed to carry without re-exporting raw `execution_plane` package surfaces.
   `defstruct`, `schema/0`, `new/1`, and `new!/1`
 - `ArtifactRef` is a first-class public object with explicit checksum,
   transport, payload reference, retention, and redaction metadata
+- `Jido.Integration.Store.*` descriptors define the fixed memory, off, local,
+  and Postgres store classes without selecting an adapter or starting durable
+  infrastructure
 - `TargetDescriptor` is a first-class public object with explicit capability
   identity, runtime class, semantic version, health, location, and
   compatibility negotiation inputs

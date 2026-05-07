@@ -211,6 +211,24 @@ defmodule Jido.Integration.Build.DependencyResolver do
     end
   end
 
+  def ground_plane_persistence_policy(opts \\ []) do
+    case local_root_path("../ground_plane/core/persistence_policy") do
+      nil ->
+        {:ground_plane_persistence_policy,
+         Keyword.merge(
+           [
+             github: "nshkrdotcom/ground_plane",
+             branch: "main",
+             subdir: "core/persistence_policy"
+           ],
+           opts
+         )}
+
+      path ->
+        {:ground_plane_persistence_policy, Keyword.merge([path: path], opts)}
+    end
+  end
+
   def splode(opts \\ []) do
     {:splode, "~> 0.3.0", opts}
   end

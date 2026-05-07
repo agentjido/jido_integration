@@ -213,6 +213,11 @@ The current surface also proves:
   just execution success
 - local durability, async queue state, and webhook route state are all
   explicit opt-in packages
+- persistence posture now resolves through the shared GroundPlane policy
+  contract for auth, control-plane, local, Postgres, and connector-admission
+  store choices; `:mickey_mouse` remains process-memory by default, while
+  `:local_restart_safe` and `:integration_postgres` require explicit adapter
+  capabilities before selection
 - durable brain-to-lower-gateway acceptance now stays on an explicit seam:
   - `core/contracts` owns canonical JSON, submission identity, audit payload,
     and governance-projection contracts

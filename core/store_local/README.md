@@ -38,7 +38,7 @@ Runtime configuration:
 
 ```elixir
 config :jido_integration_v2_store_local,
-  storage_dir: System.get_env("JIDO_INTEGRATION_LOCAL_STORE_DIR", ".jido/store_local")
+  storage_dir: ".jido/store_local"
 
 config :jido_integration_v2_auth,
   credential_store: Jido.Integration.V2.StoreLocal.CredentialStore,
@@ -56,7 +56,9 @@ config :jido_integration_v2_control_plane,
 ```
 
 For tests and scripts, `Jido.Integration.V2.StoreLocal.configure_defaults!/1`
-can set the same application env values programmatically.
+can set the same application env values programmatically. It now also registers
+the package's GroundPlane `:local_restart_safe` capability and configures auth
+and control-plane stores through policy-backed selectors.
 
 ## What It Pairs With
 

@@ -61,6 +61,21 @@ defmodule Jido.Integration.ConnectorAdmissionEngineTest do
     assert duplicate.duplicate_capabilities == ["safe_companion.sample.perform"]
   end
 
+  test "accepts built-in mickey mouse persistence without a durable adapter" do
+    manifest = manifest()
+
+    assert {:ok, record} =
+             ConnectorAdmissionEngine.admit(manifest,
+               tenant_ref: "tenant://tenant-1",
+               app_config: %{tenant_ref: "tenant://tenant-1"},
+               conformance: conformance(manifest),
+               persistence_profile: :mickey_mouse
+             )
+
+    assert record.persistence_profile == :mickey_mouse
+    assert record.admission_status == :admitted
+  end
+
   test "rejects unsafe scopes, tenant mismatch, contract mismatch, and unregistered durable store" do
     unsafe_manifest =
       manifest(operation_metadata: %{scope_posture: %{tenant_scope: :cross_tenant}})

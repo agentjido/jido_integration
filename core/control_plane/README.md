@@ -27,6 +27,8 @@ Capability registry, run ledger, and execution admission for the platform.
 
 - restart-safe local control-plane truth is implemented by `core/store_local`
 - Postgres-backed control-plane truth is implemented by `core/store_postgres`
+- persistence posture resolves through GroundPlane policy and defaults to the
+  in-memory `RunLedger` under `:mickey_mouse`
 - artifact truth is exposed through `record_artifact/1`, `fetch_artifact/1`,
   and `run_artifacts/1`
 - ingress truth is exposed through `admit_trigger/2`,

@@ -27,6 +27,7 @@ defmodule Jido.Integration.ConnectorAdmissionEngine.MixProject do
   defp deps do
     [
       DependencyResolver.jido_integration_contracts(),
+      DependencyResolver.ground_plane_persistence_policy(),
       DependencyResolver.jido_integration_conformance_contracts(only: :test, runtime: false),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

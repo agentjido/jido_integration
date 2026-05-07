@@ -36,6 +36,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
   defp deps do
     [
       DependencyResolver.jido_integration_contracts(),
+      DependencyResolver.ground_plane_persistence_policy(),
       DependencyResolver.jido_integration_v2_auth(),
       DependencyResolver.jido_integration_v2_policy(),
       DependencyResolver.jido_integration_v2_direct_runtime(),

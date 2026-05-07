@@ -4,6 +4,8 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   alias Ecto.Adapters.Postgres, as: PostgresAdapter
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Migrator
+  alias Jido.Integration.V2.Auth.Persistence, as: AuthPersistence
+  alias Jido.Integration.V2.ControlPlane.Persistence, as: ControlPlanePersistence
   alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.AccessGraphEdgeRecord
@@ -116,6 +118,22 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
           Base.encode64(:crypto.hash(:sha256, "jido_integration_v2_store_postgres_test_key"))
       }
     })
+
+    {:ok, capability} = StorePostgres.store_capability()
+
+    :ok =
+      AuthPersistence.configure!(
+        profile: :integration_postgres,
+        capabilities: [capability],
+        store_modules: StorePostgres.auth_store_modules()
+      )
+
+    :ok =
+      ControlPlanePersistence.configure!(
+        profile: :integration_postgres,
+        capabilities: [capability],
+        store_modules: StorePostgres.control_plane_store_modules()
+      )
 
     configure_repo_defaults!(opts)
     :ok

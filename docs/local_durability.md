@@ -35,7 +35,7 @@ Configuration:
 
 ```elixir
 config :jido_integration_v2_store_local,
-  storage_dir: System.get_env("JIDO_INTEGRATION_LOCAL_STORE_DIR", ".jido/store_local")
+  storage_dir: ".jido/store_local"
 
 config :jido_integration_v2_auth,
   credential_store: Jido.Integration.V2.StoreLocal.CredentialStore,
@@ -53,7 +53,9 @@ config :jido_integration_v2_control_plane,
 ```
 
 For tests and scripts, `Jido.Integration.V2.StoreLocal.configure_defaults!/1`
-can set the same application environment programmatically.
+can set the same application environment programmatically. Pass
+`persistence_profile: :local_restart_safe` to select the local durability
+profile through GroundPlane policy and package-owned capabilities.
 
 ## What `store_local` Does And Does Not Own
 

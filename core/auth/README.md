@@ -40,6 +40,8 @@ material.
   not run-ledger cleanup
 - delegate restart-safe local auth durability to `core/store_local`
 - delegate Postgres repo and migration ownership to `core/store_postgres`
+- resolve store posture through GroundPlane persistence policy while keeping
+  `:mickey_mouse` on the in-memory auth store with no host config
 
 ## Current Durable Auth Model
 
@@ -83,9 +85,20 @@ lease`.
   transitions once those params are handed in
 - it does not own transport retry or replay
 
+## Persistence Policy
+
+Auth store selection is policy-backed:
+
+- `:mickey_mouse` and `:memory_debug` use `Jido.Integration.V2.Auth.Store`
+- `:local_restart_safe` requires explicit local store modules and a local
+  capability from `core/store_local`
+- `:integration_postgres` requires explicit Postgres store modules and a
+  Postgres capability from `core/store_postgres`
+- durable selections fail before auth store mutation when the selected
+  capability is missing
+
 ## Related Guides
 
 - [Architecture](../../guides/architecture.md)
 - [Durability](../../guides/durability.md)
 - [Connector Lifecycle](../../guides/connector_lifecycle.md)
-
