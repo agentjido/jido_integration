@@ -19,3 +19,7 @@ scope resolution or ledger acceptance. This covers sandbox level, egress,
 approval mode, file scope, and allowed tools; the accepted gateway/runtime
 inputs are derived from the verified projection, not from unmanaged process
 state.
+
+## Persistence Documentation
+
+See `docs/persistence.md` for tiers, defaults, adapters, unsupported selections, config examples, restart claims, durability claims, debug sidecar behavior, redaction guarantees, migration or preflight behavior, and no-bypass scope when applicable.

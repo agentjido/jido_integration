@@ -209,3 +209,7 @@ Current public-facade proofs:
 - [Runtime Model](../../guides/runtime_model.md)
 - [Connector Lifecycle](../../guides/connector_lifecycle.md)
 - [Examples](examples/README.md)
+
+## Persistence Documentation
+
+See `docs/persistence.md` for tiers, defaults, adapters, unsupported selections, config examples, restart claims, durability claims, debug sidecar behavior, redaction guarantees, migration or preflight behavior, and no-bypass scope when applicable.

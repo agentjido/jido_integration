@@ -23,3 +23,7 @@ prompts, raw provider payloads, auth headers, token files, API keys, credential
 bodies, or provider defaults.
 
 The package is regex-free and does not read ambient environment configuration.
+
+## Persistence Documentation
+
+See `docs/persistence.md` for tiers, defaults, adapters, unsupported selections, config examples, restart claims, durability claims, debug sidecar behavior, redaction guarantees, migration or preflight behavior, and no-bypass scope when applicable.
