@@ -75,3 +75,16 @@ Evidence stores opaque refs, stable redacted ids, hashes, bounded metadata, clai
 ## Migration And Preflight Behavior
 
 Forward-only migrations live in this package and must be applied before durable mutation.
+
+## Phase 12 Migration And Preflight Closeout
+
+- Tier: `:integration_postgres`.
+- Schema owner: `Jido.Integration.V2.StorePostgres.Repo`.
+- Migration owner: `core/store_postgres/priv/repo/migrations`.
+- Migration command: `cd core/store_postgres && mix ecto.migrate` for a configured local repo, or the host release command that runs `Jido.Integration.V2.StorePostgres.migrations_path/0` against `Jido.Integration.V2.StorePostgres.Repo`.
+- Migration preflight command: `mix mr.pg.preflight` from the repo root plus `Jido.Integration.V2.StorePostgres.preflight(profile: :integration_postgres, migration_proof: :present)`.
+- Failure behavior: missing store capability returns `{:error, {:missing_store_capability, :postgres_shared}}`; missing migration proof returns `{:error, {:missing_migration_proof, :jido_integration_store_postgres}}` before repo mutation.
+- Rollback behavior: rollback is an operator-owned database operation against the same package repo and migration path; release claims remain open until the rollback target and post-rollback focused tests are recorded.
+- Tagged test command: `cd core/store_postgres && mix test test/jido/integration/v2/store_postgres/persistence_policy_test.exs`.
+- Release claim boundary: restart durability is valid only after capability proof, migration proof, focused tests, root QC, and pushed commit evidence are recorded.
+- Generated-artifact hygiene: connector generated actions, plugins, sensors, and contract generated modules must be regenerated through `mix jido.integration.new` tests and must not contain raw secrets, raw prompts, provider payload bodies, auth headers, credential bodies, regex APIs, or any retired skill-package namespace.

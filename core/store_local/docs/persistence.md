@@ -75,3 +75,15 @@ Evidence stores opaque refs, stable redacted ids, hashes, bounded metadata, clai
 ## Migration And Preflight Behavior
 
 Local file layout is adapter-owned. Hosts must treat path setup as durable preflight.
+
+## Phase 12 No-Migration Closeout
+
+- Tier: `:local_restart_safe`.
+- Schema owner: none; this package owns file-backed local records, not an Ecto schema.
+- Migration owner: none.
+- Migration command: not applicable.
+- Migration preflight command: package tests and any host path-writability proof for the selected storage directory.
+- Failure behavior: unsupported durable selections fail before mutation; local path setup failures must return errors before claiming restart-safe writes.
+- Rollback behavior: rollback is host-owned file snapshot or directory restore; this package does not provide database rollback.
+- Tagged test command: `cd core/store_local && mix test`.
+- Release claim boundary: single-node restart safety is valid only for explicit local-store selection, configured storage path proof, focused tests, root QC, and pushed commit evidence.

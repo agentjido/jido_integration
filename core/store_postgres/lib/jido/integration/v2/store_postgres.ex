@@ -39,10 +39,22 @@ defmodule Jido.Integration.V2.StorePostgres do
         [capability]
       end
 
-    with {:ok, profile} <- PersistencePolicy.resolve(profile: profile_hint) do
-      PersistencePolicy.preflight(profile, capabilities, fn _capability -> :ok end)
+    with {:ok, profile} <- PersistencePolicy.resolve(profile: profile_hint),
+         :ok <- PersistencePolicy.preflight(profile, capabilities, fn _capability -> :ok end) do
+      require_migration_proof(profile, attrs)
     end
   end
+
+  defp require_migration_proof(%PersistencePolicy.Profile{default_tier: :postgres_shared}, attrs) do
+    case Map.get(attrs, :migration_proof) || Map.get(attrs, "migration_proof") do
+      :present -> :ok
+      true -> :ok
+      paths when is_list(paths) and paths != [] -> :ok
+      _missing -> {:error, {:missing_migration_proof, :jido_integration_store_postgres}}
+    end
+  end
+
+  defp require_migration_proof(%PersistencePolicy.Profile{}, _attrs), do: :ok
 
   @spec auth_store_modules() :: map()
   def auth_store_modules do
