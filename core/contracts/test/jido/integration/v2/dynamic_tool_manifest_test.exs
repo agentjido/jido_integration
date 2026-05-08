@@ -34,6 +34,14 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
              "github:github.pr.create"
            ]
 
+    assert Enum.all?(resolved.host_tools, fn host_tool ->
+             metadata = host_tool["metadata"]
+
+             String.starts_with?(metadata["manifest_ref"], "jido://v2/connector_manifest/") and
+               metadata["manifest_hash"] =~ ~r/^sha256:[a-f0-9]{64}$/ and
+               metadata["manifest_state"] == "active"
+           end)
+
     assert hd(resolved.host_tools)["inputSchema"][:type] == :object
     assert resolved.metadata["authority_ref"] == "authority://phase11"
   end

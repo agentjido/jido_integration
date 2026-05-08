@@ -124,6 +124,17 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
     assert fetch_capability.metadata.output_schema == operation.output_schema
     assert fetch_capability.metadata.jido.action.name == "acme_issue_fetch"
 
+    assert fetch_capability.metadata.lower_runtime_kinds == [
+             :direct_connector,
+             :deterministic_fixture
+           ]
+
+    assert fetch_capability.metadata.side_effect_class == :read
+    assert fetch_capability.metadata.idempotency_class == :idempotent
+    assert fetch_capability.metadata.retry_class == :safe_read_retry
+    assert fetch_capability.metadata.evidence_tier == :standard
+    assert fetch_capability.metadata.deterministic_fixture_support == true
+
     assert trigger_capability.id == trigger.trigger_id
     assert trigger_capability.kind == :trigger
     assert trigger_capability.transport_profile == :webhook
@@ -444,6 +455,10 @@ defmodule Jido.Integration.V2.ManifestCatalogContractTest do
              lifecycle_owner: :asm,
              runtime_ref: :session
            }
+
+    assert capability.metadata.lower_runtime_kinds == [:codex_session, :deterministic_fixture]
+    assert capability.metadata.side_effect_class == :execute
+    assert capability.metadata.idempotency_class == :non_idempotent
   end
 
   test "authored catalog structs expose canonical Zoi schema helpers" do

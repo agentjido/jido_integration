@@ -76,6 +76,7 @@ defmodule Jido.Integration.V2.Capability do
       operation_spec.metadata
       |> Map.delete("runtime_family")
       |> maybe_put(:runtime_family, OperationSpec.runtime_family(operation_spec))
+      |> Map.merge(governed_lower_metadata(operation_spec))
 
     runtime_metadata =
       case operation_spec.runtime_class do
@@ -118,6 +119,69 @@ defmodule Jido.Integration.V2.Capability do
             |> normalize_cost_contract()
         })
     })
+  end
+
+  defp governed_lower_metadata(%OperationSpec{} = operation_spec) do
+    side_effect_class = side_effect_class(operation_spec)
+
+    %{
+      lower_runtime_kinds: lower_runtime_kinds(operation_spec),
+      side_effect_class: side_effect_class,
+      idempotency_class: idempotency_class(operation_spec, side_effect_class),
+      retry_class: retry_class(operation_spec, side_effect_class),
+      evidence_tier: metadata_value(operation_spec, :evidence_tier, :standard),
+      deterministic_fixture_support:
+        metadata_value(operation_spec, :deterministic_fixture_support, true)
+    }
+  end
+
+  defp lower_runtime_kinds(%OperationSpec{runtime_class: runtime_class} = operation_spec) do
+    metadata_value(operation_spec, :lower_runtime_kinds, nil) ||
+      case runtime_class do
+        :direct -> [:direct_connector, :deterministic_fixture]
+        :session -> [:codex_session, :deterministic_fixture]
+        :stream -> [:codex_session, :deterministic_fixture]
+      end
+  end
+
+  defp side_effect_class(%OperationSpec{} = operation_spec) do
+    metadata_value(operation_spec, :side_effect_class, nil) ||
+      operation_spec.operation_id
+      |> String.split(".")
+      |> List.last()
+      |> case do
+        action
+        when action in ["list", "retrieve", "fetch", "status", "get_self", "get_combined"] ->
+          :read
+
+        action when action in ["create", "update", "delete", "upsert", "label", "close"] ->
+          :write
+
+        _other ->
+          :execute
+      end
+  end
+
+  defp idempotency_class(%OperationSpec{} = operation_spec, side_effect_class) do
+    metadata_value(operation_spec, :idempotency_class, nil) ||
+      case side_effect_class do
+        :read -> :idempotent
+        :write -> :non_idempotent
+        :execute -> :non_idempotent
+      end
+  end
+
+  defp retry_class(%OperationSpec{} = operation_spec, side_effect_class) do
+    metadata_value(operation_spec, :retry_class, nil) ||
+      case side_effect_class do
+        :read -> :safe_read_retry
+        :write -> :guarded_write_retry
+        :execute -> :guarded_execution_retry
+      end
+  end
+
+  defp metadata_value(%OperationSpec{metadata: metadata}, key, default) do
+    Contracts.get(metadata, key, default)
   end
 
   defp maybe_put(map, _key, nil), do: map

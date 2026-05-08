@@ -49,6 +49,11 @@ defmodule Jido.Integration.V2.Contracts do
   @retry_posture_contracts [
     "Platform.RetryPosture.v1"
   ]
+  @governed_lower_contracts [
+    "JidoIntegration.GovernedLowerEnvelope.v1",
+    "JidoIntegration.GovernedLowerReceipt.v1",
+    "JidoIntegration.GovernedLowerDenial.v1"
+  ]
   @memory_foundation_contracts [
     "Platform.AccessGraph.Edge.v1",
     "Platform.AccessGraph.v1",
@@ -61,6 +66,8 @@ defmodule Jido.Integration.V2.Contracts do
 
   @type runtime_class :: :direct | :session | :stream
   @type runtime_kind :: :client | :task | :service
+  @type lower_runtime_kind ::
+          :deterministic_fixture | :codex_session | :direct_connector | :tre_rhai
   @type management_mode :: :provider_managed | :jido_managed | :externally_managed
   @type inference_operation :: :generate_text | :stream_text
   @type inference_target_class :: :cloud_provider | :cli_endpoint | :self_hosted_endpoint
@@ -206,6 +213,9 @@ defmodule Jido.Integration.V2.Contracts do
 
   @spec retry_posture_contracts() :: [String.t(), ...]
   def retry_posture_contracts, do: @retry_posture_contracts
+
+  @spec governed_lower_contracts() :: [String.t(), ...]
+  def governed_lower_contracts, do: @governed_lower_contracts
 
   @spec memory_foundation_contracts() :: [String.t(), ...]
   def memory_foundation_contracts, do: @memory_foundation_contracts
@@ -537,6 +547,28 @@ defmodule Jido.Integration.V2.Contracts do
 
   def validate_runtime_kind!(runtime_kind) do
     raise ArgumentError, "invalid runtime_kind: #{inspect(runtime_kind)}"
+  end
+
+  @spec validate_lower_runtime_kind!(lower_runtime_kind() | String.t()) :: lower_runtime_kind()
+  def validate_lower_runtime_kind!(lower_runtime_kind)
+      when lower_runtime_kind in [
+             :deterministic_fixture,
+             :codex_session,
+             :direct_connector,
+             :tre_rhai
+           ],
+      do: lower_runtime_kind
+
+  def validate_lower_runtime_kind!(lower_runtime_kind) when is_binary(lower_runtime_kind) do
+    validate_enum_string!(
+      lower_runtime_kind,
+      [:deterministic_fixture, :codex_session, :direct_connector, :tre_rhai],
+      "lower_runtime_kind"
+    )
+  end
+
+  def validate_lower_runtime_kind!(lower_runtime_kind) do
+    raise ArgumentError, "invalid lower_runtime_kind: #{inspect(lower_runtime_kind)}"
   end
 
   @spec validate_management_mode!(management_mode()) :: management_mode()

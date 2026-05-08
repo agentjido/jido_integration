@@ -51,7 +51,7 @@ defmodule Jido.Integration.V2.ToolContracts do
       provider: :linear,
       family: "graphql",
       category: :connector_tool,
-      operation: "linear.issue.list"
+      operation: "linear.issues.list"
     },
     %{
       provider: :notion,

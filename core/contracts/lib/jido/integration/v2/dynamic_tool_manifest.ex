@@ -122,12 +122,16 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
     case Map.get(operation_index, operation_id, []) do
       [%{manifest: manifest, operation: operation}] ->
         authorize_operation!(operation, authority)
+        manifest_hash = Manifest.canonical_hash(manifest)
 
         %{
           "name" => declared.name || tool_name_for(declared.raw, operation_id),
           "operation_id" => operation_id,
           "connector" => manifest.connector,
           "catalog_ref" => "#{manifest.connector}:#{operation_id}",
+          "manifest_ref" => manifest_ref(manifest.connector, manifest_hash),
+          "manifest_hash" => manifest_hash,
+          "manifest_state" => manifest_state(manifest),
           "description" => operation.description,
           "allowed_tools" => operation_allowed_tools(operation),
           "input_schema" => json_schema(operation.input_schema),
@@ -210,6 +214,9 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
           "operation_id",
           "connector",
           "catalog_ref",
+          "manifest_ref",
+          "manifest_hash",
+          "manifest_state",
           "allowed_tools",
           "authority_ref",
           "tenant_ref",
@@ -271,6 +278,23 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
     case map_value(sandbox, :allowed_tools) do
       values when is_list(values) -> Contracts.normalize_string_list!(values, "allowed_tools")
       _other -> []
+    end
+  end
+
+  defp manifest_ref(connector, manifest_hash) do
+    "jido://v2/connector_manifest/#{URI.encode_www_form(connector)}/#{manifest_hash}"
+  end
+
+  defp manifest_state(%Manifest{metadata: metadata}) do
+    metadata
+    |> map_value(:manifest_state)
+    |> case do
+      value when value in [:active, "active"] -> "active"
+      value when value in [:stale, "stale"] -> "stale"
+      value when value in [:invalid, "invalid"] -> "invalid"
+      value when value in [:refresh_required, "refresh_required"] -> "refresh_required"
+      value when value in [:quarantined, "quarantined"] -> "quarantined"
+      _other -> "active"
     end
   end
 

@@ -255,6 +255,22 @@ defmodule Jido.Integration.V2.ContractsTest do
              "ReviewProjection.v1",
              "ReviewBundle.v1"
            ]
+
+    assert Contracts.governed_lower_contracts() == [
+             "JidoIntegration.GovernedLowerEnvelope.v1",
+             "JidoIntegration.GovernedLowerReceipt.v1",
+             "JidoIntegration.GovernedLowerDenial.v1"
+           ]
+  end
+
+  test "lower runtime kind validation does not broaden backend runtime kind validation" do
+    assert Contracts.validate_runtime_kind!(:client) == :client
+    assert Contracts.validate_runtime_kind!("task") == :task
+    assert_raise ArgumentError, fn -> Contracts.validate_runtime_kind!(:codex_session) end
+
+    assert Contracts.validate_lower_runtime_kind!("codex_session") == :codex_session
+    assert Contracts.validate_lower_runtime_kind!(:direct_connector) == :direct_connector
+    assert_raise ArgumentError, fn -> Contracts.validate_lower_runtime_kind!(:task) end
   end
 
   test "lower restart-authority structs normalize stable ids and operator read bundles" do

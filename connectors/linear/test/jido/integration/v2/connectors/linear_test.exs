@@ -213,7 +213,7 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
   test "maps Linear catalog entries into governed dynamic host tools" do
     assert {:ok, resolved} =
              DynamicToolManifest.resolve(
-               %{tools: ["linear.comment.update", "linear_graphql"]},
+               %{tools: ["linear.comments.update", "linear_graphql"]},
                connector_manifests: [Linear.manifest()],
                allowed_operations: ["linear.comments.update", "linear.graphql.execute"],
                allowed_tools: ["linear.api.comments.update", "linear.api.graphql.execute"],
@@ -223,7 +223,7 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
     assert resolved.operations == ["linear.comments.update", "linear.graphql.execute"]
 
     assert Enum.map(resolved.host_tools, & &1["name"]) == [
-             "linear_comment_update",
+             "linear_comments_update",
              "linear_graphql"
            ]
 

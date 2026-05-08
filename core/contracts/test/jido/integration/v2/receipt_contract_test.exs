@@ -127,7 +127,7 @@ defmodule Jido.Integration.V2.ReceiptContractTest do
           "provider_item_id" => "item-1",
           "provider_tool_call_id" => "tool-call-1",
           "provider_message_id" => "message-1",
-          "tool_name" => "linear.comment.update",
+          "tool_name" => "linear.comments.update",
           "approval_id" => "approval-1",
           "raw_provider_body" => %{"must" => "not cross"}
         }
@@ -159,7 +159,7 @@ defmodule Jido.Integration.V2.ReceiptContractTest do
                "provider_item_id" => "item-1",
                "provider_tool_call_id" => "tool-call-1",
                "provider_message_id" => "message-1",
-               "tool_name" => "linear.comment.update",
+               "tool_name" => "linear.comments.update",
                "approval_id" => "approval-1"
              }
            ]
@@ -171,7 +171,7 @@ defmodule Jido.Integration.V2.ReceiptContractTest do
              "provider_item_id" => "item-1",
              "provider_tool_call_id" => "tool-call-1",
              "provider_message_id" => "message-1",
-             "tool_name" => "linear.comment.update",
+             "tool_name" => "linear.comments.update",
              "approval_id" => "approval-1"
            }
 
