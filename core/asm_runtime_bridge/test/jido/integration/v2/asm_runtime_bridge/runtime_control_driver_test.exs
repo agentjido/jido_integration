@@ -16,7 +16,14 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
   alias ASM.{Event, HostTool}
   alias Jido.Integration.V2.AsmRuntimeBridge.Normalizer
   alias Jido.Integration.V2.AsmRuntimeBridge.TestSupport.GovernedCodexBackend
-  alias Jido.Integration.V2.{AuthSpec, CatalogSpec, Manifest, OperationSpec}
+
+  alias Jido.Integration.V2.{
+    AuthSpec,
+    CatalogSpec,
+    GovernedLowerEnvelope,
+    Manifest,
+    OperationSpec
+  }
 
   setup do
     ensure_asm_runtime_bridge_started!()
@@ -223,6 +230,44 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert context.metadata["dynamic_tool_manifest"]["authority_ref"] == "authority://phase11"
   end
 
+  test "stream_run/3 preserves governed lower envelope metadata for Codex app-server turns" do
+    assert {:ok, session} = RuntimeControlDriver.start_session(provider: :codex)
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request =
+      RunRequest.new!(%{
+        prompt: "governed codex turn",
+        cwd: "/tmp/extravaganza-workspace",
+        provider_metadata: %{"app_server" => true},
+        metadata: %{}
+      })
+
+    envelope = governed_lower_envelope()
+
+    assert {:ok, _run, stream} =
+             RuntimeControlDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               driver_opts: [test_pid: self()],
+               app_server: true,
+               governed_lower_envelope: envelope,
+               run_id: "bridge-run-governed-envelope"
+             )
+
+    assert Enum.to_list(stream) != []
+
+    assert_receive {:stream_scripted_driver_context, context}
+
+    assert context.metadata["governed_lower_envelope"]["lower_runtime_kind"] == "codex_session"
+    assert context.metadata["governed_lower_envelope"]["authority_decision_hash"] == "hash-123"
+    assert context.metadata["governed_lower_envelope"]["trace_id"] == "trace-123"
+    assert context.metadata["authority_metadata"]["authority_ref"] == "authority://phase5"
+    assert context.metadata["authority_metadata"]["capability_id"] == "codex.session.turn"
+    assert context.metadata["authority_metadata"]["allowed_operations"] == ["codex.session.turn"]
+  end
+
   test "stream_run/3 rejects dynamic tool manifests outside Citadel allowed operations" do
     assert {:ok, session} = RuntimeControlDriver.start_session(provider: :codex)
 
@@ -247,6 +292,52 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
 
     assert String.contains?(error.message, "ASM bridge stream_run/3 failed")
     assert String.contains?(error.details.error, "not present in Citadel allowed_operations")
+  end
+
+  test "stream_run/3 reports structured host-tool incident when manifest admission fails" do
+    assert {:ok, session} = RuntimeControlDriver.start_session(provider: :codex)
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request = RunRequest.new!(%{prompt: "use stale linear tool", metadata: %{}})
+
+    assert {:error, error} =
+             RuntimeControlDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               driver_opts: [test_pid: self()],
+               app_server: true,
+               dynamic_tool_manifest: %{tools: ["linear.comment.update"]},
+               connector_manifests: [
+                 dynamic_tool_manifest_fixture("linear", "linear.comments.update",
+                   manifest_state: :stale
+                 )
+               ],
+               allowed_operations: ["linear.comments.update"],
+               allowed_tools: ["linear.api.comments.update"],
+               authority_ref: "authority://phase5",
+               tenant_ref: "tenant://phase5",
+               installation_ref: "installation://phase5",
+               run_id: "bridge-run-dynamic-tools-stale"
+             )
+
+    assert String.contains?(error.message, "ASM bridge stream_run/3 failed")
+    assert String.contains?(error.details.error, "non-idempotent dynamic host tool")
+
+    assert error.details.host_tool_incident == %{
+             incident_type: "host_tool_denial",
+             stage: "dynamic_tool_manifest_resolution",
+             provider: "codex",
+             run_id: "bridge-run-dynamic-tools-stale",
+             authority_ref: "authority://phase5",
+             tenant_ref: "tenant://phase5",
+             installation_ref: "installation://phase5",
+             requested_manifest: %{"tools" => ["linear.comment.update"]},
+             reason: error.details.error
+           }
+
+    refute_receive {:stream_scripted_driver_context, _context}
   end
 
   test "stream_run/3 carries governed Codex evidence into ASM strict materialization" do
@@ -750,7 +841,34 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     ["CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_HOME", "OPENAI_BASE_URL"]
   end
 
-  defp dynamic_tool_manifest_fixture(connector, operation_id) do
+  defp governed_lower_envelope do
+    GovernedLowerEnvelope.new!(%{
+      lower_request_ref: "lower-request://phase5/codex-turn",
+      lower_runtime_kind: :codex_session,
+      runtime_profile_ref: "runtime-profile://phase5/codex",
+      runtime_profile_kind: :local,
+      capability_id: "codex.session.turn",
+      action_id: "codex.session.turn",
+      tenant_ref: "tenant://phase5",
+      subject_ref: "subject://phase5",
+      run_ref: "run://phase5",
+      trace_id: "trace-123",
+      idempotency_key: "idem://phase5",
+      authority_ref: "authority://phase5",
+      authority_decision_hash: "hash-123",
+      allowed_operations: ["codex.session.turn"],
+      connector_ref: "jido/connectors/codex_cli",
+      connector_manifest_ref: "manifest://codex-cli@phase5",
+      connector_manifest_hash: "sha256:" <> String.duplicate("1", 64),
+      connector_manifest_state: :active,
+      side_effect_class: :execute,
+      idempotency_class: :non_idempotent,
+      runtime_class: :session,
+      sandbox_level: :strict
+    })
+  end
+
+  defp dynamic_tool_manifest_fixture(connector, operation_id, opts \\ []) do
     Manifest.new!(%{
       connector: connector,
       auth:
@@ -775,7 +893,8 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
         }),
       operations: [dynamic_tool_operation(operation_id)],
       triggers: [],
-      runtime_families: [:direct]
+      runtime_families: [:direct],
+      metadata: %{manifest_state: Keyword.get(opts, :manifest_state, :active)}
     })
   end
 

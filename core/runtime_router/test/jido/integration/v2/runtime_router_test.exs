@@ -26,6 +26,7 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     end
 
     def run(%SessionHandle{} = session, %RunRequest{} = request, opts) when is_list(opts) do
+      send(self(), {:authored_driver_request, request})
       send(self(), {:authored_driver_run, session.session_id, request.prompt, opts})
 
       {:ok,
@@ -245,6 +246,62 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     assert run_opts[:lane] == "sdk"
     assert run_opts[:approval_mode] == "manual"
     refute Keyword.has_key?(run_opts, :provider_authored_option)
+  end
+
+  test "builds Codex run request from governed workflow input without dropping host-tool metadata" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    envelope = governed_lower_envelope()
+
+    input = %{
+      prompt: "Implement the governed slice",
+      cwd: "/tmp/extravaganza-local",
+      continuation: %{strategy: :latest},
+      provider_metadata: %{"model" => "gpt-5.4", "app_server" => true},
+      authority_metadata: %{"authority_ref" => "authority://phase5"},
+      dynamic_tool_manifest: %{"tools" => ["linear.comment.update"]},
+      host_tools: [%{"name" => "local_echo", "inputSchema" => %{"type" => "object"}}]
+    }
+
+    context =
+      runtime_context()
+      |> put_in([:policy_inputs, :execution, :sandbox, :file_scope], nil)
+      |> Map.put(:opts, %{governed_lower_envelope: envelope})
+
+    assert {:ok, _result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{id: "codex.session.turn"}),
+               input,
+               context
+             )
+
+    assert_receive {:authored_driver_request, request}
+    assert request.prompt == "Implement the governed slice"
+    assert request.cwd == "/tmp/extravaganza-local"
+    assert request.continuation == %{strategy: :latest}
+
+    assert request.host_tools == [
+             %{"name" => "local_echo", "inputSchema" => %{"type" => "object"}}
+           ]
+
+    assert request.provider_metadata["model"] == "gpt-5.4"
+    assert request.provider_metadata["app_server"] == true
+
+    assert request.provider_metadata["dynamic_tool_manifest"] == %{
+             "tools" => ["linear.comment.update"]
+           }
+
+    assert request.metadata["authority_metadata"] == %{"authority_ref" => "authority://phase5"}
+    assert request.metadata["governed_lower_envelope"] == envelope
+
+    assert_receive {:authored_driver_run, "authored-session", "Implement the governed slice",
+                    run_opts}
+
+    assert run_opts[:governed_lower_envelope] == envelope
   end
 
   test "requires an authored runtime driver for non-direct capabilities" do
@@ -580,6 +637,23 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
           }
         }
       }
+    }
+  end
+
+  defp governed_lower_envelope do
+    %{
+      "lower_request_ref" => "lower-request://phase5/router",
+      "lower_runtime_kind" => "codex_session",
+      "runtime_profile_ref" => "runtime-profile://phase5/codex",
+      "runtime_profile_kind" => "local",
+      "capability_id" => "codex.session.turn",
+      "tenant_ref" => "tenant://phase5",
+      "run_ref" => "run://phase5",
+      "trace_id" => "trace-123",
+      "idempotency_key" => "idem://phase5",
+      "authority_ref" => "authority://phase5",
+      "authority_decision_hash" => "hash-123",
+      "allowed_operations" => ["codex.session.turn"]
     }
   end
 

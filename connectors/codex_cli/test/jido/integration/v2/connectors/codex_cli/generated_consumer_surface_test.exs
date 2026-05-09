@@ -44,16 +44,21 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.GeneratedConsumerSurfaceTest d
 
     sample_input = %{
       prompt: "Summarize the review packet",
+      cwd: "/workspace",
       host_tools: [
         %{
           name: "echo_json",
           description: "Echo a JSON payload",
           inputSchema: %{type: "object"},
-          outputSchema: %{type: "object"}
+          outputSchema: %{type: "object"},
+          metadata: %{operation_id: "linear.comments.update"}
         }
       ],
       continuation: %{provider_session_id: "codex-thread-1"},
-      provider_metadata: %{cwd: "/workspace"}
+      provider_metadata: %{model: "gpt-5.4"},
+      authority_metadata: %{authority_ref: "authority://generated"},
+      dynamic_tool_manifest: %{tools: ["linear.comment.update"]},
+      governed_lower_envelope: %{lower_runtime_kind: "codex_session"}
     }
 
     assert {:ok, validated_input} = Zoi.parse(operation.input_schema, sample_input)

@@ -15,6 +15,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
   alias ASM.{Event, Provider, RuntimeAuth, Stream}
   alias Jido.Integration.V2.AsmRuntimeBridge.{Normalizer, SessionStore}
   alias Jido.Integration.V2.DynamicToolManifest
+  alias Jido.Integration.V2.GovernedLowerEnvelope
 
   alias Jido.RuntimeControl.{
     Error,
@@ -211,7 +212,10 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
   rescue
     error in [ArgumentError] ->
       {:error,
-       Error.execution_error("ASM bridge stream_run/3 failed", %{error: Exception.message(error)})}
+       Error.execution_error(
+         "ASM bridge stream_run/3 failed",
+         asm_bridge_error_details(error, session, request, opts)
+       )}
   end
 
   @impl true
@@ -239,7 +243,10 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
   rescue
     error in [ArgumentError] ->
       {:error,
-       Error.execution_error("ASM bridge run/3 failed", %{error: Exception.message(error)})}
+       Error.execution_error(
+         "ASM bridge run/3 failed",
+         asm_bridge_error_details(error, session, request, opts)
+       )}
   end
 
   @impl true
@@ -441,6 +448,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     filtered_request_opts(request, provider)
     |> Keyword.merge(opts)
     |> normalize_bridge_run_overrides()
+    |> merge_governed_lower_metadata(request)
     |> materialize_dynamic_tool_manifest(request)
     |> author_execution_inputs()
     |> Keyword.put(:run_id, run_id)
@@ -594,6 +602,75 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
           :metadata,
           merge_dynamic_tool_metadata(Keyword.get(opts, :metadata, %{}), resolved)
         )
+    end
+  end
+
+  defp merge_governed_lower_metadata(opts, %RunRequest{} = request) do
+    case governed_lower_envelope(opts, request) do
+      nil ->
+        opts
+
+      envelope ->
+        envelope_map = normalize_governed_lower_envelope!(envelope)
+
+        opts
+        |> Keyword.put(
+          :metadata,
+          opts
+          |> Keyword.get(:metadata, %{})
+          |> default_map()
+          |> Map.put("governed_lower_envelope", envelope_map)
+          |> Map.put("authority_metadata", authority_metadata(envelope_map))
+        )
+        |> put_new_from_envelope(:authority_ref, envelope_map, "authority_ref")
+        |> put_new_from_envelope(:tenant_ref, envelope_map, "tenant_ref")
+        |> put_new_from_envelope(:allowed_operations, envelope_map, "allowed_operations")
+    end
+  end
+
+  defp governed_lower_envelope(opts, %RunRequest{} = request) do
+    Keyword.get(opts, :governed_lower_envelope) ||
+      metadata_value(request.provider_metadata, :governed_lower_envelope) ||
+      metadata_value(request.metadata, :governed_lower_envelope)
+  end
+
+  defp normalize_governed_lower_envelope!(%GovernedLowerEnvelope{} = envelope) do
+    GovernedLowerEnvelope.to_map(envelope)
+  end
+
+  defp normalize_governed_lower_envelope!(%{} = envelope) do
+    envelope
+    |> GovernedLowerEnvelope.new!()
+    |> GovernedLowerEnvelope.to_map()
+  end
+
+  defp normalize_governed_lower_envelope!(other) do
+    raise ArgumentError, "governed_lower_envelope must be a map or struct, got: #{inspect(other)}"
+  end
+
+  defp authority_metadata(envelope_map) when is_map(envelope_map) do
+    Map.take(envelope_map, [
+      "authority_ref",
+      "authority_decision_hash",
+      "capability_id",
+      "action_id",
+      "allowed_operations",
+      "runtime_profile_ref",
+      "lower_runtime_kind",
+      "connector_manifest_ref",
+      "connector_manifest_hash",
+      "connector_manifest_state",
+      "trace_id",
+      "idempotency_key",
+      "sandbox_profile_ref",
+      "sandbox_level"
+    ])
+  end
+
+  defp put_new_from_envelope(opts, key, envelope_map, envelope_key) do
+    case {Keyword.has_key?(opts, key), Map.get(envelope_map, envelope_key)} do
+      {false, value} when not is_nil(value) -> Keyword.put(opts, key, value)
+      _other -> opts
     end
   end
 
@@ -868,6 +945,60 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
 
   defp map_value(keyword, key) when is_list(keyword), do: Keyword.get(keyword, key)
   defp map_value(_other, _key), do: nil
+
+  defp asm_bridge_error_details(error, %SessionHandle{} = session, %RunRequest{} = request, opts) do
+    message = Exception.message(error)
+
+    details = %{error: message}
+
+    case host_tool_incident(message, session, request, opts) do
+      nil -> details
+      incident -> Map.put(details, :host_tool_incident, incident)
+    end
+  end
+
+  defp host_tool_incident(message, %SessionHandle{} = session, %RunRequest{} = request, opts) do
+    manifest = dynamic_tool_manifest(opts, request)
+
+    cond do
+      is_nil(manifest) ->
+        nil
+
+      not String.contains?(message, "dynamic host tool") and
+          not String.contains?(message, "dynamic tool") ->
+        nil
+
+      true ->
+        context = Keyword.get(opts, :context, %{})
+
+        %{
+          incident_type: "host_tool_denial",
+          stage: "dynamic_tool_manifest_resolution",
+          provider: session.provider && Atom.to_string(session.provider),
+          run_id: Keyword.get(opts, :run_id),
+          authority_ref: Keyword.get(opts, :authority_ref) || map_value(context, :authority_ref),
+          tenant_ref: Keyword.get(opts, :tenant_ref) || map_value(context, :tenant_ref),
+          installation_ref:
+            Keyword.get(opts, :installation_ref) || map_value(context, :installation_ref),
+          requested_manifest: normalize_incident_manifest(manifest),
+          reason: message
+        }
+        |> drop_nil_values()
+    end
+  end
+
+  defp normalize_incident_manifest(%{} = manifest) do
+    Map.new(manifest, fn
+      {key, value} when is_atom(key) -> {Atom.to_string(key), value}
+      {key, value} -> {key, value}
+    end)
+  end
+
+  defp normalize_incident_manifest(other), do: other
+
+  defp drop_nil_values(map) do
+    Map.reject(map, fn {_key, value} -> is_nil(value) end)
+  end
 
   defp assert_runtime_started! do
     if Process.whereis(SessionStore) do

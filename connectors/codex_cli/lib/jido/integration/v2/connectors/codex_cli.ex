@@ -190,9 +190,14 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
   defp turn_input_schema do
     Zoi.object(%{
       prompt: Zoi.string(),
+      cwd: Zoi.string() |> Zoi.optional(),
+      workspace: any_map_schema() |> Zoi.default(%{}),
       host_tools: Zoi.list(host_tool_schema()) |> Zoi.default([]),
       continuation: any_map_schema() |> Zoi.nullish() |> Zoi.optional(),
-      provider_metadata: any_map_schema() |> Zoi.default(%{})
+      provider_metadata: any_map_schema() |> Zoi.default(%{}),
+      authority_metadata: any_map_schema() |> Zoi.default(%{}),
+      dynamic_tool_manifest: any_map_schema() |> Zoi.default(%{}),
+      governed_lower_envelope: any_map_schema() |> Zoi.default(%{})
     })
   end
 
@@ -201,7 +206,8 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
       name: Zoi.string(),
       description: Zoi.string() |> Zoi.optional(),
       inputSchema: any_map_schema(),
-      outputSchema: any_map_schema() |> Zoi.optional()
+      outputSchema: any_map_schema() |> Zoi.optional(),
+      metadata: any_map_schema() |> Zoi.default(%{})
     })
   end
 

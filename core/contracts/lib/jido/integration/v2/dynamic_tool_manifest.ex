@@ -123,6 +123,17 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
       [%{manifest: manifest, operation: operation}] ->
         authorize_operation!(operation, authority)
         manifest_hash = Manifest.canonical_hash(manifest)
+        manifest_state = manifest_state(manifest)
+        side_effect_class = side_effect_class(operation)
+        idempotency_class = idempotency_class(operation, side_effect_class)
+
+        :ok =
+          require_active_manifest_for_unsafe_host_tool!(
+            operation_id,
+            manifest_state,
+            side_effect_class,
+            idempotency_class
+          )
 
         %{
           "name" => declared.name || tool_name_for(declared.raw, operation_id),
@@ -131,7 +142,9 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
           "catalog_ref" => "#{manifest.connector}:#{operation_id}",
           "manifest_ref" => manifest_ref(manifest.connector, manifest_hash),
           "manifest_hash" => manifest_hash,
-          "manifest_state" => manifest_state(manifest),
+          "manifest_state" => manifest_state,
+          "side_effect_class" => Atom.to_string(side_effect_class),
+          "idempotency_class" => Atom.to_string(idempotency_class),
           "description" => operation.description,
           "allowed_tools" => operation_allowed_tools(operation),
           "input_schema" => json_schema(operation.input_schema),
@@ -217,6 +230,8 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
           "manifest_ref",
           "manifest_hash",
           "manifest_state",
+          "side_effect_class",
+          "idempotency_class",
           "allowed_tools",
           "authority_ref",
           "tenant_ref",
@@ -240,6 +255,75 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
       raise ArgumentError,
             "dynamic tool operation #{inspect(operation.operation_id)} requires allowed tools #{inspect(missing_allowed_tools)}"
     end
+  end
+
+  defp require_active_manifest_for_unsafe_host_tool!(
+         operation_id,
+         manifest_state,
+         :write,
+         :non_idempotent
+       )
+       when manifest_state != "active" do
+    raise ArgumentError,
+          "non-idempotent dynamic host tool #{inspect(operation_id)} requires an active connector manifest, got #{inspect(manifest_state)}"
+  end
+
+  defp require_active_manifest_for_unsafe_host_tool!(
+         operation_id,
+         manifest_state,
+         :execute,
+         :non_idempotent
+       )
+       when manifest_state != "active" do
+    raise ArgumentError,
+          "non-idempotent dynamic host tool #{inspect(operation_id)} requires an active connector manifest, got #{inspect(manifest_state)}"
+  end
+
+  defp require_active_manifest_for_unsafe_host_tool!(
+         _operation_id,
+         _manifest_state,
+         _side_effect_class,
+         _idempotency_class
+       ),
+       do: :ok
+
+  defp side_effect_class(%OperationSpec{} = operation) do
+    metadata_value(operation, :side_effect_class) ||
+      operation.operation_id
+      |> String.split(".")
+      |> List.last()
+      |> case do
+        action
+        when action in ["list", "retrieve", "fetch", "status", "get_self", "get_combined"] ->
+          :read
+
+        action when action in ["create", "update", "delete", "upsert", "label", "close"] ->
+          :write
+
+        _other ->
+          :execute
+      end
+  end
+
+  defp idempotency_class(%OperationSpec{} = operation, side_effect_class) do
+    metadata_value(operation, :idempotency_class) ||
+      case side_effect_class do
+        :read -> :idempotent
+        :write -> :non_idempotent
+        :execute -> :non_idempotent
+      end
+  end
+
+  defp metadata_value(%OperationSpec{metadata: metadata}, key) when is_atom(key) do
+    value = map_value(metadata, key)
+
+    case value do
+      binary when is_binary(binary) -> String.to_existing_atom(binary)
+      atom when is_atom(atom) -> atom
+      _other -> nil
+    end
+  rescue
+    ArgumentError -> nil
   end
 
   defp authority!(opts) do

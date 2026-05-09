@@ -291,6 +291,7 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     |> maybe_put(:provider, normalize_optional_atom(Contracts.get(runtime_config, :provider)))
     |> maybe_put(:cwd, workspace_root(context) || requested_cwd(input))
     |> maybe_put(:allowed_tools, allowed_tools(context))
+    |> maybe_put(:governed_lower_envelope, governed_lower_envelope(context))
     |> Keyword.put(:capability, capability)
     |> Keyword.put(:input, input)
     |> Keyword.put(:context, context)
@@ -515,16 +516,19 @@ defmodule Jido.Integration.V2.RuntimeRouter do
   defp build_run_request(%Capability{} = capability, input, context) do
     %{
       prompt: request_prompt(capability, input),
-      cwd: workspace_root(context),
+      cwd: workspace_root(context) || requested_cwd(input),
       allowed_tools: allowed_tools(context),
-      metadata: %{
-        "capability_id" => capability.id,
-        "run_id" => context.run_id,
-        "attempt_id" => context.attempt_id,
-        "runtime_class" => Atom.to_string(capability.runtime_class),
-        "target_id" => context[:target_descriptor] && context.target_descriptor.target_id,
-        "input" => input
-      }
+      metadata:
+        %{
+          "capability_id" => capability.id,
+          "run_id" => context.run_id,
+          "attempt_id" => context.attempt_id,
+          "runtime_class" => Atom.to_string(capability.runtime_class),
+          "target_id" => context[:target_descriptor] && context.target_descriptor.target_id,
+          "input" => input
+        }
+        |> maybe_put_map("authority_metadata", request_authority_metadata(input))
+        |> maybe_put_map("governed_lower_envelope", governed_lower_envelope(context))
     }
     |> maybe_put_map(:host_tools, request_host_tools(input))
     |> maybe_put_map(:continuation, request_continuation(input))
@@ -547,10 +551,29 @@ defmodule Jido.Integration.V2.RuntimeRouter do
   end
 
   defp request_provider_metadata(input) do
-    case Contracts.get(input, :provider_metadata, %{}) do
-      %{} = metadata -> metadata
-      _other -> %{}
+    metadata =
+      case Contracts.get(input, :provider_metadata, %{}) do
+        %{} = metadata -> metadata
+        _other -> %{}
+      end
+
+    case Contracts.get(input, :dynamic_tool_manifest) do
+      %{} = manifest -> Map.put(metadata, "dynamic_tool_manifest", manifest)
+      _other -> metadata
     end
+  end
+
+  defp request_authority_metadata(input) do
+    case Contracts.get(input, :authority_metadata) do
+      %{} = metadata -> metadata
+      _other -> nil
+    end
+  end
+
+  defp governed_lower_envelope(context) when is_map(context) do
+    context
+    |> Contracts.get(:opts, %{})
+    |> Contracts.get(:governed_lower_envelope)
   end
 
   defp session_control_operation(%Capability{metadata: metadata}) when is_map(metadata) do

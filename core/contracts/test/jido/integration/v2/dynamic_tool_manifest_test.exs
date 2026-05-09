@@ -102,7 +102,45 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
     assert String.contains?(Exception.message(error), "not present in connector catalogs")
   end
 
-  defp manifest(connector, operation_id) do
+  test "rejects non-idempotent host tools from inactive connector manifests" do
+    for manifest_state <- [:stale, :quarantined] do
+      assert {:error, error} =
+               DynamicToolManifest.resolve(
+                 %{tools: ["linear.comment.update"]},
+                 connector_manifests: [
+                   manifest("linear", "linear.comments.update", manifest_state: manifest_state)
+                 ],
+                 allowed_operations: ["linear.comments.update"],
+                 allowed_tools: ["linear.api.comments.update"]
+               )
+
+      assert String.contains?(
+               Exception.message(error),
+               "non-idempotent dynamic host tool"
+             )
+
+      assert String.contains?(Exception.message(error), Atom.to_string(manifest_state))
+    end
+  end
+
+  test "allows idempotent read host tools from stale manifests for degraded readback" do
+    assert {:ok, resolved} =
+             DynamicToolManifest.resolve(
+               %{tools: ["linear.issues.retrieve"]},
+               connector_manifests: [
+                 manifest("linear", "linear.issues.retrieve", manifest_state: :stale)
+               ],
+               allowed_operations: ["linear.issues.retrieve"],
+               allowed_tools: ["linear.api.issues.retrieve"]
+             )
+
+    assert resolved.operations == ["linear.issues.retrieve"]
+    assert get_in(hd(resolved.host_tools), ["metadata", "manifest_state"]) == "stale"
+    assert get_in(hd(resolved.host_tools), ["metadata", "side_effect_class"]) == "read"
+    assert get_in(hd(resolved.host_tools), ["metadata", "idempotency_class"]) == "idempotent"
+  end
+
+  defp manifest(connector, operation_id, opts \\ []) do
     Manifest.new!(%{
       connector: connector,
       auth:
@@ -127,7 +165,8 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
         }),
       operations: [operation(operation_id)],
       triggers: [],
-      runtime_families: [:direct]
+      runtime_families: [:direct],
+      metadata: %{manifest_state: Keyword.get(opts, :manifest_state, :active)}
     })
   end
 

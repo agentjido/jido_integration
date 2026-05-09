@@ -52,6 +52,9 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
     assert capability.metadata.session_control.operation == :turn
     assert capability.metadata.codex_app_server.primary? == true
     assert capability.metadata.codex_app_server.host_tools == :native
+    assert capability.metadata.lower_runtime_kinds == [:codex_session, :deterministic_fixture]
+    assert capability.metadata.side_effect_class == :execute
+    assert capability.metadata.idempotency_class == :non_idempotent
 
     assert capabilities_by_id["codex.session.start"].metadata.session_control.operation == :start
 
@@ -81,6 +84,42 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
 
     assert {:ok, %{session_id: "session-1", run_id: "run-1"}} =
              Zoi.parse(cancel.input_schema, %{session_id: "session-1", run_id: "run-1"})
+  end
+
+  test "turn schema accepts governed headless Codex runtime input" do
+    operation =
+      CodexCli.manifest().operations
+      |> Enum.find(&(&1.operation_id == "codex.session.turn"))
+
+    assert {:ok, validated} =
+             Zoi.parse(operation.input_schema, %{
+               prompt: "Implement the governed slice",
+               cwd: "/workspace/extravaganza",
+               workspace: %{"workspace_ref" => "workspace://phase5"},
+               host_tools: [
+                 %{
+                   name: "linear_comment_update",
+                   inputSchema: %{"type" => "object"},
+                   metadata: %{"operation_id" => "linear.comments.update"}
+                 }
+               ],
+               continuation: %{strategy: :latest},
+               provider_metadata: %{"model" => "gpt-5.4"},
+               authority_metadata: %{
+                 "authority_ref" => "authority://phase5",
+                 "allowed_operations" => ["codex.session.turn"]
+               },
+               dynamic_tool_manifest: %{"tools" => ["linear.comment.update"]},
+               governed_lower_envelope: %{
+                 "lower_runtime_kind" => "codex_session",
+                 "authority_decision_hash" => "hash-123"
+               }
+             })
+
+    assert validated.cwd == "/workspace/extravaganza"
+    assert validated.dynamic_tool_manifest == %{"tools" => ["linear.comment.update"]}
+    assert validated.authority_metadata["authority_ref"] == "authority://phase5"
+    assert validated.governed_lower_envelope["lower_runtime_kind"] == "codex_session"
   end
 
   test "publishes deterministic conformance fixtures" do
