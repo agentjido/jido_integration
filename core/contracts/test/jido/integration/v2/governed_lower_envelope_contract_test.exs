@@ -31,11 +31,25 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
       "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     connector_manifest_state: :active,
     capability_negotiation_ref: "cap_neg_1",
+    policy_bundle_ref: "policy_bundle_1",
+    policy_bundle_hash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    cedar_schema_ref: "cedar_schema_1",
+    cedar_schema_hash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    script_ref: "script_1",
+    script_hash: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    script_api_version: "rhai-1",
+    declared_actions: ["codex.session.turn"],
+    package_refs: ["package_1"],
     resource_scope_refs: ["workspace_1"],
     workspace_ref: "workspace_1",
     target_ref: "target_1",
+    placement_ref: "node_1",
     sandbox_profile_ref: "sandbox_profile_1",
-    acceptable_attestation: [],
+    sandbox_level: :process,
+    network_policy_ref: "network_policy_1",
+    filesystem_policy_ref: "filesystem_policy_1",
+    acceptable_attestation: ["attestation_1"],
+    attestation_requirement_ref: "attestation_requirement_1",
     evidence_profile_ref: "evidence_profile_1",
     redaction_profile_ref: "redaction_profile_1",
     input_ref: "input_1",
@@ -56,6 +70,8 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
     assert decoded["contract_name"] == GovernedLowerEnvelope.contract_name()
     assert decoded["lower_runtime_kind"] == "deterministic_fixture"
     assert decoded["runtime_profile_kind"] == "temporal_local"
+    assert decoded["package_refs"] == ["package_1"]
+    assert decoded["attestation_requirement_ref"] == "attestation_requirement_1"
   end
 
   test "accepts reserved TRE runtime kind but marks it non-dispatchable" do
@@ -165,7 +181,24 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
         connector_ref: envelope.connector_ref,
         connector_manifest_ref: envelope.connector_manifest_ref,
         connector_manifest_hash: envelope.connector_manifest_hash,
-        capability_negotiation_ref: envelope.capability_negotiation_ref
+        connector_manifest_state: envelope.connector_manifest_state,
+        capability_negotiation_ref: envelope.capability_negotiation_ref,
+        policy_bundle_ref: envelope.policy_bundle_ref,
+        policy_bundle_hash: envelope.policy_bundle_hash,
+        cedar_schema_ref: envelope.cedar_schema_ref,
+        cedar_schema_hash: envelope.cedar_schema_hash,
+        script_ref: envelope.script_ref,
+        script_hash: envelope.script_hash,
+        script_api_version: envelope.script_api_version,
+        declared_actions: envelope.declared_actions,
+        package_refs: envelope.package_refs,
+        resource_scope_refs: envelope.resource_scope_refs,
+        sandbox_profile_ref: envelope.sandbox_profile_ref,
+        sandbox_level: envelope.sandbox_level,
+        network_policy_ref: envelope.network_policy_ref,
+        filesystem_policy_ref: envelope.filesystem_policy_ref,
+        acceptable_attestation: envelope.acceptable_attestation,
+        attestation_requirement_ref: envelope.attestation_requirement_ref
       })
 
     assert GovernedLowerReceipt.matches_envelope?(receipt, envelope)
@@ -173,7 +206,13 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
     assert %{
              "contract_name" => "JidoIntegration.GovernedLowerReceipt.v1",
              "lower_runtime_kind" => "deterministic_fixture",
-             "status" => "succeeded"
+             "status" => "succeeded",
+             "policy_bundle_ref" => "policy_bundle_1",
+             "script_ref" => "script_1",
+             "package_refs" => ["package_1"],
+             "sandbox_profile_ref" => "sandbox_profile_1",
+             "acceptable_attestation" => ["attestation_1"],
+             "attestation_requirement_ref" => "attestation_requirement_1"
            } = receipt |> GovernedLowerReceipt.to_map() |> Jason.encode!() |> Jason.decode!()
 
     denial =

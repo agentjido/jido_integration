@@ -51,6 +51,7 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelope do
     :script_hash,
     :script_api_version,
     :declared_actions,
+    :package_refs,
     :resource_scope_refs,
     :workspace_ref,
     :target_ref,
@@ -60,6 +61,7 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelope do
     :network_policy_ref,
     :filesystem_policy_ref,
     :acceptable_attestation,
+    :attestation_requirement_ref,
     :evidence_profile_ref,
     :redaction_profile_ref,
     :input_ref,
@@ -184,6 +186,7 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelope do
         script_hash: optional_string(envelope.script_hash, :script_hash),
         script_api_version: optional_string(envelope.script_api_version, :script_api_version),
         declared_actions: string_list(envelope.declared_actions || [], :declared_actions),
+        package_refs: string_list(envelope.package_refs || [], :package_refs),
         resource_scope_refs:
           string_list(envelope.resource_scope_refs || [], :resource_scope_refs),
         workspace_ref: optional_string(envelope.workspace_ref, :workspace_ref),
@@ -201,6 +204,8 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelope do
           optional_string(envelope.filesystem_policy_ref, :filesystem_policy_ref),
         acceptable_attestation:
           list(envelope.acceptable_attestation || [], :acceptable_attestation),
+        attestation_requirement_ref:
+          optional_string(envelope.attestation_requirement_ref, :attestation_requirement_ref),
         evidence_profile_ref:
           optional_string(envelope.evidence_profile_ref, :evidence_profile_ref),
         redaction_profile_ref:
