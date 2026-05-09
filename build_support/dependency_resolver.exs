@@ -211,6 +211,24 @@ defmodule Jido.Integration.Build.DependencyResolver do
     end
   end
 
+  def execution_plane_process(opts \\ []) do
+    case local_root_path("../execution_plane/runtimes/execution_plane_process") do
+      nil ->
+        {:execution_plane_process,
+         Keyword.merge(
+           [
+             github: "nshkrdotcom/execution_plane",
+             branch: "main",
+             subdir: "runtimes/execution_plane_process"
+           ],
+           opts
+         )}
+
+      path ->
+        {:execution_plane_process, Keyword.merge([path: path], opts)}
+    end
+  end
+
   def ground_plane_persistence_policy(opts \\ []) do
     case local_root_path("../ground_plane/core/persistence_policy") do
       nil ->

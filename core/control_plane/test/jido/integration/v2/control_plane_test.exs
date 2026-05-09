@@ -20,6 +20,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.Redaction
   alias Jido.Integration.V2.RuntimeRouter
+  alias Jido.Integration.V2.RuntimeRouter.ExecutionPlaneTreAdapter
   alias Jido.Integration.V2.RuntimeRouter.SessionStore
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
@@ -853,6 +854,76 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                  tre_adapter: Jido.Integration.V2.ControlPlane.FakeTreAdapter
                )
              )
+  end
+
+  test "TRE lower lane can invoke the ExecutionPlane local runner adapter" do
+    connection_id = install_connection!("tester", ["tre:execute"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TreConnector)
+
+    script_source = ~s|let contents = cat(file_path); contents|
+    runner_path = write_fake_tre_runner!()
+
+    envelope =
+      %{
+        lower_request_ref: "lower_req_control_plane_execution_plane_tre",
+        lower_runtime_kind: :tre_rhai,
+        runtime_profile_ref: "runtime_profile_execution_plane_tre",
+        runtime_profile_kind: :tre_rhai,
+        capability_id: "test.tre.execute",
+        action_id: "test.tre.execute",
+        allowed_operations: ["test.tre.execute"],
+        connector_ref: "jido/connectors/tre_test",
+        connector_manifest_ref: "manifest://jido/connectors/tre_test@local",
+        connector_manifest_hash:
+          "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        connector_manifest_state: :active,
+        capability_negotiation_ref: "cap-neg://control-plane-execution-plane-tre",
+        declared_actions: ["fs.read"],
+        resource_scope_refs: ["workspace://tenant-1/control-plane-execution-plane-tre"],
+        workspace_ref: "workspace://tenant-1/control-plane-execution-plane-tre",
+        target_ref: "target-tre",
+        sandbox_profile_ref: "sandbox://control-plane-execution-plane-tre",
+        input_ref: "input://control-plane-execution-plane-tre",
+        input_hash: sha256("control-plane-execution-plane-tre-input"),
+        script_ref: "script:tre:control-plane-read-only:v1",
+        script_hash: sha256(script_source)
+      }
+      |> Map.merge(tre_policy_refs())
+      |> Map.put(:declared_actions, ["fs.read"])
+      |> governed_lower_envelope()
+
+    assert {:ok, result} =
+             ControlPlane.invoke(
+               "test.tre.execute",
+               %{value: "ok"},
+               invoke_opts(connection_id,
+                 allowed_operations: ["test.tre.execute"],
+                 sandbox: %{
+                   level: :strict,
+                   egress: :restricted,
+                   approvals: :auto,
+                   file_scope: "/srv/tenant-1/tre",
+                   allowed_tools: ["tre.fake.execute", "tre.execution_plane.execute"]
+                 },
+                 governed_lower_envelope: envelope,
+                 tre_adapter: ExecutionPlaneTreAdapter,
+                 tre_runner_path: runner_path,
+                 tre_materializer: tre_materializer(script_source, read_only_tre_policy()),
+                 tre_allowed_actions: ["fs.read"]
+               )
+             )
+
+    assert result.run.status == :completed
+    assert result.output.adapter == :execution_plane_tre
+    assert result.output.execution_plane_receipt["status"] == "succeeded"
+
+    assert result.output.execution_plane_receipt["runner_output"]["output"] ==
+             "control-plane-tre-ok"
+
+    assert result.output.governed_lower_receipt["status"] == "succeeded"
+
+    assert result.output.governed_lower_receipt["extensions"]["execution_plane"]["status"] ==
+             "succeeded"
   end
 
   test "submission acceptance requires cost meter and active budget refs" do
@@ -1724,6 +1795,83 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     }
     |> Map.merge(overrides)
     |> GovernedLowerEnvelope.new!()
+  end
+
+  defp write_fake_tre_runner! do
+    tmp_root =
+      Path.join(
+        System.tmp_dir!(),
+        "jido-control-plane-tre-test-#{System.unique_integer([:positive])}"
+      )
+
+    File.mkdir_p!(tmp_root)
+    runner_path = Path.join(tmp_root, "fake-rex-runner")
+
+    File.write!(runner_path, """
+    #!/bin/sh
+    set -eu
+    script_file=""
+    policy_file=""
+    args_file=""
+
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --script-file|-s)
+          script_file="$2"
+          shift 2
+          ;;
+        --policy-file|-p)
+          policy_file="$2"
+          shift 2
+          ;;
+        --script-arguments-file|-a)
+          args_file="$2"
+          shift 2
+          ;;
+        --output-format|-o)
+          shift 2
+          ;;
+        *)
+          shift
+          ;;
+      esac
+    done
+
+    if [ ! -f "$script_file" ] || [ ! -f "$policy_file" ] || [ ! -f "$args_file" ]; then
+      printf '{"output":"","status":"ERROR","error":{"error_type":"VALIDATION_EXCEPTION","message":"missing runner input file"}}'
+      exit 0
+    fi
+
+    printf '{"output":"control-plane-tre-ok","status":"SUCCESS"}'
+    """)
+
+    File.chmod!(runner_path, 0o755)
+
+    on_exit(fn -> File.rm_rf(tmp_root) end)
+
+    runner_path
+  end
+
+  defp tre_materializer(script_source, policy_source) do
+    fn _envelope ->
+      {:ok,
+       %{
+         script_source: script_source,
+         policy_source: policy_source,
+         script_arguments: %{"file_path" => %{"stringValue" => "README.md"}}
+       }}
+    end
+  end
+
+  defp read_only_tre_policy do
+    """
+    permit(principal, action, resource)
+    when { action == file_system::Action::"read" };
+    """
+  end
+
+  defp sha256(value) do
+    "sha256:" <> Base.encode16(:crypto.hash(:sha256, value), case: :lower)
   end
 
   defp tre_policy_refs do
