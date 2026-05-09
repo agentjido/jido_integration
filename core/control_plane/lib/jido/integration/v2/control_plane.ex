@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane.ClaimCheck
+  alias Jido.Integration.V2.ControlPlane.GovernedLowerAdmission
   alias Jido.Integration.V2.ControlPlane.Inference
   alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.ControlPlane.Registry
@@ -138,7 +139,10 @@ defmodule Jido.Integration.V2.ControlPlane do
     reject_public_credential_ref!(opts)
 
     with {:ok, capability} <- fetch_capability(capability_id),
+         {:ok, governed_lower_envelope} <-
+           GovernedLowerAdmission.admit(capability, capability_id, opts),
          {:ok, auth_binding} <- resolve_invoke_auth(capability, opts) do
+      opts = maybe_put_governed_lower_envelope(opts, governed_lower_envelope)
       run = build_run(capability, input, auth_binding.credential_ref, opts)
 
       :ok = Stores.run_store().put_run(run)
@@ -358,6 +362,12 @@ defmodule Jido.Integration.V2.ControlPlane do
     Enum.filter(records, fn record ->
       Enum.all?(filters, fn {key, value} -> Map.get(record, key) == value end)
     end)
+  end
+
+  defp maybe_put_governed_lower_envelope(opts, nil), do: opts
+
+  defp maybe_put_governed_lower_envelope(opts, governed_lower_envelope) do
+    Keyword.put(opts, :governed_lower_envelope, governed_lower_envelope)
   end
 
   defp continue_invoke(capability, run, input, opts, auth_binding) do

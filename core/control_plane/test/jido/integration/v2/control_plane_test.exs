@@ -14,6 +14,8 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.ControlPlane.RunLedger
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
+  alias Jido.Integration.V2.GovernedLowerDenial
+  alias Jido.Integration.V2.GovernedLowerEnvelope
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
   alias Jido.Integration.V2.Redaction
@@ -527,6 +529,77 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     cost_event = Enum.find(events, &(&1.type == "cost.recorded"))
     assert cost_event.payload.cost_meter_ref == "meter://control-plane-test"
     assert cost_event.payload.budget_refs == ["budget://control-plane-test/per-run"]
+  end
+
+  test "admits governed lower envelopes before dispatch and denies mismatched lower lanes" do
+    connection_id = install_connection!("tester", ["echo:write"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TestConnector)
+
+    envelope = governed_lower_envelope()
+
+    assert {:ok, result} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "ok"},
+               invoke_opts(connection_id,
+                 allowed_operations: ["test.echo"],
+                 governed_lower_envelope: envelope
+               )
+             )
+
+    assert result.run.status == :completed
+    assert result.output == %{value: "ok"}
+
+    before_denied_runs = ControlPlane.runs(%{}) |> length()
+
+    assert {:error,
+            %GovernedLowerDenial{
+              denial_class: :lower_runtime_unavailable,
+              lower_runtime_kind: :tre_rhai
+            }} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "blocked"},
+               invoke_opts(connection_id,
+                 allowed_operations: ["test.echo"],
+                 governed_lower_envelope:
+                   envelope
+                   |> GovernedLowerEnvelope.to_map()
+                   |> Map.put("lower_runtime_kind", "tre_rhai")
+               )
+             )
+
+    assert ControlPlane.runs(%{}) |> length() == before_denied_runs
+
+    assert {:error, %GovernedLowerDenial{denial_class: :manifest_invalid}} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "blocked"},
+               invoke_opts(connection_id,
+                 allowed_operations: ["test.echo"],
+                 governed_lower_envelope:
+                   envelope
+                   |> GovernedLowerEnvelope.to_map()
+                   |> Map.put("connector_ref", "jido/connectors/other")
+               )
+             )
+
+    assert {:error, %GovernedLowerDenial{denial_class: :capability_denied}} =
+             ControlPlane.invoke(
+               "test.echo",
+               %{value: "blocked"},
+               invoke_opts(connection_id,
+                 allowed_operations: ["test.echo"],
+                 governed_lower_envelope:
+                   envelope
+                   |> GovernedLowerEnvelope.to_map()
+                   |> Map.merge(%{
+                     "capability_id" => "test.other",
+                     "action_id" => "test.other",
+                     "allowed_operations" => ["test.other"]
+                   })
+               )
+             )
   end
 
   test "submission acceptance requires cost meter and active budget refs" do
@@ -1355,6 +1428,49 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     ]
 
     Keyword.merge(defaults, overrides)
+  end
+
+  defp governed_lower_envelope(overrides \\ %{}) do
+    %{
+      lower_request_ref: "lower_req_control_plane_test",
+      lower_runtime_kind: :direct_connector,
+      runtime_profile_ref: "runtime_profile_control_plane_test",
+      runtime_profile_kind: :temporal_local,
+      capability_id: "test.echo",
+      action_id: "test.echo",
+      tenant_ref: "tenant-1",
+      subject_ref: "subject-control-plane-test",
+      run_ref: "run-control-plane-test",
+      workflow_ref: "workflow-control-plane-test",
+      attempt_ref: "attempt-control-plane-test",
+      trace_id: "trace-control-plane-test",
+      idempotency_key: "idem-control-plane-test",
+      authority_ref: "authority-decision://control-plane-test",
+      authority_decision_hash:
+        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      allowed_operations: ["test.echo"],
+      connector_ref: "jido/connectors/test",
+      connector_manifest_ref: "manifest://jido/connectors/test@local",
+      connector_manifest_hash:
+        "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      connector_manifest_state: :active,
+      capability_negotiation_ref: "cap-neg://control-plane-test",
+      side_effect_class: :write,
+      idempotency_class: :non_idempotent,
+      runtime_class: :direct,
+      resource_scope_refs: ["workspace://tenant-1/control-plane-test"],
+      workspace_ref: "workspace://tenant-1/control-plane-test",
+      target_ref: "target-echo",
+      sandbox_profile_ref: "sandbox://control-plane-test",
+      sandbox_level: :strict,
+      acceptable_attestation: ["attestation://local-process"],
+      evidence_profile_ref: "evidence://control-plane-test",
+      redaction_profile_ref: "redaction://control-plane-test",
+      input_ref: "input://control-plane-test",
+      input_hash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+    |> Map.merge(overrides)
+    |> GovernedLowerEnvelope.new!()
   end
 
   defp echo_target(target_id, overrides \\ []) do

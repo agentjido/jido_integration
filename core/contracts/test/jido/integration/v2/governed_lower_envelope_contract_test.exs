@@ -106,6 +106,17 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
     end
   end
 
+  test "accepts Citadel sandbox posture levels in the governed lower envelope" do
+    for sandbox_level <- [:strict, :standard, :none, :process, :container, :microvm] do
+      envelope =
+        @base_attrs
+        |> Map.put(:sandbox_level, sandbox_level)
+        |> GovernedLowerEnvelope.new!()
+
+      assert envelope.sandbox_level == sandbox_level
+    end
+  end
+
   test "rejects unknown lower runtime kinds and ungranted capabilities" do
     assert_raise ArgumentError, ~r/invalid lower_runtime_kind/, fn ->
       GovernedLowerEnvelope.new!(Map.put(@base_attrs, :lower_runtime_kind, :custom_tunnel))
@@ -189,5 +200,47 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
              "lower_runtime_kind" => "deterministic_fixture",
              "denial_class" => "capability_denied"
            } = denial |> GovernedLowerDenial.to_map() |> Jason.encode!() |> Jason.decode!()
+  end
+
+  test "lower denial taxonomy covers authority, manifest, resource, sandbox, attestation, runtime, receipt, and retry classes" do
+    envelope = GovernedLowerEnvelope.new!(@base_attrs)
+
+    for denial_class <- [
+          :authority_denied,
+          :capability_denied,
+          :manifest_missing,
+          :manifest_stale,
+          :manifest_invalid,
+          :manifest_quarantined,
+          :runtime_profile_incompatible,
+          :resource_scope_unresolvable,
+          :sandbox_downgrade,
+          :attestation_unsatisfied,
+          :policy_bundle_missing,
+          :script_binding_invalid,
+          :cedar_policy_denied,
+          :lower_runtime_unavailable,
+          :lower_runtime_failed,
+          :receipt_missing,
+          :retry_not_safe
+        ] do
+      denial =
+        GovernedLowerDenial.new!(%{
+          lower_denial_ref: "lower_denial_#{denial_class}",
+          lower_request_ref: envelope.lower_request_ref,
+          lower_runtime_kind: envelope.lower_runtime_kind,
+          denial_class: denial_class,
+          reason: Atom.to_string(denial_class),
+          tenant_ref: envelope.tenant_ref,
+          run_ref: envelope.run_ref,
+          trace_id: envelope.trace_id,
+          authority_ref: envelope.authority_ref,
+          authority_decision_hash: envelope.authority_decision_hash,
+          capability_id: envelope.capability_id
+        })
+
+      assert denial.denial_class == denial_class
+      assert GovernedLowerDenial.matches_envelope?(denial, envelope)
+    end
   end
 end

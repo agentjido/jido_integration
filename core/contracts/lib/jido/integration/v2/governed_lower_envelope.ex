@@ -193,7 +193,7 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelope do
         sandbox_level:
           optional_enumish(
             envelope.sandbox_level,
-            [:process, :container, :microvm],
+            [:strict, :standard, :none, :process, :container, :microvm],
             :sandbox_level
           ),
         network_policy_ref: optional_string(envelope.network_policy_ref, :network_policy_ref),

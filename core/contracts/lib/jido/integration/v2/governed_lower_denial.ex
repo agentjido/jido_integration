@@ -6,16 +6,27 @@ defmodule Jido.Integration.V2.GovernedLowerDenial do
   alias Jido.Integration.V2.{Contracts, GovernedLowerEnvelope}
 
   @denial_classes [
+    :authority_denied,
     :policy_denied,
     :capability_denied,
+    :manifest_missing,
     :manifest_stale,
     :manifest_invalid,
     :manifest_quarantined,
     :runtime_profile_incompatible,
+    :resource_scope_unresolvable,
     :sandbox_downgrade,
     :attestation_mismatch,
+    :attestation_unsatisfied,
+    :policy_bundle_missing,
+    :script_binding_invalid,
+    :cedar_policy_denied,
     :lower_runtime_unsupported,
+    :lower_runtime_unavailable,
+    :lower_runtime_failed,
+    :receipt_missing,
     :unsafe_retry,
+    :retry_not_safe,
     :dispatch_failed
   ]
 
