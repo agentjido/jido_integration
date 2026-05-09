@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.ControlPlane.GovernedLowerAdmission do
 
   alias Jido.Integration.V2.Capability
   alias Jido.Integration.V2.Contracts
+  alias Jido.Integration.V2.ControlPlane.TreAdapter
   alias Jido.Integration.V2.GovernedLowerDenial
   alias Jido.Integration.V2.GovernedLowerEnvelope
 
@@ -39,7 +40,7 @@ defmodule Jido.Integration.V2.ControlPlane.GovernedLowerAdmission do
   end
 
   defp validate_envelope(%Capability{} = capability, capability_id, envelope, opts) do
-    with :ok <- require_dispatchable(envelope),
+    with :ok <- require_dispatchable(envelope, opts),
          :ok <- require_capability_match(envelope, capability_id),
          :ok <- require_connector_match(envelope, capability),
          :ok <- require_manifest_active(envelope),
@@ -52,8 +53,8 @@ defmodule Jido.Integration.V2.ControlPlane.GovernedLowerAdmission do
     end
   end
 
-  defp require_dispatchable(%GovernedLowerEnvelope{} = envelope) do
-    if GovernedLowerEnvelope.dispatchable?(envelope) do
+  defp require_dispatchable(%GovernedLowerEnvelope{} = envelope, opts) do
+    if GovernedLowerEnvelope.dispatchable?(envelope) or tre_adapter_enabled?(envelope, opts) do
       :ok
     else
       {:deny, :lower_runtime_unavailable,
@@ -61,6 +62,11 @@ defmodule Jido.Integration.V2.ControlPlane.GovernedLowerAdmission do
        envelope}
     end
   end
+
+  defp tre_adapter_enabled?(%GovernedLowerEnvelope{lower_runtime_kind: :tre_rhai}, opts),
+    do: TreAdapter.enabled?(opts)
+
+  defp tre_adapter_enabled?(%GovernedLowerEnvelope{}, _opts), do: false
 
   defp require_capability_match(%GovernedLowerEnvelope{} = envelope, capability_id) do
     cond do

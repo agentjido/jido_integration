@@ -17,12 +17,14 @@ defmodule Jido.Integration.V2.ControlPlane do
   alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.ControlPlane.Registry
   alias Jido.Integration.V2.ControlPlane.Stores
+  alias Jido.Integration.V2.ControlPlane.TreAdapter
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.ExecutionRouter
   alias Jido.Integration.V2.Gateway
+  alias Jido.Integration.V2.GovernedLowerEnvelope
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.Policy
@@ -891,8 +893,51 @@ defmodule Jido.Integration.V2.ControlPlane do
     end
   end
 
+  defp dispatch(
+         %Capability{} = capability,
+         input,
+         %{
+           opts: %{governed_lower_envelope: %GovernedLowerEnvelope{lower_runtime_kind: :tre_rhai}}
+         } =
+           context
+       ) do
+    case TreAdapter.fetch(context.opts) do
+      {:ok, adapter} ->
+        adapter.execute(capability, input, context)
+
+      :error ->
+        {:error, :lower_runtime_unavailable, unavailable_tre_runtime_result(capability, context)}
+    end
+  end
+
   defp dispatch(%Capability{} = capability, input, context) do
     ExecutionRouter.execute(capability, input, context)
+  end
+
+  defp unavailable_tre_runtime_result(%Capability{} = capability, context) do
+    envelope = context.opts.governed_lower_envelope
+
+    RuntimeResult.new!(%{
+      output: %{
+        error: "tre_adapter_unavailable",
+        capability_id: capability.id,
+        lower_request_ref: envelope.lower_request_ref,
+        lower_runtime_kind: envelope.lower_runtime_kind
+      },
+      events: [
+        %{
+          type: "tre.adapter.unavailable",
+          stream: :control,
+          level: :warn,
+          payload: %{
+            capability_id: capability.id,
+            lower_request_ref: envelope.lower_request_ref,
+            lower_runtime_kind: "tre_rhai"
+          }
+        }
+      ],
+      artifacts: []
+    })
   end
 
   defp validate_guard_bindings(capability, opts) do

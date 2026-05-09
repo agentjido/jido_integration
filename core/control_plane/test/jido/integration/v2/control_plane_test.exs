@@ -117,6 +117,83 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     end
   end
 
+  defmodule TreConnector do
+    @behaviour Jido.Integration.V2.Connector
+
+    @impl true
+    def manifest do
+      Manifest.new!(%{
+        connector: "tre_test",
+        auth:
+          AuthSpec.new!(%{
+            binding_kind: :connection_id,
+            auth_type: :api_token,
+            install: %{required: true},
+            reauth: %{supported: false},
+            requested_scopes: ["tre:execute"],
+            lease_fields: ["access_token"],
+            secret_names: []
+          }),
+        catalog:
+          CatalogSpec.new!(%{
+            display_name: "TRE Test",
+            description: "Control plane fake TRE lane test connector",
+            category: "test",
+            tags: ["tre"],
+            docs_refs: [],
+            maturity: :experimental,
+            publication: :internal
+          }),
+        operations: [
+          OperationSpec.new!(%{
+            operation_id: "test.tre.execute",
+            name: "tre_execute",
+            display_name: "TRE execute",
+            description: "Executes through the explicit fake TRE adapter",
+            runtime_class: :direct,
+            transport_mode: :action,
+            handler: PassthroughAction,
+            input_schema: Zoi.map(description: "TRE input"),
+            output_schema: Zoi.map(description: "TRE output"),
+            permissions: %{required_scopes: ["tre:execute"]},
+            policy: %{
+              allowed_actor_ids: ["control-plane-test"],
+              allowed_tenant_ids: ["tenant-1"],
+              allowed_environments: [:prod],
+              allowed_runtime_classes: [:direct],
+              sandbox: %{
+                level: :strict,
+                egress: :restricted,
+                approvals: :auto,
+                file_scope: "/srv/tenant-1/tre",
+                allowed_tools: ["tre.fake.execute"]
+              }
+            },
+            upstream: %{transport: :action},
+            consumer_surface: %{
+              mode: :connector_local,
+              reason: "Fake TRE lane is a control-plane contract proof"
+            },
+            schema_policy: %{
+              input: :passthrough,
+              output: :passthrough,
+              justification:
+                "Fake TRE lane tests the governed lower envelope without introducing the real runner"
+            },
+            jido: %{action: %{name: "test_tre_execute"}},
+            metadata: %{
+              lower_runtime_kinds: [:tre_rhai],
+              side_effect_class: :execute,
+              idempotency_class: :idempotent
+            }
+          })
+        ],
+        triggers: [],
+        runtime_families: [:direct]
+      })
+    end
+  end
+
   defmodule JidoSessionConnector do
     @behaviour Jido.Integration.V2.Connector
 
@@ -600,6 +677,84 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
                    })
                )
              )
+  end
+
+  test "fake TRE lower lane is denied by default and dispatches only when explicitly enabled" do
+    connection_id = install_connection!("tester", ["tre:execute"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TreConnector)
+
+    envelope =
+      governed_lower_envelope(%{
+        lower_request_ref: "lower_req_control_plane_tre_test",
+        lower_runtime_kind: :tre_rhai,
+        runtime_profile_ref: "runtime_profile_control_plane_tre_test",
+        capability_id: "test.tre.execute",
+        action_id: "test.tre.execute",
+        allowed_operations: ["test.tre.execute"],
+        connector_ref: "jido/connectors/tre_test",
+        connector_manifest_ref: "manifest://jido/connectors/tre_test@local",
+        connector_manifest_hash:
+          "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        capability_negotiation_ref: "cap-neg://control-plane-tre-test",
+        resource_scope_refs: ["workspace://tenant-1/control-plane-tre-test"],
+        workspace_ref: "workspace://tenant-1/control-plane-tre-test",
+        target_ref: "target-tre",
+        sandbox_profile_ref: "sandbox://control-plane-tre-test",
+        input_ref: "input://control-plane-tre-test",
+        input_hash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      })
+
+    assert {:error,
+            %GovernedLowerDenial{
+              denial_class: :lower_runtime_unavailable,
+              lower_runtime_kind: :tre_rhai
+            }} =
+             ControlPlane.invoke(
+               "test.tre.execute",
+               %{value: "blocked"},
+               invoke_opts(connection_id,
+                 allowed_operations: ["test.tre.execute"],
+                 sandbox: %{
+                   level: :strict,
+                   egress: :restricted,
+                   approvals: :auto,
+                   file_scope: "/srv/tenant-1/tre",
+                   allowed_tools: ["tre.fake.execute"]
+                 },
+                 governed_lower_envelope: envelope
+               )
+             )
+
+    assert {:ok, result} =
+             ControlPlane.invoke(
+               "test.tre.execute",
+               %{value: "ok"},
+               invoke_opts(connection_id,
+                 allowed_operations: ["test.tre.execute"],
+                 sandbox: %{
+                   level: :strict,
+                   egress: :restricted,
+                   approvals: :auto,
+                   file_scope: "/srv/tenant-1/tre",
+                   allowed_tools: ["tre.fake.execute"]
+                 },
+                 governed_lower_envelope: envelope,
+                 tre_adapter: Jido.Integration.V2.ControlPlane.FakeTreAdapter
+               )
+             )
+
+    assert result.run.status == :completed
+    assert result.output.lower_runtime_kind == :tre_rhai
+    assert result.output.runtime_profile_ref == "runtime_profile_control_plane_tre_test"
+    assert result.output.resource_scope_refs == ["workspace://tenant-1/control-plane-tre-test"]
+
+    assert %{} = receipt = result.output.governed_lower_receipt
+    assert receipt["lower_runtime_kind"] == "tre_rhai"
+    assert receipt["lower_request_ref"] == envelope.lower_request_ref
+    assert receipt["status"] == "succeeded"
+    assert receipt["capability_id"] == "test.tre.execute"
+
+    assert Enum.any?(ControlPlane.events(result.run.run_id), &(&1.type == "tre.fake.completed"))
   end
 
   test "submission acceptance requires cost meter and active budget refs" do
