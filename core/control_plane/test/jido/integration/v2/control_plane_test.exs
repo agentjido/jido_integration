@@ -684,7 +684,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert :ok = ControlPlane.register_connector(TreConnector)
 
     envelope =
-      governed_lower_envelope(%{
+      %{
         lower_request_ref: "lower_req_control_plane_tre_test",
         lower_runtime_kind: :tre_rhai,
         runtime_profile_ref: "runtime_profile_control_plane_tre_test",
@@ -702,7 +702,9 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
         sandbox_profile_ref: "sandbox://control-plane-tre-test",
         input_ref: "input://control-plane-tre-test",
         input_hash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-      })
+      }
+      |> Map.merge(tre_policy_refs())
+      |> governed_lower_envelope()
 
     assert {:error,
             %GovernedLowerDenial{
@@ -755,6 +757,102 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert receipt["capability_id"] == "test.tre.execute"
 
     assert Enum.any?(ControlPlane.events(result.run.run_id), &(&1.type == "tre.fake.completed"))
+  end
+
+  test "fake TRE lower lane requires Cedar policy bundle refs and rejects raw policy text" do
+    connection_id = install_connection!("tester", ["tre:execute"], %{access_token: "test"})
+    assert :ok = ControlPlane.register_connector(TreConnector)
+
+    missing_policy_envelope =
+      governed_lower_envelope(%{
+        lower_request_ref: "lower_req_control_plane_tre_missing_policy",
+        lower_runtime_kind: :tre_rhai,
+        runtime_profile_ref: "runtime_profile_control_plane_tre_test",
+        capability_id: "test.tre.execute",
+        action_id: "test.tre.execute",
+        allowed_operations: ["test.tre.execute"],
+        connector_ref: "jido/connectors/tre_test",
+        connector_manifest_ref: "manifest://jido/connectors/tre_test@local",
+        connector_manifest_hash:
+          "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        capability_negotiation_ref: "cap-neg://control-plane-tre-test",
+        resource_scope_refs: ["workspace://tenant-1/control-plane-tre-test"],
+        workspace_ref: "workspace://tenant-1/control-plane-tre-test",
+        target_ref: "target-tre",
+        sandbox_profile_ref: "sandbox://control-plane-tre-test",
+        input_ref: "input://control-plane-tre-test",
+        input_hash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      })
+
+    assert {:error,
+            %GovernedLowerDenial{
+              denial_class: :policy_bundle_missing,
+              lower_runtime_kind: :tre_rhai
+            }} =
+             ControlPlane.invoke(
+               "test.tre.execute",
+               %{value: "blocked"},
+               invoke_opts(connection_id,
+                 allowed_operations: ["test.tre.execute"],
+                 sandbox: %{
+                   level: :strict,
+                   egress: :restricted,
+                   approvals: :auto,
+                   file_scope: "/srv/tenant-1/tre",
+                   allowed_tools: ["tre.fake.execute"]
+                 },
+                 governed_lower_envelope: missing_policy_envelope,
+                 tre_adapter: Jido.Integration.V2.ControlPlane.FakeTreAdapter
+               )
+             )
+
+    raw_policy_envelope =
+      %{
+        lower_request_ref: "lower_req_control_plane_tre_raw_policy",
+        lower_runtime_kind: :tre_rhai,
+        runtime_profile_ref: "runtime_profile_control_plane_tre_test",
+        capability_id: "test.tre.execute",
+        action_id: "test.tre.execute",
+        allowed_operations: ["test.tre.execute"],
+        connector_ref: "jido/connectors/tre_test",
+        connector_manifest_ref: "manifest://jido/connectors/tre_test@local",
+        connector_manifest_hash:
+          "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        capability_negotiation_ref: "cap-neg://control-plane-tre-test",
+        resource_scope_refs: ["workspace://tenant-1/control-plane-tre-test"],
+        workspace_ref: "workspace://tenant-1/control-plane-tre-test",
+        target_ref: "target-tre",
+        sandbox_profile_ref: "sandbox://control-plane-tre-test",
+        input_ref: "input://control-plane-tre-test",
+        input_hash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        extensions: %{
+          "citadel" => %{"cedar_policy_text" => "permit(principal, action, resource);"}
+        }
+      }
+      |> Map.merge(tre_policy_refs())
+      |> governed_lower_envelope()
+
+    assert {:error,
+            %GovernedLowerDenial{
+              denial_class: :script_binding_invalid,
+              lower_runtime_kind: :tre_rhai
+            }} =
+             ControlPlane.invoke(
+               "test.tre.execute",
+               %{value: "blocked"},
+               invoke_opts(connection_id,
+                 allowed_operations: ["test.tre.execute"],
+                 sandbox: %{
+                   level: :strict,
+                   egress: :restricted,
+                   approvals: :auto,
+                   file_scope: "/srv/tenant-1/tre",
+                   allowed_tools: ["tre.fake.execute"]
+                 },
+                 governed_lower_envelope: raw_policy_envelope,
+                 tre_adapter: Jido.Integration.V2.ControlPlane.FakeTreAdapter
+               )
+             )
   end
 
   test "submission acceptance requires cost meter and active budget refs" do
@@ -1626,6 +1724,19 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     }
     |> Map.merge(overrides)
     |> GovernedLowerEnvelope.new!()
+  end
+
+  defp tre_policy_refs do
+    %{
+      policy_profile_ref: "tre-policy-profile://coding-ops/standard",
+      policy_bundle_ref: "tre-policy-bundle://coding-ops/coding-ops-2026-04-25/1",
+      policy_bundle_hash:
+        "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      cedar_schema_ref: "cedar-schema://nshkr_tre/coding_ops/v1",
+      cedar_schema_hash:
+        "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      declared_actions: ["tre.run", "process.spawn"]
+    }
   end
 
   defp echo_target(target_id, overrides \\ []) do

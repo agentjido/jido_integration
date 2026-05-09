@@ -10,6 +10,16 @@ defmodule Jido.Integration.V2.ControlPlane.GovernedLowerAdmission do
   alias Jido.Integration.V2.GovernedLowerEnvelope
 
   @sandbox_rank %{strict: 0, standard: 1, none: 2}
+  @raw_cedar_extension_keys MapSet.new([
+                              "cedar_entities",
+                              "cedar_policy",
+                              "cedar_policy_source",
+                              "cedar_policy_text",
+                              "cedar_schema",
+                              "cedar_schema_text",
+                              "policy_text",
+                              "schema_text"
+                            ])
   @manifest_denial_classes %{
     stale: :manifest_stale,
     invalid: :manifest_invalid,
@@ -48,6 +58,8 @@ defmodule Jido.Integration.V2.ControlPlane.GovernedLowerAdmission do
          :ok <- require_tenant_match(envelope, opts),
          :ok <- require_trace_match(envelope, opts),
          :ok <- require_resource_scopes(envelope),
+         :ok <- require_tre_policy_bundle(envelope),
+         :ok <- reject_raw_cedar_policy_text(envelope),
          :ok <- require_sandbox_not_downgraded(envelope, opts) do
       require_attestation_satisfied(envelope, opts)
     end
@@ -174,6 +186,35 @@ defmodule Jido.Integration.V2.ControlPlane.GovernedLowerAdmission do
     end
   end
 
+  defp require_tre_policy_bundle(%GovernedLowerEnvelope{lower_runtime_kind: :tre_rhai} = envelope) do
+    required = [
+      envelope.policy_bundle_ref,
+      envelope.policy_bundle_hash,
+      envelope.cedar_schema_ref,
+      envelope.cedar_schema_hash
+    ]
+
+    if Enum.all?(required, &present_string?/1) do
+      :ok
+    else
+      {:deny, :policy_bundle_missing,
+       "TRE lower runtime requires policy_bundle_ref, policy_bundle_hash, cedar_schema_ref, and cedar_schema_hash",
+       envelope}
+    end
+  end
+
+  defp require_tre_policy_bundle(%GovernedLowerEnvelope{}), do: :ok
+
+  defp reject_raw_cedar_policy_text(%GovernedLowerEnvelope{} = envelope) do
+    if raw_cedar_policy_text?(envelope.extensions) do
+      {:deny, :script_binding_invalid,
+       "governed lower envelope must carry Cedar refs and hashes, not raw Cedar policy or schema text",
+       envelope}
+    else
+      :ok
+    end
+  end
+
   defp require_sandbox_not_downgraded(%GovernedLowerEnvelope{} = envelope, opts) do
     requested_level = posture_sandbox_level(envelope.sandbox_level)
 
@@ -234,6 +275,20 @@ defmodule Jido.Integration.V2.ControlPlane.GovernedLowerAdmission do
     |> List.wrap()
     |> Enum.filter(&(is_binary(&1) and &1 != ""))
   end
+
+  defp present_string?(value), do: is_binary(value) and String.trim(value) != ""
+
+  defp raw_cedar_policy_text?(%{} = value) do
+    Enum.any?(value, fn {key, nested_value} ->
+      MapSet.member?(@raw_cedar_extension_keys, to_string(key)) or
+        raw_cedar_policy_text?(nested_value)
+    end)
+  end
+
+  defp raw_cedar_policy_text?(value) when is_list(value),
+    do: Enum.any?(value, &raw_cedar_policy_text?/1)
+
+  defp raw_cedar_policy_text?(_value), do: false
 
   defp denial(%GovernedLowerEnvelope{} = envelope, denial_class, reason) do
     GovernedLowerDenial.new!(%{
