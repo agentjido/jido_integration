@@ -184,11 +184,11 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     end
   end
 
-  test "workspace root uses released Weld 0.7.2 and the repo-local publication contract" do
+  test "workspace root uses released Weld and the repo-local publication contract" do
     deps = MixProject.project()[:deps]
 
-    assert {:weld, "~> 0.7.2", runtime: false} in deps,
-           "workspace root must depend directly on the released Weld 0.7.2 line"
+    assert {:weld, "~> 0.8.1", only: [:dev, :test], runtime: false} in deps,
+           "workspace root must depend directly on the released Weld line"
 
     assert File.exists?(Path.join(repo_root(), "build_support/weld.exs"))
     assert File.exists?(Path.join(repo_root(), "build_support/workspace_contract.exs"))
