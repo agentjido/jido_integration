@@ -189,7 +189,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   test "workspace root uses released Weld and the repo-local publication contract" do
     deps = MixProject.project()[:deps]
 
-    assert {:weld, "~> 0.8.1", only: [:dev, :test], runtime: false} in deps,
+    assert {:weld, "~> 0.8.2", only: [:dev, :test], runtime: false} in deps,
            "workspace root must depend directly on the released Weld line"
 
     assert File.exists?(Path.join(repo_root(), "build_support/weld.exs"))
@@ -307,6 +307,12 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
              subdir: "core/execution_plane"
            }
 
+    assert deps.execution_plane_jsonrpc.github == %{
+             repo: "nshkrdotcom/execution_plane",
+             branch: "main",
+             subdir: "protocols/execution_plane_jsonrpc"
+           }
+
     pristine_runtime_path = Path.expand("../pristine/apps/pristine_runtime", repo_root())
 
     case DependencyResolver.pristine(runtime: false) do
@@ -341,6 +347,25 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
     assert deps.execution_plane.github.subdir == "core/execution_plane",
            "Execution Plane fallback must point at its package subdirectory"
+
+    assert deps.execution_plane_jsonrpc.github.repo == "nshkrdotcom/execution_plane",
+           "Execution Plane JSON-RPC fallback must use its source repository instead of the package registry"
+
+    assert deps.execution_plane_jsonrpc.github.subdir == "protocols/execution_plane_jsonrpc",
+           "Execution Plane JSON-RPC fallback must point at its package subdirectory"
+  end
+
+  test "workspace internal Git fallbacks use the canonical source repository" do
+    resolver_source =
+      repo_root()
+      |> Path.join("build_support/dependency_resolver.exs")
+      |> File.read!()
+
+    assert String.contains?(resolver_source, ~S[github: "nshkrdotcom/jido_integration"]),
+           "internal package fallbacks must stay on the canonical source repo"
+
+    refute String.contains?(resolver_source, ~S[github: "agentjido/jido_integration"]),
+           "internal package fallbacks must not fetch stale package sources"
   end
 
   test "workspace root runtime and tooling files avoid direct OS env APIs" do

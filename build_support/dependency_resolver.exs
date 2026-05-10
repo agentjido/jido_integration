@@ -7,7 +7,7 @@ defmodule Jido.Integration.Build.DependencyResolver do
 
   @repo_root Path.expand("..", __DIR__)
   @repo_fallback [
-    github: "agentjido/jido_integration",
+    github: "nshkrdotcom/jido_integration",
     branch: "main"
   ]
 
@@ -164,6 +164,8 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def inference(opts \\ []), do: external_dep(:inference, opts)
 
   def execution_plane(opts \\ []), do: external_dep(:execution_plane, opts)
+
+  def execution_plane_jsonrpc(opts \\ []), do: external_dep(:execution_plane_jsonrpc, opts)
 
   def execution_plane_process(opts \\ []), do: external_dep(:execution_plane_process, opts)
 

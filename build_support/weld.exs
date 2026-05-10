@@ -84,11 +84,20 @@ defmodule Jido.Integration.Build.WeldContract do
         override: true
       ]
     ],
+    execution_plane_jsonrpc: [
+      opts: [
+        github: "nshkrdotcom/execution_plane",
+        branch: "main",
+        subdir: "protocols/execution_plane_jsonrpc",
+        override: true
+      ]
+    ],
     execution_plane_process: [
       opts: [
         github: "nshkrdotcom/execution_plane",
         branch: "main",
-        subdir: "runtimes/execution_plane_process"
+        subdir: "runtimes/execution_plane_process",
+        override: true
       ]
     ],
     github_ex: [requirement: "~> 0.1.1"],
@@ -148,7 +157,7 @@ defmodule Jido.Integration.Build.WeldContract do
         licenses: ["Apache-2.0"],
         maintainers: ["nshkrdotcom"],
         links: %{
-          "GitHub" => "https://github.com/agentjido/jido_integration",
+          "GitHub" => "https://github.com/nshkrdotcom/jido_integration",
           "Guides" => "https://hexdocs.pm/jido_integration/readme.html"
         }
       ],

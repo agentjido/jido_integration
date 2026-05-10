@@ -5,8 +5,22 @@ defmodule Jido.Integration.V2.AuthPersistenceTest do
   alias Jido.Integration.V2.Auth.Store
   alias Jido.Integration.V2.Auth.Stores
 
+  @auth_store_keys [:credential_store, :lease_store, :connection_store, :install_store]
+
   setup do
+    previous_env = snapshot_env()
+
+    Enum.each(@auth_store_keys, fn key ->
+      Application.delete_env(:jido_integration_v2_auth, key)
+    end)
+
     Persistence.reset!()
+
+    on_exit(fn ->
+      Persistence.reset!()
+      restore_env(previous_env)
+    end)
+
     :ok
   end
 
@@ -37,5 +51,18 @@ defmodule Jido.Integration.V2.AuthPersistenceTest do
     assert partition.provider_family == "github"
     assert partition.provider_account_ref == "provider-account://github/redacted"
     assert partition.connector_instance_ref == "connector-instance://tenant-1/github/a"
+  end
+
+  defp snapshot_env do
+    Map.new(@auth_store_keys, fn key ->
+      {key, Application.fetch_env(:jido_integration_v2_auth, key)}
+    end)
+  end
+
+  defp restore_env(previous_env) do
+    Enum.each(previous_env, fn
+      {key, {:ok, value}} -> Application.put_env(:jido_integration_v2_auth, key, value)
+      {key, :error} -> Application.delete_env(:jido_integration_v2_auth, key)
+    end)
   end
 end

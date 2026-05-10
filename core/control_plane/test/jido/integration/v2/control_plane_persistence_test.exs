@@ -5,8 +5,31 @@ defmodule Jido.Integration.V2.ControlPlanePersistenceTest do
   alias Jido.Integration.V2.ControlPlane.RunLedger
   alias Jido.Integration.V2.ControlPlane.Stores
 
+  @control_plane_store_keys [
+    :run_store,
+    :attempt_store,
+    :event_store,
+    :artifact_store,
+    :claim_check_store,
+    :target_store,
+    :ingress_store,
+    :profile_registry_store
+  ]
+
   setup do
+    previous_env = snapshot_env()
+
+    Enum.each(@control_plane_store_keys, fn key ->
+      Application.delete_env(:jido_integration_v2_control_plane, key)
+    end)
+
     Persistence.reset!()
+
+    on_exit(fn ->
+      Persistence.reset!()
+      restore_env(previous_env)
+    end)
+
     :ok
   end
 
@@ -37,5 +60,18 @@ defmodule Jido.Integration.V2.ControlPlanePersistenceTest do
     assert partition.provider_family == "linear"
     assert partition.connector_instance_ref == "connector-instance://tenant-1/linear/a"
     assert partition.data_class == :run_truth
+  end
+
+  defp snapshot_env do
+    Map.new(@control_plane_store_keys, fn key ->
+      {key, Application.fetch_env(:jido_integration_v2_control_plane, key)}
+    end)
+  end
+
+  defp restore_env(previous_env) do
+    Enum.each(previous_env, fn
+      {key, {:ok, value}} -> Application.put_env(:jido_integration_v2_control_plane, key, value)
+      {key, :error} -> Application.delete_env(:jido_integration_v2_control_plane, key)
+    end)
   end
 end
