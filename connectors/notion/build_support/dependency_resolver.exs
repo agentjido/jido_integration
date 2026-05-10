@@ -1,17 +1,21 @@
 defmodule Jido.Integration.V2.Connectors.Notion.Build.DependencyResolver do
   @moduledoc false
 
-  @project_root Path.expand("..", __DIR__)
+  unless Code.ensure_loaded?(DependencySources) do
+    Code.require_file("../../../build_support/dependency_sources.exs", __DIR__)
+  end
 
-  def notion_sdk(opts \\ []) do
-    case sibling_path("../../../notion_sdk") do
-      nil -> {:notion_sdk, "~> 0.2.1", opts}
-      path -> {:notion_sdk, Keyword.merge([path: path], opts)}
+  @repo_root Path.expand("../../..", __DIR__)
+
+  def notion_sdk(opts \\ []),
+    do: :notion_sdk |> DependencySources.dep(@repo_root, opts) |> expand_path_dep()
+
+  defp expand_path_dep({app, opts}) when is_list(opts) do
+    case Keyword.fetch(opts, :path) do
+      {:ok, path} -> {app, Keyword.put(opts, :path, Path.expand(path, @repo_root))}
+      :error -> {app, opts}
     end
   end
 
-  defp sibling_path(relative_path) do
-    path = Path.expand(relative_path, @project_root)
-    if File.dir?(path), do: path
-  end
+  defp expand_path_dep(dep), do: dep
 end

@@ -4,6 +4,7 @@ defmodule Jido.Integration.Workspace.MonorepoRunner do
   import Bitwise
 
   alias Blitz.{Command, MixWorkspace}
+  alias Jido.Integration.Env
   alias Jido.Integration.Toolchain
 
   @spec run!(atom(), [String.t()]) :: :ok
@@ -104,7 +105,7 @@ defmodule Jido.Integration.Workspace.MonorepoRunner do
   end
 
   defp find_system_mix_in_path(mix_wrapper) do
-    System.get_env("PATH", "")
+    ("PATH" |> Env.get() || "")
     |> String.split(":", trim: true)
     |> Enum.find_value(&path_mix_candidate(&1, mix_wrapper))
   end

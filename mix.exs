@@ -1,3 +1,7 @@
+unless Code.ensure_loaded?(DependencySources) do
+  Code.require_file("build_support/dependency_sources.exs", __DIR__)
+end
+
 unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
   Code.require_file("build_support/dependency_resolver.exs", __DIR__)
 end
@@ -175,10 +179,9 @@ defmodule Jido.Integration.Workspace.MixProject do
     base_env = blitz_workspace_env(context)
 
     base_name =
-      System.get_env(
-        "JIDO_INTEGRATION_V2_DB_BASE_NAME",
-        System.get_env("JIDO_INTEGRATION_V2_DB_NAME", "jido_integration_v2_test")
-      )
+      env_get("JIDO_INTEGRATION_V2_DB_BASE_NAME") ||
+        env_get("JIDO_INTEGRATION_V2_DB_NAME") ||
+        "jido_integration_v2_test"
 
     base_env ++
       [
@@ -190,7 +193,7 @@ defmodule Jido.Integration.Workspace.MixProject do
 
   def blitz_workspace_env(%{root: root}) do
     repo_bin = Path.join(root, "bin")
-    path = prepend_path(repo_bin, System.get_env("PATH"))
+    path = prepend_path(repo_bin, env_get("PATH") || fallback_path())
 
     [
       {"PATH", path},
@@ -253,4 +256,66 @@ defmodule Jido.Integration.Workspace.MixProject do
   defp prepend_path(dir, nil), do: dir
   defp prepend_path(dir, ""), do: dir
   defp prepend_path(dir, path), do: dir <> ":" <> path
+
+  defp env_get(key) when is_binary(key), do: Map.get(runtime_env(), key)
+
+  defp runtime_env do
+    :jido_integration_workspace
+    |> Application.get_env(:env, %{})
+    |> normalize_env()
+  end
+
+  defp normalize_env(env) when is_map(env) do
+    Map.new(env, fn {key, value} -> {to_string(key), to_string(value)} end)
+  end
+
+  defp normalize_env(env) when is_list(env) do
+    Map.new(env, fn {key, value} -> {to_string(key), to_string(value)} end)
+  end
+
+  defp normalize_env(_env), do: %{}
+
+  defp fallback_path do
+    [
+      mix_installation_bin(),
+      erlang_erts_bin(),
+      erlang_installation_bin(),
+      "/usr/local/bin",
+      "/usr/bin",
+      "/bin"
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.join(":")
+  end
+
+  defp mix_installation_bin do
+    case :code.which(Mix) do
+      beam_path when is_list(beam_path) ->
+        beam_path
+        |> List.to_string()
+        |> Path.expand()
+        |> Path.dirname()
+        |> Path.dirname()
+        |> Path.dirname()
+        |> Path.dirname()
+        |> Path.join("bin")
+
+      _other ->
+        nil
+    end
+  end
+
+  defp erlang_installation_bin do
+    :code.root_dir()
+    |> List.to_string()
+    |> Path.join("bin")
+  end
+
+  defp erlang_erts_bin do
+    root = :code.root_dir() |> List.to_string()
+    version = :erlang.system_info(:version) |> List.to_string()
+
+    Path.join([root, "erts-#{version}", "bin"])
+  end
 end

@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.ArtifactRef
   alias Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver
   alias Jido.Integration.V2.Auth
+  alias Jido.Integration.V2.Auth.Persistence, as: AuthPersistence
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.AuthSpec
@@ -11,6 +12,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
+  alias Jido.Integration.V2.ControlPlane.Persistence, as: ControlPlanePersistence
   alias Jido.Integration.V2.ControlPlane.RunLedger
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
@@ -526,9 +528,15 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   setup do
     previous_store_env = snapshot_control_plane_store_env()
     reset_control_plane_store_env()
+    ControlPlanePersistence.reset!()
+    AuthPersistence.reset!()
+    ControlPlanePersistence.configure!(profile: :mickey_mouse)
+    AuthPersistence.configure!(profile: :mickey_mouse)
 
     on_exit(fn ->
       restore_control_plane_store_env(previous_store_env)
+      ControlPlanePersistence.reset!()
+      AuthPersistence.reset!()
     end)
 
     RuntimeRouter.start!()
@@ -1939,6 +1947,9 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     Enum.each(@control_plane_store_keys, fn key ->
       Application.delete_env(:jido_integration_v2_control_plane, key)
     end)
+
+    Jido.Integration.V2.ControlPlane.Persistence.configure!(profile: :mickey_mouse)
+    Jido.Integration.V2.Auth.Persistence.configure!(profile: :mickey_mouse)
   end
 
   defp restore_control_plane_store_env(previous_env) do

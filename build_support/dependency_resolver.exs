@@ -1,6 +1,10 @@
 defmodule Jido.Integration.Build.DependencyResolver do
   @moduledoc false
 
+  unless Code.ensure_loaded?(DependencySources) do
+    Code.require_file("dependency_sources.exs", __DIR__)
+  end
+
   @repo_root Path.expand("..", __DIR__)
   @repo_fallback [
     github: "agentjido/jido_integration",
@@ -147,130 +151,32 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_v2_inference_ops(opts \\ []),
     do: resolve_internal(:jido_integration_v2_inference_ops, "apps/inference_ops", opts)
 
-  def agent_session_manager(opts \\ []) do
-    case local_root_path("../agent_session_manager") do
-      nil -> {:agent_session_manager, "~> 0.9.2", opts}
-      path -> {:agent_session_manager, Keyword.merge([path: path], opts)}
-    end
-  end
+  def agent_session_manager(opts \\ []), do: external_dep(:agent_session_manager, opts)
 
-  def amp_sdk(opts \\ []) do
-    case local_root_path("../amp_sdk") do
-      nil -> {:amp_sdk, "~> 0.1.0", opts}
-      path -> {:amp_sdk, Keyword.merge([path: path, override: true], opts)}
-    end
-  end
+  def amp_sdk(opts \\ []), do: external_dep(:amp_sdk, opts)
 
-  def cli_subprocess_core(opts \\ []) do
-    case local_root_path("../cli_subprocess_core") do
-      nil -> {:cli_subprocess_core, "~> 0.1.0", opts}
-      path -> {:cli_subprocess_core, Keyword.merge([path: path, override: true], opts)}
-    end
-  end
+  def cli_subprocess_core(opts \\ []), do: external_dep(:cli_subprocess_core, opts)
 
-  def jido_action(opts \\ []) do
-    case local_root_path("../jido_action") do
-      nil -> {:jido_action, "~> 2.2", opts}
-      path -> {:jido_action, Keyword.merge([path: path], opts)}
-    end
-  end
+  def jido_action(opts \\ []), do: external_dep(:jido_action, opts)
 
-  def req_llm(opts \\ []) do
-    {:req_llm, "~> 1.9", opts}
-  end
+  def req_llm(opts \\ []), do: external_dep(:req_llm, opts)
 
-  def inference(opts \\ []) do
-    case local_root_path("../inference/apps/inference") do
-      nil ->
-        {:inference,
-         Keyword.merge(
-           [github: "nshkrdotcom/inference", branch: "main", subdir: "apps/inference"],
-           opts
-         )}
+  def inference(opts \\ []), do: external_dep(:inference, opts)
 
-      path ->
-        {:inference, Keyword.merge([path: path], opts)}
-    end
-  end
+  def execution_plane(opts \\ []), do: external_dep(:execution_plane, opts)
 
-  def execution_plane(opts \\ []) do
-    case local_root_path("../execution_plane/core/execution_plane") do
-      nil ->
-        {:execution_plane,
-         Keyword.merge(
-           [
-             github: "nshkrdotcom/execution_plane",
-             branch: "main",
-             subdir: "core/execution_plane"
-           ],
-           opts
-         )}
+  def execution_plane_process(opts \\ []), do: external_dep(:execution_plane_process, opts)
 
-      path ->
-        {:execution_plane, Keyword.merge([path: path], opts)}
-    end
-  end
+  def ground_plane_persistence_policy(opts \\ []),
+    do: external_dep(:ground_plane_persistence_policy, opts)
 
-  def execution_plane_process(opts \\ []) do
-    case local_root_path("../execution_plane/runtimes/execution_plane_process") do
-      nil ->
-        {:execution_plane_process,
-         Keyword.merge(
-           [
-             github: "nshkrdotcom/execution_plane",
-             branch: "main",
-             subdir: "runtimes/execution_plane_process"
-           ],
-           opts
-         )}
+  def splode(opts \\ []), do: external_dep(:splode, opts)
 
-      path ->
-        {:execution_plane_process, Keyword.merge([path: path], opts)}
-    end
-  end
+  def pristine(opts \\ []), do: external_dep(:pristine, opts)
 
-  def ground_plane_persistence_policy(opts \\ []) do
-    case local_root_path("../ground_plane/core/persistence_policy") do
-      nil ->
-        {:ground_plane_persistence_policy,
-         Keyword.merge(
-           [
-             github: "nshkrdotcom/ground_plane",
-             branch: "main",
-             subdir: "core/persistence_policy"
-           ],
-           opts
-         )}
+  def self_hosted_inference_core(opts \\ []), do: external_dep(:self_hosted_inference_core, opts)
 
-      path ->
-        {:ground_plane_persistence_policy, Keyword.merge([path: path], opts)}
-    end
-  end
-
-  def splode(opts \\ []) do
-    {:splode, "~> 0.3.0", opts}
-  end
-
-  def pristine(opts \\ []) do
-    case local_root_path("../pristine/apps/pristine_runtime") do
-      nil -> {:pristine, "~> 0.2.1", opts}
-      path -> {:pristine, Keyword.merge([path: path], opts)}
-    end
-  end
-
-  def self_hosted_inference_core(opts \\ []) do
-    case local_root_path("../self_hosted_inference_core") do
-      nil -> {:self_hosted_inference_core, "~> 0.1.0", opts}
-      path -> {:self_hosted_inference_core, Keyword.merge([path: path, override: true], opts)}
-    end
-  end
-
-  def llama_cpp_sdk(opts \\ []) do
-    case local_root_path("../llama_cpp_sdk") do
-      nil -> {:llama_cpp_sdk, "~> 0.1.0", opts}
-      path -> {:llama_cpp_sdk, Keyword.merge([path: path, override: true], opts)}
-    end
-  end
+  def llama_cpp_sdk(opts \\ []), do: external_dep(:llama_cpp_sdk, opts)
 
   def repo_root, do: @repo_root
 
@@ -289,13 +195,20 @@ defmodule Jido.Integration.Build.DependencyResolver do
     end
   end
 
-  defp local_root_path(default_relative_path) do
-    if prefer_workspace_internal_paths?() do
-      default_relative_path
-      |> Path.expand(@repo_root)
-      |> existing_path()
+  defp external_dep(app, opts) do
+    app
+    |> DependencySources.dep(@repo_root, opts)
+    |> expand_path_dep()
+  end
+
+  defp expand_path_dep({app, opts}) when is_list(opts) do
+    case Keyword.fetch(opts, :path) do
+      {:ok, path} -> {app, Keyword.put(opts, :path, Path.expand(path, @repo_root))}
+      :error -> {app, opts}
     end
   end
+
+  defp expand_path_dep(dep), do: dep
 
   defp prefer_workspace_internal_paths? do
     not Enum.member?(Path.split(@repo_root), "deps")

@@ -748,6 +748,11 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
     Enum.each(@control_plane_store_keys, fn key ->
       Application.delete_env(:jido_integration_v2_control_plane, key)
     end)
+
+    Jido.Integration.V2.ControlPlane.Persistence.reset!()
+    Jido.Integration.V2.Auth.Persistence.reset!()
+    Jido.Integration.V2.ControlPlane.Persistence.configure!(profile: :mickey_mouse)
+    Jido.Integration.V2.Auth.Persistence.configure!(profile: :mickey_mouse)
   end
 
   defp restore_control_plane_store_env(previous_env) do
@@ -755,6 +760,9 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
       {key, {:ok, value}} -> Application.put_env(:jido_integration_v2_control_plane, key, value)
       {key, :error} -> Application.delete_env(:jido_integration_v2_control_plane, key)
     end)
+
+    Jido.Integration.V2.ControlPlane.Persistence.reset!()
+    Jido.Integration.V2.Auth.Persistence.reset!()
   end
 
   defp assert_claim_check_events(event_key, expected_count, assertion_fun) do

@@ -4,9 +4,13 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
   alias Jido.Integration.TestTmpDir
   alias Jido.Integration.V2.Attempt
   alias Jido.Integration.V2.Auth
+  alias Jido.Integration.V2.Auth.Persistence, as: AuthPersistence
+  alias Jido.Integration.V2.Auth.Store, as: AuthStore
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.ControlPlane
+  alias Jido.Integration.V2.ControlPlane.Persistence, as: ControlPlanePersistence
+  alias Jido.Integration.V2.ControlPlane.RunLedger
   alias Jido.Integration.V2.DispatchRuntime
   alias Jido.Integration.V2.DispatchRuntime.Dispatch
   alias Jido.Integration.V2.Manifest
@@ -19,6 +23,17 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
   @trigger_id "github.issue.ingest"
   @signal_type "github.issue.opened"
   @signal_source "/ingress/webhook/github/issues.opened"
+  @control_plane_store_keys [
+    :run_store,
+    :attempt_store,
+    :event_store,
+    :artifact_store,
+    :claim_check_store,
+    :target_store,
+    :ingress_store,
+    :profile_registry_store
+  ]
+  @auth_store_keys [:credential_store, :lease_store, :connection_store, :install_store]
 
   defmodule WebhookCapability do
     def run(%{trigger: trigger}, context) do
@@ -123,6 +138,8 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
   setup do
     runtime_dir = tmp_dir!("dispatch")
     router_dir = tmp_dir!("router")
+    previous_env = force_in_memory_stores!()
+    reset_persistence!()
     ControlPlane.reset!()
     assert :ok = ControlPlane.register_connector(TestConnector)
 
@@ -141,6 +158,8 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
 
     on_exit(fn ->
       ControlPlane.reset!()
+      reset_persistence!()
+      restore_env(previous_env)
       stop_process(runtime)
       stop_process(router)
       File.rm_rf!(runtime_dir)
@@ -148,6 +167,48 @@ defmodule Jido.Integration.V2.WebhookRouterBridgeTest do
     end)
 
     %{runtime: runtime, router: router}
+  end
+
+  defp reset_persistence! do
+    ControlPlanePersistence.reset!()
+    AuthPersistence.reset!()
+    ControlPlanePersistence.configure!(profile: :mickey_mouse)
+    AuthPersistence.configure!(profile: :mickey_mouse)
+    :ok
+  end
+
+  defp force_in_memory_stores! do
+    previous_env = %{
+      control_plane: snapshot_keys(:jido_integration_v2_control_plane, @control_plane_store_keys),
+      auth: snapshot_keys(:jido_integration_v2_auth, @auth_store_keys)
+    }
+
+    Enum.each(@control_plane_store_keys, fn key ->
+      Application.put_env(:jido_integration_v2_control_plane, key, RunLedger)
+    end)
+
+    Enum.each(@auth_store_keys, fn key ->
+      Application.put_env(:jido_integration_v2_auth, key, AuthStore)
+    end)
+
+    previous_env
+  end
+
+  defp snapshot_keys(app, keys) do
+    Map.new(keys, fn key -> {key, Application.fetch_env(app, key)} end)
+  end
+
+  defp restore_env(previous_env) do
+    restore_keys(:jido_integration_v2_control_plane, previous_env.control_plane)
+    restore_keys(:jido_integration_v2_auth, previous_env.auth)
+    :ok
+  end
+
+  defp restore_keys(app, snapshot) do
+    Enum.each(snapshot, fn
+      {key, {:ok, value}} -> Application.put_env(app, key, value)
+      {key, :error} -> Application.delete_env(app, key)
+    end)
   end
 
   test "emits redacted telemetry when a hosted webhook route resolves", %{

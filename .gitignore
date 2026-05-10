@@ -22,5 +22,8 @@ jido_integration_v2-*.tar
 # Temporary files, for example, from tests.
 /tmp/
 
+# Local dependency source overrides are machine-specific.
+/.dependency_sources.local.exs
+
 # Welded package output is generated and archived explicitly.
 /dist/

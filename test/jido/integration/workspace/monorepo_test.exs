@@ -96,7 +96,10 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              Path.expand("connectors/github/mix.lock", Blitz.MixWorkspace.root_dir())
 
     assert compile_env["MIX_BUILD_PATH"] ==
-             Path.expand("core/contracts/_build/dev", Blitz.MixWorkspace.root_dir())
+             Path.expand(
+               "core/contracts/_build/#{System.get_env("MIX_ENV", "dev")}",
+               Blitz.MixWorkspace.root_dir()
+             )
 
     assert test_env["JIDO_INTEGRATION_V2_DB_NAME"] ==
              Blitz.MixWorkspace.hashed_project_name(
@@ -106,6 +109,58 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
              )
 
     refute Map.has_key?(compile_env, "JIDO_INTEGRATION_V2_DB_NAME")
+  end
+
+  test "workspace command env uses materialized application env" do
+    previous_env = Application.get_env(:jido_integration_workspace, :env)
+
+    Application.put_env(:jido_integration_workspace, :env, %{
+      "JIDO_INTEGRATION_V2_DB_BASE_NAME" => "jido_custom_test",
+      "PATH" => "/opt/elixir/bin:/usr/bin"
+    })
+
+    try do
+      test_env =
+        Map.new(Blitz.MixWorkspace.command_env(Mix.Project.config(), "connectors/github", :test))
+
+      assert test_env["PATH"] ==
+               Path.join(Blitz.MixWorkspace.root_dir(), "bin") <> ":/opt/elixir/bin:/usr/bin"
+
+      assert test_env["JIDO_INTEGRATION_V2_DB_NAME"] ==
+               Blitz.MixWorkspace.hashed_project_name(
+                 "jido_custom_test",
+                 "connectors/github",
+                 max_bytes: 63
+               )
+    after
+      case previous_env do
+        nil -> Application.delete_env(:jido_integration_workspace, :env)
+        value -> Application.put_env(:jido_integration_workspace, :env, value)
+      end
+    end
+  end
+
+  test "fallback workspace PATH keeps Erlang available for child Mix commands" do
+    previous_env = Application.get_env(:jido_integration_workspace, :env)
+    Application.put_env(:jido_integration_workspace, :env, %{})
+
+    try do
+      command_env =
+        Mix.Project.config()
+        |> Blitz.MixWorkspace.command_env("connectors/github", :test)
+        |> Map.new()
+
+      path_entries = String.split(command_env["PATH"], ":", trim: true)
+
+      assert Path.join(Blitz.MixWorkspace.root_dir(), "bin") in path_entries
+      assert Enum.any?(path_entries, &String.ends_with?(&1, "/bin"))
+      assert Enum.any?(path_entries, &String.contains?(&1, "/erts-"))
+    after
+      case previous_env do
+        nil -> Application.delete_env(:jido_integration_workspace, :env)
+        value -> Application.put_env(:jido_integration_workspace, :env, value)
+      end
+    end
   end
 
   test "extracts runner arguments without disturbing mix task arguments" do

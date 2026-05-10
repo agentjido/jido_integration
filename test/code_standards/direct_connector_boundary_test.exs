@@ -13,9 +13,10 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           __DIR__
         ),
       sdk_resolver_call: "ConnectorDependencyResolver.github_ex()",
-      sdk_hex_dep: "{:github_ex, \"~> 0.1.1\", opts}",
-      sdk_local_path: "../../../github_ex",
-      forbidden_sdk_fallbacks: ["GITHUB_EX_PATH", "nshkrdotcom/github_ex"]
+      sdk_app: :github_ex,
+      sdk_hex_dep: "~> 0.1.1",
+      sdk_local_path: "../github_ex",
+      forbidden_sdk_fallbacks: ["GITHUB_EX_PATH"]
     },
     %{
       mix_path: Path.expand("../../connectors/notion/mix.exs", __DIR__),
@@ -28,9 +29,10 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           __DIR__
         ),
       sdk_resolver_call: "ConnectorDependencyResolver.notion_sdk()",
-      sdk_hex_dep: "{:notion_sdk, \"~> 0.2.1\", opts}",
-      sdk_local_path: "../../../notion_sdk",
-      forbidden_sdk_fallbacks: ["NOTION_SDK_PATH", "nshkrdotcom/notion_sdk"]
+      sdk_app: :notion_sdk,
+      sdk_hex_dep: "~> 0.2.1",
+      sdk_local_path: "../notion_sdk",
+      forbidden_sdk_fallbacks: ["NOTION_SDK_PATH"]
     },
     %{
       mix_path: Path.expand("../../connectors/linear/mix.exs", __DIR__),
@@ -43,9 +45,10 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
           __DIR__
         ),
       sdk_resolver_call: "ConnectorDependencyResolver.linear_sdk()",
-      sdk_hex_dep: "{:linear_sdk, \"~> 0.2.0\", opts}",
-      sdk_local_path: "../../../linear_sdk",
-      forbidden_sdk_fallbacks: ["LINEAR_SDK_PATH", "nshkrdotcom/linear_sdk"]
+      sdk_app: :linear_sdk,
+      sdk_hex_dep: "~> 0.2.0",
+      sdk_local_path: "../linear_sdk",
+      forbidden_sdk_fallbacks: ["LINEAR_SDK_PATH"]
     }
   ]
 
@@ -103,12 +106,14 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
       fn %{
            mix_path: mix_path,
            resolver_path: resolver_path,
+           sdk_app: sdk_app,
            sdk_hex_dep: sdk_hex_dep,
            sdk_local_path: sdk_local_path,
            forbidden_sdk_fallbacks: forbidden_sdk_fallbacks
          } ->
         mix_exs = File.read!(mix_path)
         resolver = File.read!(resolver_path)
+        manifest = dependency_source_manifest()
 
         refute String.contains?(mix_exs, "deps/github_ex"),
                "#{mix_path} must not vendor provider SDKs under deps/"
@@ -125,10 +130,13 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
         refute String.contains?(mix_exs, "deps/prismatic"),
                "#{mix_path} must not vendor prismatic under deps/"
 
-        assert String.contains?(resolver, sdk_hex_dep),
-               "#{resolver_path} must fall back to a Hex dependency for its provider SDK"
+        assert String.contains?(resolver, "DependencySources.dep(@repo_root"),
+               "#{resolver_path} must delegate provider SDK resolution to DependencySources"
 
-        assert String.contains?(resolver, sdk_local_path),
+        assert manifest[sdk_app].hex == sdk_hex_dep,
+               "#{resolver_path} must keep a Hex dependency source for its provider SDK"
+
+        assert manifest[sdk_app].path == sdk_local_path,
                "#{resolver_path} must prefer the sibling provider SDK path when present"
 
         Enum.each(forbidden_sdk_fallbacks, fn forbidden_sdk_fallback ->
@@ -202,5 +210,13 @@ defmodule Jido.Integration.Workspace.DirectConnectorBoundaryTest do
       refute String.contains?(proof_suite, "RuntimeRouter.SessionStore"),
              "#{package_root} must not name RuntimeRouter.SessionStore in direct proofs or example support"
     end)
+  end
+
+  defp dependency_source_manifest do
+    {manifest, _binding} =
+      Path.expand("../../build_support/dependency_sources.config.exs", __DIR__)
+      |> Code.eval_file()
+
+    Map.fetch!(manifest, :deps)
   end
 end

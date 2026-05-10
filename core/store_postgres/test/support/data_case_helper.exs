@@ -4,6 +4,8 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
   use ExUnit.CaseTemplate
 
   alias Ecto.Adapters.SQL.Sandbox
+  alias Jido.Integration.V2.Auth.Persistence, as: AuthPersistence
+  alias Jido.Integration.V2.ControlPlane.Persistence, as: ControlPlanePersistence
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.TestSupport
 
@@ -56,6 +58,7 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
 
     on_exit(fn ->
       restore_env(previous_env)
+      reset_persistence!()
     end)
 
     :ok
@@ -92,6 +95,12 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
     restore_keys(:jido_integration_v2_auth, previous_env.auth)
     restore_keys(:jido_integration_v2_brain_ingress, previous_env.brain_ingress)
     restore_keys(:jido_integration_v2_store_postgres, previous_env.store_postgres)
+    :ok
+  end
+
+  defp reset_persistence! do
+    ControlPlanePersistence.reset!()
+    AuthPersistence.reset!()
     :ok
   end
 

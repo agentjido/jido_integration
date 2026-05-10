@@ -1,24 +1,24 @@
 defmodule Jido.Integration.V2.Connectors.Linear.Build.DependencyResolver do
   @moduledoc false
 
-  @project_root Path.expand("..", __DIR__)
+  unless Code.ensure_loaded?(DependencySources) do
+    Code.require_file("../../../build_support/dependency_sources.exs", __DIR__)
+  end
 
-  def linear_sdk(opts \\ []) do
-    case sibling_path("../../../linear_sdk") do
-      nil -> {:linear_sdk, "~> 0.2.0", opts}
-      path -> {:linear_sdk, Keyword.merge([path: path], opts)}
+  @repo_root Path.expand("../../..", __DIR__)
+
+  def linear_sdk(opts \\ []),
+    do: :linear_sdk |> DependencySources.dep(@repo_root, opts) |> expand_path_dep()
+
+  def prismatic(opts \\ []),
+    do: :prismatic |> DependencySources.dep(@repo_root, opts) |> expand_path_dep()
+
+  defp expand_path_dep({app, opts}) when is_list(opts) do
+    case Keyword.fetch(opts, :path) do
+      {:ok, path} -> {app, Keyword.put(opts, :path, Path.expand(path, @repo_root))}
+      :error -> {app, opts}
     end
   end
 
-  def prismatic(opts \\ []) do
-    case sibling_path("../../../prismatic/apps/prismatic_runtime") do
-      nil -> {:prismatic, "~> 0.2.0", opts}
-      path -> {:prismatic, Keyword.merge([path: path], opts)}
-    end
-  end
-
-  defp sibling_path(relative_path) do
-    path = Path.expand(relative_path, @project_root)
-    if File.dir?(path), do: path
-  end
+  defp expand_path_dep(dep), do: dep
 end

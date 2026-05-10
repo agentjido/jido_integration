@@ -1,6 +1,8 @@
 defmodule Jido.Integration.Workspace.PostgresPreflight do
   @moduledoc false
 
+  alias Jido.Integration.Env
+
   @default_database "jido_integration_v2_test"
   @default_host "127.0.0.1"
   @default_port 5432
@@ -20,7 +22,7 @@ defmodule Jido.Integration.Workspace.PostgresPreflight do
         }
 
   @spec from_env(map()) :: t()
-  def from_env(env \\ System.get_env()) when is_map(env) do
+  def from_env(env \\ Env.all()) when is_map(env) do
     %__MODULE__{
       database: Map.get(env, "JIDO_INTEGRATION_V2_DB_NAME", @default_database),
       host: Map.get(env, "JIDO_INTEGRATION_V2_DB_HOST", @default_host),

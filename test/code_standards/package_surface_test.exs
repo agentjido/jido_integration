@@ -99,6 +99,8 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
     assert Ci.impact_policy() == [
              workspace_invalidators: [
                "build_support/dependency_resolver.exs",
+               "build_support/dependency_sources.exs",
+               "build_support/dependency_sources.config.exs",
                "build_support/workspace_contract.exs"
              ],
              aggregate_docs_projects: [],
@@ -247,7 +249,19 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
            "blitz workspace isolation must unset SSLKEYLOGFILE so Req-backed tasks do not fail on read-only home mounts"
   end
 
-  test "workspace root resolves Pristine from the deterministic sibling runtime checkout before Hex" do
+  test "workspace root carries the canonical dependency source bootstrap" do
+    helper_path = Path.join(repo_root(), "build_support/dependency_sources.exs")
+    config_path = Path.join(repo_root(), "build_support/dependency_sources.config.exs")
+    template_path = Path.expand("../weld/priv/templates/dependency_sources.exs", repo_root())
+
+    assert File.exists?(helper_path), "missing canonical dependency source helper"
+    assert File.read!(helper_path) == File.read!(template_path)
+    assert File.exists?(config_path), "missing dependency source manifest"
+
+    assert File.read!(Path.join(repo_root(), ".gitignore")) =~ ".dependency_sources.local.exs"
+  end
+
+  test "workspace root resolves external dependencies through the dependency source manifest" do
     resolver_source =
       repo_root()
       |> Path.join("build_support/dependency_resolver.exs")
@@ -255,15 +269,43 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
 
     assert String.contains?(
              resolver_source,
-             ~S[local_root_path("../pristine/apps/pristine_runtime")]
+             "def pristine(opts \\\\ []), do: external_dep(:pristine, opts)"
            ),
-           "root Pristine resolver must prefer the sibling Pristine runtime checkout"
+           "root Pristine resolver must delegate source selection to DependencySources"
+
+    refute String.contains?(resolver_source, ~S[local_root_path(]),
+           "root external dependency resolver must not keep one-off sibling path logic"
 
     refute String.contains?(resolver_source, ~S[System.get_env]),
            "root Pristine resolver must not depend on environment-variable path selectors"
 
-    assert String.contains?(resolver_source, ~s({:pristine, "~> 0.2.1", opts})),
+    {manifest, _binding} =
+      repo_root()
+      |> Path.join("build_support/dependency_sources.config.exs")
+      |> Code.eval_file()
+
+    deps = Map.fetch!(manifest, :deps)
+
+    assert deps.pristine.hex == "~> 0.2.1",
            "root Pristine resolver must keep a Hex fallback for publishable contexts"
+
+    assert deps.ground_plane_persistence_policy.github == %{
+             repo: "nshkrdotcom/ground_plane",
+             branch: "main",
+             subdir: "core/persistence_policy"
+           }
+
+    assert deps.inference.github == %{
+             repo: "nshkrdotcom/inference",
+             branch: "main",
+             subdir: "apps/inference"
+           }
+
+    assert deps.execution_plane.github == %{
+             repo: "nshkrdotcom/execution_plane",
+             branch: "main",
+             subdir: "core/execution_plane"
+           }
 
     pristine_runtime_path = Path.expand("../pristine/apps/pristine_runtime", repo_root())
 
@@ -281,22 +323,41 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   end
 
   test "unpublished runtime packages use git fallbacks for downstream Weld consumers" do
-    resolver_source =
+    {manifest, _binding} =
       repo_root()
-      |> Path.join("build_support/dependency_resolver.exs")
-      |> File.read!()
+      |> Path.join("build_support/dependency_sources.config.exs")
+      |> Code.eval_file()
 
-    assert String.contains?(resolver_source, ~S[github: "nshkrdotcom/inference"]),
+    deps = Map.fetch!(manifest, :deps)
+
+    assert deps.inference.github.repo == "nshkrdotcom/inference",
            "Inference fallback must use its source repository instead of the package registry"
 
-    assert String.contains?(resolver_source, ~S[subdir: "apps/inference"]),
+    assert deps.inference.github.subdir == "apps/inference",
            "Inference fallback must point at its package subdirectory"
 
-    assert String.contains?(resolver_source, ~S[github: "nshkrdotcom/execution_plane"]),
+    assert deps.execution_plane.github.repo == "nshkrdotcom/execution_plane",
            "Execution Plane fallback must use its source repository instead of the package registry"
 
-    assert String.contains?(resolver_source, ~S[subdir: "core/execution_plane"]),
+    assert deps.execution_plane.github.subdir == "core/execution_plane",
            "Execution Plane fallback must point at its package subdirectory"
+  end
+
+  test "workspace root runtime and tooling files avoid direct OS env APIs" do
+    forbidden = ~r/System\.(get_env|fetch_env|fetch_env!|put_env|delete_env|get_envs?)/
+
+    for relative_path <- [
+          "mix.exs",
+          "lib/jido/integration/toolchain.ex",
+          "lib/jido/integration/workspace/monorepo_runner.ex",
+          "lib/jido/integration/workspace/postgres_preflight.ex",
+          "lib/mix/tasks/jido.conformance.ex"
+        ] do
+      source = File.read!(Path.join(repo_root(), relative_path))
+
+      refute source =~ forbidden,
+             "#{relative_path} must use materialized runtime config or explicit command env instead of direct OS env APIs"
+    end
   end
 
   test "workspace commands prefer the repo-local mix wrapper on PATH" do

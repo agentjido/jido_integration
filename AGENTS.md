@@ -112,6 +112,17 @@ Keep documentation aligned to the permanent V2 layout:
 
 - Keep the repo root tooling-only. Do not move runtime or connector logic into
   the root unless it is genuinely monorepo-wide glue.
+- Dependency source selection is handled by
+  `build_support/dependency_sources.exs` and
+  `build_support/dependency_sources.config.exs`. Local overrides use
+  `.dependency_sources.local.exs`, which must stay gitignored. Dependency
+  source selection must not use environment variables.
+- Runtime application code under `lib/**` must not call direct OS env APIs.
+  Runtime env reads belong in `config/runtime.exs` or a `Config.Provider`, then
+  compiled/runtime code should consume materialized config or explicit options.
+- This repo is a Weld consumer. Keep Weld checks focused on helper drift,
+  dependency-source manifest validity, AGENTS guidance, generated package
+  contracts, and publish order.
 - Keep package boundaries explicit. If a connector uses a library directly, declare that dependency in the connector package instead of relying on transitive deps.
 - Prefer adding new capabilities by adding or extending child packages, not by broadening the root project.
 - Treat `contracts` as the shared public model and keep downstream packages honest against it.

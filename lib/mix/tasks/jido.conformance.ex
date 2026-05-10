@@ -155,17 +155,15 @@ defmodule Mix.Tasks.Jido.Conformance do
     compile_project!(project_root, build_path, hex_home)
     hydrate_dependency_priv!(project_root, build_path)
 
-    with_project_build_path(build_path, fn ->
-      with_restored_code_path(fn ->
-        load_project_connector!(
-          project_root,
-          build_path,
-          normalized_module_name,
-          module_string,
-          project_path,
-          profile
-        )
-      end)
+    with_restored_code_path(fn ->
+      load_project_connector!(
+        project_root,
+        build_path,
+        normalized_module_name,
+        module_string,
+        project_path,
+        profile
+      )
     end)
   end
 
@@ -177,11 +175,16 @@ defmodule Mix.Tasks.Jido.Conformance do
          project_path,
          profile
        ) do
-    Mix.Project.in_project(@loader_project, project_root, fn _project ->
-      prepare_project!()
-      prepend_build_loadpaths!(build_path)
-      run_project_connector!(normalized_module_name, module_string, project_path, profile)
-    end)
+    Mix.Project.in_project(
+      @loader_project,
+      project_root,
+      [deps_build_path: build_path],
+      fn _project ->
+        prepare_project!()
+        prepend_build_loadpaths!(build_path)
+        run_project_connector!(normalized_module_name, module_string, project_path, profile)
+      end
+    )
   end
 
   defp run_project_connector!(normalized_module_name, module_string, project_path, profile) do
@@ -328,17 +331,6 @@ defmodule Mix.Tasks.Jido.Conformance do
     end
   end
 
-  defp with_project_build_path(build_path, fun) do
-    previous = System.get_env("MIX_BUILD_PATH")
-    System.put_env("MIX_BUILD_PATH", build_path)
-
-    try do
-      fun.()
-    after
-      restore_env("MIX_BUILD_PATH", previous)
-    end
-  end
-
   defp with_restored_code_path(fun) do
     previous = :code.get_path()
 
@@ -433,9 +425,6 @@ defmodule Mix.Tasks.Jido.Conformance do
   defp mix_executable do
     Toolchain.mix_executable()
   end
-
-  defp restore_env(key, nil), do: System.delete_env(key)
-  defp restore_env(key, value), do: System.put_env(key, value)
 
   defp loaded_connector_module(normalized_module_name) do
     with {:ok, module} <- available_module_named("Elixir." <> normalized_module_name),

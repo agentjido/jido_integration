@@ -21,6 +21,8 @@ defmodule Mix.Tasks.Workspace.Impact.Ci do
   @impact_policy [
     workspace_invalidators: [
       "build_support/dependency_resolver.exs",
+      "build_support/dependency_sources.exs",
+      "build_support/dependency_sources.config.exs",
       "build_support/workspace_contract.exs"
     ],
     aggregate_docs_projects: [],

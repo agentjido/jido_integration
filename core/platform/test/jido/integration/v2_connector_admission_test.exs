@@ -3,11 +3,26 @@ defmodule Jido.Integration.V2ConnectorAdmissionTest do
 
   alias Jido.Integration.ConnectorAdmissionEngine
   alias Jido.Integration.V2
+  alias Jido.Integration.V2.Auth.Persistence, as: AuthPersistence
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.CatalogSpec
   alias Jido.Integration.V2.Connector
+  alias Jido.Integration.V2.ControlPlane.RunLedger
+  alias Jido.Integration.V2.ControlPlane.Persistence, as: ControlPlanePersistence
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
+
+  @control_plane_store_keys [
+    :run_store,
+    :attempt_store,
+    :event_store,
+    :artifact_store,
+    :claim_check_store,
+    :target_store,
+    :ingress_store,
+    :profile_registry_store
+  ]
+  @auth_store_keys [:credential_store, :lease_store, :connection_store, :install_store]
 
   defmodule Handler do
     def run(_input, _context), do: {:ok, %{}}
@@ -97,9 +112,59 @@ defmodule Jido.Integration.V2ConnectorAdmissionTest do
   end
 
   setup do
+    previous_env = force_in_memory_stores!()
+    reset_persistence!()
     V2.reset!()
     ConnectorAdmissionEngine.reset!()
+
+    on_exit(fn ->
+      reset_persistence!()
+      restore_env(previous_env)
+    end)
+
     :ok
+  end
+
+  defp force_in_memory_stores! do
+    previous_env = %{
+      control_plane: snapshot_keys(:jido_integration_v2_control_plane, @control_plane_store_keys),
+      auth: snapshot_keys(:jido_integration_v2_auth, @auth_store_keys)
+    }
+
+    Enum.each(@control_plane_store_keys, fn key ->
+      Application.put_env(:jido_integration_v2_control_plane, key, RunLedger)
+    end)
+
+    Enum.each(@auth_store_keys, fn key ->
+      Application.put_env(:jido_integration_v2_auth, key, Jido.Integration.V2.Auth.Store)
+    end)
+
+    previous_env
+  end
+
+  defp reset_persistence! do
+    ControlPlanePersistence.reset!()
+    AuthPersistence.reset!()
+    ControlPlanePersistence.configure!(profile: :mickey_mouse)
+    AuthPersistence.configure!(profile: :mickey_mouse)
+    :ok
+  end
+
+  defp snapshot_keys(app, keys) do
+    Map.new(keys, fn key -> {key, Application.fetch_env(app, key)} end)
+  end
+
+  defp restore_env(previous_env) do
+    restore_keys(:jido_integration_v2_control_plane, previous_env.control_plane)
+    restore_keys(:jido_integration_v2_auth, previous_env.auth)
+    :ok
+  end
+
+  defp restore_keys(app, snapshot) do
+    Enum.each(snapshot, fn
+      {key, {:ok, value}} -> Application.put_env(app, key, value)
+      {key, :error} -> Application.delete_env(app, key)
+    end)
   end
 
   test "admits companion connectors only from explicit app config candidates" do

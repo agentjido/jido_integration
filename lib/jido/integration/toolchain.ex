@@ -1,6 +1,8 @@
 defmodule Jido.Integration.Toolchain do
   @moduledoc false
 
+  alias Jido.Integration.Env
+
   @spec mix_executable() :: String.t()
   def mix_executable do
     configured_mix_executable() ||
@@ -13,7 +15,7 @@ defmodule Jido.Integration.Toolchain do
   end
 
   defp configured_mix_executable do
-    case System.get_env("JIDO_INTEGRATION_MIX_EXECUTABLE") do
+    case Env.get("JIDO_INTEGRATION_MIX_EXECUTABLE") do
       value when is_binary(value) and value != "" -> Path.expand(value)
       _other -> nil
     end

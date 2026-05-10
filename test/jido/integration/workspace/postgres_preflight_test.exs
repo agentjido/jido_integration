@@ -14,6 +14,33 @@ defmodule Jido.Integration.Workspace.PostgresPreflightTest do
     assert config.timeout_ms == 1_000
   end
 
+  test "loads default Postgres target from materialized application env" do
+    previous_env = Application.get_env(:jido_integration_workspace, :env)
+
+    Application.put_env(:jido_integration_workspace, :env, %{
+      "JIDO_INTEGRATION_V2_DB_HOST" => "postgres.internal",
+      "JIDO_INTEGRATION_V2_DB_NAME" => "materialized_test",
+      "JIDO_INTEGRATION_V2_DB_PORT" => "5545",
+      "JIDO_INTEGRATION_V2_DB_USER" => "jido",
+      "JIDO_INTEGRATION_V2_DB_TIMEOUT_MS" => "3250"
+    })
+
+    try do
+      config = PostgresPreflight.from_env()
+
+      assert config.host == "postgres.internal"
+      assert config.port == 5545
+      assert config.database == "materialized_test"
+      assert config.user == "jido"
+      assert config.timeout_ms == 3_250
+    after
+      case previous_env do
+        nil -> Application.delete_env(:jido_integration_workspace, :env)
+        value -> Application.put_env(:jido_integration_workspace, :env, value)
+      end
+    end
+  end
+
   test "builds pg_isready args for a tcp target" do
     config =
       PostgresPreflight.from_env(%{

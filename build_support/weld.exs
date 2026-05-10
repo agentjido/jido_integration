@@ -25,6 +25,7 @@ defmodule Jido.Integration.Build.WeldContract do
     "connectors/codex_cli",
     "connectors/market_data",
     "core/conformance",
+    "core/conformance_contracts",
     "core/runtime_control",
     "core/runtime_router",
     "core/asm_runtime_bridge",
@@ -73,16 +74,32 @@ defmodule Jido.Integration.Build.WeldContract do
 
   @dependencies [
     agent_session_manager: [requirement: "~> 0.9.2"],
-    amp_sdk: [requirement: "~> 0.1.0"],
+    amp_sdk: [requirement: "~> 0.5.0"],
     cli_subprocess_core: [requirement: "~> 0.1.0"],
     execution_plane: [
       opts: [
         github: "nshkrdotcom/execution_plane",
         branch: "main",
-        subdir: "core/execution_plane"
+        subdir: "core/execution_plane",
+        override: true
+      ]
+    ],
+    execution_plane_process: [
+      opts: [
+        github: "nshkrdotcom/execution_plane",
+        branch: "main",
+        subdir: "runtimes/execution_plane_process"
       ]
     ],
     github_ex: [requirement: "~> 0.1.1"],
+    ground_plane_persistence_policy: [
+      opts: [
+        github: "nshkrdotcom/ground_plane",
+        branch: "main",
+        subdir: "core/persistence_policy",
+        override: true
+      ]
+    ],
     inference: [
       opts: [
         github: "nshkrdotcom/inference",
