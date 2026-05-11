@@ -3,6 +3,7 @@ defmodule Jido.Integration.V2BrainIngressFacadeTest do
 
   alias Jido.Integration.V2
   alias Jido.Integration.V2.AuthorityAuditEnvelope
+  alias Jido.Integration.V2.BrainIngress.StaticScopeResolver
   alias Jido.Integration.V2.BrainInvocation
   alias Jido.Integration.V2.ExecutionGovernanceProjection
   alias Jido.Integration.V2.ExecutionGovernanceProjection.Compiler
@@ -149,7 +150,66 @@ defmodule Jido.Integration.V2BrainIngressFacadeTest do
     assert rejection.retry_class == :after_redecision
   end
 
-  defp brain_invocation_fixture do
+  test "static scope resolver rejects file scopes outside the workspace before acceptance", %{
+    agent: agent
+  } do
+    workspace_root = tmp_dir("root")
+    outside = tmp_dir("outside")
+
+    invocation = brain_invocation_fixture(file_scope_ref: "workspace://tenant-1/file-scope")
+
+    assert {:error, %SubmissionRejection{} = rejection} =
+             V2.accept_brain_invocation(
+               invocation,
+               submission_ledger: Ledger,
+               submission_ledger_opts: [agent: agent, invocation: invocation],
+               scope_resolver: StaticScopeResolver,
+               scope_resolver_opts: [
+                 mapping: %{
+                   "workspace://tenant-1/root" => workspace_root,
+                   "workspace://tenant-1/file-scope" => outside
+                 }
+               ]
+             )
+
+    assert rejection.rejection_family == :scope_unresolvable
+    assert rejection.reason_code == "workspace_scope_outside_root"
+    refute_accepted_submission(agent)
+  end
+
+  test "static scope resolver rejects symlink escapes before acceptance", %{agent: agent} do
+    workspace_root = tmp_dir("root")
+    outside = tmp_dir("outside")
+    link = Path.join(workspace_root, "linked-outside")
+    File.ln_s!(outside, link)
+
+    invocation = brain_invocation_fixture(file_scope_ref: "workspace://tenant-1/link")
+
+    assert {:error, %SubmissionRejection{} = rejection} =
+             V2.accept_brain_invocation(
+               invocation,
+               submission_ledger: Ledger,
+               submission_ledger_opts: [agent: agent, invocation: invocation],
+               scope_resolver: StaticScopeResolver,
+               scope_resolver_opts: [
+                 mapping: %{
+                   "workspace://tenant-1/root" => workspace_root,
+                   "workspace://tenant-1/link" => link
+                 }
+               ]
+             )
+
+    assert rejection.rejection_family == :scope_unresolvable
+    assert rejection.reason_code == "workspace_scope_symlink_escape"
+    refute_accepted_submission(agent)
+  end
+
+  defp brain_invocation_fixture(overrides \\ []) do
+    logical_workspace_ref =
+      Keyword.get(overrides, :logical_workspace_ref, "workspace://tenant-1/root")
+
+    file_scope_ref = Keyword.get(overrides, :file_scope_ref, logical_workspace_ref)
+
     identity =
       SubmissionIdentity.new!(%{
         submission_family: :invocation,
@@ -198,7 +258,7 @@ defmodule Jido.Integration.V2BrainIngressFacadeTest do
           "approvals" => "manual",
           "acceptable_attestation" => ["local-erlexec-weak"],
           "allowed_tools" => ["bash", "git"],
-          "file_scope_ref" => "workspace://tenant-1/root",
+          "file_scope_ref" => file_scope_ref,
           "file_scope_hint" => "/srv/workspaces/tenant-1"
         },
         boundary: %{
@@ -219,7 +279,7 @@ defmodule Jido.Integration.V2BrainIngressFacadeTest do
         },
         workspace: %{
           "workspace_profile" => "workspace_attached",
-          "logical_workspace_ref" => "workspace://tenant-1/root",
+          "logical_workspace_ref" => logical_workspace_ref,
           "mutability" => "read_write"
         },
         resources: %{
@@ -263,5 +323,23 @@ defmodule Jido.Integration.V2BrainIngressFacadeTest do
       execution_intent: %{"argv" => ["echo", "hello"]},
       extensions: %{"submission_dedupe_key" => "dedupe-1"}
     })
+  end
+
+  defp refute_accepted_submission(agent) do
+    refute agent
+           |> Agent.get(&Map.values/1)
+           |> Enum.any?(&match?(%SubmissionAcceptance{status: :accepted}, &1))
+  end
+
+  defp tmp_dir(label) do
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "jido-brain-ingress-#{label}-#{System.unique_integer([:positive])}"
+      )
+
+    File.rm_rf!(path)
+    File.mkdir_p!(path)
+    path
   end
 end

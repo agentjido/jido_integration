@@ -137,6 +137,28 @@ defmodule Jido.Integration.V2.BrainIngress do
            redecision_required: true,
            details: %{"unresolved_ref" => value}
          })}
+
+      {:error, {:scope_outside_workspace_root, details}} ->
+        {:error,
+         SubmissionRejection.new!(%{
+           submission_key: invocation.submission_key,
+           rejection_family: :scope_unresolvable,
+           reason_code: "workspace_scope_outside_root",
+           retry_class: :after_redecision,
+           redecision_required: true,
+           details: details
+         })}
+
+      {:error, {:scope_symlink_escape, details}} ->
+        {:error,
+         SubmissionRejection.new!(%{
+           submission_key: invocation.submission_key,
+           rejection_family: :scope_unresolvable,
+           reason_code: "workspace_scope_symlink_escape",
+           retry_class: :after_redecision,
+           redecision_required: true,
+           details: details
+         })}
     end
   end
 
