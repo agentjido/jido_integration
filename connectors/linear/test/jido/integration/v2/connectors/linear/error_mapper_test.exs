@@ -92,4 +92,60 @@ defmodule Jido.Integration.V2.Connectors.Linear.ErrorMapperTest do
              required_any_of: ["state_id", "title", "description", "assignee_id"]
            ]
   end
+
+  test "keeps GraphQL, HTTP, transport, and unexpected payload failures distinct" do
+    graphql =
+      ErrorMapper.from_linear_error(%LinearSDK.Error{
+        type: :graphql,
+        message: "Provider rejected the query",
+        status: 200,
+        graphql_errors: [%{"extensions" => %{"code" => "BAD_USER_INPUT"}}],
+        request_id: "req-graphql",
+        details: %{}
+      })
+
+    http =
+      ErrorMapper.from_linear_error(%LinearSDK.Error{
+        type: :http,
+        message: "Linear unavailable",
+        status: 503,
+        graphql_errors: [],
+        request_id: "req-http",
+        details: %{}
+      })
+
+    transport =
+      ErrorMapper.from_linear_error(%LinearSDK.Error{
+        type: :transport,
+        message: "connect timeout",
+        status: nil,
+        graphql_errors: [],
+        request_id: nil,
+        details: %{reason: :timeout}
+      })
+
+    unexpected =
+      ErrorMapper.unexpected_payload("Linear returned an unexpected payload",
+        issues: [data: %{"api_key" => "lin_secret"}]
+      )
+
+    assert graphql.code == "linear.bad_user_input"
+    assert graphql.class == "invalid_request"
+    assert graphql.retryability == :terminal
+
+    assert http.code == "linear.http_error"
+    assert http.class == "unavailable"
+    assert http.retryability == :retryable
+    assert http.upstream_context.http_status == 503
+
+    assert transport.code == "linear.transport_error"
+    assert transport.class == "unavailable"
+    assert transport.retryability == :retryable
+
+    assert unexpected.code == "linear.unexpected_payload"
+    assert unexpected.class == "provider_contract"
+    assert unexpected.retryability == :fatal
+    assert unexpected.upstream_context.phase == :response_normalization
+    assert unexpected.upstream_context.issues[:data]["api_key"] == Redaction.redacted()
+  end
 end

@@ -55,6 +55,40 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
           key
           name
         }
+        relations(first: 20) {
+          nodes {
+            id
+            type
+            relatedIssue {
+              id
+              identifier
+              title
+              url
+              state {
+                id
+                name
+                type
+              }
+            }
+          }
+        }
+        inverseRelations(first: 20) {
+          nodes {
+            id
+            type
+            issue {
+              id
+              identifier
+              title
+              url
+              state {
+                id
+                name
+                type
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -290,6 +324,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
         filter:
           strict_object(
             [
+              issue_ids: Zoi.list(Zoi.string()) |> Zoi.optional(),
               project_slug: Zoi.string() |> Zoi.optional(),
               state_names: Zoi.list(Zoi.string()) |> Zoi.optional(),
               assignee_id: Zoi.string() |> Zoi.optional()
@@ -479,7 +514,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
       state: workflow_state_schema() |> Zoi.nullable(),
       assignee: user_schema() |> Zoi.nullable(),
       project: project_schema() |> Zoi.nullable(),
-      team: team_summary_schema() |> Zoi.nullable()
+      team: team_summary_schema() |> Zoi.nullable(),
+      blockers: Zoi.list(blocker_schema())
     )
   end
 

@@ -26,6 +26,20 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     url: "https://linear.app/acme/project/ops-automation"
   }
   @team %{id: "team-eng", key: "ENG", name: "Engineering"}
+  @issue_blockers [
+    %{
+      id: "rel-blocks-001",
+      type: "blocks",
+      direction: "inbound",
+      issue: %{
+        id: "lin-issue-009",
+        identifier: "SEC-9",
+        title: "Restore deployment credentials",
+        url: "https://linear.app/acme/issue/SEC-9",
+        state: @state_in_progress
+      }
+    }
+  ]
   @issue_summary %{
     id: @issue_id,
     identifier: @issue_identifier,
@@ -39,7 +53,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     state: @state_backlog,
     assignee: @viewer,
     project: @project,
-    team: @team
+    team: @team,
+    blockers: @issue_blockers
   }
   @second_issue_summary %{
     id: "lin-issue-654",
@@ -54,26 +69,13 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     state: @state_in_progress,
     assignee: @viewer,
     project: @project,
-    team: @team
+    team: @team,
+    blockers: []
   }
   @issue_detail Map.merge(@issue_summary, %{
                   description: "The deployment rolled back after the health checks failed.",
                   branch_name: "eng-321-investigate-rollback",
                   labels: ["incident", "automation"],
-                  blockers: [
-                    %{
-                      id: "rel-blocks-001",
-                      type: "blocks",
-                      direction: "inbound",
-                      issue: %{
-                        id: "lin-issue-009",
-                        identifier: "SEC-9",
-                        title: "Restore deployment credentials",
-                        url: "https://linear.app/acme/issue/SEC-9",
-                        state: @state_in_progress
-                      }
-                    }
-                  ],
                   team: Map.put(@team, :workflow_states, [@state_backlog, @state_in_progress])
                 })
   @updated_issue %{
@@ -595,6 +597,46 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
       "assignee" => user_body(summary.assignee),
       "project" => project_body(summary.project),
       "team" => team_body(summary.team)
+    }
+    |> Map.merge(relation_bodies(Map.get(summary, :blockers, [])))
+  end
+
+  defp relation_bodies(blockers) do
+    blockers = List.wrap(blockers)
+
+    %{
+      "relations" => %{
+        "nodes" =>
+          blockers
+          |> Enum.filter(&(Map.get(&1, :direction) == "outbound"))
+          |> Enum.map(&relation_body/1)
+      },
+      "inverseRelations" => %{
+        "nodes" =>
+          blockers
+          |> Enum.reject(&(Map.get(&1, :direction) == "outbound"))
+          |> Enum.map(&relation_body/1)
+      }
+    }
+  end
+
+  defp relation_body(blocker) do
+    issue_key = if Map.get(blocker, :direction) == "outbound", do: "relatedIssue", else: "issue"
+
+    %{
+      "id" => blocker.id,
+      "type" => blocker.type,
+      issue_key => related_issue_body(blocker.issue)
+    }
+  end
+
+  defp related_issue_body(issue) do
+    %{
+      "id" => issue.id,
+      "identifier" => issue.identifier,
+      "title" => issue.title,
+      "url" => issue.url,
+      "state" => workflow_state_body(issue.state)
     }
   end
 

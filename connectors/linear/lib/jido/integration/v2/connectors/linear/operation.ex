@@ -209,7 +209,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
 
   defp normalize_output(operation, data, _auth_binding) do
     {:error,
-     ErrorMapper.preflight_validation(
+     ErrorMapper.unexpected_payload(
        "Linear returned an unexpected payload for #{inspect(operation)}",
        issues: [data: data]
      )}
@@ -313,6 +313,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
 
   defp build_issue_filter(%{} = filter) do
     %{}
+    |> maybe_put("id", id_list_filter(filter, :issue_ids))
     |> maybe_put("project", project_filter(filter))
     |> maybe_put("state", state_filter(filter))
     |> maybe_put("assignee", assignee_filter(filter))
@@ -384,7 +385,8 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
       state: normalize_state(Map.get(issue, "state")),
       assignee: normalize_user(Map.get(issue, "assignee")),
       project: normalize_project(Map.get(issue, "project")),
-      team: normalize_team_summary(Map.get(issue, "team"))
+      team: normalize_team_summary(Map.get(issue, "team")),
+      blockers: normalize_blockers(issue)
     }
   end
 

@@ -60,6 +60,21 @@ defmodule Jido.Integration.V2.Connectors.Linear.ErrorMapper do
     }
   end
 
+  @spec unexpected_payload(String.t(), keyword()) :: map()
+  def unexpected_payload(message, opts \\ []) when is_binary(message) and is_list(opts) do
+    %{
+      code: "linear.unexpected_payload",
+      class: "provider_contract",
+      retryability: :fatal,
+      message: message,
+      upstream_context:
+        %{
+          phase: :response_normalization
+        }
+        |> maybe_put(:issues, Redaction.redact(Keyword.get(opts, :issues)))
+    }
+  end
+
   defp provider_code(%LinearSDK.Error{type: :graphql, graphql_errors: [first | _rest]}) do
     first
     |> graphql_provider_code()

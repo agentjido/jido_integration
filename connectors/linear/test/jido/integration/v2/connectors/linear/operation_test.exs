@@ -65,6 +65,37 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationTest do
     end
   end
 
+  test "linear issues list carries blocker relations for source admission" do
+    capability = fetch_capability!("linear.issues.list")
+
+    assert {:ok, result} =
+             DirectRuntime.execute(
+               capability,
+               Fixtures.input_for("linear.issues.list"),
+               Fixtures.execution_context("linear.issues.list",
+                 linear_request: Fixtures.request_opts(self())
+               )
+             )
+
+    assert_receive {:transport_request, payload, context, _opts}
+    Fixtures.assert_request("linear.issues.list", payload, context)
+
+    assert String.contains?(payload["query"], "relations(first: 20)")
+    assert String.contains?(payload["query"], "inverseRelations(first: 20)")
+
+    assert [
+             %{
+               blockers: [
+                 %{
+                   direction: "inbound",
+                   issue: %{identifier: "SEC-9", state: %{name: "In Progress"}}
+                 }
+               ]
+             }
+             | _rest
+           ] = result.output.issues
+  end
+
   test "normalizes LinearSDK errors into the Jido taxonomy and redacts auth material" do
     capability = fetch_capability!("linear.issues.retrieve")
     input = Fixtures.input_for("linear.issues.retrieve")
@@ -125,6 +156,37 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationTest do
              inspect(%{error: mapped_error, result: result, artifact: artifact}),
              Fixtures.api_key()
            )
+  end
+
+  test "classifies unexpected Linear provider payloads separately from preflight errors" do
+    capability = fetch_capability!("linear.issues.list")
+
+    assert {:error, mapped_error, _result} =
+             DirectRuntime.execute(
+               capability,
+               Fixtures.input_for("linear.issues.list"),
+               Fixtures.execution_context("linear.issues.list",
+                 linear_request:
+                   Fixtures.request_opts(self(),
+                     response: fn _payload, _context, _opts ->
+                       {:ok,
+                        %{
+                          status: 200,
+                          headers: [{"x-request-id", "req-linear-shape"}],
+                          body: %{"data" => %{"viewer" => %{"id" => "not-an-issues-page"}}}
+                        }}
+                     end
+                   )
+               )
+             )
+
+    assert_receive {:transport_request, payload, context, _opts}
+    Fixtures.assert_request("linear.issues.list", payload, context)
+
+    assert mapped_error.code == "linear.unexpected_payload"
+    assert mapped_error.class == "provider_contract"
+    assert mapped_error.retryability == :fatal
+    assert mapped_error.upstream_context.phase == :response_normalization
   end
 
   test "rejects empty Linear issue updates before calling linear_sdk" do
