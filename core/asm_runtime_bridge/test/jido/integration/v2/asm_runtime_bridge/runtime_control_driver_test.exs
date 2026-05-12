@@ -171,6 +171,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
           strategy: :exact,
           provider_session_id: "codex-thread-1"
         },
+        provider_metadata: %{"app_server" => true, "skip_git_repo_check" => true},
         metadata: %{}
       })
 
@@ -188,6 +189,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert_receive {:stream_scripted_driver_context, context}
     assert context.continuation == %{strategy: :exact, provider_session_id: "codex-thread-1"}
     assert Keyword.fetch!(context.provider_opts, :app_server) == true
+    assert Keyword.fetch!(context.provider_opts, :skip_git_repo_check) == true
     assert [%{"name" => "echo_json"}] = Keyword.fetch!(context.provider_opts, :host_tools)
     assert is_function(context.tools["echo_json"], 1)
   end

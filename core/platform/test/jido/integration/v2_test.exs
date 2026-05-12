@@ -141,7 +141,7 @@ defmodule Jido.Integration.V2Test do
       level: :strict,
       egress: :restricted,
       approvals: :manual,
-      file_scope: "/workspaces/codex_cli",
+      file_scope: "/tmp/jido_codex_cli_workspace",
       allowed_tools: ["codex.session.turn"]
     },
     event_type: "connector.codex_cli.turn.completed",

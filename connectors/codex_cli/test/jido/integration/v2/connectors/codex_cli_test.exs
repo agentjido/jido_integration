@@ -47,7 +47,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
 
     assert capability.metadata.required_scopes == ["session:execute"]
     assert capability.metadata.policy.environment.allowed == [:prod]
-    assert capability.metadata.policy.sandbox.file_scope == "/workspaces/codex_cli"
+    assert capability.metadata.policy.sandbox.file_scope == "/tmp/jido_codex_cli_workspace"
     assert capability.metadata.policy.sandbox.allowed_tools == ["codex.session.turn"]
     assert capability.metadata.session_control.operation == :turn
     assert capability.metadata.codex_app_server.primary? == true

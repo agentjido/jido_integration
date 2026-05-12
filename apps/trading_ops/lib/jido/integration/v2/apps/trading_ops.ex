@@ -27,7 +27,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     level: :strict,
     egress: :restricted,
     approvals: :manual,
-    file_scope: "/workspaces/codex_cli",
+    file_scope: "/tmp/jido_codex_cli_workspace",
     allowed_tools: ["codex.session.turn"]
   }
 

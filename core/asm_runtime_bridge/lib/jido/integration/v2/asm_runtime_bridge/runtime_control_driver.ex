@@ -566,6 +566,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
       "system_prompt" -> :system_prompt
       "model" -> :model
       "max_turns" -> :max_turns
+      "skip_git_repo_check" -> :skip_git_repo_check
       _other -> nil
     end
   end
