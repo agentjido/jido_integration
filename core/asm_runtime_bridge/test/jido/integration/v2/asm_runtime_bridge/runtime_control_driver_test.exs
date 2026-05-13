@@ -242,7 +242,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     request =
       RunRequest.new!(%{
         prompt: "governed codex turn",
-        cwd: "/tmp/extravaganza-workspace",
+        cwd: "/tmp/sample-app-workspace",
         provider_metadata: %{"app_server" => true},
         metadata: %{}
       })

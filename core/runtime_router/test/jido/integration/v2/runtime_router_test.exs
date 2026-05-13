@@ -259,7 +259,7 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
 
     input = %{
       prompt: "Implement the governed slice",
-      cwd: "/tmp/extravaganza-local",
+      cwd: "/tmp/sample-app-local",
       continuation: %{strategy: :latest},
       provider_metadata: %{"model" => "gpt-5.4", "app_server" => true},
       authority_metadata: %{"authority_ref" => "authority://phase5"},
@@ -281,7 +281,7 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
 
     assert_receive {:authored_driver_request, request}
     assert request.prompt == "Implement the governed slice"
-    assert request.cwd == "/tmp/extravaganza-local"
+    assert request.cwd == "/tmp/sample-app-local"
     assert request.continuation == %{strategy: :latest}
 
     assert request.host_tools == [

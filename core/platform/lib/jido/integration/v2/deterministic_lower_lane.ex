@@ -165,7 +165,7 @@ defmodule Jido.Integration.V2.DeterministicLowerLane do
         "redaction_policy_ref" => envelope.redaction_profile_ref
       },
       memory_context: %{
-        "memory_profile_ref" => "memory://extravaganza/none",
+        "memory_profile_ref" => "memory://runtime/none",
         "context_pack_ref" => "memory-context://#{encoded}/empty",
         "context_hash" => "sha256:" <> sha256("empty"),
         "fragment_refs" => [],

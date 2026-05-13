@@ -79,7 +79,7 @@ defmodule Jido.Integration.V2DeterministicLowerLaneTest do
       cedar_schema_hash: "sha256:" <> String.duplicate("4", 64),
       script_ref: "script://phase6/codex-turn",
       script_hash: "sha256:" <> String.duplicate("5", 64),
-      package_refs: ["package://phase6/extravaganza"],
+      package_refs: ["package://phase6/sample-app"],
       resource_scope_refs: ["workspace://phase6"],
       workspace_ref: "workspace://phase6",
       target_ref: "target://phase6",

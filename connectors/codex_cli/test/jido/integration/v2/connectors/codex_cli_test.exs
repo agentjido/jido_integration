@@ -94,7 +94,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
     assert {:ok, validated} =
              Zoi.parse(operation.input_schema, %{
                prompt: "Implement the governed slice",
-               cwd: "/workspace/extravaganza",
+               cwd: "/workspace/sample-app",
                workspace: %{"workspace_ref" => "workspace://phase5"},
                host_tools: [
                  %{
@@ -116,7 +116,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
                }
              })
 
-    assert validated.cwd == "/workspace/extravaganza"
+    assert validated.cwd == "/workspace/sample-app"
     assert validated.dynamic_tool_manifest == %{"tools" => ["linear.comment.update"]}
     assert validated.authority_metadata["authority_ref"] == "authority://phase5"
     assert validated.governed_lower_envelope["lower_runtime_kind"] == "codex_session"
