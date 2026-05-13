@@ -315,6 +315,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
     %{}
     |> maybe_put("id", id_list_filter(filter, :issue_ids))
     |> maybe_put("project", project_filter(filter))
+    |> maybe_put("team", team_filter(filter))
     |> maybe_put("state", state_filter(filter))
     |> maybe_put("assignee", assignee_filter(filter))
     |> empty_map_to_nil()
@@ -376,6 +377,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Operation do
       id: Map.get(issue, "id"),
       identifier: Map.get(issue, "identifier"),
       title: Map.get(issue, "title"),
+      description: Map.get(issue, "description"),
       priority: Map.get(issue, "priority"),
       branch_name: Map.get(issue, "branchName"),
       labels: normalize_label_names(issue),

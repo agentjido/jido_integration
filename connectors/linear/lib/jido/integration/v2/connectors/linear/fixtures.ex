@@ -44,6 +44,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     id: @issue_id,
     identifier: @issue_identifier,
     title: "Investigate deployment rollback",
+    description: "The deployment rolled back after the health checks failed.",
     priority: 2,
     branch_name: "eng-321-investigate-rollback",
     labels: ["incident", "automation"],
@@ -60,6 +61,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
     id: "lin-issue-654",
     identifier: "ENG-654",
     title: "Audit release checklist",
+    description: "Check the release acceptance evidence before handoff.",
     priority: 3,
     branch_name: "eng-654-audit-release-checklist",
     labels: ["release"],
@@ -585,6 +587,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.Fixtures do
       "id" => summary.id,
       "identifier" => summary.identifier,
       "title" => summary.title,
+      "description" => summary.description,
       "priority" => summary.priority,
       "branchName" => summary.branch_name,
       "labels" => %{

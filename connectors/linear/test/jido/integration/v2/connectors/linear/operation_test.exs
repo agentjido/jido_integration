@@ -96,6 +96,41 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationTest do
            ] = result.output.issues
   end
 
+  test "linear issues list accepts team filters and returns complete candidate summaries" do
+    capability = fetch_capability!("linear.issues.list")
+
+    input =
+      "linear.issues.list"
+      |> Fixtures.input_for()
+      |> put_in([:filter, :team_id], "team-eng")
+
+    assert {:ok, result} =
+             DirectRuntime.execute(
+               capability,
+               input,
+               Fixtures.execution_context("linear.issues.list",
+                 linear_request: Fixtures.request_opts(self())
+               )
+             )
+
+    assert_receive {:transport_request, payload, _context, _opts}
+
+    assert get_in(payload, ["variables", "filter", "team", "id", "eq"]) == "team-eng"
+    assert String.contains?(payload["query"], "description")
+
+    assert [
+             %{
+               description: "The deployment rolled back after the health checks failed.",
+               labels: ["incident", "automation"],
+               created_at: "2026-03-12T09:15:00Z",
+               updated_at: "2026-03-12T10:00:00Z",
+               team: %{id: "team-eng", key: "ENG", name: "Engineering"},
+               blockers: [_blocker | _]
+             }
+             | _rest
+           ] = result.output.issues
+  end
+
   test "normalizes LinearSDK errors into the Jido taxonomy and redacts auth material" do
     capability = fetch_capability!("linear.issues.retrieve")
     input = Fixtures.input_for("linear.issues.retrieve")

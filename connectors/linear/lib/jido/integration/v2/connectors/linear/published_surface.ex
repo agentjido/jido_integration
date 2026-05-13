@@ -24,6 +24,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
         id
         identifier
         title
+        description
         priority
         branchName
         url
@@ -327,10 +328,11 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
               issue_ids: Zoi.list(Zoi.string()) |> Zoi.optional(),
               project_slug: Zoi.string() |> Zoi.optional(),
               state_names: Zoi.list(Zoi.string()) |> Zoi.optional(),
-              assignee_id: Zoi.string() |> Zoi.optional()
+              assignee_id: Zoi.string() |> Zoi.optional(),
+              team_id: Zoi.string() |> Zoi.optional()
             ],
             description:
-              "Optional candidate-issue filter for project, workflow state, and assignee"
+              "Optional candidate-issue filter for project, team, workflow state, and assignee"
           )
           |> Zoi.optional(),
         first: positive_integer_schema() |> Zoi.optional(),
@@ -505,6 +507,7 @@ defmodule Jido.Integration.V2.Connectors.Linear.PublishedSurface do
       id: Zoi.string(),
       identifier: Zoi.string(),
       title: Zoi.string(),
+      description: Zoi.string() |> Zoi.nullable(),
       priority: Zoi.integer() |> Zoi.nullable(),
       branch_name: Zoi.string() |> Zoi.nullable(),
       labels: Zoi.list(Zoi.string()),
