@@ -122,25 +122,25 @@ product-visible coding-ops workflow.
 
 ```mermaid
 flowchart TD
-  Caller["Mezzanine or Citadel bridge"] --> Facade["Jido.Integration.V2"]
-  Facade --> Catalog["Connector and capability catalog"]
-  Facade --> Auth["Auth install, connection, and lease"]
-  Auth --> Lease["Short-lived credential lease"]
-  Catalog --> Invoke["Invocation request"]
+  Caller["Mezzanine<br/>Citadel bridge"] --> Facade["Jido<br/>Integration V2"]
+  Facade --> Catalog["Capability<br/>catalog"]
+  Facade --> Auth["Auth<br/>lifecycle"]
+  Auth --> Lease["Credential<br/>lease"]
+  Catalog --> Invoke["Invocation<br/>request"]
   Lease --> Invoke
-  Invoke --> Runtime["Direct, session, stream, or inference runtime"]
-  Runtime --> Review["Run, attempt, event, artifact, review packet"]
-  Review --> LowerFacts["Tenant-scoped lower facts"]
+  Invoke --> Runtime["Runtime<br/>family"]
+  Runtime --> Review["Review<br/>packet"]
+  Review --> LowerFacts["Lower<br/>facts"]
 ```
 
 ```mermaid
 flowchart LR
-  Linear["Linear connector"] --> Common["Generated common surfaces"]
-  GitHub["GitHub connector"] --> Common
-  Notion["Notion connector"] --> Common
-  Codex["Codex session family"] --> Runtime["Runtime families"]
-  Inference["ReqLLM inference family"] --> Runtime
-  Runtime --> Platform["Control plane and review packets"]
+  Linear["Linear<br/>connector"] --> Common["Common<br/>surfaces"]
+  GitHub["GitHub<br/>connector"] --> Common
+  Notion["Notion<br/>connector"] --> Common
+  Codex["Codex<br/>session"] --> Runtime["Runtime<br/>families"]
+  Inference["ReqLLM<br/>inference"] --> Runtime
+  Runtime --> Platform["Control<br/>plane"]
 ```
 
 ## Documentation
