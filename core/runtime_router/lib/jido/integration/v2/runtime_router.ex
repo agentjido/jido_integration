@@ -30,8 +30,8 @@ defmodule Jido.Integration.V2.RuntimeRouter do
   }
 
   @session_control_run_operations [:turn, :stream]
-  @session_control_control_operations [:start, :status, :cancel, :approve]
-  @session_control_out_of_band_operations [:status, :cancel, :approve]
+  @session_control_control_operations [:start, :status, :cancel, :approve, :stop]
+  @session_control_out_of_band_operations [:status, :cancel, :approve, :stop]
 
   @target_driver_modules %{
     "asm" => Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver,
@@ -177,6 +177,19 @@ defmodule Jido.Integration.V2.RuntimeRouter do
          approval_id: approval_id,
          decision: decision
        })}
+    else
+      {:error, reason} ->
+        {:error, reason,
+         failure_runtime_result(capability, context, reason, nil, control_session_id(input))}
+    end
+  end
+
+  defp execute_session_control(:stop, _resolution, capability, input, context) do
+    with {:ok, %{driver_module: driver_module, session: session, session_key: session_key}} <-
+           fetch_control_session(input, :stop),
+         :ok <- Runtime.stop_session(driver_module, session) do
+      delete_session_entry(session_key)
+      {:ok, stop_runtime_result(session, capability)}
     else
       {:error, reason} ->
         {:error, reason,
@@ -344,8 +357,11 @@ defmodule Jido.Integration.V2.RuntimeRouter do
   defp fetch_session_entry_by_id(session_id) when is_binary(session_id) do
     session_store_entries()
     |> Enum.find_value(:error, fn
-      {_key, %{session: %SessionHandle{session_id: ^session_id}} = entry} -> {:ok, entry}
-      _entry -> false
+      {key, %{session: %SessionHandle{session_id: ^session_id}} = entry} ->
+        {:ok, Map.put(entry, :session_key, key)}
+
+      _entry ->
+        false
     end)
   end
 
@@ -463,6 +479,34 @@ defmodule Jido.Integration.V2.RuntimeRouter do
             provider: session.provider,
             status: session.status
           },
+          session_id: session.session_id,
+          runtime_ref_id: session.session_id
+        }
+      ]
+    })
+  end
+
+  defp stop_runtime_result(%SessionHandle{} = session, %Capability{} = _capability) do
+    output = %{
+      operation: :stop,
+      status: :stopped,
+      state: :stopped,
+      session_id: session.session_id,
+      runtime_id: session.runtime_id,
+      provider: session.provider,
+      message: "session stopped",
+      details: %{},
+      metadata: session.metadata
+    }
+
+    RuntimeResult.new!(%{
+      output: output,
+      runtime_ref_id: session.session_id,
+      events: [
+        %{
+          type: "session_control.stopped",
+          stream: :control,
+          payload: output,
           session_id: session.session_id,
           runtime_ref_id: session.session_id
         }
@@ -603,6 +647,7 @@ defmodule Jido.Integration.V2.RuntimeRouter do
       "cancel" -> :cancel
       "start" -> :start
       "status" -> :status
+      "stop" -> :stop
       "stream" -> :stream
       "turn" -> :turn
       _other -> nil
@@ -621,7 +666,12 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     runtime_result =
       case embedded_runtime_result(result) do
         %RuntimeResult{} = runtime_result ->
-          decorate_runtime_result(runtime_result, session.session_id)
+          decorate_runtime_result(
+            runtime_result,
+            capability.runtime_class,
+            lifecycle,
+            session.session_id
+          )
 
         nil ->
           synthesized_runtime_result(result, session, capability, lifecycle)
@@ -692,16 +742,23 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     })
   end
 
-  defp decorate_runtime_result(%RuntimeResult{} = runtime_result, session_id) do
+  defp decorate_runtime_result(
+         %RuntimeResult{} = runtime_result,
+         runtime_class,
+         lifecycle,
+         session_id
+       ) do
     %RuntimeResult{
       runtime_result
       | runtime_ref_id: runtime_result.runtime_ref_id || session_id,
         events:
-          Enum.map(runtime_result.events, fn event ->
+          runtime_result.events
+          |> Enum.map(fn event ->
             event
             |> Map.put_new(:session_id, session_id)
             |> Map.put_new(:runtime_ref_id, runtime_result.runtime_ref_id || session_id)
           end)
+          |> maybe_append_missing_lifecycle_event(runtime_class, lifecycle, session_id)
     }
   end
 
@@ -840,6 +897,18 @@ defmodule Jido.Integration.V2.RuntimeRouter do
         }
       ]
   end
+
+  defp maybe_append_missing_lifecycle_event(events, runtime_class, lifecycle, session_id) do
+    event_type = lifecycle_event_type(runtime_class, lifecycle)
+
+    if Enum.any?(events, &(event_type(&1) == event_type)) do
+      events
+    else
+      maybe_append_lifecycle_event(events, runtime_class, lifecycle, session_id)
+    end
+  end
+
+  defp event_type(%{} = event), do: Contracts.get(event, :type)
 
   defp lifecycle_event_type(:session, :started), do: "session.started"
   defp lifecycle_event_type(:session, :reused), do: "session.reused"

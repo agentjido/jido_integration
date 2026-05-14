@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.GeneratedConsumerSurfaceTest d
   alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionCancel
   alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionStart
   alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionStatus
+  alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionStop
   alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionStream
   alias Jido.Integration.V2.Connectors.CodexCli.Generated.Actions.CodexSessionTurn
   alias Jido.Integration.V2.Connectors.CodexCli.Generated.Plugin, as: GeneratedPlugin
@@ -30,6 +31,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.GeneratedConsumerSurfaceTest d
              CodexSessionCancel,
              CodexSessionStart,
              CodexSessionStatus,
+             CodexSessionStop,
              CodexSessionStream,
              CodexSessionTurn
            ]
@@ -37,6 +39,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.GeneratedConsumerSurfaceTest d
     assert Code.ensure_loaded?(CodexSessionCancel)
     assert Code.ensure_loaded?(CodexSessionStart)
     assert Code.ensure_loaded?(CodexSessionStatus)
+    assert Code.ensure_loaded?(CodexSessionStop)
     assert Code.ensure_loaded?(CodexSessionStream)
     assert CodexSessionTurn in GeneratedPlugin.actions()
     refute Enum.any?(GeneratedPlugin.actions(), &String.contains?(to_string(&1), "ToolRespond"))
@@ -94,6 +97,17 @@ defmodule Jido.Integration.V2.Connectors.CodexCli.GeneratedConsumerSurfaceTest d
            } =
              ConsumerProjection.invocation_request!(
                CodexSessionStatus.generated_action_projection(),
+               %{session_id: "runtime-session-1", connection_id: "conn-codex"},
+               %{}
+             )
+
+    assert %InvocationRequest{
+             capability_id: "codex.session.stop",
+             connection_id: "conn-codex",
+             input: %{session_id: "runtime-session-1"}
+           } =
+             ConsumerProjection.invocation_request!(
+               CodexSessionStop.generated_action_projection(),
                %{session_id: "runtime-session-1", connection_id: "conn-codex"},
                %{}
              )

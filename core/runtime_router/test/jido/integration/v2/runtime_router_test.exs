@@ -70,7 +70,10 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
       :ok
     end
 
-    def stop_session(%SessionHandle{}), do: :ok
+    def stop_session(%SessionHandle{} = session) do
+      send(self(), {:authored_driver_stop_session, session.session_id})
+      :ok
+    end
   end
 
   defmodule OverrideDriver do
@@ -104,6 +107,58 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
          cost: %{},
          stop_reason: "completed",
          metadata: %{}
+       })}
+    end
+
+    def stop_session(%SessionHandle{}), do: :ok
+  end
+
+  defmodule EmbeddedRuntimeResultDriver do
+    alias Jido.RuntimeControl.{ExecutionResult, RunRequest, SessionHandle}
+
+    def start_session(opts) when is_list(opts) do
+      send(self(), {:embedded_driver_start_session, opts})
+
+      {:ok,
+       SessionHandle.new!(%{
+         session_id: "embedded-session",
+         runtime_id: :embedded_driver,
+         provider: Keyword.get(opts, :provider),
+         status: :ready,
+         metadata: %{}
+       })}
+    end
+
+    def run(%SessionHandle{} = session, %RunRequest{} = request, opts) when is_list(opts) do
+      send(self(), {:embedded_driver_run, session.session_id, request.prompt, opts})
+
+      runtime_result =
+        Jido.Integration.V2.RuntimeResult.new!(%{
+          output: %{
+            status: :completed,
+            provider: session.provider,
+            provider_session_id: "provider-session-1"
+          },
+          events: [
+            %{
+              type: "agent.turn.completed",
+              payload: %{status: :completed}
+            }
+          ]
+        })
+
+      {:ok,
+       ExecutionResult.new!(%{
+         run_id: Keyword.get(opts, :run_id, "embedded-run"),
+         session_id: session.session_id,
+         runtime_id: session.runtime_id,
+         provider: session.provider,
+         status: :completed,
+         text: request.prompt,
+         messages: [],
+         cost: %{},
+         stop_reason: "completed",
+         metadata: %{"jido_integration" => %{"runtime_result" => runtime_result}}
        })}
     end
 
@@ -304,6 +359,35 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     assert run_opts[:governed_lower_envelope] == envelope
   end
 
+  test "decorates embedded runtime results with session lifecycle evidence" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{embedded_driver: EmbeddedRuntimeResultDriver}
+    )
+
+    assert {:ok, result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{
+                 id: "codex.session.turn",
+                 runtime: %{
+                   driver: "embedded_driver",
+                   provider: :codex,
+                   options: %{}
+                 }
+               }),
+               %{prompt: "hello"},
+               runtime_context()
+             )
+
+    assert_receive {:embedded_driver_start_session, _start_opts}
+    assert_receive {:embedded_driver_run, "embedded-session", "hello", _run_opts}
+
+    assert Enum.map(result.events, & &1.type) == ["agent.turn.completed", "session.started"]
+    assert Enum.all?(result.events, &(&1.session_id == "embedded-session"))
+    assert Enum.all?(result.events, &(&1.runtime_ref_id == "embedded-session"))
+  end
+
   test "requires an authored runtime driver for non-direct capabilities" do
     Application.put_env(
       :jido_integration_v2_control_plane,
@@ -443,6 +527,52 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     assert_receive {:authored_driver_session_status, "authored-session"}
     refute_received {:authored_driver_start_session, _opts}
     refute_received {:authored_driver_run, _session_id, _prompt, _opts}
+  end
+
+  test "routes session-control stop to stop_session and forgets the session" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    put_session_store_entry("authored-session")
+
+    assert {:ok, result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{
+                 id: "codex.session.stop",
+                 session_control_operation: :stop
+               }),
+               %{session_id: "authored-session"},
+               runtime_context()
+             )
+
+    assert result.output.operation == :stop
+    assert result.output.status == :stopped
+    assert result.output.state == :stopped
+    assert result.output.session_id == "authored-session"
+    assert result.output.runtime_id == :authored_driver
+    assert result.output.provider == :codex
+    assert Enum.map(result.events, & &1.type) == ["session_control.stopped"]
+
+    assert_receive {:authored_driver_stop_session, "authored-session"}
+    refute_received {:authored_driver_session_status, "authored-session"}
+    refute_received {:authored_driver_start_session, _opts}
+    refute_received {:authored_driver_run, _session_id, _prompt, _opts}
+
+    assert {:error, %Jido.RuntimeControl.Error.InvalidInputError{} = error, _result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{
+                 id: "codex.session.status",
+                 session_control_operation: :status
+               }),
+               %{session_id: "authored-session"},
+               runtime_context()
+             )
+
+    assert error.field == :session_id
+    assert error.details == %{operation: :status}
   end
 
   test "routes session-control approve to approve with explicit approval id and decision" do

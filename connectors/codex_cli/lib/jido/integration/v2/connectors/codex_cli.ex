@@ -115,6 +115,22 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
           }
         ),
         session_operation(
+          "codex.session.stop",
+          "session_stop",
+          "Stop session",
+          "Stops a Codex app-server session through Runtime Control",
+          input_schema:
+            Zoi.object(%{
+              session_id: Zoi.string()
+            }),
+          output_schema: status_output_schema(),
+          required_scopes: ["session:control"],
+          metadata: %{
+            session_control: %{operation: :stop},
+            codex_app_server: %{primary?: false}
+          }
+        ),
+        session_operation(
           "codex.session.stream",
           "session_stream",
           "Stream session turn",

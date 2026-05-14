@@ -6,8 +6,8 @@ defmodule Jido.Integration.V2.Conformance.Suites.CapabilityContracts do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Manifest
 
-  @allowed_session_control_operations [:start, :turn, :stream, :status, :cancel, :approve]
-  @out_of_band_session_control_operations [:status, :cancel, :approve]
+  @allowed_session_control_operations [:start, :turn, :stream, :status, :cancel, :approve, :stop]
+  @out_of_band_session_control_operations [:status, :cancel, :approve, :stop]
 
   @spec run(map()) :: SuiteResult.t()
   def run(%{manifest: manifest}) do
@@ -185,6 +185,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.CapabilityContracts do
       "cancel" -> :cancel
       "start" -> :start
       "status" -> :status
+      "stop" -> :stop
       "stream" -> :stream
       "turn" -> :turn
       _other -> nil
@@ -197,6 +198,7 @@ defmodule Jido.Integration.V2.Conformance.Suites.CapabilityContracts do
         ".session.start",
         ".session.status",
         ".session.cancel",
+        ".session.stop",
         ".session.approve",
         ".session.tool.respond"
       ],

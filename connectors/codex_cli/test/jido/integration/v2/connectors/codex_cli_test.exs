@@ -15,6 +15,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
              "codex.session.cancel",
              "codex.session.start",
              "codex.session.status",
+             "codex.session.stop",
              "codex.session.stream",
              "codex.session.turn"
            ]
@@ -64,6 +65,9 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
     assert capabilities_by_id["codex.session.cancel"].metadata.session_control.operation ==
              :cancel
 
+    assert capabilities_by_id["codex.session.stop"].metadata.session_control.operation ==
+             :stop
+
     assert capabilities_by_id["codex.session.stream"].metadata.session_control.operation ==
              :stream
   end
@@ -74,6 +78,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
 
     status = Map.fetch!(operations_by_id, "codex.session.status")
     cancel = Map.fetch!(operations_by_id, "codex.session.cancel")
+    stop = Map.fetch!(operations_by_id, "codex.session.stop")
 
     assert {:error, _} = Zoi.parse(status.input_schema, %{})
 
@@ -84,6 +89,11 @@ defmodule Jido.Integration.V2.Connectors.CodexCliTest do
 
     assert {:ok, %{session_id: "session-1", run_id: "run-1"}} =
              Zoi.parse(cancel.input_schema, %{session_id: "session-1", run_id: "run-1"})
+
+    assert {:error, _} = Zoi.parse(stop.input_schema, %{})
+
+    assert {:ok, %{session_id: "session-1"}} =
+             Zoi.parse(stop.input_schema, %{session_id: "session-1"})
   end
 
   test "turn schema accepts governed headless Codex runtime input" do
