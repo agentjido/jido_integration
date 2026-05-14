@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" role="img" aria-labelledby="jido-title jido-desc">
   <title id="jido-title">Jido Integration</title>
-  <desc id="jido-desc">A hexagonal connector gateway with auth lock, leased runtime hub, provider plugs, and tenant-scoped lower facts.</desc>
+  <desc id="jido-desc">A hexagonal connector gateway with cleanly routed auth, catalog, runtime, webhook, review, and lower-fact ports.</desc>
   <defs>
     <clipPath id="jido-hex">
       <path d="M100 4 L183 52 L183 148 L100 196 L17 148 L17 52 Z"/>
@@ -10,7 +10,7 @@
       <stop offset="0.5" stop-color="#11243c"/>
       <stop offset="1" stop-color="#070d15"/>
     </linearGradient>
-    <linearGradient id="jido-hub" x1="67" y1="63" x2="134" y2="138" gradientUnits="userSpaceOnUse">
+    <linearGradient id="jido-hub" x1="65" y1="64" x2="136" y2="137" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#8fffe8"/>
       <stop offset="0.48" stop-color="#70a8ff"/>
       <stop offset="1" stop-color="#ffd36e"/>
@@ -21,36 +21,55 @@
   </defs>
   <g clip-path="url(#jido-hex)">
     <path d="M100 4 L183 52 L183 148 L100 196 L17 148 L17 52 Z" fill="url(#jido-bg)"/>
-    <g fill="none" stroke="#8fffe8" stroke-width="3" stroke-linecap="round" opacity="0.7">
-      <path d="M100 70 C83 57 65 48 43 45"/>
-      <path d="M100 70 C117 57 135 48 157 45"/>
-      <path d="M76 112 C60 123 48 137 38 157"/>
-      <path d="M124 112 C140 123 152 137 162 157"/>
-      <path d="M100 128 V166"/>
-    </g>
-    <g filter="url(#jido-shadow)">
-      <circle cx="100" cy="98" r="38" fill="#0b1726" stroke="url(#jido-hub)" stroke-width="5"/>
-      <path d="M77 97 C85 84 93 78 100 78 C107 78 115 84 123 97 C115 110 107 116 100 116 C93 116 85 110 77 97 Z" fill="url(#jido-hub)" opacity="0.88"/>
-      <circle cx="100" cy="97" r="8" fill="#0b1726"/>
-      <path d="M100 87 V107 M90 97 H110" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
-    </g>
-    <g fill="#0b1726" stroke="#f6fbff" stroke-width="2.2">
-      <path d="M30 37 H56 V59 H30 Z"/>
-      <path d="M144 37 H170 V59 H144 Z"/>
-      <path d="M25 151 H51 V171 H25 Z"/>
-      <path d="M149 151 H175 V171 H149 Z"/>
-      <path d="M87 159 H113 V177 H87 Z"/>
-    </g>
-    <g stroke="#f6fbff" stroke-width="2" stroke-linecap="round" fill="none">
-      <path d="M36 48 H50 M38 55 H48"/>
-      <path d="M151 45 L163 45 M151 53 L165 53"/>
-      <path d="M32 160 H45 M157 160 H169 M93 168 H107"/>
+    <g fill="none" stroke="#2f7187" stroke-width="1.8" opacity="0.38">
+      <path d="M34 71 H166"/>
+      <path d="M34 100 H166"/>
+      <path d="M34 129 H166"/>
+      <path d="M62 45 V155"/>
+      <path d="M100 28 V172"/>
+      <path d="M138 45 V155"/>
     </g>
     <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M73 48 V38 C73 29 87 29 87 38 V48 H73 Z" stroke="#ffd36e" stroke-width="3"/>
-      <rect x="69" y="48" width="22" height="18" rx="4" fill="#0b1726" stroke="#ffd36e" stroke-width="3"/>
-      <path d="M124 48 C132 39 144 41 149 51" stroke="#70a8ff" stroke-width="4"/>
-      <path d="M124 48 L132 49 M149 51 L142 52" stroke="#70a8ff" stroke-width="4"/>
+      <path d="M100 59 V68" stroke="#ffd36e" stroke-width="5"/>
+      <path d="M60 100 H68" stroke="#8fffe8" stroke-width="5"/>
+      <path d="M132 100 H140" stroke="#70a8ff" stroke-width="5"/>
+      <path d="M100 132 V153" stroke="#8fffe8" stroke-width="5"/>
+      <path d="M55 142 C66 142 70 127 77 121" stroke="#ffd36e" stroke-width="4"/>
+      <path d="M145 142 C134 142 130 127 123 121" stroke="#70a8ff" stroke-width="4"/>
+    </g>
+    <g filter="url(#jido-shadow)">
+      <circle cx="100" cy="100" r="34" fill="#0b1726" stroke="url(#jido-hub)" stroke-width="5"/>
+      <path d="M79 100 C86 87 94 82 100 82 C106 82 114 87 121 100 C114 113 106 118 100 118 C94 118 86 113 79 100 Z" fill="url(#jido-hub)" opacity="0.9"/>
+      <circle cx="100" cy="100" r="8" fill="#0b1726"/>
+      <path d="M100 90 V110 M90 100 H110" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+      <g fill="#0b1726" stroke="#f6fbff" stroke-width="2">
+        <circle cx="100" cy="66" r="4"/>
+        <circle cx="66" cy="100" r="4"/>
+        <circle cx="134" cy="100" r="4"/>
+        <circle cx="100" cy="134" r="4"/>
+      </g>
+    </g>
+    <g fill="#0b1726" stroke="#f6fbff" stroke-width="2.2">
+      <rect x="76" y="36" width="48" height="23" rx="5"/>
+      <rect x="24" y="84" width="36" height="32" rx="5"/>
+      <rect x="140" y="84" width="36" height="32" rx="5"/>
+      <rect x="76" y="153" width="48" height="24" rx="5"/>
+      <path d="M30 134 H55 V152 H30 Z"/>
+      <path d="M145 134 H170 V152 H145 Z"/>
+    </g>
+    <g stroke="#f6fbff" stroke-width="2" stroke-linecap="round" fill="none">
+      <path d="M89 48 H111"/>
+      <path d="M82 48 V42 C82 35 93 35 93 42 V48"/>
+      <path d="M34 94 H49 M34 102 H47"/>
+      <path d="M150 94 L164 100 L150 106"/>
+      <path d="M86 162 H114 M86 169 H107"/>
+      <path d="M37 143 H48"/>
+      <path d="M152 141 L158 148 L168 137"/>
+    </g>
+    <g fill="#8fffe8">
+      <circle cx="55" cy="142" r="3"/>
+      <circle cx="145" cy="142" r="3"/>
+      <circle cx="100" cy="153" r="3"/>
     </g>
     <path d="M100 4 L183 52 L183 148 L100 196 L17 148 L17 52 Z" fill="none" stroke="#b8fff1" stroke-width="4"/>
   </g>
