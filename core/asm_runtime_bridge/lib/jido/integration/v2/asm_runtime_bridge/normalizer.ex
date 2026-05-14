@@ -3,6 +3,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
 
   alias ASM.{Error, Event, Result}
   alias Jido.Integration.V2.Redaction
+  alias Jido.Integration.V2.RuntimeResult
 
   alias Jido.RuntimeControl.{
     ExecutionEvent,
@@ -53,15 +54,23 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
     })
   end
 
-  @spec to_execution_result(Result.t(), SessionHandle.t()) :: ExecutionResult.t()
-  def to_execution_result(%Result{} = result, %SessionHandle{} = session) do
-    metadata =
+  @spec to_execution_result(Result.t(), SessionHandle.t(), [Event.t()]) :: ExecutionResult.t()
+  def to_execution_result(%Result{} = result, %SessionHandle{} = session, events \\ []) do
+    metadata_base =
       result.metadata
       |> normalize()
       |> default_map()
+      |> Map.delete("jido_integration")
       |> maybe_put("provider_session_id", result.session_id_from_cli)
       |> maybe_put("provider_turn_id", metadata_value(result.metadata, :provider_turn_id))
       |> maybe_put("boundary", boundary_metadata(session))
+
+    metadata =
+      metadata_base
+      |> maybe_put(
+        "jido_integration",
+        runtime_result_metadata(result, session, events, metadata_base)
+      )
 
     ExecutionResult.new!(%{
       run_id: result.run_id,
@@ -275,6 +284,83 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.Normalizer do
   defp event_status(:run_completed), do: :completed
   defp event_status(:error), do: :failed
   defp event_status(_kind), do: nil
+
+  defp runtime_result_metadata(%Result{} = result, %SessionHandle{} = session, events, metadata)
+       when is_list(events) do
+    runtime_events = Enum.map(events, &runtime_result_event(&1, session))
+
+    case runtime_events do
+      [] ->
+        nil
+
+      _events ->
+        %{
+          "runtime_result" =>
+            RuntimeResult.new!(%{
+              output: runtime_result_output(result, session, metadata),
+              runtime_ref_id: session.session_id,
+              events: runtime_events
+            })
+        }
+    end
+  end
+
+  defp runtime_result_metadata(_result, _session, _events, _metadata), do: nil
+
+  defp runtime_result_output(%Result{} = result, %SessionHandle{} = session, metadata) do
+    %{}
+    |> maybe_put(:text, result.text)
+    |> maybe_put(:status, result_status(result))
+    |> maybe_put(:runtime_id, session.runtime_id)
+    |> maybe_put(:provider, session.provider)
+    |> maybe_put(:messages, normalize(result.messages || []))
+    |> maybe_put(:stop_reason, normalize_reason(result.stop_reason))
+    |> maybe_put(:cost, result.cost |> normalize() |> default_map())
+    |> maybe_put(:error, normalize_error(result.error))
+    |> maybe_put(:duration_ms, result.duration_ms)
+    |> maybe_put(:metadata, metadata)
+  end
+
+  defp runtime_result_event(%Event{} = event, %SessionHandle{} = session) do
+    execution_event = to_execution_event(event, session)
+
+    %{
+      type: execution_event.type |> Atom.to_string(),
+      stream: runtime_result_event_stream(execution_event.type),
+      level: runtime_result_event_level(execution_event.type),
+      payload: execution_event.payload,
+      trace: runtime_result_event_trace(execution_event),
+      session_id: execution_event.session_id,
+      runtime_ref_id: execution_event.session_id
+    }
+  end
+
+  defp runtime_result_event_stream(type)
+       when type in [:assistant_delta, :assistant_message],
+       do: :assistant
+
+  defp runtime_result_event_stream(:stderr), do: :stderr
+  defp runtime_result_event_stream(_type), do: :control
+
+  defp runtime_result_event_level(:error), do: :error
+  defp runtime_result_event_level(_type), do: :info
+
+  defp runtime_result_event_trace(execution_event) do
+    %{
+      "runtime_control_event_id" => execution_event.event_id,
+      "runtime_control_run_id" => execution_event.run_id,
+      "runtime_id" => execution_event.runtime_id |> Atom.to_string()
+    }
+    |> maybe_put("provider", execution_event.provider && Atom.to_string(execution_event.provider))
+    |> maybe_put("provider_session_id", execution_event.provider_session_id)
+    |> maybe_put("provider_turn_id", execution_event.provider_turn_id)
+    |> maybe_put("provider_request_id", execution_event.provider_request_id)
+    |> maybe_put("provider_item_id", execution_event.provider_item_id)
+    |> maybe_put("provider_tool_call_id", execution_event.provider_tool_call_id)
+    |> maybe_put("provider_message_id", execution_event.provider_message_id)
+    |> maybe_put("tool_name", execution_event.tool_name)
+    |> maybe_put("approval_id", execution_event.approval_id)
+  end
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)

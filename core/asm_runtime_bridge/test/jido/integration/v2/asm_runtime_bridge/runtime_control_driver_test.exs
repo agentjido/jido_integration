@@ -567,6 +567,56 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert result.stop_reason == "end_turn"
   end
 
+  test "run/3 embeds normalized asm runtime events for persistence" do
+    assert {:ok, session} = RuntimeControlDriver.start_session(provider: :codex)
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request = RunRequest.new!(%{prompt: "usage", metadata: %{}})
+
+    usage_event =
+      CliSubprocessCore.Payload.Raw.new(
+        stream: :codex_usage,
+        content: %{
+          "type" => "thread/tokenUsage/updated",
+          "thread_id" => "thread-runtime-events",
+          "usage" => %{
+            "input_tokens" => 7,
+            "output_tokens" => 3,
+            "total_tokens" => 10
+          }
+        },
+        metadata: %{usage_scope: "absolute"}
+      )
+
+    assert {:ok, result} =
+             RuntimeControlDriver.run(session, request,
+               driver: StreamScriptedDriver,
+               run_id: "bridge-run-runtime-events",
+               driver_opts: [
+                 script: [
+                   {:raw, usage_event},
+                   {:result,
+                    CliSubprocessCore.Payload.Result.new(
+                      status: :completed,
+                      stop_reason: :end_turn,
+                      output: %{usage: %{"input_tokens" => 7, "output_tokens" => 3}}
+                    )}
+                 ]
+               ]
+             )
+
+    assert %{"jido_integration" => %{"runtime_result" => runtime_result}} = result.metadata
+
+    assert Enum.any?(runtime_result.events, fn event ->
+             event.type == "raw" and
+               get_in(event.payload, ["content", "usage", "total_tokens"]) == 10 and
+               get_in(event.payload, ["metadata", "usage_scope"]) == "absolute"
+           end)
+  end
+
   test "run/3 maps cancelled asm results to cancelled execution results" do
     assert {:ok, session} = RuntimeControlDriver.start_session(provider: :claude)
 

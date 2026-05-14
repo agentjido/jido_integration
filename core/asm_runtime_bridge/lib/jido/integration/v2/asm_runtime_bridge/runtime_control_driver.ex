@@ -224,7 +224,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
 
     with {:ok, provider} <- fetch_session_provider(session, opts),
          :ok <- validate_runtime_request(provider, request, opts) do
-      result =
+      events =
         session
         |> session_ref!()
         |> ASM.stream(
@@ -236,9 +236,11 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
             Keyword.get_lazy(opts, :run_id, &Event.generate_id/0)
           )
         )
-        |> Stream.final_result()
+        |> Enum.to_list()
 
-      {:ok, Normalizer.to_execution_result(result, session)}
+      result = Stream.final_result(events)
+
+      {:ok, Normalizer.to_execution_result(result, session, events)}
     end
   rescue
     error in [ArgumentError] ->
