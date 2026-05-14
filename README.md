@@ -122,7 +122,7 @@ product-visible coding-ops workflow.
 
 ```mermaid
 flowchart TD
-  Caller["Mezzanine<br/>Citadel bridge"] --> Facade["Jido<br/>Integration V2"]
+  Caller["Bridge<br/>caller"] --> Facade["Jido<br/>V2"]
   Facade --> Catalog["Capability<br/>catalog"]
   Facade --> Auth["Auth<br/>lifecycle"]
   Auth --> Lease["Credential<br/>lease"]
@@ -141,6 +141,36 @@ flowchart LR
   Codex["Codex<br/>session"] --> Runtime["Runtime<br/>families"]
   Inference["ReqLLM<br/>inference"] --> Runtime
   Runtime --> Platform["Control<br/>plane"]
+```
+
+## Developer Flow Diagrams
+
+```mermaid
+sequenceDiagram
+  participant Host
+  participant Catalog
+  participant Auth
+  participant Runtime
+  participant Review
+  Host->>Catalog: fetch capability
+  Catalog->>Auth: require AuthSpec
+  Auth->>Auth: install and connect
+  Auth-->>Host: credential lease
+  Host->>Runtime: invocation request
+  Runtime-->>Review: run events
+  Review-->>Host: review packet
+```
+
+```mermaid
+flowchart TD
+  Direct["Direct<br/>connectors"] --> Router["Runtime<br/>router"]
+  Session["Codex<br/>sessions"] --> Router
+  Stream["Stream<br/>families"] --> Router
+  Inference["Inference<br/>ReqLLM"] --> Router
+  Router --> Control["Control<br/>plane"]
+  Control --> Stores["Run<br/>stores"]
+  Control --> Facts["Lower<br/>facts"]
+  Stores --> Common["Generated<br/>surfaces"]
 ```
 
 ## Documentation
