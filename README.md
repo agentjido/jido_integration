@@ -30,6 +30,81 @@ trees for runtime dependency sourcing.
 - read [Publishing](guides/publishing.md) for the welded package release flow
 - use `apps/*/README.md` for proof-app runbooks and host-level proof flows
 
+## Current Stack Role And Shipped Runtime Paths
+
+Jido Integration is the connector and runtime gateway below Mezzanine and
+Citadel. It turns governed intent into concrete connector operations,
+runtime-family execution, durable review packets, auth leases, lower facts,
+and readback surfaces. It should be read as an integration platform with real
+adapter behavior, not as a placeholder for future connector work.
+
+The current public seam is `Jido.Integration.V2`. It exposes connector
+discovery, capability catalogs, auth install and completion, connection status,
+credential leases, credential rotation, revocation, invocation requests,
+inference execution, target lookup, run and attempt reads, event and artifact
+reads, review packets, and tenant-scoped lower facts. Higher repos use that
+seam through bridges rather than importing connector internals.
+
+The shipped runtime families are:
+
+- direct connector calls for GitHub, Linear, Notion, and generated common
+  consumer surfaces
+- Codex session execution through the agent session manager family, including
+  start, turn, stream, cancel, status, stop control, live workspace options,
+  app-server protocol carriage, token events, and deterministic lower defaults
+  that do not bake product policy into the lower layer
+- stream execution for session and market-style event flows
+- inference execution through `req_llm` across cloud, CLI endpoint,
+  self-hosted service, and attached-local endpoint shapes
+
+Recent lower work has been directly useful to the product path. The repo now
+preserves Codex runtime token events, supports Codex live workspace options,
+adds Codex session stop control, neutralizes deterministic lower defaults, and
+keeps Linear candidate team-filter parity for source readback. Those changes
+are intentionally below the product: Extravaganza sees them as AppKit and
+Mezzanine DTOs; Jido Integration owns the connector/runtime execution details.
+
+## Connector And Auth Responsibilities
+
+Connector packages publish authored capability contracts and may provide
+generated `Jido.Action`, `Jido.Sensor`, and `Jido.Plugin` surfaces for common
+consumer use. Auth truth is explicit and durable: installs, connections,
+credential refs, versioned credentials, short-lived credential leases, profile
+metadata, and redaction posture live in the auth/control-plane packages.
+Connectors execute through short-lived leases and never need durable secret
+truth in caller-facing DTOs.
+
+The connector side currently includes:
+
+- Linear issue, user, workflow-state, comment create/update, source readback,
+  team filters, current-state telemetry, and raw GraphQL operation support
+- GitHub issue/comment behavior plus PR evidence operations used by the
+  coding-ops product path
+- Notion user, search, page, block, data-source, and comment operations
+- hosted webhook and async replay support through `DispatchRuntime` and
+  `WebhookRouter`
+- substrate lower-facts reads for Mezzanine, including submission receipt, run,
+  attempt, event, artifact, trace, and terminal execution outcome reads under
+  caller-carried tenant scope
+
+The repo is also where lower execution packet alignment is carried. It uses the
+Execution Plane vocabulary for authority decisions, boundary session
+descriptors, execution intent envelopes, routes, attach grants, credential
+handle refs, events, and outcomes, while keeping provisional lane-payload
+interiors isolated behind the public lower-gateway seam.
+
+## What Counts As Product Proof
+
+Jido Integration proves connector/runtime capability in its own packages and
+apps, but it does not by itself prove an Extravaganza product release. Product
+acceptance requires the product-owned Extravaganza command path, AppKit
+boundary, Mezzanine workflow/reducer path, Citadel governance packet, and this
+lower connector/runtime gateway to all participate in the same run.
+
+Use the root `mix ci` and package-local tests for integration-platform proof.
+Use the Extravaganza and StackLab acceptance commands when the claim is about a
+product-visible coding-ops workflow.
+
 ## Documentation
 
 ### General
