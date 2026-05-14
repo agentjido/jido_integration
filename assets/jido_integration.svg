@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" role="img" aria-labelledby="title desc">
+  <title id="title">Jido Integration</title>
+  <desc id="desc">A connector gateway mark with linked nodes and a central routing core.</desc>
+  <rect width="200" height="200" rx="32" fill="#0b0f14"/>
+  <circle cx="100" cy="100" r="56" fill="none" stroke="#8bd3ff" stroke-width="8"/>
+  <circle cx="100" cy="100" r="24" fill="#8bd3ff"/>
+  <circle cx="44" cy="54" r="14" fill="#f6c85f"/>
+  <circle cx="156" cy="54" r="14" fill="#9be28f"/>
+  <circle cx="44" cy="146" r="14" fill="#ff8f8f"/>
+  <circle cx="156" cy="146" r="14" fill="#b6a0ff"/>
+  <path d="M56 62 L82 84 M144 62 L118 84 M56 138 L82 116 M144 138 L118 116" stroke="#f7f7f7" stroke-width="7" stroke-linecap="round"/>
+  <text x="100" y="108" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#0b0f14">JI</text>
+</svg>

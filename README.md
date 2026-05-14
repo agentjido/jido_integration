@@ -1,3 +1,16 @@
+<p align="center">
+  <img src="assets/jido_integration.svg" width="200" height="200" alt="Jido Integration logo" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/nshkrdotcom/jido_integration">
+    <img alt="GitHub: jido_integration" src="https://img.shields.io/badge/GitHub-jido_integration-0b0f14?logo=github" />
+  </a>
+  <a href="https://github.com/nshkrdotcom/jido_integration/blob/main/LICENSE">
+    <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0b0f14.svg" />
+  </a>
+</p>
+
 # Jido Integration
 
 Jido Integration is an Elixir integration platform for publishing connector
@@ -104,6 +117,31 @@ lower connector/runtime gateway to all participate in the same run.
 Use the root `mix ci` and package-local tests for integration-platform proof.
 Use the Extravaganza and StackLab acceptance commands when the claim is about a
 product-visible coding-ops workflow.
+
+## Runtime Diagrams
+
+```mermaid
+flowchart TD
+  Caller["Mezzanine or Citadel bridge"] --> Facade["Jido.Integration.V2"]
+  Facade --> Catalog["Connector and capability catalog"]
+  Facade --> Auth["Auth install, connection, and lease"]
+  Auth --> Lease["Short-lived credential lease"]
+  Catalog --> Invoke["Invocation request"]
+  Lease --> Invoke
+  Invoke --> Runtime["Direct, session, stream, or inference runtime"]
+  Runtime --> Review["Run, attempt, event, artifact, review packet"]
+  Review --> LowerFacts["Tenant-scoped lower facts"]
+```
+
+```mermaid
+flowchart LR
+  Linear["Linear connector"] --> Common["Generated common surfaces"]
+  GitHub["GitHub connector"] --> Common
+  Notion["Notion connector"] --> Common
+  Codex["Codex session family"] --> Runtime["Runtime families"]
+  Inference["ReqLLM inference family"] --> Runtime
+  Runtime --> Platform["Control plane and review packets"]
+```
 
 ## Documentation
 
