@@ -122,6 +122,7 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
     case Map.get(operation_index, operation_id, []) do
       [%{manifest: manifest, operation: operation}] ->
         authorize_operation!(operation, authority)
+        host_projection = host_tool_projection(operation)
         manifest_hash = Manifest.canonical_hash(manifest)
         manifest_state = manifest_state(manifest)
         side_effect_class = side_effect_class(operation)
@@ -136,7 +137,9 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
           )
 
         %{
-          "name" => declared.name || tool_name_for(declared.raw, operation_id),
+          "name" =>
+            declared.name || host_projection_name(host_projection) ||
+              tool_name_for(declared.raw, operation_id),
           "operation_id" => operation_id,
           "connector" => manifest.connector,
           "catalog_ref" => "#{manifest.connector}:#{operation_id}",
@@ -145,10 +148,16 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
           "manifest_state" => manifest_state,
           "side_effect_class" => Atom.to_string(side_effect_class),
           "idempotency_class" => Atom.to_string(idempotency_class),
-          "description" => operation.description,
+          "description" => host_projection_description(host_projection) || operation.description,
           "allowed_tools" => operation_allowed_tools(operation),
-          "input_schema" => json_schema(operation.input_schema),
-          "output_schema" => json_schema(operation.output_schema),
+          "input_schema" =>
+            host_projection_schema(host_projection, :input_schema, fn ->
+              json_schema(operation.input_schema)
+            end),
+          "output_schema" =>
+            host_projection_schema(host_projection, :output_schema, fn ->
+              json_schema(operation.output_schema)
+            end),
           "authority_ref" => authority.authority_ref,
           "tenant_ref" => authority.tenant_ref,
           "installation_ref" => authority.installation_ref
@@ -214,6 +223,35 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
       operation_id
       |> String.replace(".", "_")
       |> String.replace("-", "_")
+  end
+
+  defp host_tool_projection(%OperationSpec{metadata: metadata}) do
+    case map_value(metadata, :dynamic_host_tool) do
+      %{} = projection -> projection
+      _other -> %{}
+    end
+  end
+
+  defp host_projection_name(projection), do: optional_string(map_value(projection, :name))
+
+  defp host_projection_description(projection) do
+    optional_string(map_value(projection, :description))
+  end
+
+  defp host_projection_schema(projection, key, default_fun) when is_function(default_fun, 0) do
+    case fetch_map_value(projection, key) do
+      {:ok, nil} -> nil
+      {:ok, schema} -> json_schema_value(schema)
+      :error -> default_fun.()
+    end
+  end
+
+  defp json_schema_value(%_{} = schema), do: json_schema(schema)
+  defp json_schema_value(%{} = schema), do: stringify_map_keys(schema)
+
+  defp json_schema_value(schema) do
+    raise ArgumentError,
+          "dynamic host tool schema must be a JSON schema map or Zoi schema, got: #{inspect(schema)}"
   end
 
   defp host_tool(tool) do
@@ -437,8 +475,29 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
 
   defp map_value(_value, _key), do: nil
 
+  defp fetch_map_value(%{} = map, key) when is_atom(key) do
+    cond do
+      Map.has_key?(map, key) -> {:ok, Map.fetch!(map, key)}
+      Map.has_key?(map, Atom.to_string(key)) -> {:ok, Map.fetch!(map, Atom.to_string(key))}
+      true -> :error
+    end
+  end
+
   defp optional_string(value) when is_binary(value) and value != "", do: value
   defp optional_string(_value), do: nil
+
+  defp stringify_map_keys(%{} = map) do
+    Map.new(map, fn {key, value} -> {string_key(key), stringify_map_keys(value)} end)
+  end
+
+  defp stringify_map_keys(values) when is_list(values),
+    do: Enum.map(values, &stringify_map_keys/1)
+
+  defp stringify_map_keys(value), do: value
+
+  defp string_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp string_key(key) when is_binary(key), do: key
+  defp string_key(key), do: to_string(key)
 
   defp drop_nil_values(map) do
     Map.reject(map, fn {_key, value} -> is_nil(value) end)

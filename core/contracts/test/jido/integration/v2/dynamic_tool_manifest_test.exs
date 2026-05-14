@@ -59,6 +59,57 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
     assert [%{"name" => "linear_comment_update"}] = resolved.host_tools
   end
 
+  test "projects operation-authored dynamic host tool schemas without lower output schema" do
+    input_schema = %{
+      type: "object",
+      additionalProperties: false,
+      required: ["query"],
+      properties: %{
+        query: %{type: "string"},
+        variables: %{type: ["object", "null"], additionalProperties: true}
+      }
+    }
+
+    assert {:ok, resolved} =
+             DynamicToolManifest.resolve(
+               %{tools: ["linear.graphql.execute"]},
+               connector_manifests: [
+                 manifest("linear", "linear.graphql.execute",
+                   operation_metadata: %{
+                     dynamic_host_tool: %{
+                       name: "linear_graphql",
+                       description: "Execute a governed Linear GraphQL tool.",
+                       input_schema: input_schema,
+                       output_schema: nil
+                     }
+                   }
+                 )
+               ],
+               allowed_operations: ["linear.graphql.execute"],
+               allowed_tools: ["linear.api.graphql.execute"]
+             )
+
+    assert [
+             %{
+               "name" => "linear_graphql",
+               "description" => "Execute a governed Linear GraphQL tool.",
+               "inputSchema" => host_input_schema
+             } = host_tool
+           ] = resolved.host_tools
+
+    assert host_input_schema == %{
+             "type" => "object",
+             "additionalProperties" => false,
+             "required" => ["query"],
+             "properties" => %{
+               "query" => %{"type" => "string"},
+               "variables" => %{"type" => ["object", "null"], "additionalProperties" => true}
+             }
+           }
+
+    refute Map.has_key?(host_tool, "outputSchema")
+  end
+
   test "rejects tools outside Citadel allowed operations" do
     assert {:error, error} =
              DynamicToolManifest.resolve(
@@ -163,14 +214,14 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
           maturity: :beta,
           publication: :public
         }),
-      operations: [operation(operation_id)],
+      operations: [operation(operation_id, Keyword.get(opts, :operation_metadata, %{}))],
       triggers: [],
       runtime_families: [:direct],
       metadata: %{manifest_state: Keyword.get(opts, :manifest_state, :active)}
     })
   end
 
-  defp operation(operation_id) do
+  defp operation(operation_id, metadata) do
     OperationSpec.new!(%{
       operation_id: operation_id,
       name: String.replace(operation_id, ".", "_"),
@@ -197,7 +248,8 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
       upstream: %{method: "POST", path: "/"},
       consumer_surface: %{mode: :connector_local, reason: "test"},
       schema_policy: %{input: :defined, output: :defined},
-      jido: %{}
+      jido: %{},
+      metadata: metadata
     })
   end
 end

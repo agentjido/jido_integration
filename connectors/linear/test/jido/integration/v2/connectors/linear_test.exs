@@ -231,6 +231,11 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
              "linear:linear.comments.update",
              "linear:linear.graphql.execute"
            ]
+
+    graphql_host_tool = Enum.find(resolved.host_tools, &(&1["name"] == "linear_graphql"))
+
+    assert graphql_host_tool["inputSchema"] == linear_graphql_host_tool_input_schema()
+    refute Map.has_key?(graphql_host_tool, "outputSchema")
   end
 
   test "rejects Linear dynamic tools not authorized by Citadel allowed operations" do
@@ -264,5 +269,24 @@ defmodule Jido.Integration.V2.Connectors.LinearTest do
 
     assert operation.schema_policy.input == :defined
     assert operation.schema_policy.output == :defined
+  end
+
+  defp linear_graphql_host_tool_input_schema do
+    %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "required" => ["query"],
+      "properties" => %{
+        "query" => %{
+          "type" => "string",
+          "description" => "GraphQL query or mutation document to execute against Linear."
+        },
+        "variables" => %{
+          "type" => ["object", "null"],
+          "description" => "Optional GraphQL variables object.",
+          "additionalProperties" => true
+        }
+      }
+    }
   end
 end

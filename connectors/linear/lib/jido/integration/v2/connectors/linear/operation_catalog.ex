@@ -194,9 +194,35 @@ defmodule Jido.Integration.V2.Connectors.Linear.OperationCatalog do
         rollout_phase: :a0,
         publication: :public,
         document: PublishedSurface.document("linear.graphql.execute"),
-        operation_name: PublishedSurface.operation_name("linear.graphql.execute")
+        operation_name: PublishedSurface.operation_name("linear.graphql.execute"),
+        dynamic_host_tool: linear_graphql_dynamic_host_tool()
       }
     )
+  end
+
+  defp linear_graphql_dynamic_host_tool do
+    %{
+      name: "linear_graphql",
+      description:
+        "Execute a raw GraphQL query or mutation against Linear using the active governed auth binding.",
+      input_schema: %{
+        "type" => "object",
+        "additionalProperties" => false,
+        "required" => ["query"],
+        "properties" => %{
+          "query" => %{
+            "type" => "string",
+            "description" => "GraphQL query or mutation document to execute against Linear."
+          },
+          "variables" => %{
+            "type" => ["object", "null"],
+            "description" => "Optional GraphQL variables object.",
+            "additionalProperties" => true
+          }
+        }
+      },
+      output_schema: nil
+    }
   end
 
   defp issues_update_operation do
