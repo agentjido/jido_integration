@@ -1,13 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" role="img" aria-labelledby="title desc">
-  <title id="title">Jido Integration</title>
-  <desc id="desc">A connector gateway mark with linked nodes and a central routing core.</desc>
-  <rect width="200" height="200" rx="32" fill="#0b0f14"/>
-  <circle cx="100" cy="100" r="56" fill="none" stroke="#8bd3ff" stroke-width="8"/>
-  <circle cx="100" cy="100" r="24" fill="#8bd3ff"/>
-  <circle cx="44" cy="54" r="14" fill="#f6c85f"/>
-  <circle cx="156" cy="54" r="14" fill="#9be28f"/>
-  <circle cx="44" cy="146" r="14" fill="#ff8f8f"/>
-  <circle cx="156" cy="146" r="14" fill="#b6a0ff"/>
-  <path d="M56 62 L82 84 M144 62 L118 84 M56 138 L82 116 M144 138 L118 116" stroke="#f7f7f7" stroke-width="7" stroke-linecap="round"/>
-  <text x="100" y="108" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#0b0f14">JI</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" role="img" aria-labelledby="jido-title jido-desc">
+  <title id="jido-title">Jido Integration</title>
+  <desc id="jido-desc">A hexagonal connector gateway with auth lock, leased runtime hub, provider plugs, and tenant-scoped lower facts.</desc>
+  <defs>
+    <clipPath id="jido-hex">
+      <path d="M100 4 L183 52 L183 148 L100 196 L17 148 L17 52 Z"/>
+    </clipPath>
+    <linearGradient id="jido-bg" x1="20" y1="30" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#143f47"/>
+      <stop offset="0.5" stop-color="#11243c"/>
+      <stop offset="1" stop-color="#070d15"/>
+    </linearGradient>
+    <linearGradient id="jido-hub" x1="67" y1="63" x2="134" y2="138" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8fffe8"/>
+      <stop offset="0.48" stop-color="#70a8ff"/>
+      <stop offset="1" stop-color="#ffd36e"/>
+    </linearGradient>
+    <filter id="jido-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#000000" flood-opacity="0.36"/>
+    </filter>
+  </defs>
+  <g clip-path="url(#jido-hex)">
+    <path d="M100 4 L183 52 L183 148 L100 196 L17 148 L17 52 Z" fill="url(#jido-bg)"/>
+    <g fill="none" stroke="#8fffe8" stroke-width="3" stroke-linecap="round" opacity="0.7">
+      <path d="M100 70 C83 57 65 48 43 45"/>
+      <path d="M100 70 C117 57 135 48 157 45"/>
+      <path d="M76 112 C60 123 48 137 38 157"/>
+      <path d="M124 112 C140 123 152 137 162 157"/>
+      <path d="M100 128 V166"/>
+    </g>
+    <g filter="url(#jido-shadow)">
+      <circle cx="100" cy="98" r="38" fill="#0b1726" stroke="url(#jido-hub)" stroke-width="5"/>
+      <path d="M77 97 C85 84 93 78 100 78 C107 78 115 84 123 97 C115 110 107 116 100 116 C93 116 85 110 77 97 Z" fill="url(#jido-hub)" opacity="0.88"/>
+      <circle cx="100" cy="97" r="8" fill="#0b1726"/>
+      <path d="M100 87 V107 M90 97 H110" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+    </g>
+    <g fill="#0b1726" stroke="#f6fbff" stroke-width="2.2">
+      <path d="M30 37 H56 V59 H30 Z"/>
+      <path d="M144 37 H170 V59 H144 Z"/>
+      <path d="M25 151 H51 V171 H25 Z"/>
+      <path d="M149 151 H175 V171 H149 Z"/>
+      <path d="M87 159 H113 V177 H87 Z"/>
+    </g>
+    <g stroke="#f6fbff" stroke-width="2" stroke-linecap="round" fill="none">
+      <path d="M36 48 H50 M38 55 H48"/>
+      <path d="M151 45 L163 45 M151 53 L165 53"/>
+      <path d="M32 160 H45 M157 160 H169 M93 168 H107"/>
+    </g>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M73 48 V38 C73 29 87 29 87 38 V48 H73 Z" stroke="#ffd36e" stroke-width="3"/>
+      <rect x="69" y="48" width="22" height="18" rx="4" fill="#0b1726" stroke="#ffd36e" stroke-width="3"/>
+      <path d="M124 48 C132 39 144 41 149 51" stroke="#70a8ff" stroke-width="4"/>
+      <path d="M124 48 L132 49 M149 51 L142 52" stroke="#70a8ff" stroke-width="4"/>
+    </g>
+    <path d="M100 4 L183 52 L183 148 L100 196 L17 148 L17 52 Z" fill="none" stroke="#b8fff1" stroke-width="4"/>
+  </g>
 </svg>
