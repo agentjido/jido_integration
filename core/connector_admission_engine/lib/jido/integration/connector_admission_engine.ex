@@ -69,13 +69,30 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     defstruct @enforce_keys ++ [:rejection_reason, :app_config_ref]
   end
 
+  defmodule Store do
+    @moduledoc false
+
+    use Agent
+
+    @spec start_link(keyword()) :: Agent.on_start()
+    def start_link(opts) do
+      name = Keyword.get(opts, :name, __MODULE__)
+      Agent.start_link(&initial_state/0, name: name)
+    end
+
+    @spec initial_state() :: map()
+    def initial_state do
+      %{records: %{}, manifest_index: %{}, hash_index: %{}}
+    end
+  end
+
   @type admission_status :: atom()
   @type admission_record :: %AdmissionRecord{}
 
   @spec reset!() :: :ok
   def reset! do
     ensure_store!()
-    Agent.update(@store, fn _state -> initial_state() end)
+    Agent.update(@store, fn _state -> Store.initial_state() end)
   end
 
   @spec admit(Manifest.t(), keyword() | map()) ::
@@ -316,18 +333,34 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
   defp ensure_store! do
     case Process.whereis(@store) do
       nil ->
-        case Agent.start(fn -> initial_state() end, name: @store) do
-          {:ok, _pid} -> :ok
-          {:error, {:already_started, _pid}} -> :ok
-        end
+        ensure_application_store_started!()
 
       _pid ->
         :ok
     end
   end
 
-  defp initial_state do
-    %{records: %{}, manifest_index: %{}, hash_index: %{}}
+  defp ensure_application_store_started! do
+    case Application.ensure_all_started(:jido_integration_connector_admission_engine) do
+      {:ok, _started} ->
+        ensure_store_registered!()
+
+      {:error, {:already_started, _app}} ->
+        ensure_store_registered!()
+
+      {:error, reason} ->
+        raise "failed to start connector admission store supervisor: #{inspect(reason)}"
+    end
+  end
+
+  defp ensure_store_registered! do
+    case Process.whereis(@store) do
+      pid when is_pid(pid) ->
+        :ok
+
+      nil ->
+        raise "connector admission store supervisor started without registering #{@store}"
+    end
   end
 
   defp normalize_opts(opts) when is_list(opts), do: opts |> Map.new() |> normalize_opts()

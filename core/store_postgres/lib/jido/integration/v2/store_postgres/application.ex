@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.StorePostgres.Application do
   def start(_type, _args) do
     children = [
       Jido.Integration.V2.StorePostgres.Repo,
+      {Task.Supervisor, name: Jido.Integration.V2.StorePostgres.TaskSupervisor},
       Jido.Integration.V2.StorePostgres.SubmissionRetentionWorker
     ]
 

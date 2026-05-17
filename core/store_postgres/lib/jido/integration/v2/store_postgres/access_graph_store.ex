@@ -139,7 +139,7 @@ defmodule Jido.Integration.V2.StorePostgres.AccessGraphStore do
     started = System.monotonic_time(:microsecond)
 
     task =
-      Task.async(fn ->
+      Task.Supervisor.async_nolink(Jido.Integration.V2.StorePostgres.TaskSupervisor, fn ->
         Repo.transaction(
           fn ->
             epoch_record =
