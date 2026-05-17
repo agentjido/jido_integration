@@ -130,7 +130,7 @@ defmodule Jido.Integration.V2.Manifests do
       operation_ref: operation.operation_id,
       operation_role: request.operation_role,
       operation_class: operation_class(operation, capability),
-      binding_kind: entry.manifest.auth.binding_kind,
+      binding_kind: generic_binding_kind(operation, request),
       side_effect_class: Contracts.get(capability.metadata, :side_effect_class),
       input_schema_ref: schema_ref(operation, :input_schema_ref, "input"),
       output_schema_ref: schema_ref(operation, :output_schema_ref, "output"),
@@ -138,6 +138,7 @@ defmodule Jido.Integration.V2.Manifests do
       runtime_family: operation.runtime_class,
       manifest_digest: entry.manifest_digest,
       required_scopes: Capability.required_scopes(capability),
+      connector_auth_binding_kind: entry.manifest.auth.binding_kind,
       provider_family: entry.provider_family,
       provider_operation_id: provider_operation_id(operation),
       connector_version: entry.connector_version,
@@ -151,6 +152,10 @@ defmodule Jido.Integration.V2.Manifests do
           manifest_connector: entry.manifest.connector
         })
     })
+  end
+
+  defp generic_binding_kind(%OperationSpec{} = operation, %OperationLookupRequest{} = request) do
+    Contracts.get(operation.metadata, :binding_kind, request.binding_kind)
   end
 
   defp operation_class(%OperationSpec{} = operation, %Capability{} = capability) do

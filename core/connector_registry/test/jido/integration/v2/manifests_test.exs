@@ -29,7 +29,8 @@ defmodule Jido.Integration.V2.ManifestsTest do
     assert descriptor.operation_ref == "example.documents.list"
     assert descriptor.operation_role == :source_read
     assert descriptor.operation_class == :source_read
-    assert descriptor.binding_kind == :connection_id
+    assert descriptor.binding_kind == :source
+    assert descriptor.connector_auth_binding_kind == :connection_id
     assert descriptor.side_effect_class == :read
     assert descriptor.runtime_family == :direct
     assert descriptor.manifest_digest == entry.manifest_digest
@@ -76,10 +77,9 @@ defmodule Jido.Integration.V2.ManifestsTest do
                manifest_entries: [entry]
              )
 
-    assert {:error,
-            {:binding_kind_mismatch, "example.documents.list", :provider_account, :connection_id}} =
+    assert {:error, {:binding_kind_mismatch, "example.documents.list", :runtime_tool, :source}} =
              Manifests.resolve_operation(
-               request(entry, binding_kind: :provider_account),
+               request(entry, binding_kind: :runtime_tool),
                manifest_entries: [entry]
              )
 
@@ -164,7 +164,7 @@ defmodule Jido.Integration.V2.ManifestsTest do
                    operation_ref: operation.operation_id,
                    operation_role: :runtime_tool,
                    operation_class: :connector_operation,
-                   binding_kind: entry.manifest.auth.binding_kind,
+                   binding_kind: :runtime_tool,
                    required_runtime_family: operation.runtime_class
                  ),
                  manifest_entries: entries
@@ -184,7 +184,7 @@ defmodule Jido.Integration.V2.ManifestsTest do
         operation_ref: "example.documents.list",
         operation_role: :source_read,
         operation_class: :source_read,
-        binding_kind: :connection_id,
+        binding_kind: :source,
         required_runtime_family: :direct,
         binding_ref: "binding://tenant/example/docs/source",
         pack_ref: "pack://example/doc-review",
@@ -272,6 +272,7 @@ defmodule Jido.Integration.V2.ManifestsTest do
           jido: %{action: %{name: "documents_list"}},
           metadata: %{
             operation_class: :source_read,
+            binding_kind: :source,
             side_effect_class: side_effect_class,
             provider_operation_id: "provider.documents.list",
             input_schema_ref: "schema://example/documents/list/input",

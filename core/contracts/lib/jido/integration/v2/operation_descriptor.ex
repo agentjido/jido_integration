@@ -25,6 +25,7 @@ defmodule Jido.Integration.V2.OperationDescriptor do
   @enforce_keys @required_fields
   defstruct @required_fields ++
               [
+                connector_auth_binding_kind: nil,
                 provider_family: nil,
                 provider_operation_id: nil,
                 connector_version: nil,
@@ -48,6 +49,7 @@ defmodule Jido.Integration.V2.OperationDescriptor do
           runtime_family: Contracts.runtime_class(),
           manifest_digest: String.t(),
           required_scopes: [String.t()],
+          connector_auth_binding_kind: atom() | nil,
           provider_family: String.t() | nil,
           provider_operation_id: String.t() | nil,
           connector_version: String.t() | nil,
@@ -72,6 +74,10 @@ defmodule Jido.Integration.V2.OperationDescriptor do
           {field, Contracts.fetch_required!(attrs, field, field_name(field))}
         end)
         |> Map.put(:provider_family, Contracts.get(attrs, :provider_family))
+        |> Map.put(
+          :connector_auth_binding_kind,
+          Contracts.get(attrs, :connector_auth_binding_kind)
+        )
         |> Map.put(:provider_operation_id, Contracts.get(attrs, :provider_operation_id))
         |> Map.put(:connector_version, Contracts.get(attrs, :connector_version))
         |> Map.put(:adapter_ref, Contracts.get(attrs, :adapter_ref))
@@ -119,6 +125,11 @@ defmodule Jido.Integration.V2.OperationDescriptor do
          manifest_digest: non_empty!(descriptor.manifest_digest, "manifest_digest"),
          required_scopes:
            Contracts.normalize_string_list!(descriptor.required_scopes, "required_scopes"),
+         connector_auth_binding_kind:
+           optional_atomish(
+             descriptor.connector_auth_binding_kind,
+             "connector_auth_binding_kind"
+           ),
          provider_family: optional_non_empty(descriptor.provider_family, "provider_family"),
          provider_operation_id:
            optional_non_empty(descriptor.provider_operation_id, "provider_operation_id"),
@@ -153,6 +164,9 @@ defmodule Jido.Integration.V2.OperationDescriptor do
     raise ArgumentError,
           "#{field_name} must be an atom or known atom string, got: #{inspect(value)}"
   end
+
+  defp optional_atomish(nil, _field_name), do: nil
+  defp optional_atomish(value, field_name), do: atomish!(value, field_name)
 
   defp map!(value, _field_name) when is_map(value), do: Map.new(value)
 
