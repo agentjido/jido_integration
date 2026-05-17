@@ -47,18 +47,18 @@ defmodule Jido.Integration.V2.ControlPlanePersistenceTest do
              Persistence.resolve(profile: :integration_postgres)
   end
 
-  test "records tenant provider connector partitions for run routing" do
+  test "records tenant resource connector partitions for run routing" do
     partition =
       Persistence.partition(
         tenant_ref: "tenant://tenant-1",
-        provider_family: "linear",
-        connector_instance_ref: "connector-instance://tenant-1/linear/a",
+        resource_family: "linear",
+        resource_instance_ref: "connector-instance://tenant-1/linear/a",
         data_class: :run_truth
       )
 
     assert partition.tenant_ref == "tenant://tenant-1"
-    assert partition.provider_family == "linear"
-    assert partition.connector_instance_ref == "connector-instance://tenant-1/linear/a"
+    assert partition.resource_family == "linear"
+    assert partition.resource_instance_ref == "connector-instance://tenant-1/linear/a"
     assert partition.data_class == :run_truth
   end
 

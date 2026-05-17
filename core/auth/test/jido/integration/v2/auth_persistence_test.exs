@@ -38,19 +38,19 @@ defmodule Jido.Integration.V2.AuthPersistenceTest do
              Persistence.resolve(profile: :integration_postgres)
   end
 
-  test "records tenant provider connector partitions for lease routing" do
+  test "records tenant resource connector partitions for lease routing" do
     partition =
       Persistence.partition(
         tenant_ref: "tenant://tenant-1",
-        provider_family: "github",
-        provider_account_ref: "provider-account://github/redacted",
-        connector_instance_ref: "connector-instance://tenant-1/github/a"
+        resource_family: "github",
+        resource_account_ref: "provider-account://github/redacted",
+        resource_instance_ref: "connector-instance://tenant-1/github/a"
       )
 
     assert partition.tenant_ref == "tenant://tenant-1"
-    assert partition.provider_family == "github"
-    assert partition.provider_account_ref == "provider-account://github/redacted"
-    assert partition.connector_instance_ref == "connector-instance://tenant-1/github/a"
+    assert partition.resource_family == "github"
+    assert partition.resource_account_ref == "provider-account://github/redacted"
+    assert partition.resource_instance_ref == "connector-instance://tenant-1/github/a"
   end
 
   defp snapshot_env do
