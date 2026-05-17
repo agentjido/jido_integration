@@ -134,28 +134,40 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
   end
 
   test "rejects unknown lower runtime kinds and ungranted capabilities" do
-    assert_raise ArgumentError, ~r/invalid lower_runtime_kind/, fn ->
-      GovernedLowerEnvelope.new!(Map.put(@base_attrs, :lower_runtime_kind, :custom_tunnel))
-    end
+    error =
+      assert_raise ArgumentError, fn ->
+        GovernedLowerEnvelope.new!(Map.put(@base_attrs, :lower_runtime_kind, :custom_tunnel))
+      end
 
-    assert_raise ArgumentError, ~r/allowed_operations must include capability_id/, fn ->
-      GovernedLowerEnvelope.new!(
-        Map.put(@base_attrs, :allowed_operations, ["linear.comments.update"])
-      )
-    end
+    assert String.contains?(Exception.message(error), "invalid lower_runtime_kind")
+
+    error =
+      assert_raise ArgumentError, fn ->
+        GovernedLowerEnvelope.new!(
+          Map.put(@base_attrs, :allowed_operations, ["linear.comments.update"])
+        )
+      end
+
+    assert String.contains?(
+             Exception.message(error),
+             "allowed_operations must include capability_id"
+           )
   end
 
   test "requires active manifest for non-idempotent write negotiation" do
-    assert_raise ArgumentError, ~r/active connector manifest/, fn ->
-      @base_attrs
-      |> Map.put(:capability_id, "linear.comments.update")
-      |> Map.put(:action_id, "linear.comments.update")
-      |> Map.put(:allowed_operations, ["linear.comments.update"])
-      |> Map.put(:side_effect_class, :write)
-      |> Map.put(:idempotency_class, :non_idempotent)
-      |> Map.put(:connector_manifest_state, :stale)
-      |> GovernedLowerEnvelope.new!()
-    end
+    error =
+      assert_raise ArgumentError, fn ->
+        @base_attrs
+        |> Map.put(:capability_id, "linear.comments.update")
+        |> Map.put(:action_id, "linear.comments.update")
+        |> Map.put(:allowed_operations, ["linear.comments.update"])
+        |> Map.put(:side_effect_class, :write)
+        |> Map.put(:idempotency_class, :non_idempotent)
+        |> Map.put(:connector_manifest_state, :stale)
+        |> GovernedLowerEnvelope.new!()
+      end
+
+    assert String.contains?(Exception.message(error), "active connector manifest")
   end
 
   test "receipt and denial join back to the envelope" do

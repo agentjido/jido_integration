@@ -38,7 +38,7 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
              metadata = host_tool["metadata"]
 
              String.starts_with?(metadata["manifest_ref"], "jido://v2/connector_manifest/") and
-               metadata["manifest_hash"] =~ ~r/^sha256:[a-f0-9]{64}$/ and
+               sha256_hash?(metadata["manifest_hash"]) and
                metadata["manifest_state"] == "active"
            end)
 
@@ -190,6 +190,14 @@ defmodule Jido.Integration.V2.DynamicToolManifestTest do
     assert get_in(hd(resolved.host_tools), ["metadata", "side_effect_class"]) == "read"
     assert get_in(hd(resolved.host_tools), ["metadata", "idempotency_class"]) == "idempotent"
   end
+
+  defp sha256_hash?("sha256:" <> hash) when byte_size(hash) == 64 do
+    hash
+    |> String.to_charlist()
+    |> Enum.all?(&(&1 in ?0..?9 or &1 in ?a..?f))
+  end
+
+  defp sha256_hash?(_value), do: false
 
   defp manifest(connector, operation_id, opts \\ []) do
     Manifest.new!(%{

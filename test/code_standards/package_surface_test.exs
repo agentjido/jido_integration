@@ -369,7 +369,14 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
   end
 
   test "workspace root runtime and tooling files avoid direct OS env APIs" do
-    forbidden = ~r/System\.(get_env|fetch_env|fetch_env!|put_env|delete_env|get_envs?)/
+    forbidden_calls = [
+      "System.get_env(",
+      "System.fetch_env(",
+      "System.fetch_env!(",
+      "System.put_env(",
+      "System.delete_env(",
+      "System.get_envs("
+    ]
 
     for relative_path <- [
           "mix.exs",
@@ -380,7 +387,7 @@ defmodule Jido.Integration.Workspace.PackageSurfaceTest do
         ] do
       source = File.read!(Path.join(repo_root(), relative_path))
 
-      refute source =~ forbidden,
+      refute Enum.any?(forbidden_calls, &String.contains?(source, &1)),
              "#{relative_path} must use materialized runtime config or explicit command env instead of direct OS env APIs"
     end
   end
