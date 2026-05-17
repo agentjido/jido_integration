@@ -202,7 +202,7 @@ defmodule Jido.Integration.V2.DeterministicLowerLane do
           "claim://deterministic-lower-lane/governed-envelope"
         ]
       },
-      github_pr_evidence: github_pr_evidence(envelope),
+      provider_evidence: provider_evidence(envelope),
       source_publication: source_publication(envelope, lower_receipt_ref),
       workpad_refs: ["source-workpad://#{encoded}/operator-review"]
     }
@@ -238,7 +238,7 @@ defmodule Jido.Integration.V2.DeterministicLowerLane do
     ]
   end
 
-  defp github_pr_evidence(%GovernedLowerEnvelope{} = envelope) do
+  defp provider_evidence(%GovernedLowerEnvelope{} = envelope) do
     encoded = encoded_request_ref(envelope)
 
     %{
@@ -278,7 +278,7 @@ defmodule Jido.Integration.V2.DeterministicLowerLane do
 
     [
       %{
-        "kind" => "github_pr",
+        "kind" => "provider_evidence",
         "content_ref" => "github-pr://#{encoded}",
         "collector_ref" => "deterministic_lower_lane"
       },

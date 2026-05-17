@@ -25,7 +25,7 @@ defmodule Jido.Integration.V2DeterministicLowerLaneTest do
     assert receipt["capability_id"] == "codex.session.turn"
     assert facts.status == "succeeded"
     assert facts.source_publication["capability_id"] == "linear.comments.update"
-    assert facts.github_pr_evidence["provider"] == "github"
+    assert facts.provider_evidence["provider"] == "github"
 
     event_kinds = Enum.map(facts.runtime_events, & &1["event_kind"])
 
