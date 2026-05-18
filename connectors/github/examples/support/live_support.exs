@@ -90,6 +90,26 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     print_result!("full acceptance", result)
   end
 
+  @spec run_prepare_disposable_pr!([String.t()]) :: map()
+  def run_prepare_disposable_pr!(argv \\ System.argv()) do
+    spec = prepare!(:prepare_pr, argv)
+    auth = install_connection!(spec)
+
+    spec
+    |> perform_prepare_disposable_pr!(auth)
+    |> print_json_result!()
+  end
+
+  @spec run_delete_ref!([String.t()]) :: map()
+  def run_delete_ref!(argv \\ System.argv()) do
+    spec = prepare!(:delete_ref, argv)
+    auth = install_connection!(spec)
+
+    spec
+    |> perform_delete_ref!(auth)
+    |> print_json_result!()
+  end
+
   defp prepare!(mode, argv) do
     spec = LiveSpec.parse!(mode, argv)
     spec = Map.put(spec, :token, resolve_token!())
@@ -665,6 +685,107 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     end
   end
 
+  defp perform_prepare_disposable_pr!(spec, auth) do
+    repo = spec.write_repo
+    seed = write_seed()
+    repo_result = fetch_repo!(auth, repo)
+    default_branch = repo_result.output.default_branch
+
+    expect!(
+      is_binary(default_branch) and default_branch != "",
+      "repository fetch did not return a default branch"
+    )
+
+    base_commits_result = list_commits!(auth, repo, default_branch)
+    base_sha = first_commit_sha!(base_commits_result.output.commits, repo)
+    branch = unique_branch_name()
+    create_ref_name = "refs/heads/#{branch}"
+    delete_ref_name = "heads/#{branch}"
+    scratch_path = "generated/live-e2e/#{branch}.txt"
+    create_ref_result = create_ref!(auth, repo, create_ref_name, base_sha)
+
+    try do
+      upsert_result =
+        upsert_contents!(
+          auth,
+          repo,
+          scratch_path,
+          "Add #{branch} GitHub product cleanup proof artifact",
+          disposable_pr_content(seed, repo, default_branch, base_sha),
+          branch
+        )
+
+      create_pr_result =
+        create_pr!(
+          auth,
+          repo,
+          "Jido prepared cleanup proof #{branch}",
+          "Disposable PR prepared for the Extravaganza product cleanup proof.",
+          branch,
+          default_branch
+        )
+
+      fetch_result = fetch_pr!(auth, repo, create_pr_result.output.pull_number)
+
+      expect!(create_ref_result.output.sha == base_sha, "branch ref used the wrong base sha")
+      expect!(upsert_result.output.path == scratch_path, "scratch file used the wrong path")
+      expect!(create_pr_result.output.repo == repo, "PR create returned the wrong repo")
+      expect!(fetch_result.output.state == "open", "prepared PR is not open")
+
+      %{
+        proof_class: "github_disposable_pr_preparation",
+        status: "prepared",
+        repo: repo,
+        default_branch: default_branch,
+        base_sha: base_sha,
+        branch: branch,
+        create_ref: create_ref_name,
+        delete_ref: delete_ref_name,
+        scratch_path: scratch_path,
+        scratch_commit_sha: upsert_result.output.commit_sha,
+        pull_number: create_pr_result.output.pull_number,
+        pull_state: fetch_result.output.state,
+        cleanup_required?: true,
+        run_ids: [
+          repo_result.run.run_id,
+          base_commits_result.run.run_id,
+          create_ref_result.run.run_id,
+          upsert_result.run.run_id,
+          create_pr_result.run.run_id,
+          fetch_result.run.run_id
+        ]
+      }
+    rescue
+      error ->
+        safe_close_pr(auth, repo, output_pull_number(create_ref_result))
+        safe_delete_ref(auth, repo, delete_ref_name)
+        reraise(error, __STACKTRACE__)
+    end
+  end
+
+  defp output_pull_number(%{output: %{pull_number: pull_number}}), do: pull_number
+  defp output_pull_number(_value), do: nil
+
+  defp perform_delete_ref!(spec, auth) do
+    repo = spec.write_repo
+    delete_ref_name = ref_to_delete(spec.branch)
+    delete_ref_result = delete_ref!(auth, repo, delete_ref_name)
+
+    expect!(
+      delete_ref_result.output.deleted? == true,
+      "branch ref delete did not report success"
+    )
+
+    %{
+      proof_class: "github_disposable_ref_cleanup",
+      status: "deleted",
+      repo: repo,
+      branch: spec.branch,
+      deleted_ref: delete_ref_result.output.ref,
+      run_ids: [delete_ref_result.run.run_id]
+    }
+  end
+
   defp exercise_created_disposable_pr!(
          auth,
          repo,
@@ -828,6 +949,10 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
     "jido-live-e2e-#{unique_marker()}"
   end
 
+  defp ref_to_delete("refs/heads/" <> branch), do: "heads/#{branch}"
+  defp ref_to_delete("heads/" <> _rest = ref), do: ref
+  defp ref_to_delete(branch), do: "heads/#{branch}"
+
   defp unique_marker do
     "#{System.system_time(:second)}-#{System.unique_integer([:positive])}"
   end
@@ -872,6 +997,11 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSupport do
   defp print_result!(label, result) do
     IO.puts("GitHub #{label} proof passed.")
     IO.inspect(result, label: "result")
+    result
+  end
+
+  defp print_json_result!(result) do
+    IO.puts("JSON_RESULT:#{Jason.encode!(result)}")
     result
   end
 

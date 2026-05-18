@@ -1,7 +1,7 @@
 defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
   @moduledoc false
 
-  @modes [:auth, :read, :write, :all]
+  @modes [:auth, :read, :write, :all, :prepare_pr, :delete_ref]
 
   @defaults %{
     subject: "github-live-proof",
@@ -17,10 +17,11 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
             actor_id: @defaults.actor_id,
             tenant_id: @defaults.tenant_id,
             write_label: @defaults.write_label,
+            branch: nil,
             api_base_url: nil,
             timeout_ms: nil
 
-  @type mode :: :auth | :read | :write | :all
+  @type mode :: :auth | :read | :write | :all | :prepare_pr | :delete_ref
   @type t :: %__MODULE__{
           mode: mode(),
           repo: String.t() | nil,
@@ -29,6 +30,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
           actor_id: String.t(),
           tenant_id: String.t(),
           write_label: String.t(),
+          branch: String.t() | nil,
           api_base_url: String.t() | nil,
           timeout_ms: pos_integer() | nil
         }
@@ -59,7 +61,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
   @spec usage() :: String.t()
   def usage do
     """
-    usage: scripts/live_acceptance.sh [auth|read|write|all] [options]
+    usage: scripts/live_acceptance.sh [auth|read|write|prepare-pr|delete-ref|all] [options]
 
     options:
       --repo owner/repo              readable repository for read/all modes
@@ -68,6 +70,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
       --actor-id value               operator actor id
       --tenant-id value              tenant id
       --write-label value            label applied during write proof
+      --branch name                  branch for delete-ref mode
       --api-base-url url             optional GitHub Enterprise API base URL
       --timeout-ms positive_integer  optional HTTP timeout
     """
@@ -114,6 +117,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
   defp flag_key("--actor-id"), do: {:ok, :actor_id}
   defp flag_key("--tenant-id"), do: {:ok, :tenant_id}
   defp flag_key("--write-label"), do: {:ok, :write_label}
+  defp flag_key("--branch"), do: {:ok, :branch}
   defp flag_key("--api-base-url"), do: {:ok, :api_base_url}
   defp flag_key("--timeout-ms"), do: {:ok, :timeout_ms}
   defp flag_key(_flag), do: :error
@@ -139,6 +143,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
        |> normalize_string(:actor_id)
        |> normalize_string(:tenant_id)
        |> normalize_string(:write_label)
+       |> normalize_string(:branch)
        |> normalize_string(:api_base_url)
        |> Map.put(:timeout_ms, timeout_ms)}
     end
@@ -172,11 +177,24 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
     if Map.get(opts, :repo), do: :ok, else: {:error, {:missing, ["--repo"]}}
   end
 
-  defp validate_required(mode, opts) when mode in [:write, :all] do
+  defp validate_required(mode, opts) when mode in [:write, :all, :prepare_pr] do
     if Map.get(opts, :repo) || Map.get(opts, :write_repo) do
       :ok
     else
       {:error, {:missing, ["--repo", "--write-repo"]}}
+    end
+  end
+
+  defp validate_required(:delete_ref, opts) do
+    cond do
+      is_nil(Map.get(opts, :repo)) and is_nil(Map.get(opts, :write_repo)) ->
+        {:error, {:missing, ["--repo", "--write-repo"]}}
+
+      is_nil(Map.get(opts, :branch)) ->
+        {:error, {:missing, ["--branch"]}}
+
+      true ->
+        :ok
     end
   end
 
@@ -221,6 +239,7 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
       actor_id: Map.get(opts, :actor_id, @defaults.actor_id),
       tenant_id: Map.get(opts, :tenant_id, @defaults.tenant_id),
       write_label: Map.get(opts, :write_label, @defaults.write_label),
+      branch: Map.get(opts, :branch),
       api_base_url: Map.get(opts, :api_base_url),
       timeout_ms: Map.get(opts, :timeout_ms)
     })
@@ -229,7 +248,9 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpec do
   defp repo_for_mode(:auth, _repo), do: nil
   defp repo_for_mode(_mode, repo), do: repo
 
-  defp write_default(mode, repo) when mode in [:write, :all], do: repo
+  defp write_default(mode, repo) when mode in [:write, :all, :prepare_pr, :delete_ref],
+    do: repo
+
   defp write_default(_mode, _repo), do: nil
 
   defp error_message({:missing, flags}) do

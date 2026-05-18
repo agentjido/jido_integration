@@ -66,6 +66,40 @@ defmodule Jido.Integration.V2.Connectors.GitHub.LiveSpecTest do
     assert all_spec.write_repo == "agentjido/jido_integration_v2_sandbox"
   end
 
+  test "prepare and delete-ref modes expose only generated-provider-object lifecycle inputs" do
+    assert {:ok, prepare_spec} =
+             LiveSpec.parse(:prepare_pr, [
+               "--write-repo",
+               "agentjido/jido_integration_v2_sandbox"
+             ])
+
+    assert prepare_spec.mode == :prepare_pr
+    assert prepare_spec.repo == "agentjido/jido_integration_v2_sandbox"
+    assert prepare_spec.write_repo == "agentjido/jido_integration_v2_sandbox"
+    assert prepare_spec.branch == nil
+    refute Map.has_key?(prepare_spec, :pull_number)
+
+    assert {:error, {:missing, ["--branch"]}} =
+             LiveSpec.parse(:delete_ref, [
+               "--write-repo",
+               "agentjido/jido_integration_v2_sandbox"
+             ])
+
+    assert {:ok, delete_spec} =
+             LiveSpec.parse(:delete_ref, [
+               "--write-repo",
+               "agentjido/jido_integration_v2_sandbox",
+               "--branch",
+               "jido-live-e2e-1"
+             ])
+
+    assert delete_spec.mode == :delete_ref
+    assert delete_spec.repo == "agentjido/jido_integration_v2_sandbox"
+    assert delete_spec.write_repo == "agentjido/jido_integration_v2_sandbox"
+    assert delete_spec.branch == "jido-live-e2e-1"
+    refute Map.has_key?(delete_spec, :pull_number)
+  end
+
   test "normalizes optional typed live settings" do
     assert {:ok, spec} =
              LiveSpec.parse(:read, [

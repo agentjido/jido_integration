@@ -20,12 +20,18 @@ case "${MODE}" in
   write)
     mix run examples/github_live_write_acceptance.exs "$@"
     ;;
+  prepare-pr)
+    mix run examples/github_live_prepare_pr.exs "$@"
+    ;;
+  delete-ref)
+    mix run examples/github_live_delete_ref.exs "$@"
+    ;;
   all)
     mix run examples/github_live_all_acceptance.exs "$@"
     ;;
   *)
     cat <<'USAGE'
-usage: scripts/live_acceptance.sh [auth|read|write|all] [options]
+usage: scripts/live_acceptance.sh [auth|read|write|prepare-pr|delete-ref|all] [options]
 
 Runs the package-local GitHub live proofs through the current v2 auth and platform surface.
 
@@ -33,6 +39,8 @@ Examples:
   scripts/live_acceptance.sh auth
   scripts/live_acceptance.sh read --repo owner/repo
   scripts/live_acceptance.sh write --write-repo owner/sandbox-repo
+  scripts/live_acceptance.sh prepare-pr --write-repo owner/sandbox-repo
+  scripts/live_acceptance.sh delete-ref --write-repo owner/sandbox-repo --branch scratch-branch
   scripts/live_acceptance.sh all --repo owner/repo --write-repo owner/sandbox-repo
 USAGE
     exit 1
