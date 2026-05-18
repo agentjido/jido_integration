@@ -86,6 +86,9 @@ defmodule Jido.Integration.Build.DependencyResolver do
         opts
       )
 
+  def jido_integration_secrets_provider(opts \\ []),
+    do: resolve_internal(:jido_integration_secrets_provider, "core/secrets_provider", opts)
+
   def jido_integration_v2_control_plane(opts \\ []),
     do: resolve_internal(:jido_integration_v2_control_plane, "core/control_plane", opts)
 

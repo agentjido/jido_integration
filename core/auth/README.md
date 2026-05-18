@@ -89,7 +89,7 @@ lease`.
 
 Auth store selection is policy-backed:
 
-- `:mickey_mouse` and `:memory_debug` use `Jido.Integration.V2.Auth.Store`
+- `:mickey_mouse` and `:memory_debug` use the in-memory auth store
 - `:local_restart_safe` requires explicit local store modules and a local
   capability from `core/store_local`
 - `:integration_postgres` requires explicit Postgres store modules and a

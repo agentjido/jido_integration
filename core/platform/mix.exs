@@ -19,6 +19,9 @@ unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
         do:
           git_dep(:jido_integration_provider_classification, "core/provider_classification", opts)
 
+      def jido_integration_secrets_provider(opts \\ []),
+        do: git_dep(:jido_integration_secrets_provider, "core/secrets_provider", opts)
+
       def jido_integration_v2_auth(opts \\ []),
         do: git_dep(:jido_integration_v2_auth, "core/auth", opts)
 
