@@ -188,9 +188,41 @@ flowchart TD
 - [Async And Webhooks](guides/async_and_webhooks.md)
 - [Publishing](guides/publishing.md)
 - [Observability](guides/observability.md)
+- [Generalized Stack Boundary](https://github.com/nshkrdotcom/jido_integration/blob/main/guides/generalized_stack.md)
+- [QC And Operations](https://github.com/nshkrdotcom/jido_integration/blob/main/guides/qc_and_operations.md)
 
 Repo-internal developer notes stay in `docs/`. Host-level proof runbooks stay
 in `apps/*/README.md`.
+
+## gn-ten Implementation Guides
+
+Jido Integration is the connector, auth, lower runtime, and provider-adapter
+boundary for the generalized stack. It is the only scoped documentation repo
+where concrete provider connector packages are expected.
+
+Read these repo-specific guides before changing public lower contracts:
+
+- [Generalized Stack Boundary](https://github.com/nshkrdotcom/jido_integration/blob/main/guides/generalized_stack.md)
+- [QC And Operations](https://github.com/nshkrdotcom/jido_integration/blob/main/guides/qc_and_operations.md)
+
+Operational rules:
+
+- Public interfaces are owned by `Jido.Integration.V2`, contracts, auth,
+  connector registry, runtime routing, control plane, stores, connector
+  packages, conformance, and generated consumer surfaces.
+- Provider words are allowed in connector packages, provider classification,
+  provider feature data, receipts, traces, and adapter manifests. Generic core
+  dispatch must use connector ids, capability refs, credential lease refs,
+  authority refs, target refs, and runtime route refs.
+- Jido Integration may materialize credentials only through the secrets provider
+  and lease contracts. Public DTOs and receipts carry refs, not raw values.
+- Live GitHub or Linear acceptance commands must be guarded by prefixing the
+  command with `~/scripts/with_bash_secrets`.
+- Local development uses `mix deps.get`, `mix ci`, package-local tests,
+  connector conformance, and StackLab connector/tenant scans.
+- Evidence is emitted through connector tests, conformance receipts, lower
+  facts, dispatch/runtime receipts, StackLab connector receipts, and AITrace
+  export refs.
 
 ## What The Platform Exposes
 

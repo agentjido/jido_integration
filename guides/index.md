@@ -19,6 +19,8 @@ notes stay in `docs/`, package-local READMEs, and app-local proof runbooks.
 - [Async And Webhooks](async_and_webhooks.md)
 - [Publishing](publishing.md)
 - [Observability](observability.md)
+- [Generalized Stack Boundary](https://github.com/nshkrdotcom/jido_integration/blob/main/guides/generalized_stack.md)
+- [QC And Operations](https://github.com/nshkrdotcom/jido_integration/blob/main/guides/qc_and_operations.md)
 
 ## Suggested Reading Order
 
@@ -36,3 +38,5 @@ notes stay in `docs/`, package-local READMEs, and app-local proof runbooks.
    mix release.archive` workflow
 9. read `observability.md` for telemetry and pressure semantics
 10. read `conformance.md` if you are validating connector publication claims
+11. read `generalized_stack.md` and `qc_and_operations.md` before changing
+    generalized-stack boundaries or live-provider proof commands
