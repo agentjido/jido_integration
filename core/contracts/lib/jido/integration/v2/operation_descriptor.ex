@@ -22,6 +22,25 @@ defmodule Jido.Integration.V2.OperationDescriptor do
     :required_scopes
   ]
 
+  @operation_roles [:source_read, :source_publish, :runtime_tool, :resource_effect]
+  @operation_classes [
+    :source_read,
+    :source_publish,
+    :runtime_tool_invocation,
+    :connector_operation,
+    :resource_effect
+  ]
+  @binding_kinds [
+    :connection_id,
+    :provider_account,
+    :tenant,
+    :none,
+    :source,
+    :runtime_tool,
+    :resource_effect
+  ]
+  @side_effect_classes [:read, :write, :execute]
+
   @enforce_keys @required_fields
   defstruct @required_fields ++
               [
@@ -113,10 +132,13 @@ defmodule Jido.Integration.V2.OperationDescriptor do
          connector_ref: non_empty!(descriptor.connector_ref, "connector_ref"),
          manifest_ref: non_empty!(descriptor.manifest_ref, "manifest_ref"),
          operation_ref: non_empty!(descriptor.operation_ref, "operation_ref"),
-         operation_role: atomish!(descriptor.operation_role, "operation_role"),
-         operation_class: atomish!(descriptor.operation_class, "operation_class"),
-         binding_kind: atomish!(descriptor.binding_kind, "binding_kind"),
-         side_effect_class: atomish!(descriptor.side_effect_class, "side_effect_class"),
+         operation_role:
+           enum_atomish!(descriptor.operation_role, @operation_roles, "operation_role"),
+         operation_class:
+           enum_atomish!(descriptor.operation_class, @operation_classes, "operation_class"),
+         binding_kind: enum_atomish!(descriptor.binding_kind, @binding_kinds, "binding_kind"),
+         side_effect_class:
+           enum_atomish!(descriptor.side_effect_class, @side_effect_classes, "side_effect_class"),
          input_schema_ref: non_empty!(descriptor.input_schema_ref, "input_schema_ref"),
          output_schema_ref: non_empty!(descriptor.output_schema_ref, "output_schema_ref"),
          credential_scope_ref:
@@ -147,26 +169,12 @@ defmodule Jido.Integration.V2.OperationDescriptor do
   defp optional_non_empty(nil, _field_name), do: nil
   defp optional_non_empty(value, field_name), do: non_empty!(value, field_name)
 
-  defp atomish!(value, _field_name) when is_atom(value), do: value
-
-  defp atomish!(value, field_name) when is_binary(value) do
-    value
-    |> Contracts.validate_non_empty_string!(field_name)
-    |> String.to_existing_atom()
-  rescue
-    ArgumentError ->
-      reraise ArgumentError,
-              [message: "#{field_name} must use a known atom value, got: #{inspect(value)}"],
-              __STACKTRACE__
-  end
-
-  defp atomish!(value, field_name) do
-    raise ArgumentError,
-          "#{field_name} must be an atom or known atom string, got: #{inspect(value)}"
+  defp enum_atomish!(value, valid_values, field_name) do
+    Contracts.validate_enum_atomish!(value, valid_values, field_name)
   end
 
   defp optional_atomish(nil, _field_name), do: nil
-  defp optional_atomish(value, field_name), do: atomish!(value, field_name)
+  defp optional_atomish(value, field_name), do: enum_atomish!(value, @binding_kinds, field_name)
 
   defp map!(value, _field_name) when is_map(value), do: Map.new(value)
 

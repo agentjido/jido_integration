@@ -7,6 +7,9 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
   alias Jido.Integration.V2.Manifest
   alias Jido.Integration.V2.OperationSpec
 
+  @side_effect_classes [:read, :write, :execute]
+  @idempotency_classes [:idempotent, :non_idempotent]
+
   @operation_aliases %{
     "linear.comment.update" => "linear.comments.update",
     "linear_graphql" => "linear.graphql.execute"
@@ -356,12 +359,20 @@ defmodule Jido.Integration.V2.DynamicToolManifest do
     value = map_value(metadata, key)
 
     case value do
-      binary when is_binary(binary) -> String.to_existing_atom(binary)
+      binary when is_binary(binary) -> metadata_atom(key, binary)
       atom when is_atom(atom) -> atom
       _other -> nil
     end
   rescue
     ArgumentError -> nil
+  end
+
+  defp metadata_atom(:side_effect_class, value) do
+    Contracts.validate_enum_atomish!(value, @side_effect_classes, "side_effect_class")
+  end
+
+  defp metadata_atom(:idempotency_class, value) do
+    Contracts.validate_enum_atomish!(value, @idempotency_classes, "idempotency_class")
   end
 
   defp authority!(opts) do

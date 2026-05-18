@@ -19,6 +19,24 @@ defmodule Jido.Integration.V2.OperationLookupRequest do
     :credential_scope_ref
   ]
 
+  @operation_roles [:source_read, :source_publish, :runtime_tool, :resource_effect]
+  @operation_classes [
+    :source_read,
+    :source_publish,
+    :runtime_tool_invocation,
+    :connector_operation,
+    :resource_effect
+  ]
+  @binding_kinds [
+    :connection_id,
+    :provider_account,
+    :tenant,
+    :none,
+    :source,
+    :runtime_tool,
+    :resource_effect
+  ]
+
   @enforce_keys @required_fields
   defstruct @required_fields ++
               [
@@ -88,9 +106,11 @@ defmodule Jido.Integration.V2.OperationLookupRequest do
        | connector_ref: non_empty!(request.connector_ref, "connector_ref"),
          manifest_ref: non_empty!(request.manifest_ref, "manifest_ref"),
          operation_ref: non_empty!(request.operation_ref, "operation_ref"),
-         operation_role: atomish!(request.operation_role, "operation_role"),
-         operation_class: atomish!(request.operation_class, "operation_class"),
-         binding_kind: atomish!(request.binding_kind, "binding_kind"),
+         operation_role:
+           enum_atomish!(request.operation_role, @operation_roles, "operation_role"),
+         operation_class:
+           enum_atomish!(request.operation_class, @operation_classes, "operation_class"),
+         binding_kind: enum_atomish!(request.binding_kind, @binding_kinds, "binding_kind"),
          required_runtime_family:
            Contracts.validate_runtime_class!(request.required_runtime_family),
          binding_ref: non_empty!(request.binding_ref, "binding_ref"),
@@ -111,22 +131,8 @@ defmodule Jido.Integration.V2.OperationLookupRequest do
   defp optional_non_empty(nil, _field_name), do: nil
   defp optional_non_empty(value, field_name), do: non_empty!(value, field_name)
 
-  defp atomish!(value, _field_name) when is_atom(value), do: value
-
-  defp atomish!(value, field_name) when is_binary(value) do
-    value
-    |> Contracts.validate_non_empty_string!(field_name)
-    |> String.to_existing_atom()
-  rescue
-    ArgumentError ->
-      reraise ArgumentError,
-              [message: "#{field_name} must use a known atom value, got: #{inspect(value)}"],
-              __STACKTRACE__
-  end
-
-  defp atomish!(value, field_name) do
-    raise ArgumentError,
-          "#{field_name} must be an atom or known atom string, got: #{inspect(value)}"
+  defp enum_atomish!(value, valid_values, field_name) do
+    Contracts.validate_enum_atomish!(value, valid_values, field_name)
   end
 
   defp map!(value, _field_name) when is_map(value), do: Map.new(value)
