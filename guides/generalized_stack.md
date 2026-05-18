@@ -50,6 +50,33 @@ classification, provider feature data, conformance fixtures, and adapter
 receipts. Generic core modules must use connector refs, capability refs,
 credential lease refs, runtime route refs, tenant refs, and authority refs.
 
+## Extravaganza Cutover Proof
+
+The Extravaganza product proof exercises Jido Integration through AppKit,
+Mezzanine, and Citadel rather than by calling connectors directly. The current
+live proof covered:
+
+- Linear issue/source discovery, current-state readback, source publication,
+  and GraphQL tool execution;
+- Codex coding-runtime turn execution with `OPENAI_API_KEY` as the required
+  live credential for the active connector profile;
+- GitHub proposed-change evidence and cleanup, including a disposable cleanup
+  fixture.
+
+These are connector and runtime facts inside Jido Integration. Higher layers
+should see connector-binding refs, credential-lease refs, runtime route refs,
+lower-request refs, review/lower-fact refs, and receipts. Raw credential values
+must not appear in DTOs, receipts, traces, durable lower facts, or public docs
+evidence.
+
+Live provider commands that exercise GitHub or Linear must be run with:
+
+```bash
+~/scripts/with_bash_secrets <command>
+```
+
+This keeps release proof commands reproducible without recording secret values.
+
 ## Migration And Cleanup Ownership
 
 Jido Integration cleanup work removes hidden provider defaults, raw secret

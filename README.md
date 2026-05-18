@@ -71,11 +71,18 @@ The shipped runtime families are:
   self-hosted service, and attached-local endpoint shapes
 
 Recent lower work has been directly useful to the product path. The repo now
-preserves Codex runtime token events, supports Codex live workspace options,
-adds Codex session stop control, neutralizes deterministic lower defaults, and
-keeps Linear candidate team-filter parity for source readback. Those changes
+preserves coding-runtime token events, supports live workspace options, adds
+session stop control, neutralizes deterministic lower defaults, and keeps
+issue-tracker candidate team-filter parity for source readback. Those changes
 are intentionally below the product: Extravaganza sees them as AppKit and
 Mezzanine DTOs; Jido Integration owns the connector/runtime execution details.
+
+The current Extravaganza cutover proof exercised Jido Integration indirectly
+through the governed product path for Linear, Codex, and GitHub live lanes.
+Linear and GitHub runs require live credentials supplied by prefixing commands
+with `~/scripts/with_bash_secrets`. The Codex lane requires `OPENAI_API_KEY`;
+`CODEX_API_KEY` is only needed when a selected Codex connector profile requires
+it.
 
 ## Connector And Auth Responsibilities
 
