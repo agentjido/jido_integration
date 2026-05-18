@@ -21,8 +21,12 @@ defmodule Jido.Integration.V2DeterministicLowerLaneTest do
     facts = result.output.deterministic_lower
 
     assert receipt["status"] == "succeeded"
+    assert receipt["tenant_ref"] == envelope.tenant_ref
     assert receipt["lower_runtime_kind"] == "codex_session"
     assert receipt["capability_id"] == "codex.session.turn"
+    refute String.contains?(inspect(receipt), "access_token")
+    refute String.contains?(inspect(receipt), "api_key")
+    refute String.contains?(inspect(receipt), "secret")
     assert facts.status == "succeeded"
     assert facts.source_publication["capability_id"] == "linear.comments.update"
     assert facts.provider_evidence["provider"] == "github"

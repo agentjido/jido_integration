@@ -253,6 +253,29 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
            } = denial |> GovernedLowerDenial.to_map() |> Jason.encode!() |> Jason.decode!()
   end
 
+  test "lower receipts require tenant scope and reject raw credential extensions" do
+    envelope = GovernedLowerEnvelope.new!(@base_attrs)
+
+    missing_tenant_error =
+      assert_raise ArgumentError, fn ->
+        receipt_attrs(envelope)
+        |> Map.delete(:tenant_ref)
+        |> GovernedLowerReceipt.new!()
+      end
+
+    assert String.contains?(Exception.message(missing_tenant_error), "tenant_ref")
+
+    raw_secret_error =
+      assert_raise ArgumentError, fn ->
+        envelope
+        |> receipt_attrs()
+        |> Map.put(:extensions, %{"runtime" => %{"access_token" => "secret-token"}})
+        |> GovernedLowerReceipt.new!()
+      end
+
+    assert String.contains?(Exception.message(raw_secret_error), "raw credential material")
+  end
+
   test "lower denial taxonomy covers authority, manifest, resource, sandbox, attestation, runtime, receipt, and retry classes" do
     envelope = GovernedLowerEnvelope.new!(@base_attrs)
 
@@ -293,5 +316,25 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
       assert denial.denial_class == denial_class
       assert GovernedLowerDenial.matches_envelope?(denial, envelope)
     end
+  end
+
+  defp receipt_attrs(envelope) do
+    %{
+      lower_receipt_ref: "lower_receipt_1",
+      lower_request_ref: envelope.lower_request_ref,
+      lower_runtime_kind: envelope.lower_runtime_kind,
+      status: :succeeded,
+      tenant_ref: envelope.tenant_ref,
+      subject_ref: envelope.subject_ref,
+      run_ref: envelope.run_ref,
+      workflow_ref: envelope.workflow_ref,
+      attempt_ref: envelope.attempt_ref,
+      trace_id: envelope.trace_id,
+      idempotency_key: envelope.idempotency_key,
+      authority_ref: envelope.authority_ref,
+      authority_decision_hash: envelope.authority_decision_hash,
+      capability_id: envelope.capability_id,
+      action_id: envelope.action_id
+    }
   end
 end

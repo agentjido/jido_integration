@@ -8,6 +8,21 @@ defmodule Jido.Integration.V2.GovernedLowerReceipt do
   @manifest_states [:active, :stale, :invalid, :refresh_required, :quarantined]
   @sandbox_levels [:strict, :standard, :none, :process, :container, :microvm]
   @statuses [:succeeded, :failed, :denied, :cancelled, :timed_out]
+  @raw_secret_extension_keys MapSet.new([
+                               "api_key",
+                               "access_token",
+                               "refresh_token",
+                               "secret",
+                               "token",
+                               "password",
+                               "private_key",
+                               "auth_header",
+                               "authorization",
+                               "cookie",
+                               "session_cookie",
+                               "raw_credential",
+                               "credential_payload"
+                             ])
 
   @fields [
     :contract_name,
@@ -266,7 +281,11 @@ defmodule Jido.Integration.V2.GovernedLowerReceipt do
       receipt
       | artifact_refs: string_list(receipt.artifact_refs || [], :artifact_refs),
         event_refs: list(receipt.event_refs || [], :event_refs),
-        extensions: map(receipt.extensions || %{}, :extensions)
+        extensions:
+          receipt.extensions
+          |> Kernel.||(%{})
+          |> map(:extensions)
+          |> reject_raw_secret_extensions!()
     }
   end
 
@@ -320,6 +339,42 @@ defmodule Jido.Integration.V2.GovernedLowerReceipt do
   defp map(value, field) do
     raise ArgumentError, "#{field} must be a map, got: #{inspect(value)}"
   end
+
+  defp reject_raw_secret_extensions!(extensions) do
+    case raw_secret_extension_path(extensions, []) do
+      nil ->
+        extensions
+
+      path ->
+        raise ArgumentError,
+              "extensions must not contain raw credential material at #{Enum.join(path, ".")}"
+    end
+  end
+
+  defp raw_secret_extension_path(%{} = map, path) do
+    Enum.find_value(map, fn {key, value} ->
+      segment = to_string(key)
+      next_path = path ++ [segment]
+
+      cond do
+        MapSet.member?(@raw_secret_extension_keys, String.downcase(segment)) -> next_path
+        is_map(value) or is_list(value) -> raw_secret_extension_path(value, next_path)
+        true -> nil
+      end
+    end)
+  end
+
+  defp raw_secret_extension_path(values, path) when is_list(values) do
+    values
+    |> Enum.with_index()
+    |> Enum.find_value(fn {value, index} ->
+      if is_map(value) or is_list(value) do
+        raw_secret_extension_path(value, path ++ [Integer.to_string(index)])
+      end
+    end)
+  end
+
+  defp raw_secret_extension_path(_value, _path), do: nil
 
   defp serialize(value) when is_atom(value), do: Atom.to_string(value)
   defp serialize(values) when is_list(values), do: Enum.map(values, &serialize/1)

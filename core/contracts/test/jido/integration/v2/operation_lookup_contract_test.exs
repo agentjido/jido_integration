@@ -103,6 +103,35 @@ defmodule Jido.Integration.V2.OperationLookupContractTest do
     assert descriptor.connector_auth_binding_kind == :connection_id
   end
 
+  test "accepts platform operation roles and binding kinds used by generic packs" do
+    for {operation_role, operation_class, binding_kind} <- [
+          {:source_publish, :source_write, :source_publication},
+          {:runtime_session, :runtime_session, :runtime},
+          {:evidence_collection, :evidence_collection, :evidence},
+          {:runtime_tool, :runtime_tool_invocation, :runtime_tool},
+          {:resource_effect, :resource_effect, :resource_effect}
+        ] do
+      request =
+        OperationLookupRequest.new!(%{
+          connector_ref: "connector://example/docs",
+          manifest_ref: "manifest://example/docs/v1",
+          operation_ref: "example.operation.#{operation_role}",
+          operation_role: operation_role,
+          operation_class: operation_class,
+          binding_kind: binding_kind,
+          required_runtime_family: "direct",
+          binding_ref: "binding://tenant/example/docs/#{binding_kind}",
+          pack_ref: "pack://example/doc-review",
+          pack_revision: "1",
+          credential_scope_ref: "credential-scope://tenant/example/docs"
+        })
+
+      assert request.operation_role == operation_role
+      assert request.operation_class == operation_class
+      assert request.binding_kind == binding_kind
+    end
+  end
+
   test "rejects missing required request fields" do
     assert {:error, %ArgumentError{} = error} =
              OperationLookupRequest.new(%{connector_ref: "connector://example/docs"})

@@ -19,11 +19,21 @@ defmodule Jido.Integration.V2.OperationLookupRequest do
     :credential_scope_ref
   ]
 
-  @operation_roles [:source_read, :source_publish, :runtime_tool, :resource_effect]
+  @operation_roles [
+    :source_read,
+    :source_publish,
+    :runtime_session,
+    :runtime_tool,
+    :evidence_collection,
+    :resource_effect
+  ]
   @operation_classes [
     :source_read,
     :source_publish,
+    :source_write,
+    :runtime_session,
     :runtime_tool_invocation,
+    :evidence_collection,
     :connector_operation,
     :resource_effect
   ]
@@ -33,7 +43,10 @@ defmodule Jido.Integration.V2.OperationLookupRequest do
     :tenant,
     :none,
     :source,
+    :source_publication,
+    :runtime,
     :runtime_tool,
+    :evidence,
     :resource_effect
   ]
 

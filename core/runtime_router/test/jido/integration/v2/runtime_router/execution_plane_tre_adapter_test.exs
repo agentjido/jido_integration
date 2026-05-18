@@ -49,9 +49,13 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneTreAdapterTest do
     receipt = GovernedLowerReceipt.new!(result.output.governed_lower_receipt)
     assert receipt.lower_runtime_kind == :tre_rhai
     assert receipt.status == :succeeded
+    assert receipt.tenant_ref == envelope.tenant_ref
     assert receipt.policy_bundle_ref == envelope.policy_bundle_ref
     assert receipt.script_hash == envelope.script_hash
     assert receipt.artifact_refs == ["tre-artifact://trace-jido-tre/runner-output"]
+    refute String.contains?(inspect(result.output.governed_lower_receipt), "access_token")
+    refute String.contains?(inspect(result.output.governed_lower_receipt), "api_key")
+    refute String.contains?(inspect(result.output.governed_lower_receipt), "secret")
     assert GovernedLowerReceipt.matches_envelope?(receipt, envelope)
 
     assert Enum.any?(result.events, &(&1.type == "tre.execution_plane.completed"))

@@ -46,6 +46,7 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
     refute String.contains?(inspect(lease.metadata), "phase4a-runtime-token")
   end
 
+  @tag :tenant_isolation
   test "rejects wrong connector, provider account, and tenant before materialization" do
     {_install, connection, _credential_ref} = install_codex_connection()
     assert {:ok, lease} = request_codex_lease(connection)
