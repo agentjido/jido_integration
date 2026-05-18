@@ -3,32 +3,7 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
   Minimal ref-only connector registry for provider identity selection.
   """
 
-  @connector_categories [
-    :official_connector,
-    :companion_connector,
-    :generated_sdk_client,
-    :provider_cli_adapter,
-    :app_connector
-  ]
-
-  @provider_families [
-    "cli",
-    "http",
-    "graphql",
-    "realtime",
-    "inference",
-    "service_runtime",
-    "app_server"
-  ]
-
-  @provider_account_statuses [
-    :known,
-    :asserted,
-    :unknown,
-    :unavailable,
-    :revoked,
-    :rotated
-  ]
+  alias Jido.Integration.V2.ProviderClassification
 
   @env_remediation_states [
     :not_applicable,
@@ -126,13 +101,13 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
   @type entry :: %Entry{}
 
   @spec connector_categories() :: [atom()]
-  def connector_categories, do: @connector_categories
+  def connector_categories, do: ProviderClassification.connector_categories()
 
   @spec provider_families() :: [String.t()]
-  def provider_families, do: @provider_families
+  def provider_families, do: ProviderClassification.adapter_families()
 
   @spec provider_account_statuses() :: [atom()]
-  def provider_account_statuses, do: @provider_account_statuses
+  def provider_account_statuses, do: ProviderClassification.provider_account_statuses()
 
   @spec env_remediation_states() :: [atom()]
   def env_remediation_states, do: @env_remediation_states
@@ -148,8 +123,14 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
          :ok <- require_refs(attrs, @required_refs),
          :ok <- validate_ref_families(attrs),
          :ok <- validate_distinct_refs(attrs),
-         {:ok, category} <- enum_value(attrs, :connector_category, @connector_categories),
-         {:ok, status} <- enum_value(attrs, :provider_account_status, @provider_account_statuses),
+         {:ok, category} <-
+           enum_value(attrs, :connector_category, ProviderClassification.connector_categories()),
+         {:ok, status} <-
+           enum_value(
+             attrs,
+             :provider_account_status,
+             ProviderClassification.provider_account_statuses()
+           ),
          {:ok, env_state} <- enum_value(attrs, :env_remediation_state, @env_remediation_states),
          :ok <- validate_provider_family(attrs) do
       {:ok,
@@ -375,7 +356,7 @@ defmodule Jido.Integration.V2.ConnectorRegistry do
   defp validate_provider_family(attrs) do
     value = field_value(attrs, :provider_family)
 
-    if value in @provider_families do
+    if ProviderClassification.adapter_family?(value) do
       :ok
     else
       {:error, {:unsupported_provider_family, value}}

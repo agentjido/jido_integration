@@ -29,6 +29,7 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrix.MixProject do
   defp deps do
     [
       DependencyResolver.jido_integration_contracts(),
+      DependencyResolver.jido_integration_provider_classification(),
       DependencyResolver.jido_integration_v2_connector_registry(),
       DependencyResolver.jido_integration_v2_conformance(only: :test, runtime: false),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},

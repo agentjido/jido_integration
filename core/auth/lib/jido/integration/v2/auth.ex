@@ -14,22 +14,10 @@ defmodule Jido.Integration.V2.Auth do
   alias Jido.Integration.V2.Credential
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
+  alias Jido.Integration.V2.ProviderClassification
 
   @default_install_ttl_seconds 600
   @default_lease_ttl_seconds 300
-  @governed_provider_families [
-    "amp",
-    "claude",
-    "codex",
-    "gemini",
-    "github",
-    "graphql",
-    "http",
-    "inference",
-    "linear",
-    "notion",
-    "realtime"
-  ]
   @governed_operation_classes ["cli", "http", "graphql", "realtime", "inference"]
   @governed_lease_required_fields [
     :tenant_id,
@@ -1115,8 +1103,15 @@ defmodule Jido.Integration.V2.Auth do
 
   defp validate_governed_provider_family(context) do
     case Map.get(context, :provider_family) do
-      family when family in @governed_provider_families -> :ok
-      family -> {:error, {:unsupported_provider_family, family}}
+      family when is_binary(family) ->
+        if ProviderClassification.provider_family_token?(family) do
+          :ok
+        else
+          {:error, {:unsupported_provider_family, family}}
+        end
+
+      family ->
+        {:error, {:unsupported_provider_family, family}}
     end
   end
 

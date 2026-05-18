@@ -24,6 +24,7 @@ defmodule Jido.Integration.V2.Contracts.MixProject do
 
   defp deps do
     [
+      {:jido_integration_provider_classification, path: "../provider_classification"},
       {:jido, "~> 2.2"},
       {:jido_action, "~> 2.2"},
       {:jido_signal, "~> 2.1"},

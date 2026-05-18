@@ -5,6 +5,9 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrixTest do
   alias Jido.Integration.V2.ProviderFeatureMatrix
 
   test "every in-play provider has every required placement column" do
+    refute :shimmed in ProviderFeatureMatrix.placements()
+    assert :connector_facade in ProviderFeatureMatrix.placements()
+
     for row <- ProviderFeatureMatrix.rows() do
       assert Enum.sort(Map.keys(row.features)) == Enum.sort(ProviderFeatureMatrix.columns())
 

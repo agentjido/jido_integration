@@ -78,6 +78,14 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_contracts(opts \\ []),
     do: resolve_internal(:jido_integration_contracts, "core/contracts", opts)
 
+  def jido_integration_provider_classification(opts \\ []),
+    do:
+      resolve_internal(
+        :jido_integration_provider_classification,
+        "core/provider_classification",
+        opts
+      )
+
   def jido_integration_v2_control_plane(opts \\ []),
     do: resolve_internal(:jido_integration_v2_control_plane, "core/control_plane", opts)
 

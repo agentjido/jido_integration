@@ -4,6 +4,7 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrix do
   """
 
   alias Jido.Integration.V2.ConnectorRegistry
+  alias Jido.Integration.V2.ProviderClassification
 
   @columns [
     :auth_source,
@@ -27,22 +28,11 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrix do
     :sandbox_attach
   ]
 
-  @placements [
-    :common,
-    :provider_native,
-    :sdk_native,
-    :cli_native,
-    :shimmed,
-    :event_only,
-    :unsupported,
-    :forbidden
-  ]
-
   @spec columns() :: [atom()]
   def columns, do: @columns
 
   @spec placements() :: [atom()]
-  def placements, do: @placements
+  def placements, do: ProviderClassification.adapter_placements()
 
   @spec providers() :: [atom()]
   def providers, do: Enum.map(rows(), & &1.provider)
@@ -139,7 +129,7 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrix do
         streaming: :provider_native,
         tool_call: :provider_native,
         host_tool: :provider_native,
-        connector_tool: :shimmed,
+        connector_tool: :connector_facade,
         file_access: :provider_native,
         shell_execution: :provider_native,
         permission: :provider_native,
@@ -169,7 +159,7 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrix do
         streaming: :unsupported,
         tool_call: :unsupported,
         host_tool: :forbidden,
-        connector_tool: :shimmed,
+        connector_tool: :connector_facade,
         file_access: :forbidden,
         shell_execution: :forbidden,
         permission: :common,
@@ -199,7 +189,7 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrix do
         streaming: :unsupported,
         tool_call: :unsupported,
         host_tool: :forbidden,
-        connector_tool: :shimmed,
+        connector_tool: :connector_facade,
         file_access: :forbidden,
         shell_execution: :forbidden,
         permission: :common,
@@ -229,7 +219,7 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrix do
         streaming: :sdk_native,
         tool_call: :sdk_native,
         host_tool: :forbidden,
-        connector_tool: :shimmed,
+        connector_tool: :connector_facade,
         file_access: :forbidden,
         shell_execution: :forbidden,
         permission: :common,
@@ -259,7 +249,7 @@ defmodule Jido.Integration.V2.ProviderFeatureMatrix do
         streaming: :sdk_native,
         tool_call: :unsupported,
         host_tool: :forbidden,
-        connector_tool: :shimmed,
+        connector_tool: :connector_facade,
         file_access: :unsupported,
         shell_execution: :forbidden,
         permission: :common,
