@@ -17,7 +17,16 @@ defmodule Jido.Integration.V2.RuntimeRouter do
   lower-boundary result.
   """
 
-  alias Jido.Integration.V2.{Capability, Contracts, RuntimeResult, TargetDescriptor}
+  alias GroundPlane.Boundary.Codec, as: BoundaryCodec
+
+  alias Jido.Integration.V2.{
+    CanonicalJson,
+    Capability,
+    Contracts,
+    RuntimeResult,
+    TargetDescriptor
+  }
+
   alias Jido.Integration.V2.RuntimeRouter.SessionStore
 
   alias Jido.RuntimeControl.{
@@ -854,7 +863,12 @@ defmodule Jido.Integration.V2.RuntimeRouter do
         prompt
 
       _other ->
-        "#{capability_id}: #{inspect(input)}"
+        request_hash =
+          input
+          |> CanonicalJson.normalize!()
+          |> BoundaryCodec.digest()
+
+        "#{capability_id}: request #{request_hash}"
     end
   end
 

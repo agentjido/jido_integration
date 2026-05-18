@@ -3,6 +3,7 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
 
   alias Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver
   alias Jido.Integration.V2.Capability
+  alias Jido.Integration.V2.CanonicalJson
   alias Jido.Integration.V2.ExecutionGovernanceProjection
   alias Jido.Integration.V2.RuntimeRouter
   alias Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary
@@ -301,6 +302,32 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     assert run_opts[:lane] == "sdk"
     assert run_opts[:approval_mode] == "manual"
     refute Keyword.has_key?(run_opts, :provider_authored_option)
+  end
+
+  test "prompt fallback uses a canonical request digest instead of inspect input" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    input = %{metadata: %{b: 2, a: 1}, description: "must-not-leak"}
+
+    assert {:ok, _result} =
+             RuntimeRouter.execute(
+               capability_fixture(),
+               input,
+               runtime_context()
+             )
+
+    expected_hash =
+      input
+      |> CanonicalJson.normalize!()
+      |> GroundPlane.Boundary.Codec.digest()
+
+    assert_receive {:authored_driver_run, "authored-session", prompt, _run_opts}
+    assert prompt == "test.session.exec: request #{expected_hash}"
+    refute String.contains?(prompt, "must-not-leak")
   end
 
   test "builds Codex run request from governed workflow input without dropping host-tool metadata" do

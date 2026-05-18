@@ -205,6 +205,7 @@ defmodule Jido.Integration.V2.Platform.MixProject do
       DependencyResolver.jido_integration_v2_github(only: :test),
       DependencyResolver.jido_integration_v2_codex_cli(only: :test),
       DependencyResolver.jido_integration_v2_market_data(only: :test),
+      DependencyResolver.ground_plane_contracts(),
       DependencyResolver.req_llm(),
       DependencyResolver.splode(),
       {:plug, "~> 1.19", only: [:dev, :test]},

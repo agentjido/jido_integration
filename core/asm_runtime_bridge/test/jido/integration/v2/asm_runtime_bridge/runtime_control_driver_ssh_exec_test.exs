@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
   alias Jido.RuntimeControl.{ExecutionEvent, ExecutionResult, RunHandle, RunRequest}
 
   setup do
+    restart_lower_runtime_apps!()
     ensure_asm_runtime_bridge_started!()
     SessionStore.reset!()
     :ok
@@ -45,7 +46,10 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
     assert List.last(events).type == :result
     assert run.runtime_id == :asm
 
-    assert_eventually(fn -> File.exists?(manifest_path) end)
+    assert_eventually(fn ->
+      manifest_contains?(manifest_path, "destination=bridge.ssh.example")
+    end)
+
     manifest = File.read!(manifest_path)
     assert String.contains?(manifest, "destination=bridge.ssh.example")
     assert String.contains?(manifest, "port=2222")
@@ -86,7 +90,11 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
       end)
 
     assert_receive {:bridge_event, %ExecutionEvent{type: :run_started}}, 2_000
-    assert_eventually(fn -> File.exists?(manifest_path) end)
+
+    assert_eventually(fn ->
+      manifest_contains?(manifest_path, "destination=bridge.cancel.example")
+    end)
+
     assert :ok = RuntimeControlDriver.cancel_run(session, run)
 
     assert_receive {:bridge_event,
@@ -94,8 +102,14 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
                    2_000
 
     assert :ok = Task.await(task, 2_000)
-    assert_eventually(fn -> File.exists?(manifest_path) end)
+
+    assert_eventually(fn ->
+      manifest_contains?(manifest_path, "destination=bridge.cancel.example")
+    end)
+
     assert String.contains?(File.read!(manifest_path), "destination=bridge.cancel.example")
+    assert :ok = RuntimeControlDriver.stop_session(session)
+    assert :error = SessionStore.fetch(session.session_id)
   end
 
   test "run/3 maps failed ssh_exec runs into failed execution results" do
@@ -128,8 +142,14 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
     assert String.contains?(result.error["message"], "CLI exited with code 42")
     assert result.error["kind"] == "unknown"
     assert result.error["domain"] == "runtime"
-    assert_eventually(fn -> File.exists?(manifest_path) end)
+
+    assert_eventually(fn ->
+      manifest_contains?(manifest_path, "destination=bridge.fail.example")
+    end)
+
     assert String.contains?(File.read!(manifest_path), "destination=bridge.fail.example")
+    assert :ok = RuntimeControlDriver.stop_session(session)
+    assert :error = SessionStore.fetch(session.session_id)
   end
 
   defp create_fake_ssh!(manifest_path) do
@@ -192,6 +212,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
     """
     #!/usr/bin/env bash
     set -euo pipefail
+    sleep 0.05
     echo '{"type":"thread.started","thread_id":"thread-1"}'
     echo '{"type":"turn.started"}'
     printf '%s\n' #{inspect(item_completed)}
@@ -214,6 +235,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
     """
     #!/usr/bin/env bash
     set -euo pipefail
+    sleep 0.05
     echo 'ssh bridge stderr' >&2
     exit 42
     """
@@ -259,6 +281,38 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverSSHExecTest d
 
   defp assert_eventually(_fun, 0) do
     flunk("condition did not become true")
+  end
+
+  defp manifest_contains?(path, expected) when is_binary(path) and is_binary(expected) do
+    case File.read(path) do
+      {:ok, contents} -> String.contains?(contents, expected)
+      {:error, _reason} -> false
+    end
+  end
+
+  defp restart_lower_runtime_apps! do
+    [:agent_session_manager, :cli_subprocess_core, :execution_plane_process, :erlexec]
+    |> Enum.each(&stop_application/1)
+
+    [:execution_plane_process, :cli_subprocess_core, :agent_session_manager]
+    |> Enum.each(&start_application!/1)
+  end
+
+  defp stop_application(app) when is_atom(app) do
+    case Application.stop(app) do
+      :ok -> :ok
+      {:error, {:not_started, ^app}} -> :ok
+      {:error, {:not_started, _other_app}} -> :ok
+      {:error, _reason} -> :ok
+    end
+  end
+
+  defp start_application!(app) when is_atom(app) do
+    case Application.ensure_all_started(app) do
+      {:ok, _started} -> :ok
+      {:error, {:already_started, ^app}} -> :ok
+      {:error, reason} -> flunk("failed to start #{app}: #{inspect(reason)}")
+    end
   end
 
   defp ensure_asm_runtime_bridge_started! do

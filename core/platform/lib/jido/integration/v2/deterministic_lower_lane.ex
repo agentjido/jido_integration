@@ -8,6 +8,8 @@ defmodule Jido.Integration.V2.DeterministicLowerLane do
   GitHub PR evidence without touching provider SDKs.
   """
 
+  alias GroundPlane.Boundary.Codec, as: BoundaryCodec
+  alias Jido.Integration.V2.CanonicalJson
   alias Jido.Integration.V2.GovernedLowerEnvelope
   alias Jido.Integration.V2.GovernedLowerReceipt
 
@@ -157,7 +159,10 @@ defmodule Jido.Integration.V2.DeterministicLowerLane do
         "semantic_ref" => "prompt://#{encoded}/semantic",
         "prompt_hash" =>
           "sha256:" <> sha256(Map.get(input, :prompt) || Map.get(input, "prompt") || ""),
-        "context_hash" => "sha256:" <> sha256(inspect(Map.get(input, :provider_metadata, %{}))),
+        "context_hash" =>
+          Map.get(input, :provider_metadata, %{})
+          |> CanonicalJson.normalize!()
+          |> BoundaryCodec.digest(),
         "input_claim_check_ref" => envelope.input_ref,
         "output_claim_check_ref" => "claim-check://#{encoded}/codex-output",
         "provenance_refs" => ["prompt-provenance://#{encoded}"],

@@ -190,11 +190,13 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     with {:ok, provider} <- fetch_session_provider(session, opts),
          :ok <- validate_runtime_request(provider, request, opts) do
       run_id = Keyword.get_lazy(opts, :run_id, &Event.generate_id/0)
+      session_ref = session_ref!(session)
+
       asm_opts = stream_run_opts(request, provider, opts, run_id)
+      asm_opts = inherit_session_execution_inputs(asm_opts, session_ref)
 
       stream =
-        session
-        |> session_ref!()
+        session_ref
         |> ASM.stream(request.prompt, asm_opts)
         |> Elixir.Stream.map(&Normalizer.to_execution_event(&1, session))
 
@@ -224,17 +226,19 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
 
     with {:ok, provider} <- fetch_session_provider(session, opts),
          :ok <- validate_runtime_request(provider, request, opts) do
+      session_ref = session_ref!(session)
+
       events =
-        session
-        |> session_ref!()
+        session_ref
         |> ASM.stream(
           request.prompt,
-          stream_run_opts(
-            request,
+          request
+          |> stream_run_opts(
             provider,
             opts,
             Keyword.get_lazy(opts, :run_id, &Event.generate_id/0)
           )
+          |> inherit_session_execution_inputs(session_ref)
         )
         |> Enum.to_list()
 
@@ -455,6 +459,40 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     |> author_execution_inputs()
     |> Keyword.put(:run_id, run_id)
     |> Keyword.take(allowed_asm_run_option_keys(provider))
+  end
+
+  defp inherit_session_execution_inputs(opts, session_ref)
+       when is_list(opts) and is_pid(session_ref) do
+    case ASM.session_info(session_ref) do
+      {:ok, %{options: session_opts}} when is_list(session_opts) ->
+        opts
+        |> inherit_session_execution_input(
+          :execution_surface,
+          session_opts,
+          @execution_surface_option_keys
+        )
+        |> inherit_session_execution_input(
+          :execution_environment,
+          session_opts,
+          @execution_environment_option_keys
+        )
+
+      _other ->
+        opts
+    end
+  end
+
+  defp inherit_session_execution_input(opts, key, session_opts, override_keys) do
+    cond do
+      Keyword.has_key?(opts, key) ->
+        opts
+
+      Enum.any?(override_keys, &Keyword.has_key?(opts, &1)) ->
+        opts
+
+      true ->
+        maybe_put(opts, key, Keyword.get(session_opts, key))
+    end
   end
 
   defp normalize_bridge_run_overrides(opts) do

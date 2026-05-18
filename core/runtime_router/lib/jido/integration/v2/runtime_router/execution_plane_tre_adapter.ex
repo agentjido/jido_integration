@@ -7,14 +7,16 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneTreAdapter do
   this adapter plus runner/materializer options.
   """
 
+  alias ExecutionPlane.Process.TreRhai
+  alias GroundPlane.Boundary.Codec, as: BoundaryCodec
+
   alias Jido.Integration.V2.{
+    CanonicalJson,
     Capability,
     GovernedLowerEnvelope,
     GovernedLowerReceipt,
     RuntimeResult
   }
-
-  alias ExecutionPlane.Process.TreRhai
 
   @tre_contract_version "nshkr.execution_plane.tre.v1"
   @default_limits %{
@@ -156,7 +158,7 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneTreAdapter do
       "sandbox_profile_ref" => envelope.sandbox_profile_ref,
       "input_ref" => envelope.input_ref,
       "input_hash" => envelope.input_hash,
-      "input_shape_hash" => sha256(inspect(input)),
+      "input_shape_hash" => boundary_digest(input),
       "limits" => context_opt(context, :tre_limits, @default_limits)
     }
   end
@@ -271,7 +273,9 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneTreAdapter do
   defp string_list(nil), do: []
   defp string_list(value), do: [to_string(value)]
 
-  defp sha256(value) do
-    "sha256:" <> Base.encode16(:crypto.hash(:sha256, IO.iodata_to_binary(value)), case: :lower)
+  defp boundary_digest(value) do
+    value
+    |> CanonicalJson.normalize!()
+    |> BoundaryCodec.digest()
   end
 end

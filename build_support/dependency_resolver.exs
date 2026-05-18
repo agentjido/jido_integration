@@ -183,6 +183,9 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def ground_plane_persistence_policy(opts \\ []),
     do: external_dep(:ground_plane_persistence_policy, opts)
 
+  def ground_plane_contracts(opts \\ []),
+    do: external_dep(:ground_plane_contracts, opts)
+
   def splode(opts \\ []), do: external_dep(:splode, opts)
 
   def pristine(opts \\ []), do: external_dep(:pristine, opts)

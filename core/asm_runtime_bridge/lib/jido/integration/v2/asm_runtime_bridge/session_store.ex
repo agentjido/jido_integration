@@ -46,8 +46,22 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.SessionStore do
 
   @spec reset!() :: :ok
   def reset! do
-    Agent.update(__MODULE__, fn _state -> %{} end)
+    __MODULE__
+    |> Agent.get_and_update(fn state -> {Map.values(state), %{}} end)
+    |> Enum.each(&stop_session_ref/1)
+
+    :ok
   end
 
   defp prune_session(state, session_id), do: Map.delete(state, session_id)
+
+  defp stop_session_ref(pid) when is_pid(pid) do
+    if Process.alive?(pid) do
+      _ = ASM.stop_session(pid)
+    end
+
+    :ok
+  end
+
+  defp stop_session_ref(_stale_ref), do: :ok
 end

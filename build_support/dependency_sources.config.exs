@@ -78,6 +78,18 @@
       default_order: [:path, :github, :hex],
       publish_order: [:hex]
     },
+    ground_plane_contracts: %{
+      path: "../ground_plane/core/ground_plane_contracts",
+      github: %{
+        repo: "nshkrdotcom/ground_plane",
+        branch: "main",
+        subdir: "core/ground_plane_contracts"
+      },
+      hex: "~> 0.1.0",
+      opts: [override: true],
+      default_order: [:path, :github, :hex],
+      publish_order: [:hex]
+    },
     inference: %{
       path: "../inference/apps/inference",
       github: %{repo: "nshkrdotcom/inference", branch: "main", subdir: "apps/inference"},

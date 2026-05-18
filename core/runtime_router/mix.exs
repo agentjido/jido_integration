@@ -37,6 +37,7 @@ defmodule Jido.Integration.V2.RuntimeRouter.MixProject do
       DependencyResolver.jido_runtime_control(override: true),
       DependencyResolver.execution_plane(),
       DependencyResolver.execution_plane_process(),
+      DependencyResolver.ground_plane_contracts(),
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
