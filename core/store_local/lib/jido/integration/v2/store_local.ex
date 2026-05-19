@@ -106,6 +106,9 @@ defmodule Jido.Integration.V2.StoreLocal do
       Jido.Integration.V2.StoreLocal.SubmissionLedger
     )
 
+    :ok = ensure_started!(:jido_integration_v2_auth)
+    :ok = ensure_started!(:jido_integration_v2_control_plane)
+
     :ok =
       AuthPersistence.configure!(
         profile: profile,
@@ -121,6 +124,17 @@ defmodule Jido.Integration.V2.StoreLocal do
       )
 
     :ok
+  end
+
+  defp ensure_started!(app) when is_atom(app) do
+    case Application.ensure_all_started(app) do
+      {:ok, _apps} ->
+        :ok
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "unable to start #{inspect(app)} before configuring StoreLocal persistence: #{inspect(reason)}"
+    end
   end
 
   @spec store_capability() :: {:ok, PersistencePolicy.StoreCapability.t()} | {:error, term()}

@@ -633,6 +633,27 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert [%{"trace_id" => "trace-1", trace_id: "trace-1"}] = normalized.input
   end
 
+  test "replay normalizer covers every declared alias and keeps unknown keys string-only" do
+    payload =
+      ReplayNormalizer.alias_keys()
+      |> Map.new(fn key -> {key, "value-for-#{key}"} end)
+      |> Map.put("runtime_provider_alias_not_declared", "unknown")
+
+    normalized = ReplayNormalizer.value(payload)
+
+    assert Map.keys(ReplayNormalizer.aliases()) |> Enum.sort() == ReplayNormalizer.alias_keys()
+
+    Enum.each(ReplayNormalizer.aliases(), fn {string_key, atom_key} ->
+      expected = "value-for-#{string_key}"
+
+      assert Map.fetch!(normalized, string_key) == expected
+      assert Map.fetch!(normalized, atom_key) == expected
+    end)
+
+    assert normalized["runtime_provider_alias_not_declared"] == "unknown"
+    refute Map.has_key?(normalized, :runtime_provider_alias_not_declared)
+  end
+
   test "reset tolerates the compiled runtime router when its application is not started" do
     assert :ok = stop_runtime_router!()
 

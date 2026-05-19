@@ -36,6 +36,12 @@ defmodule Jido.Integration.V2.ControlPlane.ReplayNormalizer do
     "value" => :value
   }
 
+  @spec aliases() :: %{String.t() => atom()}
+  def aliases, do: @runtime_replay_atom_aliases
+
+  @spec alias_keys() :: [String.t()]
+  def alias_keys, do: @runtime_replay_atom_aliases |> Map.keys() |> Enum.sort()
+
   @spec value(term()) :: term()
   def value(value) when is_map(value) do
     Enum.reduce(value, %{}, fn {key, nested_value}, acc ->
