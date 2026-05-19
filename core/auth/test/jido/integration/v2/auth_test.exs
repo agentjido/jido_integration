@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.AuthTest do
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
+  alias Jido.Integration.V2.Auth.RuntimeContext
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
@@ -397,6 +398,54 @@ defmodule Jido.Integration.V2.AuthTest do
     assert resolved_credential.secret == %{}
     refute String.contains?(inspect(resolved_credential), "gho_fresh_secret")
     refute String.contains?(inspect(resolved_credential), "ghr_rotated_refresh_secret")
+  end
+
+  test "lease requests accept explicit runtime context refresh handlers" do
+    expired_at = ~U[2026-03-09 12:00:00Z]
+    refreshed_until = ~U[2026-03-09 14:00:00Z]
+
+    {_, connection, _credential_ref} =
+      install_connection(%{
+        connector_id: "github",
+        tenant_id: "tenant-explicit-refresh",
+        actor_id: "user-explicit-refresh",
+        auth_type: :oauth2,
+        subject: "explicit-refresh-octocat",
+        requested_scopes: ["repo"],
+        granted_scopes: ["repo"],
+        secret: %{
+          access_token: "gho_expired_secret",
+          refresh_token: "ghr_refresh_secret"
+        },
+        expires_at: expired_at,
+        now: ~U[2026-03-09 11:59:00Z]
+      })
+
+    runtime_context = %RuntimeContext{
+      refresh_handler: fn %Connection{} = refreshed_connection, credential ->
+        send(self(), {:explicit_refresh_handler_called, refreshed_connection.connection_id})
+        assert credential.secret.refresh_token == "ghr_refresh_secret"
+
+        {:ok,
+         %{
+           secret: %{
+             access_token: "gho_explicit_fresh_secret",
+             refresh_token: "ghr_explicit_rotated_secret"
+           },
+           expires_at: refreshed_until
+         }}
+      end
+    }
+
+    assert {:ok, %CredentialLease{} = lease} =
+             Auth.request_lease(connection.connection_id, %{
+               required_scopes: ["repo"],
+               runtime_context: runtime_context,
+               now: ~U[2026-03-09 12:01:00Z]
+             })
+
+    assert lease.payload == %{access_token: "gho_explicit_fresh_secret"}
+    assert_received {:explicit_refresh_handler_called, _connection_id}
   end
 
   test "resolves a specific secret value through the auth boundary" do
@@ -848,27 +897,28 @@ defmodule Jido.Integration.V2.AuthTest do
 
     assert connection_id == connection.connection_id
 
-    Auth.set_external_secret_resolver(fn %Connection{} = resolving_connection,
-                                         _credential,
-                                         opts ->
-      send(
-        self(),
-        {:external_secret_resolution_stage, resolving_connection.connection_id, opts.stage}
-      )
+    runtime_context = %RuntimeContext{
+      external_secret_resolver: fn %Connection{} = resolving_connection, _credential, opts ->
+        send(
+          self(),
+          {:external_secret_resolution_stage, resolving_connection.connection_id, opts.stage}
+        )
 
-      {:ok, %{access_token: "external-fetch-token"}}
-    end)
+        {:ok, %{access_token: "external-fetch-token"}}
+      end
+    }
 
     assert {:ok, %CredentialLease{} = lease} =
              Auth.request_lease(connection.connection_id, %{
                required_scopes: ["issues:read"],
+               runtime_context: runtime_context,
                now: lease_now
              })
 
     assert lease.payload == %{access_token: "external-fetch-token"}
 
     assert {:ok, %CredentialLease{} = fetched_lease} =
-             Auth.fetch_lease(lease.lease_id, %{now: fetch_now})
+             Auth.fetch_lease(lease.lease_id, %{runtime_context: runtime_context, now: fetch_now})
 
     assert fetched_lease.payload == %{access_token: "external-fetch-token"}
 
