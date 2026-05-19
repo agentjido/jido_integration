@@ -13,6 +13,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.ControlPlane.Persistence, as: ControlPlanePersistence
+  alias Jido.Integration.V2.ControlPlane.ReplayNormalizer
   alias Jido.Integration.V2.ControlPlane.RunLedger
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.Event
@@ -544,6 +545,94 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     :ok
   end
 
+  test "control plane facade exposes stable service-family entrypoints" do
+    service_exports = %{
+      registry: [
+        register_connector: 1,
+        connectors: 0,
+        fetch_connector: 1,
+        capabilities: 0,
+        fetch_capability: 1
+      ],
+      invocation: [
+        invoke: 1,
+        invoke: 3,
+        execute_run: 3
+      ],
+      run_ledger: [
+        fetch_run: 1,
+        runs: 1,
+        fetch_attempt: 1,
+        attempts: 1,
+        events: 1
+      ],
+      trigger_ingress: [
+        admit_trigger: 2,
+        record_rejected_trigger: 2,
+        fetch_trigger: 4,
+        fetch_trigger_checkpoint: 4,
+        put_trigger_checkpoint: 1,
+        run_triggers: 1
+      ],
+      artifact: [
+        record_artifact: 1,
+        fetch_artifact: 1,
+        run_artifacts: 1
+      ],
+      target: [
+        announce_target: 1,
+        fetch_target: 1,
+        targets: 1,
+        compatible_targets: 1
+      ],
+      simulation_profile: [
+        install_simulation_profile: 3,
+        update_simulation_profile: 3,
+        remove_simulation_profile: 2,
+        fetch_simulation_profile: 1,
+        select_simulation_profile: 3,
+        simulation_profiles: 1
+      ],
+      inference: [
+        inference_capability_id: 0,
+        record_inference_attempt: 1,
+        invoke_inference: 2
+      ],
+      store_config: [
+        reset!: 0
+      ]
+    }
+
+    Enum.each(service_exports, fn {_service_family, exports} ->
+      Enum.each(exports, fn {function_name, arity} ->
+        assert function_exported?(ControlPlane, function_name, arity),
+               "expected Jido.Integration.V2.ControlPlane.#{function_name}/#{arity} to remain facade-stable"
+      end)
+    end)
+
+    assert Code.ensure_loaded?(Jido.Integration.V2.ControlPlane.ConnectorRegistry)
+    assert Code.ensure_loaded?(Jido.Integration.V2.ControlPlane.InvocationService)
+    assert Code.ensure_loaded?(Jido.Integration.V2.ControlPlane.RunLedgerService)
+    assert Code.ensure_loaded?(Jido.Integration.V2.ControlPlane.PolicyService)
+    assert Code.ensure_loaded?(Jido.Integration.V2.ControlPlane.ReplayNormalizer)
+    assert Code.ensure_loaded?(Jido.Integration.V2.ControlPlane.ReplayService)
+  end
+
+  test "replay normalizer only materializes bounded atom aliases" do
+    normalized =
+      ReplayNormalizer.value(%{
+        "actor_id" => "operator-1",
+        "unknown_alias" => "kept-string-only",
+        "input" => [%{"trace_id" => "trace-1"}]
+      })
+
+    assert normalized["actor_id"] == "operator-1"
+    assert normalized.actor_id == "operator-1"
+    assert normalized["unknown_alias"] == "kept-string-only"
+    refute Map.has_key?(normalized, :unknown_alias)
+    assert [%{"trace_id" => "trace-1", trace_id: "trace-1"}] = normalized.input
+  end
+
   test "reset tolerates the compiled runtime router when its application is not started" do
     assert :ok = stop_runtime_router!()
 
@@ -573,8 +662,13 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
   test "lists connectors deterministically and fetches connectors and capabilities by id" do
     assert :ok = ControlPlane.register_connector(TestConnector)
     assert :ok = ControlPlane.register_connector(LeakyConnector)
+    assert :ok = ControlPlane.register_connector(TreConnector)
 
-    assert [%Manifest{connector: "leaky"}, %Manifest{connector: "test"}] =
+    assert [
+             %Manifest{connector: "leaky"},
+             %Manifest{connector: "test"},
+             %Manifest{connector: "tre_test"}
+           ] =
              ControlPlane.connectors()
 
     assert {:ok, %Manifest{connector: "test"} = manifest} = ControlPlane.fetch_connector("test")
@@ -583,6 +677,9 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
 
     assert {:ok, %Capability{id: "leaky.echo", connector: "leaky"}} =
              ControlPlane.fetch_capability("leaky.echo")
+
+    assert {:ok, %Capability{id: "test.tre.execute", connector: "tre_test"}} =
+             ControlPlane.fetch_capability("test.tre.execute")
 
     assert {:error, :unknown_capability} = ControlPlane.fetch_capability("missing.echo")
   end
