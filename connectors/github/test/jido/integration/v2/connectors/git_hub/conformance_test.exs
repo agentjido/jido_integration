@@ -11,6 +11,15 @@ defmodule Jido.Integration.V2.Connectors.GitHub.ConformanceTest do
              Fixtures.published_capability_ids()
   end
 
+  test "fixture catalog covers every published manifest operation and capability" do
+    manifest = GitHub.manifest()
+    fixture_ids = Fixtures.published_capability_ids()
+
+    assert fixture_ids == Enum.map(manifest.operations, & &1.operation_id)
+    assert fixture_ids == Enum.map(manifest.capabilities, & &1.id)
+    assert fixture_ids == Enum.map(Fixtures.specs(), & &1.capability_id)
+  end
+
   test "passes connector foundation conformance with the package-local github_ex fixture seam" do
     assert {:ok, report} =
              Conformance.run(
