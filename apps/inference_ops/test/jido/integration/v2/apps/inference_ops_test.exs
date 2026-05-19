@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
   use ExUnit.Case, async: false
 
   alias ASM.ProviderBackend.{Event, Info}
+  alias ASM.InferenceEndpoint.RuntimeConfig, as: ASMRuntimeConfig
   alias CliSubprocessCore.Event, as: CoreEvent
   alias CliSubprocessCore.Payload
   alias Jido.Integration.V2.Apps.InferenceOps
@@ -419,18 +420,15 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
     ControlPlane.reset!()
     _ = LlamaCppSdk.unregister_backend()
     _ = SelfHostedInferenceCore.Ollama.unregister_backend()
-    original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
+    original_asm_endpoint = ASMRuntimeConfig.current()
+    :ok = ASMRuntimeConfig.reset()
 
     on_exit(fn ->
       _ = SelfHostedInferenceCore.stop_all_instances()
       _ = LlamaCppSdk.unregister_backend()
       _ = SelfHostedInferenceCore.Ollama.unregister_backend()
-
-      if is_nil(original_asm_endpoint) do
-        Application.delete_env(:agent_session_manager, ASM.InferenceEndpoint)
-      else
-        Application.put_env(:agent_session_manager, ASM.InferenceEndpoint, original_asm_endpoint)
-      end
+      :ok = ASMRuntimeConfig.reset()
+      :ok = ASMRuntimeConfig.configure!(original_asm_endpoint)
     end)
 
     :ok
@@ -658,9 +656,7 @@ defmodule Jido.Integration.V2.Apps.InferenceOpsTest do
   end
 
   defp configure_asm_endpoint(text) do
-    Application.put_env(
-      :agent_session_manager,
-      ASM.InferenceEndpoint,
+    ASMRuntimeConfig.configure!(
       backend_module: FakeASMBackend,
       backend_opts: [
         script: [

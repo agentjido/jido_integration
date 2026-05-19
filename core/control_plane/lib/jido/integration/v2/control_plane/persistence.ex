@@ -12,6 +12,60 @@ defmodule Jido.Integration.V2.ControlPlane.Persistence.Resolution do
         }
 end
 
+defmodule Jido.Integration.V2.ControlPlane.Persistence.Owner do
+  @moduledoc false
+
+  use GenServer
+
+  alias Jido.Integration.V2.ControlPlane.Persistence
+
+  @name __MODULE__
+
+  @spec start_link(keyword()) :: GenServer.on_start()
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, name: @name)
+  end
+
+  @spec current() :: {:ok, Persistence.Resolution.t()} | {:error, :not_started}
+  def current do
+    case Process.whereis(@name) do
+      nil -> {:error, :not_started}
+      _pid -> GenServer.call(@name, :current)
+    end
+  end
+
+  @spec put(Persistence.Resolution.t()) :: :ok | {:error, :not_started}
+  def put(%Persistence.Resolution{} = resolution) do
+    case Process.whereis(@name) do
+      nil -> {:error, :not_started}
+      _pid -> GenServer.call(@name, {:put, resolution})
+    end
+  end
+
+  @spec reset() :: :ok
+  def reset do
+    case Process.whereis(@name) do
+      nil -> :ok
+      _pid -> GenServer.call(@name, :reset)
+    end
+  end
+
+  @impl true
+  def init(opts) do
+    {:ok, Persistence.resolve!(opts)}
+  end
+
+  @impl true
+  def handle_call(:current, _from, resolution), do: {:reply, {:ok, resolution}, resolution}
+
+  def handle_call({:put, resolution}, _from, _state), do: {:reply, :ok, resolution}
+
+  def handle_call(:reset, _from, _state) do
+    resolution = Persistence.resolve!([])
+    {:reply, :ok, resolution}
+  end
+end
+
 defmodule Jido.Integration.V2.ControlPlane.Persistence do
   @moduledoc """
   Persistence policy resolver for control-plane stores.
@@ -21,7 +75,6 @@ defmodule Jido.Integration.V2.ControlPlane.Persistence do
   alias Jido.Integration.V2.ControlPlane.Persistence.Resolution
   alias Jido.Integration.V2.ControlPlane.RunLedger
 
-  @resolution_key {__MODULE__, :resolution}
   @required_store_keys [
     :run_store,
     :attempt_store,
@@ -82,19 +135,28 @@ defmodule Jido.Integration.V2.ControlPlane.Persistence do
   @spec configure!(keyword() | map()) :: :ok
   def configure!(attrs \\ []) do
     resolution = resolve!(attrs)
-    :persistent_term.put(@resolution_key, resolution)
-    :ok
+
+    case __MODULE__.Owner.put(resolution) do
+      :ok ->
+        :ok
+
+      {:error, :not_started} ->
+        raise ArgumentError,
+              "control-plane persistence owner is not started; start Jido.Integration.V2.ControlPlane.Application before configuring persistence"
+    end
   end
 
   @spec reset!() :: :ok
   def reset! do
-    :persistent_term.erase(@resolution_key)
-    :ok
+    __MODULE__.Owner.reset()
   end
 
   @spec current() :: Resolution.t()
   def current do
-    :persistent_term.get(@resolution_key, resolve!([]))
+    case __MODULE__.Owner.current() do
+      {:ok, resolution} -> resolution
+      {:error, :not_started} -> resolve!([])
+    end
   end
 
   @spec store_modules() :: map()

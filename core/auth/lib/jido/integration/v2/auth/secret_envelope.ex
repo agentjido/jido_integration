@@ -1,6 +1,8 @@
 defmodule Jido.Integration.V2.Auth.SecretEnvelope do
   @moduledoc false
 
+  alias Jido.Integration.V2.Auth.RuntimeConfig
+
   @default_key_id "dev-local-1"
   @default_key Base.encode64(:crypto.hash(:sha256, "jido_integration_v2_auth_dev_key"))
   @format "json-v1"
@@ -52,7 +54,7 @@ defmodule Jido.Integration.V2.Auth.SecretEnvelope do
 
   @spec keyring() :: %{active_kid: String.t(), keys: map()}
   def keyring do
-    case Application.get_env(:jido_integration_v2_auth, :keyring) do
+    case RuntimeConfig.current().keyring do
       nil ->
         reject_default_keyring_in_production!()
         %{active_kid: @default_key_id, keys: %{@default_key_id => @default_key}}
@@ -65,7 +67,7 @@ defmodule Jido.Integration.V2.Auth.SecretEnvelope do
   defp aad(suffix), do: "#{@aad_prefix}:#{suffix}"
 
   defp reject_default_keyring_in_production! do
-    if Application.get_env(:jido_integration_v2_auth, :runtime_env) in [
+    if RuntimeConfig.current().runtime_env in [
          :prod,
          "prod",
          :production,

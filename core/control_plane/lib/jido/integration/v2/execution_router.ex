@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.ExecutionRouter do
 
   alias Jido.Integration.V2.{
     Capability,
+    ControlPlane.RuntimeConfig,
     DirectRuntime,
     RuntimeResult,
     UnsupportedNonDirectRuntime
@@ -34,11 +35,7 @@ defmodule Jido.Integration.V2.ExecutionRouter do
   end
 
   defp non_direct_runtime_adapter do
-    Application.get_env(
-      :jido_integration_v2_control_plane,
-      :non_direct_runtime_adapter,
-      @default_non_direct_runtime_adapter
-    )
+    RuntimeConfig.current().non_direct_runtime_adapter || @default_non_direct_runtime_adapter
   end
 
   defp if_non_direct_runtime_available(adapter, present_fun, absent_fun) do

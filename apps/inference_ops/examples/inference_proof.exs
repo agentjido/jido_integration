@@ -3,6 +3,7 @@ Application.ensure_all_started(:ssl)
 Application.ensure_all_started(:agent_session_manager)
 
 alias Jido.Integration.V2.Apps.InferenceOps
+alias ASM.InferenceEndpoint.RuntimeConfig, as: ASMRuntimeConfig
 alias ASM.ProviderBackend.{Event, Info}
 alias CliSubprocessCore.Event, as: CoreEvent
 alias CliSubprocessCore.Payload
@@ -166,7 +167,8 @@ Req.Test.stub(CloudHTTP, fn conn ->
   })
 end)
 
-original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
+original_asm_endpoint = ASMRuntimeConfig.current()
+:ok = ASMRuntimeConfig.reset()
 
 {:ok, cloud_result} =
   InferenceOps.run_cloud_proof(
@@ -192,9 +194,7 @@ IO.inspect(
   label: "cloud_proof"
 )
 
-Application.put_env(
-  :agent_session_manager,
-  ASM.InferenceEndpoint,
+ASMRuntimeConfig.configure!(
   backend_module: FakeASMBackend,
   backend_opts: [
     script: [
@@ -258,11 +258,8 @@ try do
     label: "self_hosted_proof"
   )
 after
-  if is_nil(original_asm_endpoint) do
-    Application.delete_env(:agent_session_manager, ASM.InferenceEndpoint)
-  else
-    Application.put_env(:agent_session_manager, ASM.InferenceEndpoint, original_asm_endpoint)
-  end
+  :ok = ASMRuntimeConfig.reset()
+  :ok = ASMRuntimeConfig.configure!(original_asm_endpoint)
 
   ExampleFixture.cleanup(fixture)
   _ = SelfHostedInferenceCore.stop_all_instances()

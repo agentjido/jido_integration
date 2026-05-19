@@ -1,18 +1,13 @@
-defmodule Jido.Integration.V2.Auth.RuntimeConfig do
+defmodule Jido.Integration.V2.ControlPlane.RuntimeConfig do
   @moduledoc """
-  Supervised runtime dependency owner for auth handlers.
+  Supervised runtime dependency owner for control-plane adapters.
   """
 
   use GenServer
 
   @name __MODULE__
-  @keys [:refresh_handler, :external_secret_resolver, :keyring, :runtime_env]
-  @empty_state %{
-    refresh_handler: nil,
-    external_secret_resolver: nil,
-    keyring: nil,
-    runtime_env: nil
-  }
+  @keys [:self_hosted_endpoint_provider, :non_direct_runtime_adapter]
+  @empty_state %{self_hosted_endpoint_provider: nil, non_direct_runtime_adapter: nil}
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(_opts) do

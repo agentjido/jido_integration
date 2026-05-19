@@ -2,10 +2,12 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   use ExUnit.Case
 
   alias ASM.ProviderBackend.{Event, Info}
+  alias ASM.InferenceEndpoint.RuntimeConfig, as: ASMRuntimeConfig
   alias CliSubprocessCore.Event, as: CoreEvent
   alias CliSubprocessCore.Payload
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec
+  alias Jido.Integration.V2.ControlPlane.RuntimeConfig
   alias Jido.Integration.V2.ControlPlane.TestSupport.FakeLlamaServerFixture
   alias Jido.Integration.V2.ControlPlane.TestSupport.FakeSelfHostedEndpointProvider
   alias Jido.Integration.V2.EndpointDescriptor
@@ -355,39 +357,18 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     previous_store_env = snapshot_control_plane_store_env()
     reset_control_plane_store_env()
     ControlPlane.reset!()
-    original_asm_endpoint = Application.get_env(:agent_session_manager, ASM.InferenceEndpoint)
-
-    original_self_hosted_provider =
-      Application.get_env(:jido_integration_v2_control_plane, :self_hosted_endpoint_provider)
-
-    Application.put_env(
-      :jido_integration_v2_control_plane,
-      :self_hosted_endpoint_provider,
-      FakeSelfHostedEndpointProvider
-    )
+    original_asm_runtime_config = ASMRuntimeConfig.current()
+    :ok = ASMRuntimeConfig.reset()
+    original_runtime_config = RuntimeConfig.current()
+    :ok = RuntimeConfig.put(:self_hosted_endpoint_provider, FakeSelfHostedEndpointProvider)
 
     on_exit(fn ->
       FakeSelfHostedEndpointProvider.cleanup!()
       restore_control_plane_store_env(previous_store_env)
-
-      if is_nil(original_asm_endpoint) do
-        Application.delete_env(:agent_session_manager, ASM.InferenceEndpoint)
-      else
-        Application.put_env(:agent_session_manager, ASM.InferenceEndpoint, original_asm_endpoint)
-      end
-
-      if is_nil(original_self_hosted_provider) do
-        Application.delete_env(
-          :jido_integration_v2_control_plane,
-          :self_hosted_endpoint_provider
-        )
-      else
-        Application.put_env(
-          :jido_integration_v2_control_plane,
-          :self_hosted_endpoint_provider,
-          original_self_hosted_provider
-        )
-      end
+      :ok = ASMRuntimeConfig.reset()
+      :ok = ASMRuntimeConfig.configure!(original_asm_runtime_config)
+      :ok = RuntimeConfig.reset()
+      restore_runtime_config(original_runtime_config)
     end)
 
     :ok
@@ -798,9 +779,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   end
 
   defp configure_asm_endpoint(text) do
-    Application.put_env(
-      :agent_session_manager,
-      ASM.InferenceEndpoint,
+    ASMRuntimeConfig.configure!(
       backend_module: FakeASMBackend,
       backend_opts: [
         script: [
@@ -810,6 +789,12 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         ]
       ]
     )
+  end
+
+  defp restore_runtime_config(config) do
+    Enum.each(config, fn {key, value} ->
+      :ok = RuntimeConfig.put(key, value)
+    end)
   end
 
   defp sha256_ref?("sha256:" <> digest) when byte_size(digest) == 64 do

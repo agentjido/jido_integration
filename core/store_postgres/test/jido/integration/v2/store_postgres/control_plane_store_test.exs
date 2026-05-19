@@ -71,6 +71,7 @@ defmodule Jido.Integration.V2.StorePostgres.ControlPlaneStoreTest do
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.ControlPlane.ClaimCheck
   alias Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry
+  alias Jido.Integration.V2.ControlPlane.Persistence, as: ControlPlanePersistence
   alias Jido.Integration.V2.InferenceExecutionContext
   alias Jido.Integration.V2.InferenceRequest
   alias Jido.Integration.V2.InferenceResult
@@ -262,9 +263,7 @@ defmodule Jido.Integration.V2.StorePostgres.ControlPlaneStoreTest do
   test "claim-checks oversized inference payloads before durable writes and tracks live references" do
     attach_claim_check_telemetry([:stage, :blob_gc_skipped_live_reference])
 
-    Application.put_env(
-      :jido_integration_v2_control_plane,
-      :claim_check_store,
+    configure_claim_check_store!(
       Jido.Integration.V2.StorePostgres.ControlPlaneStoreTest.ClaimCheckStoreProbe
     )
 
@@ -396,9 +395,7 @@ defmodule Jido.Integration.V2.StorePostgres.ControlPlaneStoreTest do
   test "slow claim-check staging leaves unrelated Postgres work available while uploads are delayed" do
     attach_claim_check_telemetry([:stage])
 
-    Application.put_env(
-      :jido_integration_v2_control_plane,
-      :claim_check_store,
+    configure_claim_check_store!(
       Jido.Integration.V2.StorePostgres.ControlPlaneStoreTest.SlowClaimCheckStoreProbe
     )
 
@@ -577,6 +574,16 @@ defmodule Jido.Integration.V2.StorePostgres.ControlPlaneStoreTest do
       assert_receive {:claim_check_telemetry, ^event, measurements, metadata}, 1_000
       assertion_fun.(measurements, metadata)
     end)
+  end
+
+  defp configure_claim_check_store!(store_module) do
+    resolution = ControlPlanePersistence.current()
+
+    ControlPlanePersistence.configure!(
+      profile: resolution.profile.id,
+      capabilities: resolution.capabilities,
+      store_modules: Map.put(resolution.store_modules, :claim_check_store, store_module)
+    )
   end
 
   defp large_text do

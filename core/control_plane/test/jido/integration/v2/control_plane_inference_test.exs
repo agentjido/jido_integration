@@ -23,6 +23,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
   alias Jido.Integration.V2.ControlPlane.ClaimCheck
   alias Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry
   alias Jido.Integration.V2.ControlPlane.InferenceRecorder
+  alias Jido.Integration.V2.ControlPlane.Persistence
   alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.Event
@@ -31,23 +32,12 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
   alias Jido.Integration.V2.InferenceResult
   alias Jido.Integration.V2.LeaseRef
 
-  @control_plane_store_keys [
-    :run_store,
-    :attempt_store,
-    :event_store,
-    :artifact_store,
-    :claim_check_store,
-    :target_store,
-    :ingress_store,
-    :profile_registry_store
-  ]
-
   setup do
-    previous_store_env = snapshot_control_plane_store_env()
     reset_control_plane_store_env()
 
     on_exit(fn ->
-      restore_control_plane_store_env(previous_store_env)
+      Persistence.reset!()
+      Jido.Integration.V2.Auth.Persistence.reset!()
     end)
 
     ControlPlane.reset!()
@@ -274,27 +264,14 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
   test "abandons ledger writes when oversized claim-check staging fails" do
     attach_claim_check_telemetry([:stage_failure])
 
-    previous_claim_check_store =
-      Application.get_env(
-        :jido_integration_v2_control_plane,
-        :claim_check_store,
-        :__missing__
-      )
-
-    on_exit(fn ->
-      case previous_claim_check_store do
-        :__missing__ ->
-          Application.delete_env(:jido_integration_v2_control_plane, :claim_check_store)
-
-        store ->
-          Application.put_env(:jido_integration_v2_control_plane, :claim_check_store, store)
-      end
-    end)
-
-    Application.put_env(
-      :jido_integration_v2_control_plane,
-      :claim_check_store,
-      Jido.Integration.V2.ControlPlaneInferenceTest.FailingClaimCheckStore
+    Persistence.configure!(
+      profile: :mickey_mouse,
+      store_modules:
+        Persistence.memory_store_modules()
+        |> Map.put(
+          :claim_check_store,
+          Jido.Integration.V2.ControlPlaneInferenceTest.FailingClaimCheckStore
+        )
     )
 
     spec = oversized_failed_cloud_spec(large_text())
@@ -738,31 +715,11 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
     send(pid, {:claim_check_telemetry, event, measurements, metadata})
   end
 
-  defp snapshot_control_plane_store_env do
-    Map.new(@control_plane_store_keys, fn key ->
-      {key, Application.fetch_env(:jido_integration_v2_control_plane, key)}
-    end)
-  end
-
   defp reset_control_plane_store_env do
-    Enum.each(@control_plane_store_keys, fn key ->
-      Application.delete_env(:jido_integration_v2_control_plane, key)
-    end)
-
-    Jido.Integration.V2.ControlPlane.Persistence.reset!()
+    Persistence.reset!()
     Jido.Integration.V2.Auth.Persistence.reset!()
-    Jido.Integration.V2.ControlPlane.Persistence.configure!(profile: :mickey_mouse)
+    Persistence.configure!(profile: :mickey_mouse)
     Jido.Integration.V2.Auth.Persistence.configure!(profile: :mickey_mouse)
-  end
-
-  defp restore_control_plane_store_env(previous_env) do
-    Enum.each(previous_env, fn
-      {key, {:ok, value}} -> Application.put_env(:jido_integration_v2_control_plane, key, value)
-      {key, :error} -> Application.delete_env(:jido_integration_v2_control_plane, key)
-    end)
-
-    Jido.Integration.V2.ControlPlane.Persistence.reset!()
-    Jido.Integration.V2.Auth.Persistence.reset!()
   end
 
   defp assert_claim_check_events(event_key, expected_count, assertion_fun) do

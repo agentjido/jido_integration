@@ -24,9 +24,6 @@ defmodule Jido.Integration.V2.Auth.Stores do
   end
 
   defp configured_store(key) do
-    case Application.fetch_env(:jido_integration_v2_auth, key) do
-      {:ok, store} -> store
-      :error -> Persistence.store_module(key)
-    end
+    Persistence.store_module(key)
   end
 end

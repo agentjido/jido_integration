@@ -3,11 +3,25 @@ Application.ensure_all_started(:ssl)
 
 alias Jido.Integration.V2.Apps.InferenceOps
 
-root_url =
-  System.get_env("OLLAMA_ROOT_URL") ||
-    SelfHostedInferenceCore.Ollama.AttachSpec.default_root_url()
+{opts, _args, invalid} =
+  OptionParser.parse(System.argv(),
+    strict: [
+      root_url: :string,
+      model_id: :string
+    ]
+  )
 
-model_id = System.get_env("OLLAMA_MODEL") || "llama3.2"
+if invalid != [] do
+  raise ArgumentError,
+        "invalid options for ollama attach proof: #{inspect(invalid)}"
+end
+
+root_url =
+  Keyword.get_lazy(opts, :root_url, fn ->
+    SelfHostedInferenceCore.Ollama.AttachSpec.default_root_url()
+  end)
+
+model_id = Keyword.get(opts, :model_id, "llama3.2")
 
 case InferenceOps.run_ollama_attach_proof(
        root_url: root_url,
@@ -42,8 +56,7 @@ case InferenceOps.run_ollama_attach_proof(
     IO.puts("""
     Ensure an external Ollama daemon is already running and the requested model is pulled.
 
-      OLLAMA_ROOT_URL=#{root_url}
-      OLLAMA_MODEL=#{model_id}
+      mix run examples/ollama_attach_proof.exs -- --root-url #{root_url} --model-id #{model_id}
     """)
 
     System.halt(1)

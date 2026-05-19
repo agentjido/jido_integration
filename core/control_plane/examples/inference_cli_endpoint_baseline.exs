@@ -6,6 +6,7 @@ Application.ensure_all_started(:jido_integration_v2_control_plane)
 alias ASM.ProviderBackend.{Event, Info}
 alias CliSubprocessCore.Event, as: CoreEvent
 alias CliSubprocessCore.Payload
+alias ASM.InferenceEndpoint.RuntimeConfig
 alias Jido.Integration.V2.ControlPlane
 
 defmodule ExampleASMBackend do
@@ -88,9 +89,7 @@ end
 
 ControlPlane.reset!()
 
-Application.put_env(
-  :agent_session_manager,
-  ASM.InferenceEndpoint,
+RuntimeConfig.configure!(
   backend_module: ExampleASMBackend,
   backend_opts: [
     script: [

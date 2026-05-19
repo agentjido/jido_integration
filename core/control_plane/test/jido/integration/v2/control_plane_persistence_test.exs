@@ -16,6 +16,9 @@ defmodule Jido.Integration.V2.ControlPlanePersistenceTest do
     :profile_registry_store
   ]
 
+  defmodule AlternateStore do
+  end
+
   setup do
     previous_env = snapshot_env()
 
@@ -39,6 +42,35 @@ defmodule Jido.Integration.V2.ControlPlanePersistenceTest do
     assert resolution.profile.default_tier == :memory_ephemeral
     assert resolution.durable? == false
     assert resolution.store_modules.run_store == RunLedger
+    assert Stores.run_store() == RunLedger
+  end
+
+  test "configured control-plane store modules are owned by the supervised resolver" do
+    assert :ok =
+             Persistence.configure!(
+               profile: :mickey_mouse,
+               store_modules: alternate_store_modules()
+             )
+
+    assert Stores.run_store() == AlternateStore
+    assert Stores.profile_registry_store() == AlternateStore
+  end
+
+  test "control-plane persistence owner restarts to boot defaults" do
+    assert :ok =
+             Persistence.configure!(
+               profile: :mickey_mouse,
+               store_modules: alternate_store_modules()
+             )
+
+    assert Stores.run_store() == AlternateStore
+
+    owner = Process.whereis(Persistence.Owner)
+    ref = Process.monitor(owner)
+    Process.exit(owner, :kill)
+    assert_receive {:DOWN, ^ref, :process, ^owner, :killed}, 1_000
+    assert wait_for_owner(Persistence.Owner, owner)
+
     assert Stores.run_store() == RunLedger
   end
 
@@ -73,5 +105,26 @@ defmodule Jido.Integration.V2.ControlPlanePersistenceTest do
       {key, {:ok, value}} -> Application.put_env(:jido_integration_v2_control_plane, key, value)
       {key, :error} -> Application.delete_env(:jido_integration_v2_control_plane, key)
     end)
+  end
+
+  defp alternate_store_modules do
+    Map.new(@control_plane_store_keys, &{&1, AlternateStore})
+  end
+
+  defp wait_for_owner(name, old_pid, attempts \\ 50)
+
+  defp wait_for_owner(_name, _old_pid, 0), do: flunk("persistence owner did not restart")
+
+  defp wait_for_owner(name, old_pid, attempts) do
+    case Process.whereis(name) do
+      pid when is_pid(pid) and pid != old_pid ->
+        pid
+
+      _other ->
+        receive do
+        after
+          10 -> wait_for_owner(name, old_pid, attempts - 1)
+        end
+    end
   end
 end

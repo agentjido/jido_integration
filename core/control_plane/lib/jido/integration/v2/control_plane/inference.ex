@@ -7,6 +7,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec
+  alias Jido.Integration.V2.ControlPlane.RuntimeConfig
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceExecutionContext
   alias Jido.Integration.V2.InferenceRequest
@@ -388,10 +389,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
   defp fetch_self_hosted_endpoint_provider(opts) do
     case Keyword.get(opts, :self_hosted_endpoint_provider) ||
-           Application.get_env(
-             :jido_integration_v2_control_plane,
-             :self_hosted_endpoint_provider
-           ) do
+           RuntimeConfig.current().self_hosted_endpoint_provider do
       nil ->
         {:error, :self_hosted_endpoint_provider_not_configured}
 

@@ -8,6 +8,8 @@ defmodule Jido.Integration.V2.ControlPlane.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      {Jido.Integration.V2.ControlPlane.Persistence.Owner, []},
+      {Jido.Integration.V2.ControlPlane.RuntimeConfig, []},
       {Jido.Integration.V2.ControlPlane.Registry, []},
       {Jido.Integration.V2.ControlPlane.RunLedger, []}
     ]

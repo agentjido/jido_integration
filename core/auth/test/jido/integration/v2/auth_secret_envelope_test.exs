@@ -1,19 +1,18 @@
 defmodule Jido.Integration.V2.Auth.SecretEnvelopeTest do
   use ExUnit.Case, async: false
 
+  alias Jido.Integration.V2.Auth.RuntimeConfig
   alias Jido.Integration.V2.Auth.SecretEnvelope
 
   setup do
-    original_keyring = Application.get_env(:jido_integration_v2_auth, :keyring)
-    original_runtime_env = Application.get_env(:jido_integration_v2_auth, :runtime_env)
+    original_runtime_config = RuntimeConfig.current()
+    :ok = RuntimeConfig.reset()
 
     on_exit(fn ->
-      restore_env(:keyring, original_keyring)
-      restore_env(:runtime_env, original_runtime_env)
+      :ok = RuntimeConfig.reset()
+      restore_runtime_config(original_runtime_config)
     end)
 
-    Application.delete_env(:jido_integration_v2_auth, :keyring)
-    Application.delete_env(:jido_integration_v2_auth, :runtime_env)
     :ok
   end
 
@@ -35,7 +34,7 @@ defmodule Jido.Integration.V2.Auth.SecretEnvelopeTest do
   end
 
   test "rejects the dev default keyring in production configuration" do
-    Application.put_env(:jido_integration_v2_auth, :runtime_env, :prod)
+    :ok = RuntimeConfig.put(:runtime_env, :prod)
 
     assert_raise ArgumentError,
                  "jido auth production configuration requires an explicit non-default keyring",
@@ -47,12 +46,13 @@ defmodule Jido.Integration.V2.Auth.SecretEnvelopeTest do
   test "allows an explicit production keyring" do
     key = Base.encode64(:crypto.hash(:sha256, "phase-five-production-key"))
 
-    Application.put_env(:jido_integration_v2_auth, :runtime_env, :prod)
+    :ok = RuntimeConfig.put(:runtime_env, :prod)
 
-    Application.put_env(:jido_integration_v2_auth, :keyring, %{
-      active_kid: "kms-prod-1",
-      keys: %{"kms-prod-1" => key}
-    })
+    :ok =
+      RuntimeConfig.put(:keyring, %{
+        active_kid: "kms-prod-1",
+        keys: %{"kms-prod-1" => key}
+      })
 
     envelope = SecretEnvelope.encrypt(%{api_key: "secret"}, "credential-ref-1")
 
@@ -60,6 +60,9 @@ defmodule Jido.Integration.V2.Auth.SecretEnvelopeTest do
     assert SecretEnvelope.decrypt(envelope, "credential-ref-1") == %{api_key: "secret"}
   end
 
-  defp restore_env(key, nil), do: Application.delete_env(:jido_integration_v2_auth, key)
-  defp restore_env(key, value), do: Application.put_env(:jido_integration_v2_auth, key, value)
+  defp restore_runtime_config(config) do
+    Enum.each(config, fn {key, value} ->
+      :ok = RuntimeConfig.put(key, value)
+    end)
+  end
 end

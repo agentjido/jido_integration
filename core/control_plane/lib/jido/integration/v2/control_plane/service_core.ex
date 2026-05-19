@@ -17,6 +17,7 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
   alias Jido.Integration.V2.ControlPlane.PolicyService
   alias Jido.Integration.V2.ControlPlane.Registry
   alias Jido.Integration.V2.ControlPlane.ReplayService
+  alias Jido.Integration.V2.ControlPlane.RuntimeConfig
   alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.ControlPlane.TreAdapter
   alias Jido.Integration.V2.Credential
@@ -296,6 +297,7 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
     reset_store(Stores.attempt_store())
     reset_store(Stores.run_store())
     reset_store(Stores.ingress_store())
+    :ok = RuntimeConfig.reset()
     Auth.reset!()
     ExecutionRouter.reset!()
     :ok
