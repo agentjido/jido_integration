@@ -16,6 +16,55 @@ defmodule Jido.Integration.V2.AuthTest do
     :ok
   end
 
+  test "auth facade exposes stable service-family entrypoints for extraction" do
+    service_exports = %{
+      install: [
+        start_install: 3,
+        complete_install: 2,
+        fetch_install: 1,
+        installs: 1
+      ],
+      callback: [
+        resolve_install_callback: 1
+      ],
+      credential: [
+        resolve_connection_binding: 2,
+        issue_lease: 2,
+        resolve: 2,
+        resolve_secret: 2,
+        rotate_connection: 2
+      ],
+      refresh: [
+        set_refresh_handler: 1,
+        set_external_secret_resolver: 1,
+        request_lease: 2,
+        fetch_lease: 2,
+        renew_lease: 2
+      ],
+      assertion: [
+        request_governed_lease: 2,
+        redeem_lease: 2,
+        lease_audit_event: 2,
+        lease_fence_event: 1
+      ],
+      revocation: [
+        cancel_install: 2,
+        expire_install: 2,
+        fail_install: 2,
+        revoke_connection: 2,
+        revoke_lease: 2,
+        cleanup_lease: 2
+      ]
+    }
+
+    Enum.each(service_exports, fn {_service_family, exports} ->
+      Enum.each(exports, fn {function_name, arity} ->
+        assert function_exported?(Auth, function_name, arity),
+               "expected Jido.Integration.V2.Auth.#{function_name}/#{arity} to remain facade-stable"
+      end)
+    end)
+  end
+
   test "host apps can start and complete installs into durable connections and credential refs" do
     started_at = ~U[2026-03-09 12:00:00Z]
     expires_at = ~U[2026-03-09 13:00:00Z]
