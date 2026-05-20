@@ -16,10 +16,13 @@ defmodule FakeASMBackend do
 
   @behaviour ASM.ProviderBackend
 
+  @supervisor Module.concat(__MODULE__, Supervisor)
+
   defstruct [:config, :subscriber, :subscription_ref]
 
   def start_run(config) when is_map(config) do
-    with {:ok, pid} <- GenServer.start_link(__MODULE__, config) do
+    with {:ok, _supervisor} <- ensure_supervisor_started(),
+         {:ok, pid} <- DynamicSupervisor.start_child(@supervisor, {__MODULE__, config}) do
       {:ok, pid,
        Info.new(
          provider: config.provider.name,
@@ -31,6 +34,20 @@ defmodule FakeASMBackend do
          raw_info: %{backend: :example_cli_endpoint, provider: config.provider.name}
        )}
     end
+  end
+
+  def start_link(config) when is_map(config) do
+    GenServer.start_link(__MODULE__, config)
+  end
+
+  def child_spec(config) do
+    %{
+      id: {__MODULE__, System.unique_integer([:positive, :monotonic])},
+      start: {__MODULE__, :start_link, [config]},
+      restart: :temporary,
+      shutdown: 5_000,
+      type: :worker
+    }
   end
 
   def send_input(_server, _input, _opts), do: :ok
@@ -53,6 +70,21 @@ defmodule FakeASMBackend do
 
   def init(config) do
     {:ok, %__MODULE__{config: config, subscriber: nil, subscription_ref: nil}}
+  end
+
+  defp ensure_supervisor_started do
+    case Process.whereis(@supervisor) do
+      nil -> start_supervisor()
+      pid when is_pid(pid) -> {:ok, pid}
+    end
+  end
+
+  defp start_supervisor do
+    case DynamicSupervisor.start_link(strategy: :one_for_one, name: @supervisor) do
+      {:ok, pid} -> {:ok, pid}
+      {:error, {:already_started, pid}} -> {:ok, pid}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   def handle_call({:subscribe, pid, ref}, _from, state) do
