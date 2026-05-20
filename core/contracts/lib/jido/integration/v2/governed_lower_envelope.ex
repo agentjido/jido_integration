@@ -15,6 +15,7 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelope do
   @idempotency_classes [:idempotent, :non_idempotent]
   @runtime_classes [:direct, :session, :stream, :fixture]
   @dispatchable_kinds [:deterministic_fixture, :codex_session, :direct_connector]
+  @compensation_postures [:not_required, :compensable, :required, :not_compensable]
 
   @fields [
     :contract_name,
@@ -31,6 +32,9 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelope do
     :attempt_ref,
     :trace_id,
     :idempotency_key,
+    :effect_ref,
+    :expected_version,
+    :compensation_posture,
     :authority_ref,
     :authority_decision_hash,
     :allowed_operations,
@@ -155,6 +159,14 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelope do
         attempt_ref: optional_string(envelope.attempt_ref, :attempt_ref),
         trace_id: required_string(envelope.trace_id, :trace_id),
         idempotency_key: required_string(envelope.idempotency_key, :idempotency_key),
+        effect_ref: optional_string(envelope.effect_ref, :effect_ref),
+        expected_version: optional_non_neg_integer(envelope.expected_version, :expected_version),
+        compensation_posture:
+          optional_enumish(
+            envelope.compensation_posture,
+            @compensation_postures,
+            :compensation_posture
+          ),
         authority_ref: required_string(envelope.authority_ref, :authority_ref),
         authority_decision_hash:
           required_string(envelope.authority_decision_hash, :authority_decision_hash),
@@ -261,6 +273,15 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelope do
 
   defp optional_string(value, field) do
     required_string(value, field)
+  end
+
+  defp optional_non_neg_integer(nil, _field), do: nil
+
+  defp optional_non_neg_integer(value, _field) when is_integer(value) and value >= 0, do: value
+
+  defp optional_non_neg_integer(value, field) do
+    raise ArgumentError,
+          "#{field} must be a non-negative integer when present, got: #{inspect(value)}"
   end
 
   defp required_atomish(value, field) do

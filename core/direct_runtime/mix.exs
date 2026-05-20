@@ -31,7 +31,10 @@ defmodule Jido.Integration.V2.DirectRuntime.MixProject do
   defp deps do
     [
       DependencyResolver.jido_integration_contracts(),
+      DependencyResolver.jido_integration_v2_connector_registry(only: :test),
+      DependencyResolver.execution_plane(),
       {:jido_action, "~> 2.2"},
+      {:zoi, "~> 0.17"},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

@@ -259,7 +259,8 @@ defmodule Jido.Integration.V2.ContractsTest do
     assert Contracts.governed_lower_contracts() == [
              "JidoIntegration.GovernedLowerEnvelope.v1",
              "JidoIntegration.GovernedLowerReceipt.v1",
-             "JidoIntegration.GovernedLowerDenial.v1"
+             "JidoIntegration.GovernedLowerDenial.v1",
+             "JidoIntegration.LowerEffectReceipt.v1"
            ]
   end
 

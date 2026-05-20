@@ -74,6 +74,27 @@ defmodule Jido.Integration.V2.GovernedLowerEnvelopeContractTest do
     assert decoded["attestation_requirement_ref"] == "attestation_requirement_1"
   end
 
+  test "carries governed-effect refs without changing lower runtime dispatch identity" do
+    envelope =
+      @base_attrs
+      |> Map.merge(%{
+        effect_ref: "effect://tenant-1/diagnostic/001",
+        expected_version: 7,
+        compensation_posture: :compensable
+      })
+      |> GovernedLowerEnvelope.new!()
+
+    encoded = envelope |> GovernedLowerEnvelope.to_map() |> Jason.encode!() |> Jason.decode!()
+
+    assert envelope.effect_ref == "effect://tenant-1/diagnostic/001"
+    assert envelope.expected_version == 7
+    assert envelope.compensation_posture == :compensable
+    assert encoded["effect_ref"] == "effect://tenant-1/diagnostic/001"
+    assert encoded["expected_version"] == 7
+    assert encoded["compensation_posture"] == "compensable"
+    assert encoded["lower_runtime_kind"] == "deterministic_fixture"
+  end
+
   test "accepts reserved TRE runtime kind but marks it non-dispatchable" do
     envelope =
       @base_attrs

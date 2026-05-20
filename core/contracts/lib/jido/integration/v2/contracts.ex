@@ -52,7 +52,8 @@ defmodule Jido.Integration.V2.Contracts do
   @governed_lower_contracts [
     "JidoIntegration.GovernedLowerEnvelope.v1",
     "JidoIntegration.GovernedLowerReceipt.v1",
-    "JidoIntegration.GovernedLowerDenial.v1"
+    "JidoIntegration.GovernedLowerDenial.v1",
+    "JidoIntegration.LowerEffectReceipt.v1"
   ]
   @memory_foundation_contracts [
     "Platform.AccessGraph.Edge.v1",
