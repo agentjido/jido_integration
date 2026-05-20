@@ -20,6 +20,7 @@ notes stay in `docs/`, package-local READMEs, and app-local proof runbooks.
 - [Publishing](publishing.md)
 - [Observability](observability.md)
 - [Generalized Stack Boundary](https://github.com/nshkrdotcom/jido_integration/blob/main/guides/generalized_stack.md)
+- [Code Smell Remediation](code_smell_remediation.md)
 - [QC And Operations](https://github.com/nshkrdotcom/jido_integration/blob/main/guides/qc_and_operations.md)
 
 ## Suggested Reading Order

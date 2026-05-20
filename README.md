@@ -41,6 +41,9 @@ trees for runtime dependency sourcing.
 - read [Durability](guides/durability.md) before selecting in-memory,
   local-file, or Postgres-backed state
 - read [Publishing](guides/publishing.md) for the welded package release flow
+- read [Code Smell Remediation](guides/code_smell_remediation.md) before
+  changing auth/control-plane service ownership, persistence resolution,
+  provider fixtures, atom alias tables, or connector vocabulary boundaries
 - use `apps/*/README.md` for proof-app runbooks and host-level proof flows
 
 ## Current Stack Role And Shipped Runtime Paths

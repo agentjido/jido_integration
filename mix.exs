@@ -118,6 +118,7 @@ defmodule Jido.Integration.Workspace.MixProject do
         "guides/publishing.md",
         {"guides/reference_apps.md", filename: "guides_reference_apps"},
         "guides/observability.md",
+        "guides/code_smell_remediation.md",
         {"examples/README.md", filename: "examples_readme"},
         {"guides/developer/index.md", filename: "developer_index"},
         "guides/developer/core_packages.md",
@@ -162,6 +163,7 @@ defmodule Jido.Integration.Workspace.MixProject do
           "guides/reference_apps.md",
           "docs/reference_apps.md",
           "guides/observability.md",
+          "guides/code_smell_remediation.md",
           "docs/observability_and_pressure_semantics.md"
         ],
         Examples: ["examples/README.md"],
