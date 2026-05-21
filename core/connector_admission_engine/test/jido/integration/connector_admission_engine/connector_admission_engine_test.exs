@@ -192,6 +192,35 @@ defmodule Jido.Integration.ConnectorAdmissionEngineTest do
     assert String.contains?(record.rejection_reason, "policy_ref")
   end
 
+  test "admits governed skill packages through ref-only Jido contracts" do
+    attrs = skill_package_attrs("summarize")
+
+    assert {:ok, record} =
+             ConnectorAdmissionEngine.admit_skill_package(attrs,
+               tenant_ref: "tenant://tenant-1",
+               trace_ref: "trace://skill-admission/summarize"
+             )
+
+    assert record.admission_status == :admitted_skill_package
+    assert record.skill_ref == "skill://tenant-1/summarize"
+    assert record.manifest_hash == attrs.manifest_hash
+    assert record.policy_refs == ["policy://skill/summarize"]
+    assert record.credential_posture == :lease_required
+    assert record.runtime_families == [:direct, :process]
+    assert record.trace_ref == "trace://skill-admission/summarize"
+  end
+
+  test "governed skill package admission fails closed for invalid manifests" do
+    attrs = Map.put(skill_package_attrs("summarize"), :manifest_hash, "sha256:wrong")
+
+    assert {:error, record} =
+             ConnectorAdmissionEngine.admit_skill_package(attrs, tenant_ref: "tenant://tenant-1")
+
+    assert record.admission_status == :rejected_skill_contract_mismatch
+    assert record.skill_ref == "skill://tenant-1/summarize"
+    assert record.rejection_reason == :manifest_hash_mismatch
+  end
+
   defp conformance(manifest) do
     %{
       status: "passed",
@@ -283,5 +312,39 @@ defmodule Jido.Integration.ConnectorAdmissionEngineTest do
       runtime_families: [:direct],
       metadata: %{contract_version: "connector-sdk.v1"}
     })
+  end
+
+  defp skill_package_attrs(name) do
+    attrs = %{
+      skill_ref: "skill://tenant-1/#{name}",
+      package_name: name,
+      version: "1.0.0",
+      description: "Summarize a document.",
+      entrypoints: [
+        %{
+          name: "invoke",
+          kind: :jido_action,
+          schema_ref: "schema://skill/#{name}/input",
+          capability_ref: "capability://skill/#{name}/invoke"
+        }
+      ],
+      allowed_artifact_posture: :claim_checked,
+      credential_posture: :lease_required,
+      allowed_runtime_families: [:direct, :process],
+      policy_refs: ["policy://skill/#{name}"],
+      docs_ref: "doc://skill/#{name}",
+      tenant_ref: "tenant://tenant-1",
+      installation_ref: "installation://tenant-1/skills",
+      capability_refs: ["capability://skill/#{name}/invoke"],
+      trace_ref: "trace://skill/#{name}",
+      release_manifest_ref: "release://skill/#{name}",
+      redaction_posture: :refs_only
+    }
+
+    Map.put(
+      attrs,
+      :manifest_hash,
+      Jido.Integration.V2.SkillContracts.canonical_manifest_hash(attrs)
+    )
   end
 end

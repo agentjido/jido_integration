@@ -7,11 +7,13 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
   alias Jido.Integration.AgentInterop.Descriptor, as: AgentInteropDescriptor
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.SkillContracts
+  alias Jido.Integration.V2.SkillContracts.SkillPackage
 
   @store __MODULE__.Store
   @supported_contract_versions ["connector-sdk.v1"]
   @supported_auth_types [:api_token, :oauth2, :app_installation, :native_cli_assertion, :none]
-  @admitted_statuses [:admitted]
+  @admitted_statuses [:admitted, :admitted_skill_package]
   @rejected_statuses [
     :rejected_manifest_collision,
     :rejected_duplicate_capability,
@@ -21,7 +23,8 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     :rejected_contract_mismatch,
     :rejected_tenant_mismatch,
     :rejected_durable_adapter,
-    :rejected_external_agent_protocol_not_live
+    :rejected_external_agent_protocol_not_live,
+    :rejected_skill_contract_mismatch
   ]
   @known_string_keys %{
     "app_config" => :app_config,
@@ -88,6 +91,27 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     defstruct @enforce_keys
   end
 
+  defmodule SkillPackageAdmissionRecord do
+    @moduledoc false
+
+    @enforce_keys [
+      :admission_ref,
+      :skill_ref,
+      :tenant_ref,
+      :manifest_hash,
+      :policy_refs,
+      :credential_posture,
+      :runtime_families,
+      :entrypoint_count,
+      :capability_count,
+      :admission_status,
+      :trace_ref,
+      :release_manifest_ref,
+      :rejection_reason
+    ]
+    defstruct @enforce_keys
+  end
+
   defmodule Store do
     @moduledoc false
 
@@ -108,6 +132,7 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
   @type admission_status :: atom()
   @type admission_record :: %AdmissionRecord{}
   @type agent_interop_admission_record :: %AgentInteropAdmissionRecord{}
+  @type skill_package_admission_record :: %SkillPackageAdmissionRecord{}
 
   @spec reset!() :: :ok
   def reset! do
@@ -188,6 +213,50 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     end
   end
 
+  @spec admit_skill_package(SkillPackage.t() | map() | keyword(), keyword() | map()) ::
+          {:ok, skill_package_admission_record()} | {:error, skill_package_admission_record()}
+  def admit_skill_package(package_or_attrs, opts \\ []) do
+    attrs = normalize_opts(opts)
+
+    case SkillContracts.package(package_or_attrs) do
+      {:ok, package} ->
+        {:ok, build_skill_package_record(package, attrs, :admitted_skill_package, nil)}
+
+      {:error, {:manifest_hash_mismatch, _facts}} ->
+        package = fallback_skill_package(package_or_attrs)
+
+        {:error,
+         build_skill_package_record(
+           package,
+           attrs,
+           :rejected_skill_contract_mismatch,
+           :manifest_hash_mismatch
+         )}
+
+      {:error, %ArgumentError{} = error} ->
+        package = fallback_skill_package(package_or_attrs)
+
+        {:error,
+         build_skill_package_record(
+           package,
+           attrs,
+           :rejected_skill_contract_mismatch,
+           Exception.message(error)
+         )}
+
+      {:error, reason} ->
+        package = fallback_skill_package(package_or_attrs)
+
+        {:error,
+         build_skill_package_record(
+           package,
+           attrs,
+           :rejected_skill_contract_mismatch,
+           reason
+         )}
+    end
+  end
+
   @spec records() :: [admission_record()]
   def records do
     ensure_store!()
@@ -237,6 +306,76 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     do: Map.get(descriptor, field)
 
   defp agent_interop_value(%{} = descriptor, field), do: value(descriptor, field)
+
+  defp build_skill_package_record(package, attrs, status, reason) do
+    refs = skill_package_record_refs(package, attrs)
+
+    %SkillPackageAdmissionRecord{
+      admission_ref: "skill-admission://#{refs.tenant_ref}/#{refs.skill_ref}",
+      skill_ref: refs.skill_ref,
+      tenant_ref: refs.tenant_ref,
+      manifest_hash: skill_package_value(package, :manifest_hash),
+      policy_refs: skill_package_value(package, :policy_refs) || [],
+      credential_posture: skill_package_value(package, :credential_posture),
+      runtime_families: skill_package_value(package, :allowed_runtime_families) || [],
+      entrypoint_count: length(skill_package_value(package, :entrypoints) || []),
+      capability_count: length(skill_package_value(package, :capability_refs) || []),
+      admission_status: status,
+      trace_ref: refs.trace_ref,
+      release_manifest_ref: refs.release_manifest_ref,
+      rejection_reason: reason
+    }
+  end
+
+  defp skill_package_record_refs(package, attrs) do
+    %{
+      tenant_ref:
+        first_present([
+          value(attrs, :tenant_ref),
+          skill_package_value(package, :tenant_ref),
+          "tenant://unknown"
+        ]),
+      skill_ref: skill_package_value(package, :skill_ref) || "skill://unknown",
+      trace_ref:
+        first_present([
+          value(attrs, :trace_ref),
+          skill_package_value(package, :trace_ref),
+          "trace://connector-admission/skill-package"
+        ]),
+      release_manifest_ref:
+        first_present([
+          value(attrs, :release_manifest_ref),
+          skill_package_value(package, :release_manifest_ref),
+          "release://connector-admission/skill-package"
+        ])
+    }
+  end
+
+  defp first_present(values), do: Enum.find(values, &present_string?/1)
+
+  defp fallback_skill_package(%SkillPackage{} = package), do: package
+
+  defp fallback_skill_package(attrs) when is_map(attrs) or is_list(attrs) do
+    attrs = if is_list(attrs), do: Map.new(attrs), else: attrs
+
+    %{
+      skill_ref: value(attrs, :skill_ref),
+      tenant_ref: value(attrs, :tenant_ref),
+      manifest_hash: value(attrs, :manifest_hash),
+      policy_refs: value(attrs, :policy_refs) || [],
+      credential_posture: value(attrs, :credential_posture),
+      allowed_runtime_families: value(attrs, :allowed_runtime_families) || [],
+      entrypoints: value(attrs, :entrypoints) || [],
+      capability_refs: value(attrs, :capability_refs) || [],
+      trace_ref: value(attrs, :trace_ref),
+      release_manifest_ref: value(attrs, :release_manifest_ref)
+    }
+  end
+
+  defp fallback_skill_package(_attrs), do: %{}
+
+  defp skill_package_value(%SkillPackage{} = package, field), do: Map.get(package, field)
+  defp skill_package_value(%{} = package, field), do: value(package, field)
 
   defp admission_rejection(context) do
     [
