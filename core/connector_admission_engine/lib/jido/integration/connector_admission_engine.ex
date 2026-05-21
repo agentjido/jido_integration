@@ -4,6 +4,7 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
   """
 
   alias GroundPlane.PersistencePolicy
+  alias Jido.Integration.AgentInterop.Descriptor, as: AgentInteropDescriptor
   alias Jido.Integration.V2.AuthSpec
   alias Jido.Integration.V2.Manifest
 
@@ -19,7 +20,8 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     :rejected_missing_conformance,
     :rejected_contract_mismatch,
     :rejected_tenant_mismatch,
-    :rejected_durable_adapter
+    :rejected_durable_adapter,
+    :rejected_external_agent_protocol_not_live
   ]
   @known_string_keys %{
     "app_config" => :app_config,
@@ -69,6 +71,23 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     defstruct @enforce_keys ++ [:rejection_reason, :app_config_ref]
   end
 
+  defmodule AgentInteropAdmissionRecord do
+    @moduledoc false
+
+    @enforce_keys [
+      :admission_ref,
+      :interop_ref,
+      :tenant_ref,
+      :endpoint_ref,
+      :policy_ref,
+      :capability_count,
+      :admission_status,
+      :trace_ref,
+      :rejection_reason
+    ]
+    defstruct @enforce_keys
+  end
+
   defmodule Store do
     @moduledoc false
 
@@ -88,6 +107,7 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
 
   @type admission_status :: atom()
   @type admission_record :: %AdmissionRecord{}
+  @type agent_interop_admission_record :: %AgentInteropAdmissionRecord{}
 
   @spec reset!() :: :ok
   def reset! do
@@ -137,6 +157,37 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
     end
   end
 
+  @spec recognize_agent_interop_descriptor(
+          AgentInteropDescriptor.t() | map() | keyword(),
+          keyword() | map()
+        ) ::
+          {:error, agent_interop_admission_record()}
+  def recognize_agent_interop_descriptor(descriptor_or_attrs, opts \\ []) do
+    attrs = normalize_opts(opts)
+
+    case AgentInteropDescriptor.new(descriptor_or_attrs) do
+      {:ok, descriptor} ->
+        {:error,
+         build_agent_interop_record(
+           descriptor,
+           attrs,
+           :rejected_external_agent_protocol_not_live,
+           :external_agent_protocol_not_live
+         )}
+
+      {:error, %ArgumentError{} = error} ->
+        descriptor = fallback_agent_interop_descriptor(descriptor_or_attrs)
+
+        {:error,
+         build_agent_interop_record(
+           descriptor,
+           attrs,
+           :rejected_contract_mismatch,
+           Exception.message(error)
+         )}
+    end
+  end
+
   @spec records() :: [admission_record()]
   def records do
     ensure_store!()
@@ -149,6 +200,43 @@ defmodule Jido.Integration.ConnectorAdmissionEngine do
 
   @spec statuses() :: [atom()]
   def statuses, do: @admitted_statuses ++ @rejected_statuses
+
+  defp build_agent_interop_record(descriptor, attrs, status, reason) do
+    tenant_ref = value(attrs, :tenant_ref) || "tenant://unknown"
+    interop_ref = agent_interop_value(descriptor, :interop_ref) || "agent-interop://unknown"
+
+    %AgentInteropAdmissionRecord{
+      admission_ref: "agent-interop-admission://#{tenant_ref}/#{interop_ref}",
+      interop_ref: interop_ref,
+      tenant_ref: tenant_ref,
+      endpoint_ref: agent_interop_value(descriptor, :endpoint_ref),
+      policy_ref: agent_interop_value(descriptor, :policy_ref),
+      capability_count: length(agent_interop_value(descriptor, :capability_refs) || []),
+      admission_status: status,
+      trace_ref: value(attrs, :trace_ref) || "trace://connector-admission/agent-interop",
+      rejection_reason: reason
+    }
+  end
+
+  defp fallback_agent_interop_descriptor(%AgentInteropDescriptor{} = descriptor), do: descriptor
+
+  defp fallback_agent_interop_descriptor(attrs) when is_map(attrs) or is_list(attrs) do
+    attrs = if is_list(attrs), do: Map.new(attrs), else: attrs
+
+    %{
+      interop_ref: value(attrs, :interop_ref),
+      endpoint_ref: value(attrs, :endpoint_ref),
+      policy_ref: value(attrs, :policy_ref),
+      capability_refs: value(attrs, :capability_refs) || []
+    }
+  end
+
+  defp fallback_agent_interop_descriptor(_attrs), do: %{}
+
+  defp agent_interop_value(%AgentInteropDescriptor{} = descriptor, field),
+    do: Map.get(descriptor, field)
+
+  defp agent_interop_value(%{} = descriptor, field), do: value(descriptor, field)
 
   defp admission_rejection(context) do
     [

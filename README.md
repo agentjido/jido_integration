@@ -98,7 +98,7 @@ stack proof; it is not a GitHub, Linear, Codex, or other live provider claim.
 The cross-stack conformance command is:
 
 ```bash
-cd /home/home/p/g/n/stack_lab
+cd ../stack_lab
 MIX_ENV=test mix stack_lab.synapse.staged_live.v1 --json
 ```
 

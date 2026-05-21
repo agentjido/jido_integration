@@ -31,6 +31,14 @@ defmodule Jido.Integration.Build.DependencyResolver do
         opts
       )
 
+  def jido_integration_agent_interop_contracts(opts \\ []),
+    do:
+      resolve_internal(
+        :jido_integration_agent_interop_contracts,
+        "core/agent_interop_contracts",
+        opts
+      )
+
   def jido_integration_connector_admission_engine(opts \\ []),
     do:
       resolve_internal(

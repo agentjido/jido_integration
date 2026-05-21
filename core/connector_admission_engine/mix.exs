@@ -29,6 +29,7 @@ defmodule Jido.Integration.ConnectorAdmissionEngine.MixProject do
 
   defp deps do
     [
+      DependencyResolver.jido_integration_agent_interop_contracts(),
       DependencyResolver.jido_integration_contracts(),
       DependencyResolver.ground_plane_persistence_policy(),
       DependencyResolver.jido_integration_conformance_contracts(only: :test, runtime: false),

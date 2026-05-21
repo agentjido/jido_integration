@@ -147,6 +147,51 @@ defmodule Jido.Integration.ConnectorAdmissionEngineTest do
     assert collision.admission_status == :rejected_manifest_collision
   end
 
+  test "recognizes generic agent interop descriptors without admitting a live protocol" do
+    assert {:error, record} =
+             ConnectorAdmissionEngine.recognize_agent_interop_descriptor(
+               %{
+                 interop_ref: "agent-interop://tenant/doc-review",
+                 name: "Document Review Agent",
+                 version: "2026-05-21",
+                 protocol_family: :http,
+                 endpoint_ref: "endpoint://agent/doc-review",
+                 capability_refs: ["agent-capability://doc-review/summarize"],
+                 auth_binding_ref: "credential-binding://agent/doc-review",
+                 policy_ref: "policy://agent/doc-review"
+               },
+               tenant_ref: "tenant://tenant-1",
+               trace_ref: "trace://agent-interop"
+             )
+
+    assert record.admission_status == :rejected_external_agent_protocol_not_live
+    assert record.rejection_reason == :external_agent_protocol_not_live
+    assert record.interop_ref == "agent-interop://tenant/doc-review"
+    assert record.endpoint_ref == "endpoint://agent/doc-review"
+    assert record.policy_ref == "policy://agent/doc-review"
+    assert record.capability_count == 1
+    assert :rejected_external_agent_protocol_not_live in ConnectorAdmissionEngine.statuses()
+  end
+
+  test "generic agent interop recognition rejects invalid descriptors" do
+    assert {:error, record} =
+             ConnectorAdmissionEngine.recognize_agent_interop_descriptor(
+               %{
+                 interop_ref: "agent-interop://tenant/doc-review",
+                 name: "Document Review Agent",
+                 version: "2026-05-21",
+                 protocol_family: :http,
+                 endpoint_ref: "endpoint://agent/doc-review",
+                 capability_refs: ["agent-capability://doc-review/summarize"],
+                 auth_binding_ref: "credential-binding://agent/doc-review"
+               },
+               tenant_ref: "tenant://tenant-1"
+             )
+
+    assert record.admission_status == :rejected_contract_mismatch
+    assert String.contains?(record.rejection_reason, "policy_ref")
+  end
+
   defp conformance(manifest) do
     %{
       status: "passed",

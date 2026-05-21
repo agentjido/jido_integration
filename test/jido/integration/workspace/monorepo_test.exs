@@ -9,6 +9,7 @@ defmodule Jido.Integration.Workspace.BlitzWorkspaceTest do
   test "enumerates the tooling-root projects in stable order" do
     assert Blitz.MixWorkspace.project_paths() == [
              ".",
+             "core/agent_interop_contracts",
              "core/asm_runtime_bridge",
              "core/auth",
              "core/brain_ingress",
