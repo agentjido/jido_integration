@@ -87,6 +87,21 @@ with `~/scripts/with_bash_secrets`. The Codex lane requires `OPENAI_API_KEY`;
 `CODEX_API_KEY` is only needed when a selected Codex connector profile requires
 it.
 
+The Synapse governed-effect lift adds a provider-neutral diagnostic lane that
+is intentionally below product semantics and above Execution Plane lane
+details. `Jido.Integration.Lanes.DiagnosticLane` accepts a governed lower
+envelope, validates the manifest/capability shape, invokes the Execution Plane
+diagnostic lane, and returns a lower receipt with authority, dispatch,
+operation, trace, and diagnostic-result facts. The lane is used for staged-live
+stack proof; it is not a GitHub, Linear, Codex, or other live provider claim.
+
+The cross-stack conformance command is:
+
+```bash
+cd /home/home/p/g/n/stack_lab
+MIX_ENV=test mix stack_lab.synapse.staged_live.v1 --json
+```
+
 ## Connector And Auth Responsibilities
 
 Connector packages publish authored capability contracts and may provide
