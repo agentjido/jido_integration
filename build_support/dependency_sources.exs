@@ -148,7 +148,7 @@ defmodule DependencySources do
     path =
       if is_list(path), do: Enum.find(path, &File.exists?(Path.expand(&1, repo_root))), else: path
 
-    {app, Keyword.merge([path: path], dep_options(config, extra_opts))}
+    {app, Keyword.merge([path: Path.expand(path, repo_root)], dep_options(config, extra_opts))}
   end
 
   defp dep_tuple(app, config, :github, _repo_root, override, extra_opts) do
