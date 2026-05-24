@@ -86,6 +86,17 @@ defmodule Jido.Integration.Build.DependencyResolver do
   def jido_integration_contracts(opts \\ []),
     do: resolve_internal(:jido_integration_contracts, "core/contracts", opts)
 
+  def jido_model_invocation_contracts(opts \\ []),
+    do:
+      resolve_internal(
+        :jido_model_invocation_contracts,
+        "core/model_invocation_contracts",
+        opts
+      )
+
+  def jido_inference_runtime(opts \\ []),
+    do: resolve_internal(:jido_inference_runtime, "core/inference_runtime", opts)
+
   def jido_integration_provider_classification(opts \\ []),
     do:
       resolve_internal(

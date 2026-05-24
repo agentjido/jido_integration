@@ -16,6 +16,19 @@ Shared contracts now live in `core/contracts`:
 - `InferenceResult`
 - `LeaseRef`
 
+The governance-facing model invocation seam lives in
+`core/model_invocation_contracts`:
+
+- `Jido.Integration.ModelInvocation.Request`
+- `Jido.Integration.ModelInvocation.Receipt`
+- `Jido.Integration.ModelInvocation.StreamFragment`
+
+Those DTOs are the Mezzanine-facing contract for context-to-model execution.
+They carry context packet refs, route decision refs, prompt and provider
+payload artifact refs, credential lease refs, token/cost summaries, and trace
+refs. They reject raw prompts, raw message lists, provider payload bodies, and
+credentials.
+
 `TargetDescriptor` remains the shared durable target advertisement contract.
 Inference reuses it directly instead of introducing a parallel durable target
 shape.
@@ -38,6 +51,13 @@ It:
 - executes those CLI endpoint routes through `req_llm`
 - resolves self-hosted endpoints through an optional provider seam
 - executes those self-hosted OpenAI-compatible endpoints through `req_llm`
+
+`core/inference_runtime` sits above that existing execution path for
+AI-execution requests. Its default `FakeInvoker` emits deterministic
+provider-free receipts for StackLab and package tests. Its
+`ControlPlaneInvoker` is opt-in and delegates to
+`ControlPlane.invoke_inference/2`, preserving durable run, attempt, event,
+credential lease, and review truth.
 
 ## Shared `:inference` Adapter
 
@@ -127,6 +147,8 @@ The landed proof surface is now split between package-local examples and an
 app-level proof app:
 
 - `core/contracts/test/jido/integration/v2/inference_contracts_test.exs`
+- `core/model_invocation_contracts/test/jido/integration/model_invocation/contracts_test.exs`
+- `core/inference_runtime/test/jido/integration/inference_runtime_test.exs`
 - `core/contracts/examples/inference_contract_round_trip.exs`
 - `core/control_plane/test/jido/integration/v2/control_plane_inference_test.exs`
 - `core/control_plane/test/jido/integration/v2/control_plane_inference_execution_test.exs`

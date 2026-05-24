@@ -18,6 +18,8 @@
 - `./core/direct_runtime/mix.exs`: Direct execution runtime for stateless and request/response capabilities
 - `./core/dispatch_runtime/mix.exs`: Async trigger dispatch runtime with retry, replay, and recovery
 - `./core/ingress/mix.exs`: Webhook and polling trigger admission for the greenfield platform
+- `./core/inference_runtime/mix.exs`: Explicit governed model invocation runtime with fixture and control-plane invokers
+- `./core/model_invocation_contracts/mix.exs`: Stable governed model invocation request, receipt, and stream fragment DTOs
 - `./core/platform/mix.exs`: Public facade package for the Jido Integration platform
 - `./core/platform_cluster_runtime/mix.exs`: Cluster-runtime shim for platform-owned package/runtime wiring
 - `./core/policy/mix.exs`: Admission policy evaluation for capabilities
@@ -70,6 +72,8 @@ Current core packages:
 - `core/direct_runtime`
 - `core/dispatch_runtime`
 - `core/ingress`
+- `core/inference_runtime`
+- `core/model_invocation_contracts`
 - `core/platform`
 - `core/platform_cluster_runtime`
 - `core/policy`

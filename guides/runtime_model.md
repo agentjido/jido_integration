@@ -62,6 +62,12 @@ facade package and not in the direct runtime path.
 
 Inference is now a first-class runtime family on the public facade.
 
+- Mezzanine-facing model calls enter as
+  `Jido.Integration.ModelInvocation.Request` values and leave as
+  `Jido.Integration.ModelInvocation.Receipt` values
+- deterministic StackLab/local proofs use `Jido.Integration.InferenceRuntime`
+  with `FakeInvoker`
+- control-plane/provider execution is explicit via `ControlPlaneInvoker`
 - cloud routes execute as `runtime_kind: :client` against provider-managed
   endpoints
 - self-hosted routes execute as `runtime_kind: :service` after endpoint

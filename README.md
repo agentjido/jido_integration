@@ -72,6 +72,8 @@ The shipped runtime families are:
 - stream execution for session and market-style event flows
 - inference execution through `req_llm` across cloud, CLI endpoint,
   self-hosted service, and attached-local endpoint shapes
+- governed model invocation contracts and deterministic runtime receipts for
+  Mezzanine-owned AI execution requests
 
 Recent lower work has been directly useful to the product path. The repo now
 preserves coding-runtime token events, supports live workspace options, adds
@@ -295,6 +297,11 @@ Phase 1 also lands the first live inference runtime family on that same
 surface:
 
 - shared inference contracts now live in `core/contracts`
+- governance-facing model invocation request, receipt, and stream fragment DTOs
+  now live in `core/model_invocation_contracts`
+- `core/inference_runtime` executes those DTOs through an explicit invoker,
+  defaulting to deterministic fixture receipts and requiring opt-in for the
+  control-plane/live provider path
 - `core/control_plane` now builds the local `ReqLLMCallSpec`, executes both
   cloud, CLI-endpoint, and self-hosted requests through `req_llm`, and records
   the durable event minimum
