@@ -13,6 +13,7 @@ notes stay in `docs/`, package-local READMEs, and app-local proof runbooks.
 - [Execution Plane Alignment](execution_plane_alignment.md)
 - [Runtime Model](runtime_model.md)
 - [Inference Baseline](inference_baseline.md)
+- [Model Call Receipts](model_call_receipts.md)
 - [Durability](durability.md)
 - [Connector Lifecycle](connector_lifecycle.md)
 - [Conformance](conformance.md)
@@ -31,13 +32,15 @@ notes stay in `docs/`, package-local READMEs, and app-local proof runbooks.
 3. read `runtime_model.md` to choose the right execution lane
 4. read `inference_baseline.md` for the live inference contracts,
    durability model, and proof surface
-5. read `durability.md` before selecting a state tier
-6. read `connector_lifecycle.md` to understand connector publication and review
-7. read `async_and_webhooks.md` if you need hosted ingress or replay
-8. read `publishing.md` if you need the welded
+5. read `model_call_receipts.md` before changing Mezzanine-to-Jido invocation
+   request or receipt fields
+6. read `durability.md` before selecting a state tier
+7. read `connector_lifecycle.md` to understand connector publication and review
+8. read `async_and_webhooks.md` if you need hosted ingress or replay
+9. read `publishing.md` if you need the welded
    `mix release.prepare -> mix release.track -> mix release.publish ->
    mix release.archive` workflow
-9. read `observability.md` for telemetry and pressure semantics
-10. read `conformance.md` if you are validating connector publication claims
-11. read `generalized_stack.md` and `qc_and_operations.md` before changing
+10. read `observability.md` for telemetry and pressure semantics
+11. read `conformance.md` if you are validating connector publication claims
+12. read `generalized_stack.md` and `qc_and_operations.md` before changing
     generalized-stack boundaries or live-provider proof commands

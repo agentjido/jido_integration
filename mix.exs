@@ -118,6 +118,9 @@ defmodule Jido.Integration.Workspace.MixProject do
         "guides/publishing.md",
         {"guides/reference_apps.md", filename: "guides_reference_apps"},
         "guides/observability.md",
+        "guides/model_call_receipts.md",
+        "guides/generalized_stack.md",
+        "guides/qc_and_operations.md",
         "guides/code_smell_remediation.md",
         {"examples/README.md", filename: "examples_readme"},
         {"guides/developer/index.md", filename: "developer_index"},
@@ -143,6 +146,7 @@ defmodule Jido.Integration.Workspace.MixProject do
           "guides/runtime_model.md"
         ],
         Inference: ["guides/inference_baseline.md"],
+        "Model Calls": ["guides/model_call_receipts.md"],
         Durability: ["guides/durability.md", "docs/local_durability.md"],
         "Connector Lifecycle": [
           "guides/connector_lifecycle.md",
@@ -163,6 +167,8 @@ defmodule Jido.Integration.Workspace.MixProject do
           "guides/reference_apps.md",
           "docs/reference_apps.md",
           "guides/observability.md",
+          "guides/generalized_stack.md",
+          "guides/qc_and_operations.md",
           "guides/code_smell_remediation.md",
           "docs/observability_and_pressure_semantics.md"
         ],
