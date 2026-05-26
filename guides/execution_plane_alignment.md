@@ -87,6 +87,11 @@ build `ExecutionPlane.Admission.Request` values and to call an injected
 `ExecutionPlane.Runtime.Client`. It must not expose lane packages as the
 public `Jido.Integration.V2` API.
 
+TRE envelope input hashing uses a sanitized shape hash rather than the raw
+input payload. Field names are hashed and values are reduced to bounded type
+shapes before `GroundPlane.Boundary.Codec` digests the evidence, so local
+runtime names such as `session_id` do not become public boundary payload keys.
+
 Fallback ladders are owned here, not inside the node. A multi-attestation
 policy is executed as separate runtime-client calls, one acceptable-attestation
 rung at a time, so each rejection and final success remains durable and

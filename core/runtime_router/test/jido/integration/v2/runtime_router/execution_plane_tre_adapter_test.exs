@@ -31,15 +31,19 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneTreAdapterTest do
     capability = tre_capability()
 
     assert {:ok, result} =
-             ExecutionPlaneTreAdapter.execute(capability, %{"value" => "ok"}, %{
-               run_id: "run-1",
-               attempt_id: "attempt-1",
-               opts: %{
-                 governed_lower_envelope: envelope,
-                 tre_runner_path: runner_path,
-                 tre_materializer: materializer(read_only_script(), read_only_policy())
+             ExecutionPlaneTreAdapter.execute(
+               capability,
+               %{"session_id" => "runtime-session", "value" => "ok"},
+               %{
+                 run_id: "run-1",
+                 attempt_id: "attempt-1",
+                 opts: %{
+                   governed_lower_envelope: envelope,
+                   tre_runner_path: runner_path,
+                   tre_materializer: materializer(read_only_script(), read_only_policy())
+                 }
                }
-             })
+             )
 
     assert result.output.adapter == :execution_plane_tre
     assert result.output.lower_runtime_kind == :tre_rhai

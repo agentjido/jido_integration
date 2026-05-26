@@ -158,7 +158,7 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneTreAdapter do
       "sandbox_profile_ref" => envelope.sandbox_profile_ref,
       "input_ref" => envelope.input_ref,
       "input_hash" => envelope.input_hash,
-      "input_shape_hash" => boundary_digest(input),
+      "input_shape_hash" => boundary_digest(input_shape(input)),
       "limits" => context_opt(context, :tre_limits, @default_limits)
     }
   end
@@ -277,5 +277,46 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneTreAdapter do
     value
     |> CanonicalJson.normalize!()
     |> BoundaryCodec.digest()
+  end
+
+  defp input_shape(value) when is_map(value) do
+    fields =
+      value
+      |> Enum.map(fn {key, nested_value} ->
+        %{
+          "key_hash" => raw_sha256(to_string(key)),
+          "value_shape" => input_shape(nested_value)
+        }
+      end)
+      |> Enum.sort_by(& &1["key_hash"])
+
+    %{"kind" => "map", "size" => map_size(value), "fields" => fields}
+  end
+
+  defp input_shape(value) when is_list(value) do
+    %{
+      "kind" => "list",
+      "size" => length(value),
+      "item_shapes" => Enum.map(value, &input_shape/1)
+    }
+  end
+
+  defp input_shape(value) when is_binary(value),
+    do: %{"kind" => "binary", "bytes" => byte_size(value)}
+
+  defp input_shape(value) when is_integer(value), do: %{"kind" => "integer"}
+  defp input_shape(value) when is_float(value), do: %{"kind" => "float"}
+  defp input_shape(value) when is_boolean(value), do: %{"kind" => "boolean"}
+  defp input_shape(nil), do: %{"kind" => "nil"}
+
+  defp input_shape(value) when is_atom(value),
+    do: %{"kind" => "atom", "value" => Atom.to_string(value)}
+
+  defp input_shape(_value), do: %{"kind" => "unsupported"}
+
+  defp raw_sha256(value) do
+    "sha256:" <>
+      (:crypto.hash(:sha256, value)
+       |> Base.encode16(case: :lower))
   end
 end
