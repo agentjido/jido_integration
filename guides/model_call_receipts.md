@@ -12,6 +12,7 @@ provider-runtime posture contracts for the NSHKR stack.
 
 Mezzanine passes only governed refs and hashes into model invocation:
 
+- `workflow_ref`;
 - `prompt_artifact_ref`;
 - `provider_payload_ref`;
 - `payload_hash`;
@@ -21,6 +22,12 @@ Mezzanine passes only governed refs and hashes into model invocation:
 Jido Integration does not compile context, grant authority, choose product
 defaults, or promote optimization candidates. It executes the selected
 governed invocation path and returns bounded receipts.
+
+`credential_lease_ref` is required for every non-fixture runtime kind. Fixture
+invocations may omit it so deterministic StackLab tests stay provider-free.
+Request construction rejects raw prompt/message/provider payload fields and
+common credential, token, authorization, and `raw_*` keys before an invocation
+can reach runtime code.
 
 ## Receipt Outputs
 

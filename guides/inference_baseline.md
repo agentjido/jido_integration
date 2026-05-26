@@ -25,9 +25,12 @@ The governance-facing model invocation seam lives in
 
 Those DTOs are the Mezzanine-facing contract for context-to-model execution.
 They carry context packet refs, route decision refs, prompt and provider
-payload artifact refs, credential lease refs, token/cost summaries, and trace
-refs. They reject raw prompts, raw message lists, provider payload bodies, and
-credentials.
+payload artifact refs, workflow refs, credential lease refs, token/cost
+summaries, and trace refs. They reject raw prompts, raw message lists,
+provider payload bodies, credentials, token-shaped metadata, and `raw_*`
+fields before DTO construction. Non-fixture runtimes require an explicit
+credential lease; fixture runtimes remain credential-free for deterministic
+StackLab proof.
 
 `TargetDescriptor` remains the shared durable target advertisement contract.
 Inference reuses it directly instead of introducing a parallel durable target

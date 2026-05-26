@@ -75,6 +75,13 @@ The shipped runtime families are:
 - governed model invocation contracts and deterministic runtime receipts for
   Mezzanine-owned AI execution requests
 
+The NSHKR cleanup pass hardened the governed model invocation seam. Model
+invocation requests and receipts now carry `workflow_ref`, reject top-level and
+nested raw/provider/credential-shaped fields before DTO construction, and
+require `credential_lease_ref` for non-fixture runtime kinds. The fixture
+runtime remains credential-free so StackLab can prove model receipt behavior
+without live provider secrets.
+
 Recent lower work has been directly useful to the product path. The repo now
 preserves coding-runtime token events, supports live workspace options, adds
 session stop control, neutralizes deterministic lower defaults, and keeps

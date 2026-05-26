@@ -19,6 +19,8 @@ Jido Integration changes must keep these obligations green:
 - auth install, credential lease, rotation, revocation, and secret provider
   tests;
 - runtime route, dispatch, webhook, stream, session, and direct-runtime tests;
+- model invocation fixtures for workflow refs, fixture credential posture,
+  non-fixture credential leases, and raw/provider/credential rejection;
 - StackLab `mix gn_ten.connector.scan --all-repos`;
 - StackLab `mix gn_ten.tenant.scan --all-repos`;
 - no Regex usage in touched code/tests;
