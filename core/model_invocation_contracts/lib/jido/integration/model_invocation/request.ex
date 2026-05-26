@@ -12,6 +12,7 @@ defmodule Jido.Integration.ModelInvocation.Request do
     :schema_version,
     :invocation_ref,
     :tenant_ref,
+    :workflow_ref,
     :context_packet_ref,
     :route_decision_ref,
     :prompt_artifact_ref,
@@ -32,6 +33,7 @@ defmodule Jido.Integration.ModelInvocation.Request do
     :schema_version,
     :invocation_ref,
     :tenant_ref,
+    :workflow_ref,
     :context_packet_ref,
     :route_decision_ref,
     :prompt_artifact_ref,
@@ -61,6 +63,7 @@ defmodule Jido.Integration.ModelInvocation.Request do
           schema_version: String.t(),
           invocation_ref: String.t(),
           tenant_ref: String.t(),
+          workflow_ref: String.t(),
           context_packet_ref: String.t(),
           route_decision_ref: String.t(),
           prompt_artifact_ref: String.t(),
@@ -71,7 +74,7 @@ defmodule Jido.Integration.ModelInvocation.Request do
           endpoint_ref: String.t(),
           runtime_ref: String.t(),
           runtime_kind: String.t(),
-          credential_lease_ref: String.t(),
+          credential_lease_ref: String.t() | nil,
           trace_ref: String.t(),
           idempotency_key: String.t(),
           token_budget_ref: String.t() | nil,
@@ -88,8 +91,10 @@ defmodule Jido.Integration.ModelInvocation.Request do
   def new(%__MODULE__{} = request), do: normalize(request)
 
   def new(attrs) do
+    attrs = Validation.attrs_map(attrs)
+    Validation.ensure_no_raw_payloads!(attrs, "attrs")
+
     attrs
-    |> Validation.attrs_map()
     |> build()
     |> normalize()
   rescue
@@ -110,6 +115,7 @@ defmodule Jido.Integration.ModelInvocation.Request do
       "schema_version" => request.schema_version,
       "invocation_ref" => request.invocation_ref,
       "tenant_ref" => request.tenant_ref,
+      "workflow_ref" => request.workflow_ref,
       "context_packet_ref" => request.context_packet_ref,
       "route_decision_ref" => request.route_decision_ref,
       "prompt_artifact_ref" => request.prompt_artifact_ref,
@@ -157,6 +163,7 @@ defmodule Jido.Integration.ModelInvocation.Request do
       stream?: request.stream?,
       metadata: %{
         "tenant_ref" => request.tenant_ref,
+        "workflow_ref" => request.workflow_ref,
         "context_packet_ref" => request.context_packet_ref,
         "route_decision_ref" => request.route_decision_ref,
         "prompt_artifact_ref" => request.prompt_artifact_ref,
@@ -172,10 +179,13 @@ defmodule Jido.Integration.ModelInvocation.Request do
   end
 
   defp build(attrs) do
+    runtime_kind = attrs |> Contracts.get(:runtime_kind) |> Validation.runtime_kind!()
+
     %__MODULE__{
       schema_version: Contracts.get(attrs, :schema_version, @schema_version),
       invocation_ref: Validation.required_string!(attrs, :invocation_ref, "invocation_ref"),
       tenant_ref: Validation.required_string!(attrs, :tenant_ref, "tenant_ref"),
+      workflow_ref: Validation.required_string!(attrs, :workflow_ref, "workflow_ref"),
       context_packet_ref:
         Validation.required_string!(attrs, :context_packet_ref, "context_packet_ref"),
       route_decision_ref:
@@ -193,9 +203,8 @@ defmodule Jido.Integration.ModelInvocation.Request do
       provider_ref: Validation.required_string!(attrs, :provider_ref, "provider_ref"),
       endpoint_ref: Validation.required_string!(attrs, :endpoint_ref, "endpoint_ref"),
       runtime_ref: Validation.required_string!(attrs, :runtime_ref, "runtime_ref"),
-      runtime_kind: attrs |> Contracts.get(:runtime_kind) |> Validation.runtime_kind!(),
-      credential_lease_ref:
-        Validation.required_string!(attrs, :credential_lease_ref, "credential_lease_ref"),
+      runtime_kind: runtime_kind,
+      credential_lease_ref: credential_lease_ref!(attrs, runtime_kind),
       trace_ref: Validation.required_string!(attrs, :trace_ref, "trace_ref"),
       idempotency_key: Validation.required_string!(attrs, :idempotency_key, "idempotency_key"),
       token_budget_ref: Validation.optional_string!(attrs, :token_budget_ref, "token_budget_ref"),
@@ -223,6 +232,20 @@ defmodule Jido.Integration.ModelInvocation.Request do
     {:ok, request}
   rescue
     error in ArgumentError -> {:error, error}
+  end
+
+  defp credential_lease_ref!(attrs, "fixture") do
+    Validation.optional_string!(attrs, :credential_lease_ref, "credential_lease_ref")
+  end
+
+  defp credential_lease_ref!(attrs, _runtime_kind) do
+    case Validation.optional_string!(attrs, :credential_lease_ref, "credential_lease_ref") do
+      nil ->
+        raise ArgumentError, "credential_lease_ref is required for non-fixture runtimes"
+
+      value ->
+        value
+    end
   end
 
   defp provider_atomish("provider://" <> rest), do: rest |> String.split("/") |> List.first()

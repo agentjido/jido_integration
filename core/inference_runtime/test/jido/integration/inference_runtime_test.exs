@@ -63,6 +63,7 @@ defmodule Jido.Integration.InferenceRuntimeTest do
       %{
         invocation_ref: "model-invocation://tenant-1/run-1",
         tenant_ref: "tenant://1",
+        workflow_ref: "workflow://tenant-1/run-1",
         context_packet_ref: "context-packet://tenant-1/packet-1",
         route_decision_ref: "route-decision://tenant-1/route-1",
         prompt_artifact_ref: "artifact://prompt/1",

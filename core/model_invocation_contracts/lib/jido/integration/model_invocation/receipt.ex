@@ -14,6 +14,7 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
     :invocation_ref,
     :tenant_ref,
     :status,
+    :workflow_ref,
     :context_packet_ref,
     :route_decision_ref,
     :prompt_artifact_ref,
@@ -38,6 +39,7 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
     :invocation_ref,
     :tenant_ref,
     :status,
+    :workflow_ref,
     :context_packet_ref,
     :route_decision_ref,
     :prompt_artifact_ref,
@@ -71,6 +73,7 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
           invocation_ref: String.t(),
           tenant_ref: String.t(),
           status: status(),
+          workflow_ref: String.t(),
           context_packet_ref: String.t(),
           route_decision_ref: String.t(),
           prompt_artifact_ref: String.t(),
@@ -81,7 +84,7 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
           endpoint_ref: String.t(),
           runtime_ref: String.t(),
           runtime_kind: String.t(),
-          credential_lease_ref: String.t(),
+          credential_lease_ref: String.t() | nil,
           trace_ref: String.t(),
           idempotency_key: String.t(),
           token_summary: map(),
@@ -105,6 +108,7 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
         %{
           invocation_ref: request.invocation_ref,
           tenant_ref: request.tenant_ref,
+          workflow_ref: request.workflow_ref,
           context_packet_ref: request.context_packet_ref,
           route_decision_ref: request.route_decision_ref,
           prompt_artifact_ref: request.prompt_artifact_ref,
@@ -130,8 +134,10 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
   def new(%__MODULE__{} = receipt), do: normalize(receipt)
 
   def new(attrs) do
+    attrs = Validation.attrs_map(attrs)
+    Validation.ensure_no_raw_payloads!(attrs, "attrs")
+
     attrs
-    |> Validation.attrs_map()
     |> build()
     |> normalize()
   rescue
@@ -154,6 +160,7 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
       "invocation_ref" => receipt.invocation_ref,
       "tenant_ref" => receipt.tenant_ref,
       "status" => receipt.status,
+      "workflow_ref" => receipt.workflow_ref,
       "context_packet_ref" => receipt.context_packet_ref,
       "route_decision_ref" => receipt.route_decision_ref,
       "prompt_artifact_ref" => receipt.prompt_artifact_ref,
@@ -185,12 +192,15 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
   def canonical_hash(%__MODULE__{} = receipt), do: receipt |> dump() |> Canonical.checksum!()
 
   defp build(attrs) do
+    runtime_kind = attrs |> Contracts.get(:runtime_kind) |> Validation.runtime_kind!()
+
     base = %__MODULE__{
       schema_version: Contracts.get(attrs, :schema_version, @schema_version),
       receipt_ref: Contracts.get(attrs, :receipt_ref),
       invocation_ref: Validation.required_string!(attrs, :invocation_ref, "invocation_ref"),
       tenant_ref: Validation.required_string!(attrs, :tenant_ref, "tenant_ref"),
       status: attrs |> Contracts.get(:status) |> Validation.status!(),
+      workflow_ref: Validation.required_string!(attrs, :workflow_ref, "workflow_ref"),
       context_packet_ref:
         Validation.required_string!(attrs, :context_packet_ref, "context_packet_ref"),
       route_decision_ref:
@@ -208,9 +218,8 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
       provider_ref: Validation.required_string!(attrs, :provider_ref, "provider_ref"),
       endpoint_ref: Validation.required_string!(attrs, :endpoint_ref, "endpoint_ref"),
       runtime_ref: Validation.required_string!(attrs, :runtime_ref, "runtime_ref"),
-      runtime_kind: attrs |> Contracts.get(:runtime_kind) |> Validation.runtime_kind!(),
-      credential_lease_ref:
-        Validation.required_string!(attrs, :credential_lease_ref, "credential_lease_ref"),
+      runtime_kind: runtime_kind,
+      credential_lease_ref: credential_lease_ref!(attrs, runtime_kind),
       trace_ref: Validation.required_string!(attrs, :trace_ref, "trace_ref"),
       idempotency_key: Validation.required_string!(attrs, :idempotency_key, "idempotency_key"),
       token_summary: Validation.required_map!(attrs, :token_summary, "token_summary"),
@@ -252,5 +261,19 @@ defmodule Jido.Integration.ModelInvocation.Receipt do
       |> Map.put(:receipt_ref, nil)
 
     Canonical.artifact_ref("jido-model-invocation-receipt", value)
+  end
+
+  defp credential_lease_ref!(attrs, "fixture") do
+    Validation.optional_string!(attrs, :credential_lease_ref, "credential_lease_ref")
+  end
+
+  defp credential_lease_ref!(attrs, _runtime_kind) do
+    case Validation.optional_string!(attrs, :credential_lease_ref, "credential_lease_ref") do
+      nil ->
+        raise ArgumentError, "credential_lease_ref is required for non-fixture runtimes"
+
+      value ->
+        value
+    end
   end
 end

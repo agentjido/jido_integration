@@ -18,16 +18,25 @@ defmodule Jido.Integration.ModelInvocation.ContractsTest do
     assert %InferenceRequest{} = inference_request
     assert inference_request.messages == []
     assert inference_request.prompt == nil
+    assert inference_request.metadata["workflow_ref"] == "workflow://tenant-1/run-1"
     assert inference_request.metadata["payload_hash"] == @hash
   end
 
-  test "request fails closed when credential lease ref is missing" do
+  test "fixture request may omit credential lease ref" do
+    assert {:ok, request} =
+             request_attrs(runtime_kind: :fixture, credential_lease_ref: nil)
+             |> Request.new()
+
+    assert request.credential_lease_ref == nil
+  end
+
+  test "non-fixture request fails closed when credential lease ref is missing" do
     assert {:error, %ArgumentError{} = error} =
-             request_attrs()
+             request_attrs(runtime_kind: :client)
              |> Map.delete(:credential_lease_ref)
              |> Request.new()
 
-    assert Exception.message(error) =~ "credential_lease_ref is required"
+    assert Exception.message(error) =~ "credential_lease_ref is required for non-fixture runtimes"
   end
 
   test "request rejects raw provider and prompt payload fields" do
@@ -38,6 +47,17 @@ defmodule Jido.Integration.ModelInvocation.ContractsTest do
     assert Exception.message(error) =~ "not allowed"
   end
 
+  test "request rejects forbidden top-level payload and credential fields" do
+    for key <- [:raw_prompt, :provider_payload, :messages, :token, :authorization, "raw_body"] do
+      assert {:error, %ArgumentError{} = error} =
+               request_attrs()
+               |> Map.put(key, "secret-ish")
+               |> Request.new()
+
+      assert Exception.message(error) =~ "not allowed"
+    end
+  end
+
   test "receipt carries token and cost facts without raw output" do
     request = Request.new!(request_attrs())
 
@@ -46,6 +66,7 @@ defmodule Jido.Integration.ModelInvocation.ContractsTest do
         invocation_ref: request.invocation_ref,
         tenant_ref: request.tenant_ref,
         status: :ok,
+        workflow_ref: request.workflow_ref,
         context_packet_ref: request.context_packet_ref,
         route_decision_ref: request.route_decision_ref,
         prompt_artifact_ref: request.prompt_artifact_ref,
@@ -94,6 +115,7 @@ defmodule Jido.Integration.ModelInvocation.ContractsTest do
       %{
         invocation_ref: "model-invocation://tenant-1/run-1",
         tenant_ref: "tenant://1",
+        workflow_ref: "workflow://tenant-1/run-1",
         context_packet_ref: "context-packet://tenant-1/packet-1",
         route_decision_ref: "route-decision://tenant-1/route-1",
         prompt_artifact_ref: "artifact://prompt/1",

@@ -37,6 +37,7 @@ defmodule JidoIntegration.RemoteFacade.ModelRuntimeTest do
     %{
       "invocation_ref" => "invocation://one",
       "tenant_ref" => "tenant://one",
+      "workflow_ref" => "workflow://one",
       "context_packet_ref" => "context-packet://one",
       "route_decision_ref" => "route-decision://one",
       "prompt_artifact_ref" => "prompt-artifact://one",

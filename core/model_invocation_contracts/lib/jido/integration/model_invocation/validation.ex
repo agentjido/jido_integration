@@ -4,9 +4,10 @@ defmodule Jido.Integration.ModelInvocation.Validation do
   alias Jido.Integration.V2.Contracts
 
   @blocked_keys ~w(
-    api_key authorization body content credential credentials messages prompt
-    provider_payload raw raw_messages raw_prompt raw_provider_payload secret
-    secrets token
+    access_token api_key authorization bearer body content cookie credential
+    credential_body credential_material credentials messages oauth_token password
+    prompt provider_payload raw raw_body raw_messages raw_prompt
+    raw_provider_payload refresh_token secret secrets session_id token
   )
 
   @spec attrs_map(map() | keyword() | struct()) :: map()
@@ -126,7 +127,7 @@ defmodule Jido.Integration.ModelInvocation.Validation do
     Enum.each(value, fn {key, nested} ->
       key_string = key |> to_string() |> String.downcase()
 
-      if key_string in @blocked_keys do
+      if blocked_key?(key_string) do
         raise ArgumentError,
               "#{format_path([key_string | path])} is not allowed in model invocation DTOs"
       end
@@ -140,6 +141,9 @@ defmodule Jido.Integration.ModelInvocation.Validation do
   end
 
   defp walk_raw_payloads!(_value, _path), do: :ok
+
+  defp blocked_key?("raw"), do: true
+  defp blocked_key?(key), do: key in @blocked_keys or String.starts_with?(key, "raw_")
 
   defp format_path(path) do
     path
