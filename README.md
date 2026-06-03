@@ -672,3 +672,20 @@ Expected local contract: `127.0.0.1:7233`, UI `http://127.0.0.1:8233`, namespace
 ## Persistence Documentation
 
 See `docs/persistence.md` for tiers, defaults, adapters, unsupported selections, config examples, restart claims, durability claims, debug sidecar behavior, redaction guarantees, migration or preflight behavior, and no-bypass scope when applicable.
+
+## Connector / Tool Boundary Role
+
+Jido Integration owns connector, tool, and provider invocation boundaries for
+the stack. When `chassis_coding_agent_runner` is wired through Jido, Chassis may
+spawn the external CLI through an OS Port or provision the substrate that hosts
+the runtime, but connector identity, tool manifests, credential leases, retries,
+rate limits, provider cost posture, and provider-specific invocation semantics
+remain Jido Integration responsibilities.
+
+## Chassis Does Not Own Provider Semantics
+
+Chassis is a spatial and substrate owner. It may run a process, place a
+runtime, materialize a model weight, or record a receipt, but it does not become
+the provider router. When provider semantics are needed, Jido Integration is
+the boundary and Chassis carries refs, authority, trace ids, and bounded
+receipt facts.
