@@ -82,6 +82,8 @@ defmodule LiveCodexAppServerAcceptance do
   end
 
   defp assert_live_result!(events) do
+    assert_no_error_events!(events)
+
     provider_session_id =
       events
       |> Enum.map(& &1.provider_session_id)
@@ -96,7 +98,9 @@ defmodule LiveCodexAppServerAcceptance do
     end
 
     unless host_tool_requested? and host_tool_completed? do
-      raise "live acceptance failed: host tool request/completion events were not observed"
+      raise "live acceptance failed: host tool request/completion events were not observed; " <>
+              "event_types=#{inspect(Enum.map(events, & &1.type))}; " <>
+              "text=#{inspect(String.trim(text))}"
     end
 
     unless String.contains?(text, @marker) do
@@ -108,6 +112,25 @@ defmodule LiveCodexAppServerAcceptance do
     IO.puts("session_control_status=ready")
     IO.puts("host_tool_events=requested,completed")
     IO.puts("text=#{String.trim(text)}")
+  end
+
+  defp assert_no_error_events!(events) do
+    errors = Enum.filter(events, &(&1.type == :error))
+
+    if errors != [] do
+      messages = Enum.map(errors, &error_message/1)
+
+      raise "live acceptance failed: provider/runtime error events were observed; " <>
+              "errors=#{inspect(messages)}"
+    end
+  end
+
+  defp error_message(event) do
+    case event.payload do
+      %{"message" => message} when is_binary(message) -> message
+      %{message: message} when is_binary(message) -> message
+      payload -> inspect(payload)
+    end
   end
 
   defp streamed_text(events) do
@@ -165,8 +188,11 @@ defmodule LiveCodexAppServerAcceptance do
     |> Enum.each(&Code.prepend_path(String.to_charlist(&1)))
 
     case Application.ensure_all_started(:codex_sdk) do
-      {:ok, _apps} -> :ok
-      {:error, reason} -> raise "live acceptance failed: cannot start codex_sdk: #{inspect(reason)}"
+      {:ok, _apps} ->
+        :ok
+
+      {:error, reason} ->
+        raise "live acceptance failed: cannot start codex_sdk: #{inspect(reason)}"
     end
 
     unless Code.ensure_loaded?(Codex.AppServer) do
