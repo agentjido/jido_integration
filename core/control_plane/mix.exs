@@ -48,7 +48,10 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       {:jason, "~> 1.4"},
       {:telemetry, "~> 1.4"},
       {:plug, "~> 1.19", only: [:dev, :test]},
-      {:zoi, "~> 0.17"},
+      {:jido_action, "~> 2.3", override: true},
+      {:jido_signal, "~> 2.2", override: true},
+      {:req, "~> 0.6.1", override: true},
+      {:zoi, "~> 0.18.1", override: true},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

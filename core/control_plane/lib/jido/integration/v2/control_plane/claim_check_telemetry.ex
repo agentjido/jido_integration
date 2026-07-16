@@ -147,8 +147,12 @@ defmodule Jido.Integration.V2.ControlPlane.ClaimCheckTelemetry do
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   defp normalize_reason(reason) when is_atom(reason), do: Atom.to_string(reason)
-  defp normalize_reason(reason) when is_binary(reason), do: reason
-  defp normalize_reason(reason), do: inspect(reason)
+  defp normalize_reason({tag, _details}) when is_atom(tag), do: Atom.to_string(tag)
+
+  defp normalize_reason(%{__struct__: module}) when is_atom(module),
+    do: Atom.to_string(module)
+
+  defp normalize_reason(_reason), do: "redacted_error"
 
   defp normalize_non_negative_integer(nil), do: nil
   defp normalize_non_negative_integer(value) when is_integer(value) and value >= 0, do: value

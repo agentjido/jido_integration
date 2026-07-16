@@ -7,8 +7,8 @@ defmodule Jido.Integration.V2.Auth.SecretGuard do
   """
 
   @sensitive_fragments ~w(
-    access_key access_token api_key authorization bearer client_secret cookie
-    password private_key refresh_token secret session_token signing_key token
+    accesskey accesstoken apikey authorization bearer clientsecret cookie
+    password privatekey refreshtoken secret sessiontoken signingkey token
   )
 
   @transient_modules [
@@ -73,17 +73,19 @@ defmodule Jido.Integration.V2.Auth.SecretGuard do
   defp sensitive_key?(key) when is_atom(key), do: sensitive_key?(Atom.to_string(key))
 
   defp sensitive_key?(key) when is_binary(key) do
-    normalized = String.downcase(key)
+    normalized = normalize_key(key)
 
-    not safe_reference_key?(normalized) and
+    not safe_reference_key?(key) and
       Enum.any?(@sensitive_fragments, &String.contains?(normalized, &1))
   end
 
   defp sensitive_key?(_key), do: false
 
   defp safe_reference_key?(key) do
-    String.ends_with?(key, ["_ref", "_refs", "_id", "_ids"]) or
-      key in [
+    canonical = canonical_key(key)
+
+    String.ends_with?(canonical, ["_ref", "_refs", "_id", "_ids"]) or
+      canonical in [
         "credential_handle",
         "fence_token",
         "lease_fields",
@@ -94,8 +96,22 @@ defmodule Jido.Integration.V2.Auth.SecretGuard do
         "prompt_tokens",
         "completion_tokens",
         "total_tokens",
-        "secret_material_redacted?"
+        "secret_material_redacted"
       ]
+  end
+
+  defp normalize_key(key) do
+    key
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9]/u, "")
+  end
+
+  defp canonical_key(key) do
+    key
+    |> String.replace(~r/([a-z0-9])([A-Z])/u, "\\1_\\2")
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9]+/u, "_")
+    |> String.trim("_")
   end
 
   defp flatten_values(%_{} = struct), do: struct |> Map.from_struct() |> flatten_values()

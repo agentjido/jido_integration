@@ -600,7 +600,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         operation: :stream_text,
         messages: [%{role: "user", content: "Stream through ASM.InferenceEndpoint"}],
         prompt: nil,
-        model_preference: %{provider: "gemini", id: "gemini-2.5-pro"},
+        model_preference: %{provider: "claude", id: "sonnet"},
         target_preference: %{target_class: "cli_endpoint"},
         stream?: true,
         tool_policy: %{},

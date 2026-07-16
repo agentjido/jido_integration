@@ -39,10 +39,9 @@ defmodule Jido.Integration.Secrets.VaultKVProvider do
   @spec managed_scope(map(), map(), map()) :: {:ok, map()} | {:error, term()}
   def managed_scope(account, lease, _request)
       when is_map(account) and is_map(lease) do
-    provider_uri = URI.parse(value(account, :secret_provider_ref))
-    binding_uri = URI.parse(value(account, :secret_binding_ref))
-
-    with :ok <- validate_managed_uri(provider_uri, "vault", :secret_provider_ref),
+    with {:ok, provider_uri} <- parse_managed_uri(value(account, :secret_provider_ref)),
+         {:ok, binding_uri} <- parse_managed_uri(value(account, :secret_binding_ref)),
+         :ok <- validate_managed_uri(provider_uri, "vault", :secret_provider_ref),
          :ok <- validate_managed_uri(binding_uri, "vault-secret", :secret_binding_ref),
          true <- provider_uri.path == "/kv-v2" or {:error, :unsupported_vault_engine},
          {:ok, path} <- binding_path(binding_uri) do
@@ -149,6 +148,11 @@ defmodule Jido.Integration.Secrets.VaultKVProvider do
        do: :ok,
        else: {:error, {:invalid_vault_binding, field}}
   end
+
+  defp parse_managed_uri(value) when is_binary(value) and value != "",
+    do: {:ok, URI.parse(value)}
+
+  defp parse_managed_uri(_value), do: {:error, :invalid_vault_binding}
 
   defp binding_path(uri) do
     path = Enum.join([uri.host, String.trim(uri.path || "", "/")], "/")

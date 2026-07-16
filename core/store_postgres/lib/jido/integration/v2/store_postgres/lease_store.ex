@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
   import Ecto.Query
 
   alias Jido.Integration.V2.Auth.LeaseRecord, as: AuthLeaseRecord
+  alias Jido.Integration.V2.Auth.SecretGuard
   alias Jido.Integration.V2.StorePostgres
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord, as: LeaseSchema
@@ -13,34 +14,36 @@ defmodule Jido.Integration.V2.StorePostgres.LeaseStore do
 
   @impl true
   def store_lease(%AuthLeaseRecord{} = lease) do
-    lease
-    |> to_record_attrs()
-    |> then(&LeaseSchema.changeset(%LeaseSchema{}, &1))
-    |> Repo.insert(
-      on_conflict:
-        {:replace,
-         [
-           :credential_ref_id,
-           :tenant_id,
-           :credential_id,
-           :connection_id,
-           :profile_id,
-           :subject,
-           :scopes,
-           :payload_keys,
-           :issued_at,
-           :expires_at,
-           :revoked_at,
-           :redemption_count,
-           :last_redeemed_at,
-           :last_materialization_ref,
-           :metadata
-         ]},
-      conflict_target: [:lease_id]
-    )
-    |> case do
-      {:ok, _record} -> :ok
-      {:error, changeset} -> {:error, changeset}
+    with :ok <- SecretGuard.validate_durable(lease) do
+      lease
+      |> to_record_attrs()
+      |> then(&LeaseSchema.changeset(%LeaseSchema{}, &1))
+      |> Repo.insert(
+        on_conflict:
+          {:replace,
+           [
+             :credential_ref_id,
+             :tenant_id,
+             :credential_id,
+             :connection_id,
+             :profile_id,
+             :subject,
+             :scopes,
+             :payload_keys,
+             :issued_at,
+             :expires_at,
+             :revoked_at,
+             :redemption_count,
+             :last_redeemed_at,
+             :last_materialization_ref,
+             :metadata
+           ]},
+        conflict_target: [:lease_id]
+      )
+      |> case do
+        {:ok, _record} -> :ok
+        {:error, changeset} -> {:error, changeset}
+      end
     end
   end
 

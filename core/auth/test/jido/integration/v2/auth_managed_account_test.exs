@@ -165,6 +165,14 @@ defmodule Jido.Integration.V2.AuthManagedAccountTest do
                Map.put(context, :api_key, "managed-option-sentinel")
              )
 
+    for key <- ["api-key", "apiKey", "Authorization", "clientSecret", "secretGrid"] do
+      assert {:error, {:secret_material_forbidden, [^key]}} =
+               Auth.request_managed_lease(
+                 account_ref,
+                 Map.put(context, key, "managed-key-variant-sentinel")
+               )
+    end
+
     assert {:ok, lease} = Auth.request_managed_lease(account_ref, context)
     assert lease.payload == %{}
     assert lease.lease_fields == ["api_key"]

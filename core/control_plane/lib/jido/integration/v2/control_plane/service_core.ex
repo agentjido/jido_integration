@@ -493,11 +493,12 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
         aggregator_opts(attempt)
       )
 
-    :ok = Stores.run_store().update_run(run.run_id, :failed, %{error: inspect(reason)})
+    durable_reason = durable_reason(reason)
+    :ok = Stores.run_store().update_run(run.run_id, :failed, %{error: durable_reason})
 
     :ok =
       append_specs(run.run_id, attempt, [
-        %{type: "run.failed", payload: %{reason: inspect(reason)}}
+        %{type: "run.failed", payload: %{reason: durable_reason}}
       ])
 
     {:error,
@@ -510,11 +511,12 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
   end
 
   defp fail_before_attempt(run, reason) do
-    :ok = Stores.run_store().update_run(run.run_id, :failed, %{error: inspect(reason)})
+    durable_reason = durable_reason(reason)
+    :ok = Stores.run_store().update_run(run.run_id, :failed, %{error: durable_reason})
 
     :ok =
       append_specs(run.run_id, nil, [
-        %{type: "run.failed", payload: %{reason: inspect(reason)}}
+        %{type: "run.failed", payload: %{reason: durable_reason}}
       ])
 
     {:error,
@@ -1106,6 +1108,11 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
         {:error, {:target_incompatible, target_id, reason}}
     end
   end
+
+  defp durable_reason(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp durable_reason({tag, _details}) when is_atom(tag), do: Atom.to_string(tag)
+  defp durable_reason(%{__struct__: module}) when is_atom(module), do: Atom.to_string(module)
+  defp durable_reason(_reason), do: "redacted_error"
 
   defp target_selection_requirements(%Capability{} = capability) do
     TargetDescriptor.authored_requirements(capability)

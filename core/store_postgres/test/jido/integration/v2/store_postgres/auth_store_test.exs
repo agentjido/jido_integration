@@ -5,9 +5,11 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
   alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
+  alias Jido.Integration.V2.Auth.LeaseRecord, as: AuthLeaseRecord
   alias Jido.Integration.V2.CredentialRef
   alias Jido.Integration.V2.StorePostgres.ConnectionStore
   alias Jido.Integration.V2.StorePostgres.InstallStore
+  alias Jido.Integration.V2.StorePostgres.LeaseStore
   alias Jido.Integration.V2.StorePostgres.Repo
   alias Jido.Integration.V2.StorePostgres.Schemas.ConnectionRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.CredentialRecord
@@ -19,6 +21,30 @@ defmodule Jido.Integration.V2.StorePostgres.AuthStoreTest do
     Auth.reset!()
     Auth.set_refresh_handler(nil)
     :ok
+  end
+
+  test "rejects secret-bearing lease metadata before it reaches Postgres" do
+    now = ~U[2026-07-15 12:00:00Z]
+
+    lease =
+      AuthLeaseRecord.new!(%{
+        lease_id: "lease-secret-guard",
+        tenant_id: "tenant-secret-guard",
+        credential_ref_id: "credential-ref-secret-guard",
+        credential_id: "credential-secret-guard",
+        connection_id: "connection-secret-guard",
+        subject: "secret-guard-subject",
+        scopes: [],
+        payload_keys: [],
+        issued_at: now,
+        expires_at: DateTime.add(now, 60, :second),
+        metadata: %{"api-key" => "postgres-lease-sentinel-secret"}
+      })
+
+    assert {:error, {:secret_material_forbidden, [:metadata, "api-key"]}} =
+             LeaseStore.store_lease(lease)
+
+    assert Repo.get(LeaseRecord, lease.lease_id) == nil
   end
 
   test "encrypts credential truth, keeps host-facing models safe, and persists minimal leases across repo restart" do

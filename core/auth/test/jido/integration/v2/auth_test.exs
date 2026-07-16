@@ -243,12 +243,12 @@ defmodule Jido.Integration.V2.AuthTest do
 
     assert {:error,
             {:callback_error,
-             %{error: "access_denied", description: "user_cancelled_browser_flow"}}} =
+             %{error: "access_denied", description: "callback-description-sentinel-secret"}}} =
              Auth.resolve_install_callback(%{
                "callback_token" => install.callback_token,
                "state_token" => install.state_token,
                "error" => "access_denied",
-               "error_description" => "user_cancelled_browser_flow",
+               "error_description" => "callback-description-sentinel-secret",
                "now" => callback_at
              })
 
@@ -256,11 +256,13 @@ defmodule Jido.Integration.V2.AuthTest do
              Auth.fetch_install(install.install_id)
 
     assert String.contains?(failed_install.failure_reason, "access_denied")
+    refute inspect(failed_install) =~ "callback-description-sentinel-secret"
 
     assert {:ok, %Connection{state: :disabled} = disabled_connection} =
              Auth.connection_status(connection.connection_id)
 
     assert String.contains?(disabled_connection.disabled_reason, "callback")
+    refute inspect(disabled_connection) =~ "callback-description-sentinel-secret"
     assert {:error, :connection_disabled} = Auth.request_lease(connection.connection_id, %{})
   end
 
@@ -546,6 +548,31 @@ defmodule Jido.Integration.V2.AuthTest do
                required_scopes: ["market:read"],
                now: DateTime.add(revoked_at, 1, :second)
              })
+  end
+
+  test "redacts untrusted revocation details before durable storage" do
+    {_, connection, _credential_ref} =
+      install_connection(%{
+        connector_id: "github",
+        tenant_id: "tenant-revocation-redaction",
+        actor_id: "user-revocation-redaction",
+        auth_type: :oauth2,
+        subject: "revocation-redaction-user",
+        requested_scopes: ["repo"],
+        granted_scopes: ["repo"],
+        secret: %{access_token: "revocation-access-sentinel"},
+        expires_at: ~U[2026-03-09 13:00:00Z],
+        now: ~U[2026-03-09 12:00:00Z]
+      })
+
+    assert {:ok, %Connection{} = revoked_connection} =
+             Auth.revoke_connection(connection.connection_id, %{
+               reason: "revocation-reason-sentinel-secret",
+               now: ~U[2026-03-09 12:01:00Z]
+             })
+
+    assert revoked_connection.revocation_reason == "redacted_error"
+    refute inspect(revoked_connection) =~ "revocation-reason-sentinel-secret"
   end
 
   test "reinstalling against an existing connection keeps the credential ref stable and versions the durable credential" do

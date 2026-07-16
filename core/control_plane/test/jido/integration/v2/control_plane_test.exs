@@ -1203,6 +1203,8 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     assert failed.reason == :forced_failure
     assert failed.run.status == :failed
     assert failed.attempt.attempt == 1
+    refute inspect(failed.run) =~ "gho_initial_retry"
+    refute inspect(ControlPlane.events(failed.run.run_id)) =~ "gho_initial_retry"
 
     assert {:ok, first_lease} = Auth.fetch_lease(failed.attempt.credential_lease_id)
     assert first_lease.payload == %{access_token: "gho_initial_retry"}
@@ -1222,6 +1224,8 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
 
     assert retried.reason == :forced_failure
     assert retried.attempt.attempt == 2
+    refute inspect(retried.run) =~ "gho_rotated_retry"
+    refute inspect(ControlPlane.events(retried.run.run_id)) =~ "gho_rotated_retry"
 
     assert {:ok, second_lease} = Auth.fetch_lease(retried.attempt.credential_lease_id)
     assert second_lease.payload == %{access_token: "gho_rotated_retry"}

@@ -21,6 +21,10 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
 
   @default_install_ttl_seconds 600
   @default_lease_ttl_seconds 300
+  @safe_persisted_reason_codes ~w(
+    access_denied install_ttl_elapsed manual_revoke phase4a_revocation redacted_error
+    user_cancelled
+  )
   @governed_operation_classes ["cli", "http", "graphql", "realtime", "inference"]
   @governed_lease_required_fields [
     :tenant_id,
@@ -757,7 +761,7 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
           | state: :revoked,
             reauth_required_reason: nil,
             revoked_at: now,
-            revocation_reason: Map.get(attrs, :reason),
+            revocation_reason: normalize_reason(Map.get(attrs, :reason, :revoked)),
             actor_id: Map.get(attrs, :actor_id),
             updated_at: now
         }
@@ -2015,8 +2019,19 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
   defp default_credential_source(:manual_callback), do: :hosted_callback
   defp default_credential_source(_flow_kind), do: :manual
 
-  defp normalize_reason(reason) when is_binary(reason), do: reason
-  defp normalize_reason(reason), do: inspect(reason)
+  defp normalize_reason(reason) when is_atom(reason), do: Atom.to_string(reason)
+
+  defp normalize_reason({:callback, reason}) when is_map(reason),
+    do: "callback:" <> normalize_reason(Map.get(reason, :error, Map.get(reason, "error")))
+
+  defp normalize_reason({tag, details}) when is_atom(tag),
+    do: Atom.to_string(tag) <> ":" <> normalize_reason(details)
+
+  defp normalize_reason(reason) when is_binary(reason) do
+    if reason in @safe_persisted_reason_codes, do: reason, else: "redacted_error"
+  end
+
+  defp normalize_reason(_reason), do: "redacted_error"
 
   defp now(map), do: Contracts.get(map, :now, Contracts.now())
 

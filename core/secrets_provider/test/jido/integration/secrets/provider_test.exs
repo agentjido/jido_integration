@@ -209,6 +209,28 @@ defmodule Jido.Integration.Secrets.ProviderTest do
     assert {"x-vault-token", "vault-token-sentinel"} in headers
   end
 
+  test "vault managed scope rejects malformed durable refs without raising" do
+    assert {:error, :invalid_vault_binding} =
+             VaultKVProvider.managed_scope(
+               %{
+                 secret_provider_ref: nil,
+                 secret_binding_ref: "vault-secret://gemini/account/v1"
+               },
+               %{},
+               %{}
+             )
+
+    assert {:error, {:invalid_vault_binding, :secret_binding_ref}} =
+             VaultKVProvider.managed_scope(
+               %{
+                 secret_provider_ref: "vault://nshkr/kv-v2",
+                 secret_binding_ref: "vault-secret://gemini/account/v1?token=sentinel"
+               },
+               %{},
+               %{}
+             )
+  end
+
   test "managed materializer resolves durable Vault refs only inside the Auth effect task" do
     start_supervised!(ManagedStore)
     Auth.reset!()

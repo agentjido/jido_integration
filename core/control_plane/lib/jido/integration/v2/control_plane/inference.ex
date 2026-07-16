@@ -107,7 +107,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   defp normalize_request(attrs) when is_map(attrs) or is_list(attrs),
     do: InferenceRequest.new(attrs)
 
-  defp normalize_request(other), do: {:error, {:invalid_inference_request, other}}
+  defp normalize_request(_other), do: {:error, :invalid_inference_request}
 
   defp prepare_execution_request(%InferenceRequest{} = request, opts) do
     request
@@ -425,7 +425,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
         end
 
       other ->
-        {:error, {:invalid_self_hosted_endpoint_provider, other}}
+        {:error, {:invalid_self_hosted_endpoint_provider, safe_kind(other)}}
     end
   end
 
@@ -660,7 +660,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
         {:error, {:missing_backend_manifest, endpoint_descriptor.endpoint_id}}
 
       other ->
-        {:error, {:invalid_backend_manifest, other}}
+        {:error, {:invalid_backend_manifest, safe_kind(other)}}
     end
   end
 
@@ -855,6 +855,10 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp safe_kind(%{__struct__: module}) when is_atom(module), do: module
+  defp safe_kind(value) when is_atom(value), do: value
+  defp safe_kind(_value), do: :redacted
 
   defp missing_ref(missing, _field, value) when is_binary(value) and value != "", do: missing
   defp missing_ref(missing, field, _value), do: [field | missing]

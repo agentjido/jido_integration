@@ -292,6 +292,21 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
     end)
   end
 
+  test "redacts untrusted claim-check failure details before telemetry emission" do
+    attach_claim_check_telemetry([:stage_failure])
+
+    ClaimCheckTelemetry.stage_failure(
+      %{store: "claim-check-hot", key: "sha256/test", size_bytes: 64},
+      %{trace_id: "trace-redacted-error"},
+      %{message: "claim-check-telemetry-sentinel-secret"}
+    )
+
+    assert_claim_check_events(:stage_failure, 1, fn _measurements, metadata ->
+      assert metadata.reason == "redacted_error"
+      refute inspect(metadata) =~ "claim-check-telemetry-sentinel-secret"
+    end)
+  end
+
   test "run ledger claim-check cleanup emits orphan and live-reference GC telemetry" do
     attach_claim_check_telemetry([:orphaned_staged_payload, :blob_gc_skipped_live_reference])
 
