@@ -63,6 +63,50 @@ defmodule Jido.Integration.V2.Auth.Store do
     end)
   end
 
+  @impl Jido.Integration.V2.Auth.LeaseStore
+  def record_redemption(id, now, max_calls) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      case get_in(state, [:leases, id]) do
+        %LeaseRecord{} = lease ->
+          case redemption_status(lease, now, max_calls) do
+            :ok ->
+              updated = %LeaseRecord{
+                lease
+                | redemption_count: lease.redemption_count + 1,
+                  last_redeemed_at: now
+              }
+
+              {{:ok, updated}, put_in(state, [:leases, id], updated)}
+
+            {:error, reason} ->
+              {{:error, reason}, state}
+          end
+
+        nil ->
+          {{:error, :unknown_lease}, state}
+      end
+    end)
+  end
+
+  @impl Jido.Integration.V2.Auth.LeaseStore
+  def record_materialization(id, materialization_ref, now) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      case get_in(state, [:leases, id]) do
+        %LeaseRecord{} = lease ->
+          updated = %LeaseRecord{
+            lease
+            | last_materialization_ref: materialization_ref,
+              metadata: Map.put(lease.metadata, :last_materialized_at, now)
+          }
+
+          {{:ok, updated}, put_in(state, [:leases, id], updated)}
+
+        nil ->
+          {{:error, :unknown_lease}, state}
+      end
+    end)
+  end
+
   @impl Jido.Integration.V2.Auth.ConnectionStore
   def store_connection(%Connection{} = connection) do
     Agent.update(__MODULE__, fn state ->
@@ -153,5 +197,17 @@ defmodule Jido.Integration.V2.Auth.Store do
     Enum.filter(records, fn record ->
       Enum.all?(filters, fn {key, value} -> Map.get(record, key) == value end)
     end)
+  end
+
+  defp redemption_status(%LeaseRecord{revoked_at: %DateTime{}}, _now, _max_calls),
+    do: {:error, :revoked_lease}
+
+  defp redemption_status(%LeaseRecord{} = lease, now, max_calls) do
+    cond do
+      DateTime.compare(lease.expires_at, now) != :gt -> {:error, :expired_lease}
+      max_calls == :unlimited -> :ok
+      lease.redemption_count < max_calls -> :ok
+      true -> {:error, :max_calls_exceeded}
+    end
   end
 end

@@ -2,6 +2,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   @moduledoc false
 
   alias Jido.Integration.V2.BackendManifest
+  alias Jido.Integration.V2.Auth.SecretGuard
   alias Jido.Integration.V2.CompatibilityResult
   alias Jido.Integration.V2.ConsumerManifest
   alias Jido.Integration.V2.Contracts
@@ -63,6 +64,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   def invoke(request_or_attrs, opts \\ []) do
     with {:ok, request} <- normalize_request(request_or_attrs),
          execution_request = prepare_execution_request(request, opts),
+         :ok <- reject_managed_secret_supplementation(execution_request, opts),
          {:ok, durable_request} <- sanitize_request_for_recording(execution_request, opts),
          {:ok, context} <- build_context(durable_request, opts),
          {:ok, consumer_manifest} <- build_consumer_manifest(durable_request, opts),
@@ -123,20 +125,42 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
           target_preference
 
         backend_options ->
-          put_normalized_field(
-            target_preference,
-            :backend_options,
-            sanitize_json_safe(backend_options)
-          )
+          with :ok <- SecretGuard.validate_durable(backend_options) do
+            put_normalized_field(
+              target_preference,
+              :backend_options,
+              sanitize_json_safe(backend_options)
+            )
+          end
       end
 
-    request = %InferenceRequest{request | target_preference: durable_target_preference}
+    with %{} = durable_target_preference <- durable_target_preference do
+      request = %InferenceRequest{request | target_preference: durable_target_preference}
 
-    if Keyword.get(opts, :require_artifact_refs?, false) do
-      enforce_prompt_artifact_ref(request)
-    else
-      {:ok, request}
+      if Keyword.get(opts, :require_artifact_refs?, false) do
+        enforce_prompt_artifact_ref(request)
+      else
+        {:ok, request}
+      end
     end
+  end
+
+  defp reject_managed_secret_supplementation(request, opts) do
+    if managed_request?(request, opts) do
+      opts
+      |> Keyword.take([:api_key, :provider_options, :req_http_options, :target_backend_options])
+      |> Map.new()
+      |> SecretGuard.validate_durable()
+    else
+      :ok
+    end
+  end
+
+  defp managed_request?(_request, opts) do
+    Enum.any?(
+      [:managed_account_ref, :materialization_request, :credential_lease],
+      &Keyword.has_key?(opts, &1)
+    )
   end
 
   defp enforce_prompt_artifact_ref(%InferenceRequest{} = request) do

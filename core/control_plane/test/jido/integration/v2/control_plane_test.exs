@@ -531,8 +531,16 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
     reset_control_plane_store_env()
     ControlPlanePersistence.reset!()
     AuthPersistence.reset!()
-    ControlPlanePersistence.configure!(profile: :mickey_mouse)
-    AuthPersistence.configure!(profile: :mickey_mouse)
+
+    ControlPlanePersistence.configure!(
+      profile: :mickey_mouse,
+      store_modules: ControlPlanePersistence.test_store_modules()
+    )
+
+    AuthPersistence.configure!(
+      profile: :mickey_mouse,
+      store_modules: AuthPersistence.test_store_modules()
+    )
 
     on_exit(fn ->
       restore_control_plane_store_env(previous_store_env)
@@ -2066,8 +2074,15 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
       Application.delete_env(:jido_integration_v2_control_plane, key)
     end)
 
-    Jido.Integration.V2.ControlPlane.Persistence.configure!(profile: :mickey_mouse)
-    Jido.Integration.V2.Auth.Persistence.configure!(profile: :mickey_mouse)
+    Jido.Integration.V2.ControlPlane.Persistence.configure!(
+      profile: :mickey_mouse,
+      store_modules: Jido.Integration.V2.ControlPlane.Persistence.test_store_modules()
+    )
+
+    Jido.Integration.V2.Auth.Persistence.configure!(
+      profile: :mickey_mouse,
+      store_modules: Jido.Integration.V2.Auth.Persistence.test_store_modules()
+    )
   end
 
   defp restore_control_plane_store_env(previous_env) do

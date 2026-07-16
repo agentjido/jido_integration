@@ -267,7 +267,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
     Persistence.configure!(
       profile: :mickey_mouse,
       store_modules:
-        Persistence.memory_store_modules()
+        Persistence.test_store_modules()
         |> Map.put(
           :claim_check_store,
           Jido.Integration.V2.ControlPlaneInferenceTest.FailingClaimCheckStore
@@ -718,8 +718,16 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceTest do
   defp reset_control_plane_store_env do
     Persistence.reset!()
     Jido.Integration.V2.Auth.Persistence.reset!()
-    Persistence.configure!(profile: :mickey_mouse)
-    Jido.Integration.V2.Auth.Persistence.configure!(profile: :mickey_mouse)
+
+    Persistence.configure!(
+      profile: :mickey_mouse,
+      store_modules: Persistence.test_store_modules()
+    )
+
+    Jido.Integration.V2.Auth.Persistence.configure!(
+      profile: :mickey_mouse,
+      store_modules: Jido.Integration.V2.Auth.Persistence.test_store_modules()
+    )
   end
 
   defp assert_claim_check_events(event_key, expected_count, assertion_fun) do

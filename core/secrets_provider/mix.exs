@@ -1,5 +1,11 @@
+unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
+  Code.require_file("../../build_support/dependency_resolver.exs", __DIR__)
+end
+
 defmodule Jido.Integration.SecretsProvider.MixProject do
   use Mix.Project
+
+  alias Jido.Integration.Build.DependencyResolver
 
   def project do
     [
@@ -17,7 +23,7 @@ defmodule Jido.Integration.SecretsProvider.MixProject do
   end
 
   def application do
-    [extra_applications: [:logger, :crypto]]
+    [extra_applications: [:logger, :crypto, :inets, :ssl]]
   end
 
   def cli do
@@ -26,6 +32,8 @@ defmodule Jido.Integration.SecretsProvider.MixProject do
 
   defp deps do
     [
+      DependencyResolver.jido_integration_v2_auth(env: Mix.env(), runtime: false),
+      {:jason, "~> 1.4"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}

@@ -26,6 +26,7 @@ defmodule Jido.Integration.V2.StorePostgres.ConnectionStore do
     "external_secret" => :external_secret,
     "hosted" => :hosted,
     "hosted_callback" => :hosted_callback,
+    "jido_managed" => :jido_managed,
     "manual" => :manual,
     "ok" => :ok,
     "provider_app" => :provider_app

@@ -8,9 +8,10 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Auth.LeaseRecord
   alias Jido.Integration.V2.Auth.LeaseRedemption
+  alias Jido.Integration.V2.Auth.ManagedAccount
   alias Jido.Integration.V2.Auth.RuntimeConfig
   alias Jido.Integration.V2.Auth.RuntimeContext
-  alias Jido.Integration.V2.Auth.Store
+  alias Jido.Integration.V2.Auth.Persistence
   alias Jido.Integration.V2.Auth.Stores
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.Credential
@@ -331,12 +332,22 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
              | :expired_lease
              | {:missing_connection_scopes, [String.t()]}
              | {:missing_lease_fields, [String.t()]}}
-  def request_lease(connection_id, context \\ %{}) do
+  def request_lease(connection_id, context \\ %{}),
+    do: do_request_lease(connection_id, context, :standard)
+
+  @doc false
+  @spec request_managed_lease(ManagedAccount.t(), map()) ::
+          {:ok, CredentialLease.t()} | {:error, term()}
+  def request_managed_lease(%ManagedAccount{} = account, context) when is_map(context),
+    do: do_request_lease(account.connection_id, context, {:managed, account})
+
+  defp do_request_lease(connection_id, context, entrypoint) do
     context = Map.new(context)
     runtime_context = RuntimeContext.from_context(context)
     now = now(context)
 
     with {:ok, connection} <- Stores.connection_store().fetch_connection(connection_id),
+         :ok <- validate_lease_entrypoint(connection, entrypoint),
          :ok <- authorize_context_tenant(connection.tenant_id, Map.get(context, :tenant_id)),
          :ok <- ensure_connection_available(connection),
          {:ok, credential} <- fetch_active_credential(connection),
@@ -356,10 +367,11 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
       ttl_seconds = Map.get(context, :ttl_seconds, @default_lease_ttl_seconds)
 
       with {:ok, lease_connection, payload} <-
-             resolve_lease_payload(
+             resolve_lease_payload_for_context(
                refreshed_connection,
                refreshed_credential,
                payload_keys,
+               context,
                now,
                :lease,
                runtime_context
@@ -494,10 +506,11 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
              :credential_subject_mismatch
            ),
          {:ok, lease_connection, payload} <-
-           resolve_lease_payload(
+           resolve_lease_payload_for_context(
              connection,
              credential,
              lease_record.payload_keys,
+             lease_record.metadata,
              now,
              :fetch_lease,
              runtime_context
@@ -508,8 +521,21 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
 
   @spec redeem_lease(String.t(), map()) :: {:ok, LeaseRedemption.evidence()} | {:error, term()}
   def redeem_lease(lease_id, context) when is_binary(lease_id) and is_map(context) do
-    with {:ok, lease} <- fetch_lease(lease_id, context) do
-      LeaseRedemption.authorize(lease, context)
+    with {:ok, lease} <- fetch_lease(lease_id, context),
+         context <-
+           Map.put(
+             context,
+             :redemption_count,
+             metadata_value(lease.metadata, :redemption_count, 0)
+           ),
+         {:ok, evidence} <- LeaseRedemption.authorize(lease, context),
+         {:ok, _record} <-
+           Stores.lease_store().record_redemption(
+             lease_id,
+             now(context),
+             lease_max_calls(lease)
+           ) do
+      {:ok, Map.put(evidence, :redemption_count, context.redemption_count + 1)}
     end
   end
 
@@ -769,11 +795,12 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
   end
 
   defp assert_started! do
-    if Process.whereis(Store) do
+    if Process.whereis(Persistence.Owner) do
+      _resolution = Persistence.current()
       :ok
     else
       raise ArgumentError,
-            "auth store is not started; start Jido.Integration.V2.Auth.Application before calling Jido.Integration.V2.Auth.reset!/0"
+            "auth persistence owner is not started; start a configured Jido durable runtime before calling Jido.Integration.V2.Auth.reset!/0"
     end
   end
 
@@ -1073,7 +1100,11 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
       lease_fields: lease_record.payload_keys,
       issued_at: lease_record.issued_at,
       expires_at: lease_record.expires_at,
-      metadata: Map.merge(lease_record.metadata, %{connection_id: connection.connection_id})
+      metadata:
+        lease_record.metadata
+        |> Map.merge(%{connection_id: connection.connection_id})
+        |> Map.put(:redemption_count, lease_record.redemption_count)
+        |> Map.put(:last_materialization_ref, lease_record.last_materialization_ref)
     })
   end
 
@@ -1085,6 +1116,13 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
       status: :issued,
       renewed_from_lease_id: Map.get(context, :renewed_from_lease_id)
     }
+    |> Map.merge(%{
+      managed_account_ref: Map.get(context, :managed_account_ref),
+      materialization_only?: Map.get(context, :materialization_only?, false),
+      endpoint_ref: Map.get(context, :endpoint_ref),
+      effect_ref: Map.get(context, :effect_ref),
+      operation_ref: Map.get(context, :operation_ref)
+    })
     |> Map.merge(LeaseRedemption.redacted_metadata(context))
     |> Enum.reject(fn {_key, value} -> value in [nil, [], %{}] end)
     |> Map.new()
@@ -1152,6 +1190,7 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
     case ensure_lease_active(lease_record, now) do
       :ok -> {:error, :active_lease_cleanup_rejected}
       {:error, :expired_lease} -> :ok
+      {:error, :revoked_lease} -> :ok
     end
   end
 
@@ -1216,6 +1255,22 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  defp resolve_lease_payload_for_context(
+         %Connection{} = connection,
+         %Credential{} = credential,
+         payload_keys,
+         context,
+         now,
+         stage,
+         %RuntimeContext{} = runtime_context
+       ) do
+    if metadata_value(context, :materialization_only?, false) do
+      {:ok, connection, %{}}
+    else
+      resolve_lease_payload(connection, credential, payload_keys, now, stage, runtime_context)
     end
   end
 
@@ -1513,8 +1568,33 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
 
   defp ensure_connection_available(%Connection{}), do: :ok
 
+  defp validate_lease_entrypoint(
+         %Connection{management_mode: mode},
+         :standard
+       )
+       when mode in [:jido_managed, "jido_managed"],
+       do: {:error, :managed_account_required}
+
+  defp validate_lease_entrypoint(%Connection{} = connection, {:managed, account}) do
+    cond do
+      connection.management_mode not in [:jido_managed, "jido_managed"] ->
+        {:error, :managed_connection_required}
+
+      connection.connection_id != account.connection_id ->
+        {:error, :managed_account_connection_mismatch}
+
+      connection.tenant_id != account.tenant_id ->
+        {:error, :managed_account_tenant_mismatch}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_lease_entrypoint(%Connection{}, :standard), do: :ok
+
   defp ensure_lease_active(%LeaseRecord{revoked_at: %DateTime{}}, _now),
-    do: {:error, :expired_lease}
+    do: {:error, :revoked_lease}
 
   defp ensure_lease_active(%LeaseRecord{} = lease_record, now) do
     if DateTime.compare(lease_record.expires_at, now) == :gt,
@@ -1972,6 +2052,11 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
   defp present?([]), do: false
   defp present?(%{}), do: false
   defp present?(_value), do: true
+
+  defp lease_max_calls(%CredentialLease{} = lease) do
+    constraints = metadata_value(lease.metadata, :constraints, %{})
+    metadata_value(constraints, :max_calls, :unlimited)
+  end
 
   defp reset_store(module) do
     if function_exported?(module, :reset!, 0) do

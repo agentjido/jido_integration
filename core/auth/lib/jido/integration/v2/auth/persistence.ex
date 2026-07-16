@@ -52,18 +52,30 @@ defmodule Jido.Integration.V2.Auth.Persistence.Owner do
 
   @impl true
   def init(opts) do
-    {:ok, Persistence.resolve!(opts)}
+    case normalize_boot_attrs(opts) do
+      nil ->
+        {:stop, :persistence_configuration_required}
+
+      boot_attrs ->
+        resolution = Persistence.resolve!(boot_attrs)
+        {:ok, %{boot_attrs: boot_attrs, resolution: resolution}}
+    end
   end
 
   @impl true
-  def handle_call(:current, _from, resolution), do: {:reply, {:ok, resolution}, resolution}
+  def handle_call(:current, _from, %{resolution: resolution} = state),
+    do: {:reply, {:ok, resolution}, state}
 
-  def handle_call({:put, resolution}, _from, _state), do: {:reply, :ok, resolution}
+  def handle_call({:put, resolution}, _from, state),
+    do: {:reply, :ok, %{state | resolution: resolution}}
 
-  def handle_call(:reset, _from, _state) do
-    resolution = Persistence.resolve!([])
-    {:reply, :ok, resolution}
+  def handle_call(:reset, _from, %{boot_attrs: boot_attrs} = state) do
+    resolution = Persistence.resolve!(boot_attrs)
+    {:reply, :ok, %{state | resolution: resolution}}
   end
+
+  defp normalize_boot_attrs(opts) when opts in [nil, [], %{}], do: nil
+  defp normalize_boot_attrs(opts), do: opts
 end
 
 defmodule Jido.Integration.V2.Auth.Persistence do
@@ -74,6 +86,8 @@ defmodule Jido.Integration.V2.Auth.Persistence do
   alias GroundPlane.PersistencePolicy
   alias Jido.Integration.V2.Auth.Persistence.Resolution
   alias Jido.Integration.V2.Auth.Store
+
+  @test_build Mix.env() == :test
 
   @required_store_keys [:credential_store, :lease_store, :connection_store, :install_store]
   @memory_store_modules %{
@@ -97,7 +111,8 @@ defmodule Jido.Integration.V2.Auth.Persistence do
   def resolve(attrs \\ []) do
     attrs = normalize_attrs(attrs)
 
-    with {:ok, profile} <- resolve_profile(attrs),
+    with :ok <- require_configuration(attrs),
+         {:ok, profile} <- resolve_profile(attrs),
          capabilities <- List.wrap(value(attrs, :capabilities, [])),
          :ok <- PersistencePolicy.preflight(profile, capabilities, checker(attrs)),
          {:ok, store_modules} <- store_modules_for(profile, attrs) do
@@ -141,8 +156,11 @@ defmodule Jido.Integration.V2.Auth.Persistence do
   @spec current() :: Resolution.t()
   def current do
     case __MODULE__.Owner.current() do
-      {:ok, resolution} -> resolution
-      {:error, :not_started} -> resolve!([])
+      {:ok, resolution} ->
+        resolution
+
+      {:error, :not_started} ->
+        raise ArgumentError, "auth persistence owner is not started"
     end
   end
 
@@ -162,8 +180,13 @@ defmodule Jido.Integration.V2.Auth.Persistence do
     )
   end
 
-  @spec memory_store_modules() :: map()
-  def memory_store_modules, do: @memory_store_modules
+  @doc false
+  @spec test_store_modules() :: map()
+  def test_store_modules do
+    if @test_build,
+      do: @memory_store_modules,
+      else: raise(ArgumentError, "auth memory stores are available only in test builds")
+  end
 
   defp resolve_profile(attrs) do
     attrs
@@ -195,7 +218,7 @@ defmodule Jido.Integration.V2.Auth.Persistence do
 
   defp store_modules_for(%PersistencePolicy.Profile{durable?: false}, attrs) do
     case value(attrs, :store_modules) do
-      nil -> {:ok, @memory_store_modules}
+      nil -> {:error, :explicit_store_modules_required}
       store_modules -> validate_store_modules(store_modules)
     end
   end
@@ -213,14 +236,39 @@ defmodule Jido.Integration.V2.Auth.Persistence do
   defp validate_store_modules(store_modules) when is_map(store_modules) do
     missing = Enum.reject(@required_store_keys, &Map.has_key?(store_modules, &1))
 
-    if missing == [] do
-      {:ok, Map.take(store_modules, @required_store_keys)}
+    selected = Map.take(store_modules, @required_store_keys)
+
+    if missing == [] and test_stores_allowed?(selected) do
+      {:ok, selected}
     else
-      {:error, {:missing_store_modules, missing}}
+      reject_invalid_store_selection(missing, selected)
     end
   end
 
   defp validate_store_modules(_store_modules), do: {:error, :invalid_store_modules}
+
+  defp reject_invalid_store_selection([], selected) do
+    if Enum.any?(Map.values(selected), &(&1 == Store)),
+      do: {:error, :test_store_forbidden},
+      else: {:error, :invalid_store_modules}
+  end
+
+  defp reject_invalid_store_selection(missing, _selected) do
+    {:error, {:missing_store_modules, missing}}
+  end
+
+  defp test_stores_allowed?(selected) do
+    @test_build or Enum.all?(Map.values(selected), &(&1 != Store))
+  end
+
+  defp require_configuration(attrs) do
+    if map_size(attrs) == 0 or
+         (is_nil(value(attrs, :profile)) and is_nil(value(attrs, :persistence_profile))) do
+      {:error, :persistence_configuration_required}
+    else
+      :ok
+    end
+  end
 
   defp normalize_attrs(attrs) when is_list(attrs), do: Map.new(attrs)
   defp normalize_attrs(attrs) when is_map(attrs), do: attrs

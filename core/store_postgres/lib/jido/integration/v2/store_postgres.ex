@@ -41,20 +41,33 @@ defmodule Jido.Integration.V2.StorePostgres do
 
     with {:ok, profile} <- PersistencePolicy.resolve(profile: profile_hint),
          :ok <- PersistencePolicy.preflight(profile, capabilities, fn _capability -> :ok end) do
-      require_migration_proof(profile, attrs)
+      verify_runtime_store(profile)
     end
   end
 
-  defp require_migration_proof(%PersistencePolicy.Profile{default_tier: :postgres_shared}, attrs) do
-    case Map.get(attrs, :migration_proof) || Map.get(attrs, "migration_proof") do
-      :present -> :ok
-      true -> :ok
-      paths when is_list(paths) and paths != [] -> :ok
-      _missing -> {:error, {:missing_migration_proof, :jido_integration_store_postgres}}
+  defp verify_runtime_store(%PersistencePolicy.Profile{default_tier: :postgres_shared}) do
+    with :ok <- repo_started(),
+         {:ok, migrations} <- migration_status() do
+      case Enum.reject(migrations, &(elem(&1, 0) == :up)) do
+        [] -> :ok
+        pending -> {:error, {:pending_migrations, Enum.map(pending, &elem(&1, 1))}}
+      end
     end
   end
 
-  defp require_migration_proof(%PersistencePolicy.Profile{}, _attrs), do: :ok
+  defp verify_runtime_store(%PersistencePolicy.Profile{}), do: :ok
+
+  defp repo_started do
+    if Process.whereis(Repo),
+      do: :ok,
+      else: {:error, {:store_not_started, :jido_integration_store_postgres}}
+  end
+
+  defp migration_status do
+    {:ok, Ecto.Migrator.migrations(Repo, [migrations_path()])}
+  rescue
+    exception -> {:error, {:migration_verification_failed, Exception.message(exception)}}
+  end
 
   @spec auth_store_modules() :: map()
   def auth_store_modules do
@@ -65,6 +78,9 @@ defmodule Jido.Integration.V2.StorePostgres do
       install_store: Jido.Integration.V2.StorePostgres.InstallStore
     }
   end
+
+  @spec managed_account_store() :: module()
+  def managed_account_store, do: Jido.Integration.V2.StorePostgres.ManagedAccountStore
 
   @spec control_plane_store_modules() :: map()
   def control_plane_store_modules do

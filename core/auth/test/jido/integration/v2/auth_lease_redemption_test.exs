@@ -222,7 +222,7 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
 
     assert revoked_event.status == :revoked
 
-    assert {:error, :expired_lease} =
+    assert {:error, :revoked_lease} =
              Auth.fetch_lease(lease.lease_id, %{
                tenant_id: "tenant-1",
                now: ~U[2026-03-09 12:02:31Z]

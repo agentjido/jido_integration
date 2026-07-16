@@ -1,5 +1,5 @@
 defmodule Jido.Integration.V2.StorePostgres.PersistencePolicyTest do
-  use ExUnit.Case, async: true
+  use Jido.Integration.V2.StorePostgres.DataCase
 
   alias Jido.Integration.V2.StorePostgres
 
@@ -15,21 +15,13 @@ defmodule Jido.Integration.V2.StorePostgres.PersistencePolicyTest do
              StorePostgres.preflight(profile: :integration_postgres, capabilities: [])
   end
 
-  test "fails durable preflight before repo mutation when migration proof is missing" do
-    {:ok, capability} = StorePostgres.store_capability()
-
-    assert {:error, {:missing_migration_proof, :jido_integration_store_postgres}} =
-             StorePostgres.preflight(profile: :integration_postgres, capabilities: [capability])
-  end
-
-  test "passes durable preflight when capability and migration proof are present" do
+  test "passes durable preflight only after the live repo reports every migration up" do
     {:ok, capability} = StorePostgres.store_capability()
 
     assert :ok =
              StorePostgres.preflight(
                profile: :integration_postgres,
-               capabilities: [capability],
-               migration_proof: :present
+               capabilities: [capability]
              )
   end
 end

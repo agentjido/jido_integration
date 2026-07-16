@@ -424,6 +424,40 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
              )
   end
 
+  test "invoke_inference/2 rejects raw credential supplementation on a managed route" do
+    request =
+      InferenceRequest.new!(%{
+        request_id: "req-managed-secret-guard-1",
+        operation: :generate_text,
+        messages: [%{role: "user", content: "Use only an admitted managed credential"}],
+        prompt: nil,
+        model_preference: %{provider: "gemini", id: "gemini-2.5-flash"},
+        target_preference: %{
+          target_class: "cloud_provider",
+          management_mode: :jido_managed
+        },
+        stream?: false,
+        tool_policy: %{},
+        output_constraints: %{},
+        metadata: %{tenant_id: "tenant-managed-secret-guard-1"}
+      })
+
+    assert {:error, {:secret_material_forbidden, [:api_key]}} =
+             ControlPlane.invoke_inference(request,
+               managed_account_ref: "provider-account://tenant-managed-secret-guard-1/gemini/a",
+               api_key: "managed-route-option-sentinel"
+             )
+
+    assert {:error,
+            {:secret_material_forbidden, [:target_backend_options, :headers, :authorization]}} =
+             ControlPlane.invoke_inference(request,
+               managed_account_ref: "provider-account://tenant-managed-secret-guard-1/gemini/a",
+               target_backend_options: %{
+                 headers: %{authorization: "Bearer managed-route-request-sentinel"}
+               }
+             )
+  end
+
   test "builds an endpoint-shaped ReqLLM call spec from an endpoint descriptor" do
     request =
       InferenceRequest.new!(%{
@@ -823,8 +857,16 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
 
     Jido.Integration.V2.ControlPlane.Persistence.reset!()
     Jido.Integration.V2.Auth.Persistence.reset!()
-    Jido.Integration.V2.ControlPlane.Persistence.configure!(profile: :mickey_mouse)
-    Jido.Integration.V2.Auth.Persistence.configure!(profile: :mickey_mouse)
+
+    Jido.Integration.V2.ControlPlane.Persistence.configure!(
+      profile: :mickey_mouse,
+      store_modules: Jido.Integration.V2.ControlPlane.Persistence.test_store_modules()
+    )
+
+    Jido.Integration.V2.Auth.Persistence.configure!(
+      profile: :mickey_mouse,
+      store_modules: Jido.Integration.V2.Auth.Persistence.test_store_modules()
+    )
   end
 
   defp restore_control_plane_store_env(previous_env) do

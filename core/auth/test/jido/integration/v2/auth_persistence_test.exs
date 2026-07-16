@@ -27,8 +27,10 @@ defmodule Jido.Integration.V2.AuthPersistenceTest do
     :ok
   end
 
-  test "defaults auth stores to mickey mouse memory without host config" do
-    assert {:ok, resolution} = Persistence.resolve([])
+  test "requires explicit persistence while the test application boots explicit test stores" do
+    assert {:error, :persistence_configuration_required} = Persistence.resolve([])
+
+    resolution = Persistence.current()
     assert resolution.profile.id == :mickey_mouse
     assert resolution.profile.default_tier == :memory_ephemeral
     assert resolution.durable? == false
@@ -63,6 +65,15 @@ defmodule Jido.Integration.V2.AuthPersistenceTest do
     assert wait_for_owner(Persistence.Owner, owner)
 
     assert Stores.credential_store() == Store
+  end
+
+  test "requires explicit store modules even for a non-durable profile" do
+    assert {:error, :explicit_store_modules_required} =
+             Persistence.resolve(profile: :mickey_mouse)
+  end
+
+  test "persistence owner refuses an empty production boot" do
+    assert {:stop, :persistence_configuration_required} = Persistence.Owner.init([])
   end
 
   test "refuses durable auth selection without an explicit capability" do

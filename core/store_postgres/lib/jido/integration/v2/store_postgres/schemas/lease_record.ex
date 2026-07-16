@@ -19,6 +19,9 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord do
     field(:issued_at, :utc_datetime_usec)
     field(:expires_at, :utc_datetime_usec)
     field(:revoked_at, :utc_datetime_usec)
+    field(:redemption_count, :integer, default: 0)
+    field(:last_redeemed_at, :utc_datetime_usec)
+    field(:last_materialization_ref, :string)
     field(:metadata, :map, default: %{})
 
     timestamps(updated_at: false)
@@ -39,6 +42,9 @@ defmodule Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord do
       :issued_at,
       :expires_at,
       :revoked_at,
+      :redemption_count,
+      :last_redeemed_at,
+      :last_materialization_ref,
       :metadata,
       :inserted_at
     ])

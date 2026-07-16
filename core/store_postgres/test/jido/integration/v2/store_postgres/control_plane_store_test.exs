@@ -164,6 +164,34 @@ defmodule Jido.Integration.V2.StorePostgres.ControlPlaneStoreTest do
     assert Enum.map(AttemptStore.list_attempts(run.run_id), & &1.attempt) == [1, 2]
   end
 
+  test "rejects secret material before an attempt insert or update reaches durable truth" do
+    run = run_fixture()
+    attempt = attempt_fixture(run)
+
+    assert :ok = RunStore.put_run(run)
+
+    assert {:error, {:secret_material_forbidden, [:output, :api_key]}} =
+             attempt
+             |> Map.put(:output, %{api_key: "attempt-insert-sentinel"})
+             |> AttemptStore.put_attempt()
+
+    assert :error = AttemptStore.fetch_attempt(attempt.attempt_id)
+    assert :ok = AttemptStore.put_attempt(attempt)
+
+    assert {:error, {:secret_material_forbidden, [:authorization]}} =
+             AttemptStore.update_attempt(
+               attempt.attempt_id,
+               :failed,
+               %{authorization: "Bearer attempt-update-sentinel"},
+               nil
+             )
+
+    assert {:ok, persisted_attempt} = AttemptStore.fetch_attempt(attempt.attempt_id)
+    assert persisted_attempt.status == attempt.status
+    refute inspect(persisted_attempt) =~ "attempt-insert-sentinel"
+    refute inspect(persisted_attempt) =~ "attempt-update-sentinel"
+  end
+
   test "preserves JSON-safe string keys for durable runtime payload families" do
     run =
       run_fixture(%{

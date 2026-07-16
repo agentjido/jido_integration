@@ -20,6 +20,8 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   alias Jido.Integration.V2.StorePostgres.Schemas.EventRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.InstallRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.LeaseRecord
+  alias Jido.Integration.V2.StorePostgres.Schemas.ManagedAccountRecord
+  alias Jido.Integration.V2.StorePostgres.Schemas.ManagedCredentialVersionRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.MemoryGovernedRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.MemoryInvalidationRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.MemoryPrivateRecord
@@ -204,6 +206,8 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
     Repo.delete_all(TriggerRecordSchema)
     Repo.delete_all(DedupeKeyRecord)
     Repo.delete_all(TriggerCheckpointRecord)
+    Repo.delete_all(ManagedCredentialVersionRecord)
+    Repo.delete_all(ManagedAccountRecord)
     Repo.delete_all(InstallRecord)
     Repo.delete_all(ConnectionRecord)
     Repo.delete_all(LeaseRecord)

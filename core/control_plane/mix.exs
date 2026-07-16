@@ -38,7 +38,7 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
       DependencyResolver.jido_integration_agent_interop_contracts(),
       DependencyResolver.jido_integration_contracts(),
       DependencyResolver.ground_plane_persistence_policy(),
-      DependencyResolver.jido_integration_v2_auth(),
+      DependencyResolver.jido_integration_v2_auth(env: Mix.env()),
       DependencyResolver.jido_integration_v2_policy(),
       DependencyResolver.jido_integration_v2_direct_runtime(),
       DependencyResolver.agent_session_manager(env: :dev),

@@ -6,12 +6,21 @@ defmodule Jido.Integration.V2.Auth.RuntimeConfig do
   use GenServer
 
   @name __MODULE__
-  @keys [:refresh_handler, :external_secret_resolver, :keyring, :runtime_env]
+  @keys [
+    :refresh_handler,
+    :external_secret_resolver,
+    :keyring,
+    :runtime_env,
+    :managed_account_store,
+    :credential_materializers
+  ]
   @empty_state %{
     refresh_handler: nil,
     external_secret_resolver: nil,
     keyring: nil,
-    runtime_env: nil
+    runtime_env: nil,
+    managed_account_store: nil,
+    credential_materializers: %{}
   }
 
   @spec start_link(keyword()) :: GenServer.on_start()

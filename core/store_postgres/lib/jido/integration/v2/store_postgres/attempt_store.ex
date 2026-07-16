@@ -6,6 +6,7 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
   import Ecto.Query
 
   alias Jido.Integration.V2.Attempt
+  alias Jido.Integration.V2.Auth.SecretGuard
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.Redaction
@@ -16,21 +17,23 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
 
   @impl true
   def put_attempt(%Attempt{} = attempt) do
-    Repo.transaction(fn ->
-      attempt
-      |> to_record_attrs()
-      |> then(&AttemptRecord.changeset(%AttemptRecord{}, &1))
-      |> Repo.insert()
-      |> case do
-        {:ok, _record} ->
-          :ok = register_attempt_payload_refs(attempt)
-          :ok
+    with :ok <- SecretGuard.validate_durable(attempt) do
+      Repo.transaction(fn ->
+        attempt
+        |> to_record_attrs()
+        |> then(&AttemptRecord.changeset(%AttemptRecord{}, &1))
+        |> Repo.insert()
+        |> case do
+          {:ok, _record} ->
+            :ok = register_attempt_payload_refs(attempt)
+            :ok
 
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end)
-    |> normalize_transaction()
+          {:error, changeset} ->
+            Repo.rollback(changeset)
+        end
+      end)
+      |> normalize_transaction()
+    end
   end
 
   @impl true
@@ -53,45 +56,47 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
 
   @impl true
   def update_attempt(attempt_id, status, output, runtime_ref_id, opts \\ []) do
-    Repo.transaction(fn ->
-      record =
-        case Repo.get(AttemptRecord, attempt_id) do
-          nil -> Repo.rollback(:not_found)
-          record -> record
+    with :ok <- SecretGuard.validate_durable(output) do
+      Repo.transaction(fn ->
+        record =
+          case Repo.get(AttemptRecord, attempt_id) do
+            nil -> Repo.rollback(:not_found)
+            record -> record
+          end
+
+        next_epoch = Keyword.get(opts, :aggregator_epoch, record.aggregator_epoch)
+
+        if next_epoch < record.aggregator_epoch do
+          Repo.rollback(:stale_aggregator_epoch)
         end
 
-      next_epoch = Keyword.get(opts, :aggregator_epoch, record.aggregator_epoch)
+        aggregator_id = Keyword.get(opts, :aggregator_id, record.aggregator_id)
+        timestamp = Contracts.now()
 
-      if next_epoch < record.aggregator_epoch do
-        Repo.rollback(:stale_aggregator_epoch)
-      end
-
-      aggregator_id = Keyword.get(opts, :aggregator_id, record.aggregator_id)
-      timestamp = Contracts.now()
-
-      case Repo.update_all(
-             from(attempt in AttemptRecord,
-               where:
-                 attempt.attempt_id == ^attempt_id and attempt.aggregator_epoch <= ^next_epoch
-             ),
-             set: [
-               status: status,
-               output:
-                 if(is_nil(output),
-                   do: nil,
-                   else: output |> Redaction.redact() |> Serialization.dump()
-                 ),
-               runtime_ref_id: runtime_ref_id,
-               aggregator_id: aggregator_id,
-               aggregator_epoch: next_epoch,
-               updated_at: timestamp
-             ]
-           ) do
-        {1, _} -> :ok
-        _ -> Repo.rollback(:stale_aggregator_epoch)
-      end
-    end)
-    |> normalize_transaction()
+        case Repo.update_all(
+               from(attempt in AttemptRecord,
+                 where:
+                   attempt.attempt_id == ^attempt_id and attempt.aggregator_epoch <= ^next_epoch
+               ),
+               set: [
+                 status: status,
+                 output:
+                   if(is_nil(output),
+                     do: nil,
+                     else: output |> Redaction.redact() |> Serialization.dump()
+                   ),
+                 runtime_ref_id: runtime_ref_id,
+                 aggregator_id: aggregator_id,
+                 aggregator_epoch: next_epoch,
+                 updated_at: timestamp
+               ]
+             ) do
+          {1, _} -> :ok
+          _ -> Repo.rollback(:stale_aggregator_epoch)
+        end
+      end)
+      |> normalize_transaction()
+    end
   end
 
   def reset! do

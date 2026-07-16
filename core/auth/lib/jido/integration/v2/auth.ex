@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.Auth do
   alias Jido.Integration.V2.Auth.CallbackService
   alias Jido.Integration.V2.Auth.CredentialService
   alias Jido.Integration.V2.Auth.InstallService
+  alias Jido.Integration.V2.Auth.ManagedAccountService
   alias Jido.Integration.V2.Auth.RefreshService
   alias Jido.Integration.V2.Auth.RevocationService
   alias Jido.Integration.V2.Auth.ServiceCore
@@ -40,6 +41,23 @@ defmodule Jido.Integration.V2.Auth do
   defdelegate renew_lease(lease_id, attrs), to: RefreshService
   defdelegate set_refresh_handler(handler), to: RefreshService
   defdelegate set_external_secret_resolver(handler), to: RefreshService
+
+  defdelegate configure_managed_accounts!(attrs),
+    to: ManagedAccountService,
+    as: :configure!
+
+  defdelegate register_managed_account(attrs), to: ManagedAccountService, as: :register
+  defdelegate fetch_managed_account(account_or_ref), to: ManagedAccountService, as: :fetch
+  defdelegate rotate_managed_account(account_ref, attrs), to: ManagedAccountService, as: :rotate
+  defdelegate revoke_managed_account(account_ref, attrs), to: ManagedAccountService, as: :revoke
+
+  defdelegate request_managed_lease(account_ref, context),
+    to: ManagedAccountService,
+    as: :request_lease
+
+  defdelegate with_materialized_credential(lease, request, context, fun),
+    to: ManagedAccountService,
+    as: :with_materialized
 
   defdelegate request_governed_lease(connection_id, context), to: AssertionService
   defdelegate redeem_lease(lease_id, context), to: AssertionService

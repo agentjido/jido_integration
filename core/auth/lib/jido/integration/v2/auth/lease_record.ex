@@ -30,7 +30,10 @@ defmodule Jido.Integration.V2.Auth.LeaseRecord do
     :issued_at,
     :expires_at,
     :revoked_at,
+    :last_redeemed_at,
+    :last_materialization_ref,
     inserted_at: nil,
+    redemption_count: 0,
     metadata: %{}
   ]
 
@@ -47,6 +50,9 @@ defmodule Jido.Integration.V2.Auth.LeaseRecord do
           issued_at: DateTime.t(),
           expires_at: DateTime.t(),
           revoked_at: DateTime.t() | nil,
+          redemption_count: non_neg_integer(),
+          last_redeemed_at: DateTime.t() | nil,
+          last_materialization_ref: String.t() | nil,
           inserted_at: DateTime.t() | nil,
           metadata: map()
         }
@@ -75,6 +81,9 @@ defmodule Jido.Integration.V2.Auth.LeaseRecord do
       issued_at: issued_at,
       expires_at: expires_at,
       revoked_at: Map.get(attrs, :revoked_at),
+      redemption_count: Map.get(attrs, :redemption_count, 0),
+      last_redeemed_at: Map.get(attrs, :last_redeemed_at),
+      last_materialization_ref: Map.get(attrs, :last_materialization_ref),
       inserted_at: Map.get(attrs, :inserted_at, issued_at),
       metadata: Map.get(attrs, :metadata, %{})
     })
