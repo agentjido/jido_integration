@@ -104,9 +104,9 @@ unless Code.ensure_loaded?(Jido.Integration.Build.DependencyResolver) do
       def jido_integration_v2_inference_ops(opts \\ []),
         do: git_dep(:jido_integration_v2_inference_ops, "apps/inference_ops", opts)
 
-      def agent_session_manager(opts \\ []), do: {:agent_session_manager, "~> 0.9.2", opts}
+      def agent_session_manager(opts \\ []), do: {:agent_session_manager, "~> 0.10.0", opts}
 
-      def cli_subprocess_core(opts \\ []), do: {:cli_subprocess_core, "~> 0.1.0", opts}
+      def cli_subprocess_core(opts \\ []), do: {:cli_subprocess_core, "~> 0.2.0", opts}
 
       def jido_action(opts \\ []), do: {:jido_action, "~> 2.2", opts}
 

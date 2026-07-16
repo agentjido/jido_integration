@@ -36,6 +36,8 @@ defmodule Jido.Integration.V2.StorePostgres.MixProject do
       DependencyResolver.jido_integration_v2_auth(),
       DependencyResolver.jido_integration_v2_brain_ingress(),
       DependencyResolver.jido_integration_v2_control_plane(),
+      # Sinter 0.3.1 (latest) still requires JSV 0.18/Decimal 2, which is
+      # incompatible with Ecto 3.14/Decimal 3 in the composed platform.
       {:ecto, "~> 3.13.4"},
       {:ecto_sql, "~> 3.13.4"},
       {:postgrex, "~> 0.22"},
