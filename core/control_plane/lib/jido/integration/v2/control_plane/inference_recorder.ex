@@ -110,6 +110,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
       normalize_optional_contract(spec[:backend_manifest], BackendManifest, :backend_manifest)
 
     lease_ref = normalize_optional_contract(spec[:lease_ref], LeaseRef, :lease_ref)
+    credential_lease_id = normalize_optional_string(spec[:credential_lease_id])
     stream = normalize_stream(spec[:stream], request, context, result)
 
     validate_identity_alignment!(context, result)
@@ -125,6 +126,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
        endpoint_descriptor: endpoint_descriptor,
        backend_manifest: backend_manifest,
        lease_ref: lease_ref,
+       credential_lease_id: credential_lease_id,
        stream: stream,
        result: result
      }}
@@ -183,7 +185,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
         aggregator_epoch: 1,
         runtime_class: run.runtime_class,
         status: terminal_attempt_status(spec.result),
-        credential_lease_id: nil,
+        credential_lease_id: spec.credential_lease_id,
         target_id: nil,
         runtime_ref_id: spec.endpoint_descriptor && spec.endpoint_descriptor.source_runtime_ref,
         output: staged_output.payload,
@@ -694,6 +696,13 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
 
   defp normalize_output_target_class(nil), do: nil
   defp normalize_output_target_class(value), do: Contracts.validate_inference_target_class!(value)
+
+  defp normalize_optional_string(nil), do: nil
+  defp normalize_optional_string(value) when is_binary(value) and value != "", do: value
+
+  defp normalize_optional_string(value) do
+    raise ArgumentError, "credential_lease_id must be a non-empty string, got: #{inspect(value)}"
+  end
 
   defp inference_credential_ref do
     CredentialRef.new!(%{

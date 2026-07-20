@@ -2,7 +2,6 @@ defmodule Jido.Integration.Secrets.ProviderTest do
   use ExUnit.Case
 
   alias Jido.Integration.Secrets.Broker
-  alias Jido.Integration.Secrets.EnvProvider
   alias Jido.Integration.Secrets.EphemeralProvider
   alias Jido.Integration.Secrets.KeyringProvider
   alias Jido.Integration.Secrets.ManagedCredentialMaterializer
@@ -104,25 +103,6 @@ defmodule Jido.Integration.Secrets.ProviderTest do
     end)
 
     :ok
-  end
-
-  test "env provider materializes a scoped handle and keeps receipts redacted" do
-    assert {:ok, result} =
-             Broker.with_materialized(
-               EnvProvider,
-               "lease://linear/live/1",
-               %{env_var: "LINEAR_API_KEY", secret_key: :api_key},
-               fn material, public_ref ->
-                 assert material == %{api_key: "lin_api_secret"}
-                 refute inspect(public_ref) =~ "lin_api_secret"
-                 {:ok, Broker.public_receipt(public_ref, :used)}
-               end,
-               env: %{"LINEAR_API_KEY" => "lin_api_secret"}
-             )
-
-    assert result.secret_material_redacted? == true
-    assert result.provider_ref == "env://LINEAR_API_KEY"
-    refute inspect(result) =~ "lin_api_secret"
   end
 
   test "ephemeral provider keeps stdin material inside the broker callback" do

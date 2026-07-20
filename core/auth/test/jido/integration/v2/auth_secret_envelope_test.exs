@@ -3,6 +3,7 @@ defmodule Jido.Integration.V2.Auth.SecretEnvelopeTest do
 
   alias Jido.Integration.V2.Auth.RuntimeConfig
   alias Jido.Integration.V2.Auth.SecretEnvelope
+  alias Jido.Integration.V2.Auth.SecretGuard
 
   setup do
     original_runtime_config = RuntimeConfig.current()
@@ -58,6 +59,21 @@ defmodule Jido.Integration.V2.Auth.SecretEnvelopeTest do
 
     assert envelope["kid"] == "kms-prod-1"
     assert SecretEnvelope.decrypt(envelope, "credential-ref-1") == %{api_key: "secret"}
+  end
+
+  test "distinguishes canonical model usage counters from secret token smuggling" do
+    assert :ok =
+             SecretGuard.validate_durable(%{
+               input_tokens: 8,
+               output_tokens: 5,
+               total_tokens: 13,
+               cached_tokens: 2,
+               reasoning_tokens: 1,
+               cache_creation_tokens: 3
+             })
+
+    assert {:error, {:secret_material_forbidden, [:auth_tokens]}} =
+             SecretGuard.validate_durable(%{auth_tokens: "smuggled"})
   end
 
   defp restore_runtime_config(config) do

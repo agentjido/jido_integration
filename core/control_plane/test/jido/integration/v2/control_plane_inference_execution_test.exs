@@ -5,13 +5,16 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   alias ASM.InferenceEndpoint.RuntimeConfig, as: ASMRuntimeConfig
   alias CliSubprocessCore.Event, as: CoreEvent
   alias CliSubprocessCore.Payload
+  alias Jido.Integration.V2.Auth
+  alias Jido.Integration.V2.Auth.ManagedAccount
   alias Jido.Integration.V2.ControlPlane
-  alias Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec
+  alias Jido.Integration.V2.ControlPlane.Inference.CallPlan
   alias Jido.Integration.V2.ControlPlane.RuntimeConfig
   alias Jido.Integration.V2.ControlPlane.TestSupport.FakeLlamaServerFixture
   alias Jido.Integration.V2.ControlPlane.TestSupport.FakeSelfHostedEndpointProvider
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceRequest
+  alias Jido.Integration.V2.MaterializationRequest
 
   @control_plane_store_keys [
     :run_store,
@@ -165,7 +168,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
           }
 
     @spec new!(map()) :: t()
-    def new!(response_payload) when is_map(response_payload) do
+    def new!(response_payload, owner \\ self()) when is_map(response_payload) do
       {:ok, listener} =
         :gen_tcp.listen(0, [:binary, packet: :raw, active: false, reuseaddr: true])
 
@@ -174,7 +177,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
 
       {:ok, server_task} =
         Task.start_link(fn ->
-          accept_loop(listener, response_body)
+          accept_loop(listener, response_body, owner)
         end)
 
       %__MODULE__{
@@ -195,13 +198,14 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
       :ok
     end
 
-    defp accept_loop(listener, response_body) do
+    defp accept_loop(listener, response_body, owner) do
       case :gen_tcp.accept(listener) do
         {:ok, socket} ->
-          :ok = recv_request(socket, "")
+          {:ok, request} = recv_request(socket, "")
+          send(owner, {:cloud_request, request})
           :ok = :gen_tcp.send(socket, http_response(response_body))
           :ok = :gen_tcp.close(socket)
-          accept_loop(listener, response_body)
+          accept_loop(listener, response_body, owner)
 
         {:error, :closed} ->
           :ok
@@ -216,7 +220,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
           content_length = content_length(headers)
 
           if byte_size(body) >= content_length do
-            :ok
+            {:ok, buffer}
           else
             {:ok, chunk} = :gen_tcp.recv(socket, 0, 5_000)
             recv_request(socket, buffer <> chunk)
@@ -260,6 +264,86 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         response_body
       ]
     end
+  end
+
+  defmodule ManagedStore do
+    @behaviour Jido.Integration.V2.Auth.ManagedAccountStore
+
+    use Agent
+
+    def start_link(_opts),
+      do: Agent.start_link(fn -> %{accounts: %{}, versions: %{}} end, name: __MODULE__)
+
+    @impl true
+    def transact(fun), do: fun.()
+
+    @impl true
+    def register(account, version) do
+      Agent.update(__MODULE__, fn state ->
+        state
+        |> put_in([:accounts, account.account_ref], account)
+        |> put_in([:versions, {account.account_ref, version.generation}], version)
+      end)
+    end
+
+    @impl true
+    def fetch(account_ref) do
+      Agent.get(__MODULE__, fn state ->
+        case Map.get(state.accounts, account_ref) do
+          nil -> {:error, :unknown_managed_account}
+          account -> {:ok, account}
+        end
+      end)
+    end
+
+    @impl true
+    def lock(account_ref), do: fetch(account_ref)
+
+    @impl true
+    def fetch_by_connection(connection_id) do
+      Agent.get(__MODULE__, fn state ->
+        case Enum.find(Map.values(state.accounts), &(&1.connection_id == connection_id)) do
+          nil -> {:error, :unknown_managed_account}
+          account -> {:ok, account}
+        end
+      end)
+    end
+
+    @impl true
+    def fetch_version(account_ref, generation) do
+      Agent.get(__MODULE__, fn state ->
+        case Map.get(state.versions, {account_ref, generation}) do
+          nil -> {:error, :unknown_credential_generation}
+          version -> {:ok, version}
+        end
+      end)
+    end
+
+    @impl true
+    def rotate(_account_ref, _expected_generation, _fence, _version, _now),
+      do: {:error, :unsupported_in_test_store}
+
+    @impl true
+    def revoke(_account_ref, _generation, _fence, _revocation_ref, _now),
+      do: {:error, :unsupported_in_test_store}
+  end
+
+  defmodule ManagedMaterializer do
+    @behaviour Jido.Integration.V2.CredentialMaterializer
+
+    @impl true
+    def materialize(_lease, request) do
+      Jido.Integration.V2.SecretMaterial.new(%{
+        materialization_ref: request.materialization_ref,
+        provider_family: request.account.provider_family,
+        account_ref: request.account.account_ref,
+        generation: request.account.generation,
+        payload: %{api_key: "managed-cloud-sentinel"}
+      })
+    end
+
+    @impl true
+    def revoke(_material, _opts), do: :ok
   end
 
   defmodule FakeASMBackend do
@@ -444,21 +528,22 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
 
     assert {:error, {:secret_material_forbidden, [:api_key]}} =
              ControlPlane.invoke_inference(request,
-               managed_account_ref: "provider-account://tenant-managed-secret-guard-1/gemini/a",
                api_key: "managed-route-option-sentinel"
              )
 
     assert {:error,
             {:secret_material_forbidden, [:target_backend_options, :headers, :authorization]}} =
              ControlPlane.invoke_inference(request,
-               managed_account_ref: "provider-account://tenant-managed-secret-guard-1/gemini/a",
                target_backend_options: %{
                  headers: %{authorization: "Bearer managed-route-request-sentinel"}
                }
              )
+
+    assert {:error, {:managed_credential_materialization_required, :credential_lease}} =
+             ControlPlane.invoke_inference(request)
   end
 
-  test "builds an endpoint-shaped ReqLLM call spec from an endpoint descriptor" do
+  test "keeps explicit standalone endpoint authorization out of durable request options" do
     request =
       InferenceRequest.new!(%{
         request_id: "req-call-spec-endpoint-1",
@@ -477,7 +562,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
       EndpointDescriptor.new!(%{
         endpoint_id: "endpoint-call-spec-1",
         runtime_kind: :service,
-        management_mode: :jido_managed,
+        management_mode: :externally_managed,
         target_class: :self_hosted_endpoint,
         protocol: :openai_chat_completions,
         base_url: "http://127.0.0.1:8080/v1",
@@ -496,8 +581,8 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         metadata: %{}
       })
 
-    call_spec =
-      ReqLLMCallSpec.from_endpoint(
+    call_plan =
+      CallPlan.from_endpoint(
         request,
         %{
           run_id: "run-call-spec-endpoint-1",
@@ -507,13 +592,19 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         endpoint
       )
 
-    assert call_spec.operation == :stream_text
-    assert call_spec.model_spec.provider == :openai
-    assert call_spec.model_spec.id == "llama-3.2-3b-instruct"
-    assert call_spec.base_url == "http://127.0.0.1:8080/v1"
-    assert call_spec.headers == %{"x-jido-route" => "inference"}
-    assert call_spec.options == %{api_key: "local-token", temperature: 0.1}
-    assert call_spec.observability == %{trace_id: "trace-call-spec-endpoint-1"}
+    assert call_plan.operation == :stream_text
+    assert call_plan.model_spec.provider == :openai
+    assert call_plan.model_spec.id == "llama-3.2-3b-instruct"
+    assert call_plan.base_url == "http://127.0.0.1:8080/v1"
+
+    assert call_plan.headers == %{"x-jido-route" => "inference"}
+    assert call_plan.standalone_api_key == "local-token"
+
+    assert call_plan.options == %{temperature: 0.1}
+    refute Map.has_key?(call_plan.options, :api_key)
+    assert call_plan.observability == %{trace_id: "trace-call-spec-endpoint-1"}
+    refute inspect(call_plan) =~ "local-token"
+    refute inspect(call_plan) =~ "authorization"
   end
 
   @tag skip:
@@ -586,6 +677,119 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
     assert {:ok, attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
     assert attempt.output["inference_result"]["status"] == "ok"
     assert attempt.output["compatibility_result"]["metadata"]["route"] == "cloud"
+  end
+
+  @tag skip:
+         not @socket_capable? and
+           "requires a socket-capable environment for the managed cloud proof"
+  test "managed inference materializes inside the bounded Auth effect and records only lease truth" do
+    start_supervised!(ManagedStore)
+    Auth.reset!()
+
+    Auth.configure_managed_accounts!(
+      store: ManagedStore,
+      materializers: %{"openai" => ManagedMaterializer}
+    )
+
+    on_exit(fn -> Auth.reset!() end)
+
+    cloud_fixture =
+      FakeCloudServerFixture.new!(%{
+        "id" => "cmpl_managed_cloud_123",
+        "model" => "gpt-4o-mini",
+        "choices" => [
+          %{
+            "finish_reason" => "stop",
+            "message" => %{
+              "role" => "assistant",
+              "content" => "Managed materialization stayed inside the effect task."
+            }
+          }
+        ],
+        "usage" => %{
+          "prompt_tokens" => 8,
+          "completion_tokens" => 8,
+          "total_tokens" => 16
+        }
+      })
+
+    on_exit(fn -> FakeCloudServerFixture.cleanup(cloud_fixture) end)
+
+    now = ~U[2026-07-20 12:00:00Z]
+
+    assert {:ok, %{account: account, account_ref: account_ref}} =
+             Auth.register_managed_account(managed_registration(now))
+
+    lease_context = managed_lease_context(account, now)
+    assert {:ok, lease} = Auth.request_managed_lease(account_ref, lease_context)
+
+    materialization_request =
+      MaterializationRequest.new!(%{
+        materialization_ref: "materialization://openai/control-plane/1",
+        lease_id: lease.lease_id,
+        account: account_ref,
+        effect_ref: lease_context.effect_ref,
+        operation_ref: lease_context.operation_ref,
+        authority_ref: lease_context.authority_ref,
+        endpoint_ref: account.endpoint_ref,
+        target_ref: lease_context.target_ref,
+        issued_at: DateTime.add(now, 1, :second),
+        expires_at: DateTime.add(now, 30, :second)
+      })
+
+    request =
+      InferenceRequest.new!(%{
+        request_id: "req-managed-cloud-1",
+        operation: :generate_text,
+        messages: [%{role: "user", content: "Use the bounded managed account"}],
+        prompt: nil,
+        model_preference: %{
+          provider: "openai",
+          id: "gpt-4o-mini",
+          base_url: FakeCloudServerFixture.base_url(cloud_fixture)
+        },
+        target_preference: %{
+          target_class: "cloud_provider",
+          management_mode: :jido_managed
+        },
+        stream?: false,
+        tool_policy: %{},
+        output_constraints: %{},
+        metadata: %{tenant_id: account.tenant_id}
+      })
+
+    assert {:ok, result} =
+             ControlPlane.invoke_inference(request,
+               credential_lease: lease,
+               materialization_request: materialization_request,
+               materialization_context: managed_redemption_context(lease_context, now),
+               run_id: "run-managed-cloud-1",
+               decision_ref: "decision-managed-cloud-1",
+               trace_id: "trace-managed-cloud-1"
+             )
+
+    assert result.compatibility_result.resolved_management_mode == :jido_managed
+    assert result.credential_lease_id == lease.lease_id
+    assert result.attempt.credential_lease_id == lease.lease_id
+    refute inspect(result) =~ "managed-cloud-sentinel"
+
+    assert_receive {:cloud_request, raw_request}
+
+    assert raw_request
+           |> String.downcase()
+           |> String.contains?("authorization: bearer managed-cloud-sentinel")
+
+    assert {:ok, stored_attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
+    refute inspect(stored_attempt) =~ "managed-cloud-sentinel"
+
+    assert {:ok, fetched_lease} =
+             Auth.fetch_lease(lease.lease_id, %{tenant_id: account.tenant_id, now: now})
+
+    assert fetched_lease.payload == %{}
+    assert fetched_lease.metadata.redemption_count == 1
+
+    assert fetched_lease.metadata.last_materialization_ref ==
+             materialization_request.materialization_ref
   end
 
   @tag skip:
@@ -810,6 +1014,83 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
 
     assert attempt.output["compatibility_result"]["resolved_management_mode"] ==
              "externally_managed"
+  end
+
+  defp managed_registration(now) do
+    %{
+      provider_family: "openai",
+      account_ref: "provider-account://tenant-managed/openai/account-a",
+      tenant_id: "tenant-managed",
+      connector_id: "openai",
+      endpoint_ref: "endpoint://openai/chat-completions",
+      quota_scope_ref: "quota://openai/account-a",
+      credential_handle_ref: "credential-handle://openai/account-a/v1",
+      secret_provider_ref: "vault://nshkr/kv-v2",
+      secret_binding_ref: "vault-secret://openai/account-a/v1",
+      subject: "nshkr-runtime",
+      actor_id: "operator-1",
+      scopes: ["model:invoke"],
+      lease_fields: ["api_key"],
+      now: now
+    }
+  end
+
+  defp managed_lease_context(%ManagedAccount{} = account, now) do
+    %{
+      tenant_id: account.tenant_id,
+      actor_id: "runtime-1",
+      required_scopes: ["model:invoke"],
+      ttl_seconds: 60,
+      now: now,
+      provider_family: account.provider_family,
+      provider_account_ref: account.account_ref,
+      connector_instance_ref: "connector-instance://openai/primary",
+      credential_handle_ref: account.credential_handle_ref,
+      operation_class: "inference",
+      execution_context_ref: "execution-context://run/managed-cloud-1",
+      target_ref: "target://openai/cloud",
+      attach_grant_ref: "attach-grant://openai/1",
+      operation_policy_ref: "operation-policy://openai/generate",
+      policy_revision_ref: "policy-revision://openai/1",
+      target_grant_revision: "target-grant-revision://openai/1",
+      rotation_epoch: account.generation,
+      fence_token: "#{account.account_ref}:fence:#{account.fence}",
+      authority_ref: "citadel://grant/openai/1",
+      authority_decision_ref: "citadel://decision/openai/1",
+      authority_scope: ["model:invoke"],
+      installation_revision: "installation://nshkr/1",
+      effect_ref: "effect://openai/run-managed-cloud-1/turn-1",
+      operation_ref: "operation://openai/chat-completions/1",
+      endpoint_ref: account.endpoint_ref,
+      max_calls: 1,
+      max_tokens: 4096,
+      allowed_models: ["gpt-4o-mini"],
+      network_policy: :provider_only
+    }
+  end
+
+  defp managed_redemption_context(context, now) do
+    %{
+      tenant_id: context.tenant_id,
+      provider_family: context.provider_family,
+      connector_instance_ref: context.connector_instance_ref,
+      provider_account_ref: context.provider_account_ref,
+      credential_handle_ref: context.credential_handle_ref,
+      operation_class: context.operation_class,
+      target_ref: context.target_ref,
+      attach_grant_ref: context.attach_grant_ref,
+      operation_policy_ref: context.operation_policy_ref,
+      current_policy_revision_ref: context.policy_revision_ref,
+      current_rotation_epoch: context.rotation_epoch,
+      current_target_grant_revision: context.target_grant_revision,
+      fence_token: context.fence_token,
+      current_installation_revision: context.installation_revision,
+      requested_authority_scope: context.authority_scope,
+      requested_model: "gpt-4o-mini",
+      requested_tokens: 512,
+      network_target: :provider,
+      now: DateTime.add(now, 2, :second)
+    }
   end
 
   defp configure_asm_endpoint(text) do

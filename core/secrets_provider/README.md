@@ -5,8 +5,9 @@ generic credential ingress. It keeps public requests and receipts on lease
 refs, provider refs, and audit refs while allowing raw credential material only
 inside a brokered adapter call scope.
 
-The local command adapter is `Jido.Integration.Secrets.EnvProvider`. Production
-managed-account calls use
+Explicit standalone product commands may use
+`Jido.Integration.Secrets.EphemeralProvider` with a call-scoped materializer.
+Production managed-account calls use
 `Jido.Integration.Secrets.ManagedCredentialMaterializer` with an explicitly
 configured provider such as `Jido.Integration.Secrets.VaultKVProvider`; no
 provider address or token is discovered from ambient process environment.

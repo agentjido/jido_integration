@@ -16,8 +16,10 @@ endpoint-shaped inference target:
 Its default inference consumer manifest admits `:client`, `:task`, and
 `:service`, so the CLI route does not need a special runtime-kind override.
 
-`ReqLLMCallSpec.from_endpoint/3` then turns that descriptor into the single
-client call shape used by the live inference path.
+`Inference.CallPlan.from_endpoint/3` turns that descriptor into the transient
+client call shape used by the live inference path. Its managed shape is
+credential-free; managed credentials enter only through the bounded Auth
+materialization callback.
 
 ## Ownership Split
 

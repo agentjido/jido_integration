@@ -98,8 +98,11 @@ The control plane now owns the first end-to-end inference adapter.
 It:
 
 - builds `InferenceExecutionContext` and `ConsumerManifest`
-- derives a local `ReqLLMCallSpec`
+- derives a transient `Inference.CallPlan` whose managed shape is credential-free
 - executes cloud provider calls through `req_llm`
+- requires the typed credential lease, materialization request, and redemption
+  context for `:jido_managed` calls, then executes the lower call inside the
+  bounded Auth materialization task
 - resolves CLI-backed endpoint descriptors through `ASM.InferenceEndpoint`
 - executes those CLI endpoint routes through `req_llm`
 - resolves self-hosted endpoints through an optional self-hosted endpoint
@@ -111,6 +114,10 @@ It:
   Jido-specific request structs directly
 - maps shared `Inference.Client` defaults, request options, tool policy, route
   preference, usage, and cost fields into the governed control-plane boundary
+
+Managed calls never accept direct ReqLLM credentials or authorization headers.
+Explicit provider options remain available only to the distinct standalone
+path.
 
 The self-hosted route now proves both runtime ownership shapes:
 

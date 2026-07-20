@@ -1,4 +1,4 @@
-defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
+defmodule Jido.Integration.V2.ControlPlane.Inference.CallPlan do
   @moduledoc false
 
   alias Jido.Integration.V2.Contracts
@@ -6,9 +6,11 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
   alias Jido.Integration.V2.InferenceExecutionContext
   alias Jido.Integration.V2.InferenceRequest
 
+  @derive {Inspect, only: [:model_spec, :operation, :base_url]}
   defstruct model_spec: nil,
             operation: nil,
             base_url: nil,
+            standalone_api_key: nil,
             headers: %{},
             messages: [],
             prompt: nil,
@@ -29,6 +31,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
           model_spec: map() | String.t(),
           operation: :generate_text | :stream_text,
           base_url: String.t() | nil,
+          standalone_api_key: String.t() | nil,
           headers: %{optional(String.t()) => String.t()},
           messages: [map()],
           prompt: String.t() | nil,
@@ -38,14 +41,8 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
 
   @spec from_cloud_route(InferenceRequest.t(), InferenceExecutionContext.t() | map(), map()) ::
           t()
-  def from_cloud_route(
-        %InferenceRequest{} = request,
-        context,
-        route
-      )
+  def from_cloud_route(%InferenceRequest{} = request, context, route)
       when is_map(context) and is_map(route) do
-    observability = normalize_observability(context)
-
     provider =
       route
       |> get_value(:provider)
@@ -61,20 +58,16 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
       |> get_value(:base_url)
       |> normalize_optional_string("cloud_route.base_url")
 
-    options =
-      request
-      |> request_options()
-      |> Map.merge(optional_map(route, :options))
-
     %__MODULE__{
       model_spec: compact_model_spec(%{provider: provider, id: model_id, base_url: base_url}),
       operation: request.operation,
       base_url: base_url,
+      standalone_api_key: nil,
       headers: %{},
       messages: request.messages,
       prompt: request.prompt,
-      options: options,
-      observability: observability
+      options: request_options(request) |> Map.merge(optional_map(route, :options)),
+      observability: normalize_observability(context)
     }
   end
 
@@ -82,23 +75,11 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
           InferenceRequest.t(),
           InferenceExecutionContext.t() | map(),
           EndpointDescriptor.t()
-        ) ::
-          t()
-  def from_endpoint(
-        %InferenceRequest{} = request,
-        context,
-        %EndpointDescriptor{} = endpoint
-      )
+        ) :: t()
+  def from_endpoint(%InferenceRequest{} = request, context, %EndpointDescriptor{} = endpoint)
       when is_map(context) do
-    observability = normalize_observability(context)
-
     :openai_chat_completions = Contracts.validate_inference_protocol!(endpoint.protocol)
-    {api_key, headers} = extract_api_key(endpoint.headers)
-
-    options =
-      request
-      |> request_options()
-      |> maybe_put_option(:api_key, api_key)
+    {standalone_api_key, headers} = endpoint_credential(endpoint)
 
     %__MODULE__{
       model_spec:
@@ -109,11 +90,12 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
         }),
       operation: request.operation,
       base_url: endpoint.base_url,
+      standalone_api_key: standalone_api_key,
       headers: headers,
       messages: request.messages,
       prompt: request.prompt,
-      options: options,
-      observability: observability
+      options: request_options(request),
+      observability: normalize_observability(context)
     }
   end
 
@@ -128,9 +110,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
   defp filter_known_options(nil), do: %{}
 
   defp filter_known_options(%{} = options) do
-    options
-    |> Map.new()
-    |> Enum.reduce(%{}, fn {key, value}, acc ->
+    Enum.reduce(options, %{}, fn {key, value}, acc ->
       normalized_key = normalize_option_key(key)
 
       if normalized_key in [
@@ -141,11 +121,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
            :frequency_penalty,
            :system_prompt,
            :provider_options
-         ] do
-        Map.put(acc, normalized_key, value)
-      else
-        acc
-      end
+         ],
+         do: Map.put(acc, normalized_key, value),
+         else: acc
     end)
   end
 
@@ -161,8 +139,8 @@ defmodule Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec do
 
   defp protocol_provider(:openai_chat_completions), do: :openai
 
-  defp extract_api_key(headers) when is_map(headers) do
-    headers = normalize_headers(headers)
+  defp endpoint_credential(%EndpointDescriptor{} = endpoint) do
+    headers = normalize_headers(endpoint.headers)
     authorization = Map.get(headers, "authorization")
 
     case bearer_token(authorization) do

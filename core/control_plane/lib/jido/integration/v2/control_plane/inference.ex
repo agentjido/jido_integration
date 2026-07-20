@@ -2,18 +2,22 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   @moduledoc false
 
   alias Jido.Integration.V2.BackendManifest
+  alias Jido.Integration.V2.Auth
   alias Jido.Integration.V2.Auth.SecretGuard
   alias Jido.Integration.V2.CompatibilityResult
   alias Jido.Integration.V2.ConsumerManifest
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
-  alias Jido.Integration.V2.ControlPlane.Inference.ReqLLMCallSpec
+  alias Jido.Integration.V2.ControlPlane.Inference.CallPlan
   alias Jido.Integration.V2.ControlPlane.RuntimeConfig
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceExecutionContext
   alias Jido.Integration.V2.InferenceRequest
   alias Jido.Integration.V2.InferenceResult
   alias Jido.Integration.V2.LeaseRef
+  alias Jido.Integration.V2.MaterializationRequest
+  alias Jido.Integration.V2.CredentialLease
+  alias Jido.Integration.V2.SecretMaterial
   alias ReqLLM.Response
   alias ReqLLM.Response.Stream, as: ResponseStream
 
@@ -36,7 +40,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
   @type route_result :: %{
           target_class: Contracts.inference_target_class(),
-          call_spec: ReqLLMCallSpec.t(),
+          call_plan: CallPlan.t(),
           compatibility_result: CompatibilityResult.t(),
           endpoint_descriptor: EndpointDescriptor.t() | nil,
           backend_manifest: BackendManifest.t() | nil,
@@ -51,6 +55,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
           endpoint_descriptor: EndpointDescriptor.t() | nil,
           backend_manifest: BackendManifest.t() | nil,
           lease_ref: LeaseRef.t() | nil,
+          credential_lease_id: String.t() | nil,
           inference_result: InferenceResult.t(),
           stream: map() | nil,
           response_text: String.t() | nil,
@@ -65,12 +70,15 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     with {:ok, request} <- normalize_request(request_or_attrs),
          execution_request = prepare_execution_request(request, opts),
          :ok <- reject_managed_secret_supplementation(execution_request, opts),
+         {:ok, credential_mode} <- credential_mode(execution_request, opts),
          {:ok, durable_request} <- sanitize_request_for_recording(execution_request, opts),
          {:ok, context} <- build_context(durable_request, opts),
          {:ok, consumer_manifest} <- build_consumer_manifest(durable_request, opts),
-         {:ok, route} <- resolve_route(execution_request, context, consumer_manifest, opts),
+         {:ok, route} <-
+           resolve_route(execution_request, context, consumer_manifest, credential_mode, opts),
          :ok <- enforce_required_descriptor_refs(route, opts),
-         {:ok, execution} <- execute_route(execution_request, context, route, opts),
+         {:ok, execution} <-
+           execute_route(execution_request, context, route, credential_mode, opts),
          {:ok, recorded} <-
            ControlPlane.record_inference_attempt(%{
              request: durable_request,
@@ -80,6 +88,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
              endpoint_descriptor: route.endpoint_descriptor,
              backend_manifest: route.backend_manifest,
              lease_ref: route.lease_ref,
+             credential_lease_id: credential_lease_id(credential_mode),
              stream: execution.stream,
              result: execution.inference_result
            }) do
@@ -92,6 +101,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          endpoint_descriptor: route.endpoint_descriptor,
          backend_manifest: route.backend_manifest,
          lease_ref: route.lease_ref,
+         credential_lease_id: credential_lease_id(credential_mode),
          inference_result: execution.inference_result,
          stream: execution.stream,
          response_text: execution.response_text,
@@ -147,20 +157,104 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
   defp reject_managed_secret_supplementation(request, opts) do
     if managed_request?(request, opts) do
-      opts
-      |> Keyword.take([:api_key, :provider_options, :req_http_options, :target_backend_options])
-      |> Map.new()
-      |> SecretGuard.validate_durable()
+      with :ok <-
+             opts
+             |> Keyword.take([
+               :api_key,
+               :provider_options,
+               :req_http_options,
+               :target_backend_options
+             ])
+             |> Map.new()
+             |> SecretGuard.validate_durable(),
+           :ok <- request |> Map.from_struct() |> SecretGuard.validate_durable(),
+           :ok <- reject_managed_direct_options(opts) do
+        :ok
+      end
     else
       :ok
     end
   end
 
-  defp managed_request?(_request, opts) do
-    Enum.any?(
-      [:managed_account_ref, :materialization_request, :credential_lease],
-      &Keyword.has_key?(opts, &1)
-    )
+  defp managed_request?(request, opts) do
+    requested_management_mode(request) == :jido_managed or
+      Enum.any?(
+        [
+          :managed_account_ref,
+          :credential_lease,
+          :materialization_request,
+          :materialization_context
+        ],
+        &Keyword.has_key?(opts, &1)
+      )
+  end
+
+  defp reject_managed_direct_options(opts) do
+    case Enum.find([:api_key, :provider_options, :req_http_options], &Keyword.has_key?(opts, &1)) do
+      nil -> :ok
+      key -> {:error, {:managed_direct_credential_option_forbidden, key}}
+    end
+  end
+
+  defp credential_mode(request, opts) do
+    if managed_request?(request, opts) do
+      with :ok <- validate_requested_management_mode(request),
+           :ok <- reject_removed_managed_account_option(opts),
+           {:ok, lease} <- typed_managed_option(opts, :credential_lease, CredentialLease),
+           {:ok, materialization_request} <-
+             typed_managed_option(opts, :materialization_request, MaterializationRequest),
+           {:ok, materialization_context} <- materialization_context(opts) do
+        {:ok,
+         %{
+           kind: :managed,
+           lease: lease,
+           request: materialization_request,
+           context: materialization_context
+         }}
+      end
+    else
+      {:ok, :standalone}
+    end
+  end
+
+  defp validate_requested_management_mode(request) do
+    case requested_management_mode(request) do
+      nil -> :ok
+      :jido_managed -> :ok
+      mode -> {:error, {:managed_credential_mode_mismatch, mode}}
+    end
+  end
+
+  defp requested_management_mode(%InferenceRequest{} = request) do
+    request.target_preference
+    |> map_or_empty()
+    |> Contracts.get(:management_mode)
+    |> case do
+      nil -> nil
+      mode -> Contracts.normalize_atomish!(mode, "target_preference.management_mode")
+    end
+  end
+
+  defp reject_removed_managed_account_option(opts) do
+    if Keyword.has_key?(opts, :managed_account_ref),
+      do: {:error, :managed_account_ref_option_removed},
+      else: :ok
+  end
+
+  defp typed_managed_option(opts, key, module) do
+    case Keyword.fetch(opts, key) do
+      {:ok, %{__struct__: ^module} = value} -> {:ok, value}
+      {:ok, _other} -> {:error, {:invalid_managed_credential_option, key}}
+      :error -> {:error, {:managed_credential_materialization_required, key}}
+    end
+  end
+
+  defp materialization_context(opts) do
+    case Keyword.fetch(opts, :materialization_context) do
+      {:ok, %{} = context} -> {:ok, context}
+      {:ok, _other} -> {:error, {:invalid_managed_credential_option, :materialization_context}}
+      :error -> {:error, {:managed_credential_materialization_required, :materialization_context}}
+    end
   end
 
   defp enforce_prompt_artifact_ref(%InferenceRequest{} = request) do
@@ -301,11 +395,12 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          %InferenceRequest{} = request,
          %InferenceExecutionContext{} = context,
          consumer_manifest,
+         credential_mode,
          opts
        ) do
     case target_class(request) do
       :cloud_provider ->
-        resolve_cloud_route(request, context)
+        resolve_cloud_route(request, context, credential_mode)
 
       :self_hosted_endpoint ->
         resolve_self_hosted_route(request, context, consumer_manifest, opts)
@@ -342,7 +437,11 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     ["endpoint_id", "model_identity", "model_version"]
   end
 
-  defp resolve_cloud_route(%InferenceRequest{} = request, %InferenceExecutionContext{} = context) do
+  defp resolve_cloud_route(
+         %InferenceRequest{} = request,
+         %InferenceExecutionContext{} = context,
+         credential_mode
+       ) do
     model_preference = map_or_empty(request.model_preference)
 
     with provider when not is_nil(provider) <- Contracts.get(model_preference, :provider),
@@ -358,13 +457,13 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       {:ok,
        %{
          target_class: :cloud_provider,
-         call_spec: ReqLLMCallSpec.from_cloud_route(request, context, route),
+         call_plan: CallPlan.from_cloud_route(request, context, route),
          compatibility_result:
            CompatibilityResult.new!(%{
              compatible?: true,
              reason: :protocol_match,
              resolved_runtime_kind: :client,
-             resolved_management_mode: :provider_managed,
+             resolved_management_mode: resolved_management_mode(credential_mode),
              resolved_protocol: nil,
              warnings: [],
              missing_requirements: [],
@@ -402,7 +501,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       {:ok,
        %{
          target_class: :self_hosted_endpoint,
-         call_spec: ReqLLMCallSpec.from_endpoint(request, context, endpoint_descriptor),
+         call_plan: CallPlan.from_endpoint(request, context, endpoint_descriptor),
          compatibility_result: compatibility_result,
          endpoint_descriptor: endpoint_descriptor,
          backend_manifest: backend_manifest,
@@ -449,7 +548,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       {:ok,
        %{
          target_class: :cli_endpoint,
-         call_spec: ReqLLMCallSpec.from_endpoint(request, context, endpoint_descriptor),
+         call_plan: CallPlan.from_endpoint(request, context, endpoint_descriptor),
          compatibility_result: compatibility_result,
          endpoint_descriptor: endpoint_descriptor,
          backend_manifest: backend_manifest,
@@ -462,18 +561,59 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          %InferenceRequest{} = request,
          %InferenceExecutionContext{} = context,
          route,
+         :standalone,
          opts
        ) do
-    call_spec = route.call_spec
-    input = call_input(call_spec)
-    call_opts = req_llm_opts(call_spec, opts)
+    execute_call_plan(request, context, route, route.call_plan, opts)
+  end
 
-    case call_spec.operation do
+  defp execute_route(
+         %InferenceRequest{} = request,
+         %InferenceExecutionContext{} = context,
+         route,
+         %{kind: :managed} = credential_mode,
+         opts
+       ) do
+    with :ok <- validate_managed_call_plan(route.call_plan),
+         :ok <- validate_managed_effect_alignment(route.call_plan, credential_mode.context) do
+      credential_mode.lease
+      |> Auth.with_materialized_credential(
+        credential_mode.request,
+        credential_mode.context,
+        fn material ->
+          case execute_with_material(request, context, route, material, opts) do
+            {:ok, execution} -> %{status: :ok, execution: execution}
+            {:error, _reason} -> %{status: :error}
+          end
+        end
+      )
+      |> normalize_managed_execution()
+    end
+  end
+
+  defp execute_with_material(request, context, route, %SecretMaterial{} = material, opts) do
+    with :ok <- validate_materialized_provider(route.call_plan, material),
+         {:ok, credential_opts} <- materialized_req_llm_opts(material) do
+      execute_call_plan(
+        request,
+        context,
+        route,
+        route.call_plan,
+        Keyword.merge(opts, credential_opts)
+      )
+    end
+  end
+
+  defp execute_call_plan(request, context, route, %CallPlan{} = call_plan, opts) do
+    input = call_input(call_plan)
+    call_opts = req_llm_opts(call_plan, opts)
+
+    case call_plan.operation do
       :generate_text ->
-        execute_generate_text(input, context, route, call_spec.model_spec, call_opts, opts)
+        execute_generate_text(input, context, route, call_plan.model_spec, call_opts, opts)
 
       :stream_text ->
-        execute_stream_text(input, context, route, call_spec.model_spec, call_opts, request, opts)
+        execute_stream_text(input, context, route, call_plan.model_spec, call_opts, request, opts)
     end
   end
 
@@ -664,7 +804,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     end
   end
 
-  defp req_llm_opts(%ReqLLMCallSpec{} = call_spec, opts) do
+  defp req_llm_opts(%CallPlan{} = call_plan, opts) do
     user_opts =
       opts
       |> Keyword.take(@req_llm_passthrough_keys)
@@ -674,9 +814,10 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       user_opts
       |> Map.get(:req_http_options, [])
       |> normalize_req_http_options()
-      |> merge_req_http_headers(call_spec.headers)
+      |> merge_req_http_headers(call_plan.headers)
 
-    call_spec.options
+    call_plan.options
+    |> maybe_put(:api_key, call_plan.standalone_api_key)
     |> Map.merge(Map.delete(user_opts, :req_http_options))
     |> put_default_token_budget()
     |> maybe_put(:req_http_options, req_http_options)
@@ -721,10 +862,10 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   defp normalize_header_list(headers) when is_map(headers), do: Map.new(headers)
   defp normalize_header_list(_headers), do: %{}
 
-  defp call_input(%ReqLLMCallSpec{messages: [], prompt: prompt}) when is_binary(prompt),
+  defp call_input(%CallPlan{messages: [], prompt: prompt}) when is_binary(prompt),
     do: prompt
 
-  defp call_input(%ReqLLMCallSpec{messages: messages}), do: messages
+  defp call_input(%CallPlan{messages: messages}), do: messages
 
   defp target_class(%InferenceRequest{} = request) do
     target_preference = map_or_empty(request.target_preference)
@@ -847,11 +988,72 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
   defp stream_protocol(_route), do: :openai_chat_completions
 
-  defp cloud_provider(%{target_class: :cloud_provider, call_spec: %ReqLLMCallSpec{} = call_spec}) do
-    Contracts.get(call_spec.model_spec, :provider)
+  defp cloud_provider(%{target_class: :cloud_provider, call_plan: %CallPlan{} = call_plan}) do
+    Contracts.get(call_plan.model_spec, :provider)
   end
 
   defp cloud_provider(_route), do: nil
+
+  defp resolved_management_mode(:standalone), do: :provider_managed
+  defp resolved_management_mode(%{kind: :managed}), do: :jido_managed
+
+  defp credential_lease_id(:standalone), do: nil
+
+  defp credential_lease_id(%{kind: :managed, lease: %CredentialLease{} = lease}),
+    do: lease.lease_id
+
+  defp validate_managed_call_plan(%CallPlan{} = call_plan) do
+    cond do
+      is_binary(call_plan.standalone_api_key) ->
+        {:error, :managed_endpoint_credential_forbidden}
+
+      true ->
+        SecretGuard.validate_durable(call_plan.headers)
+    end
+  end
+
+  defp validate_managed_effect_alignment(%CallPlan{} = call_plan, context) do
+    expected_model = Contracts.get(call_plan.model_spec, :id)
+    expected_provider = Contracts.get(call_plan.model_spec, :provider) |> to_string()
+
+    cond do
+      context_value(context, :requested_model) != expected_model ->
+        {:error, :managed_materialization_model_mismatch}
+
+      to_string(context_value(context, :provider_family)) != expected_provider ->
+        {:error, :managed_materialization_provider_mismatch}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_materialized_provider(%CallPlan{} = call_plan, %SecretMaterial{} = material) do
+    expected_provider = Contracts.get(call_plan.model_spec, :provider) |> to_string()
+
+    if material.provider_family == expected_provider,
+      do: :ok,
+      else: {:error, :materialized_provider_mismatch}
+  end
+
+  defp materialized_req_llm_opts(%SecretMaterial{payload: payload}) do
+    case Map.get(payload, :api_key, Map.get(payload, "api_key")) do
+      api_key when is_binary(api_key) and api_key != "" -> {:ok, api_key: api_key}
+      _missing -> {:error, :materialized_api_key_missing}
+    end
+  end
+
+  defp normalize_managed_execution({:ok, %{status: :ok, execution: execution}}),
+    do: {:ok, execution}
+
+  defp normalize_managed_execution({:ok, %{status: :error}}),
+    do: {:error, :managed_provider_call_failed}
+
+  defp normalize_managed_execution({:error, _reason} = error), do: error
+
+  defp context_value(context, key) do
+    Map.get(context, key, Map.get(context, Atom.to_string(key)))
+  end
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
