@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   alias Jido.Integration.V2.ControlPlane.RuntimeConfig
   alias Jido.Integration.V2.ControlPlane.TestSupport.FakeLlamaServerFixture
   alias Jido.Integration.V2.ControlPlane.TestSupport.FakeSelfHostedEndpointProvider
+  alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceRequest
   alias Jido.Integration.V2.MaterializationRequest
@@ -154,6 +155,65 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
           "total_tokens" => 20
         }
       }
+    end
+  end
+
+  defmodule ManagedModeEndpointProvider do
+    @behaviour Jido.Integration.V2.ControlPlane.Inference.SelfHostedEndpointProvider
+
+    alias Jido.Integration.V2.BackendManifest
+    alias Jido.Integration.V2.CompatibilityResult
+    alias Jido.Integration.V2.EndpointDescriptor
+
+    @impl true
+    def ensure_endpoint(request, _consumer_manifest, _context, _opts) do
+      model_id = Map.get(request.model_preference, :id, "fixture-managed")
+
+      {:ok,
+       %{
+         endpoint_descriptor:
+           EndpointDescriptor.new!(%{
+             endpoint_id: "endpoint-managed-mode-probe-1",
+             runtime_kind: :service,
+             management_mode: :jido_managed,
+             target_class: :self_hosted_endpoint,
+             protocol: :openai_chat_completions,
+             base_url: "http://127.0.0.1:9/v1",
+             headers: %{"authorization" => "Bearer managed-mode-probe-sentinel"},
+             provider_identity: :llama_cpp_sdk,
+             model_identity: model_id,
+             source_runtime: :llama_cpp_sdk,
+             source_runtime_ref: "managed-mode-probe-runtime-1",
+             lease_ref: "managed-mode-probe-lease-1",
+             health_ref: "managed-mode-probe-health-1",
+             boundary_ref: nil,
+             capabilities: %{streaming?: false, tool_calling?: false},
+             metadata: %{model_version: "v1"}
+           }),
+         compatibility_result:
+           CompatibilityResult.new!(%{
+             compatible?: true,
+             reason: :protocol_match,
+             resolved_runtime_kind: :service,
+             resolved_management_mode: :jido_managed,
+             resolved_protocol: :openai_chat_completions,
+             warnings: [],
+             missing_requirements: [],
+             metadata: %{route: :self_hosted, backend: :llama_cpp_sdk}
+           }),
+         backend_manifest:
+           BackendManifest.new!(%{
+             backend: :llama_cpp_sdk,
+             runtime_kind: :service,
+             management_modes: [:jido_managed],
+             startup_kind: :attach_existing_service,
+             protocols: [:openai_chat_completions],
+             capabilities: %{streaming?: false, tool_calling?: false, embeddings?: :unknown},
+             supported_surfaces: [:local_subprocess],
+             resource_profile: %{profile: "fixture"},
+             metadata: %{family: "managed_mode_probe"}
+           })
+       }}
     end
   end
 
@@ -543,6 +603,92 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
              ControlPlane.invoke_inference(request)
   end
 
+  test "omitted request mode cannot use bearer material from a managed endpoint" do
+    request =
+      InferenceRequest.new!(%{
+        request_id: "req-managed-mode-omitted-1",
+        operation: :generate_text,
+        messages: [%{role: "user", content: "Do not admit managed endpoint credentials"}],
+        prompt: nil,
+        model_preference: %{provider: "openai", id: "fixture-managed"},
+        target_preference: %{
+          target_class: "self_hosted_endpoint",
+          backend: "ollama"
+        },
+        stream?: false,
+        tool_policy: %{},
+        output_constraints: %{},
+        metadata: %{tenant_id: "tenant-managed-mode-omitted-1"}
+      })
+
+    assert {:error, {:route_credential_mode_mismatch, :standalone, :jido_managed}} =
+             ControlPlane.invoke_inference(request,
+               self_hosted_endpoint_provider: ManagedModeEndpointProvider
+             )
+  end
+
+  test "managed credential bundle cannot execute through an externally managed endpoint" do
+    now = ~U[2026-07-20 12:00:00Z]
+    {lease, materialization_request, materialization_context} = mode_alignment_bundle(now)
+
+    request =
+      InferenceRequest.new!(%{
+        request_id: "req-managed-external-route-1",
+        operation: :generate_text,
+        messages: [%{role: "user", content: "Reject a mismatched managed bundle"}],
+        prompt: nil,
+        model_preference: %{provider: "openai", id: "gpt-4o-mini"},
+        target_preference: %{
+          target_class: "self_hosted_endpoint",
+          management_mode: :jido_managed,
+          backend: "ollama",
+          backend_options: %{root_url: "http://127.0.0.1:9"}
+        },
+        stream?: false,
+        tool_policy: %{},
+        output_constraints: %{},
+        metadata: %{tenant_id: "tenant-mode-alignment"}
+      })
+
+    assert {:error, {:route_credential_mode_mismatch, :managed, :externally_managed}} =
+             ControlPlane.invoke_inference(request,
+               credential_lease: lease,
+               materialization_request: materialization_request,
+               materialization_context: materialization_context
+             )
+  end
+
+  test "managed endpoint bearer remains forbidden after route mode alignment" do
+    now = ~U[2026-07-20 12:00:00Z]
+    {lease, materialization_request, materialization_context} = mode_alignment_bundle(now)
+
+    request =
+      InferenceRequest.new!(%{
+        request_id: "req-managed-endpoint-bearer-1",
+        operation: :generate_text,
+        messages: [%{role: "user", content: "Reject descriptor bearer material"}],
+        prompt: nil,
+        model_preference: %{provider: "openai", id: "gpt-4o-mini"},
+        target_preference: %{
+          target_class: "self_hosted_endpoint",
+          management_mode: :jido_managed,
+          backend: "ollama"
+        },
+        stream?: false,
+        tool_policy: %{},
+        output_constraints: %{},
+        metadata: %{tenant_id: "tenant-mode-alignment"}
+      })
+
+    assert {:error, :managed_endpoint_credential_forbidden} =
+             ControlPlane.invoke_inference(request,
+               self_hosted_endpoint_provider: ManagedModeEndpointProvider,
+               credential_lease: lease,
+               materialization_request: materialization_request,
+               materialization_context: materialization_context
+             )
+  end
+
   test "keeps explicit standalone endpoint authorization out of durable request options" do
     request =
       InferenceRequest.new!(%{
@@ -795,7 +941,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
   @tag skip:
          not @socket_capable? and
            "requires a socket-capable environment for the ASM endpoint proof"
-  test "invoke_inference/2 records durable CLI streaming truth through an ASM endpoint" do
+  test "invoke_inference/2 rejects an omitted-mode managed ASM endpoint" do
     configure_asm_endpoint("ASM CLI proof is alive.")
 
     request =
@@ -812,7 +958,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         metadata: %{tenant_id: "tenant-live-cli-1"}
       })
 
-    assert {:ok, result} =
+    assert {:error, {:route_credential_mode_mismatch, :standalone, :jido_managed}} =
              ControlPlane.invoke_inference(
                request,
                run_id: "run-live-cli-1",
@@ -820,38 +966,12 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
                trace_id: "trace-live-cli-1",
                ttl_ms: 5_000
              )
-
-    assert result.response_text == "ASM CLI proof is alive."
-    assert result.inference_result.status == :ok
-    assert result.inference_result.streaming?
-    assert result.compatibility_result.metadata.route == :cli
-    assert result.endpoint_descriptor.target_class == :cli_endpoint
-    assert result.endpoint_descriptor.source_runtime == :agent_session_manager
-    assert result.backend_manifest.backend == :asm_inference_endpoint
-    assert result.backend_manifest.capabilities.tool_calling? == false
-    assert result.lease_ref.lease_ref == result.endpoint_descriptor.lease_ref
-
-    assert Enum.map(ControlPlane.events(result.run.run_id), & &1.type) == [
-             "inference.request_admitted",
-             "inference.attempt_started",
-             "inference.compatibility_evaluated",
-             "inference.target_resolved",
-             "inference.stream_opened",
-             "inference.stream_checkpoint",
-             "inference.stream_closed",
-             "inference.attempt_completed"
-           ]
-
-    assert {:ok, attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
-    assert attempt.output["endpoint_descriptor"]["source_runtime"] == "agent_session_manager"
-    assert attempt.output["compatibility_result"]["metadata"]["route"] == "cli"
-    assert attempt.output["backend_manifest"]["backend"] == "asm_inference_endpoint"
   end
 
   @tag skip:
          not @socket_capable? and
            "requires a socket-capable environment for llama_cpp_sdk endpoint proof"
-  test "invoke_inference/2 records durable self-hosted streaming truth through a llama.cpp endpoint" do
+  test "invoke_inference/2 rejects an omitted-mode managed llama.cpp endpoint" do
     fixture = FakeLlamaServerFixture.new!()
 
     on_exit(fn ->
@@ -882,7 +1002,7 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
         metadata: %{tenant_id: "tenant-live-self-hosted-1"}
       })
 
-    assert {:ok, result} =
+    assert {:error, {:route_credential_mode_mismatch, :standalone, :jido_managed}} =
              ControlPlane.invoke_inference(
                request,
                run_id: "run-live-self-hosted-1",
@@ -890,34 +1010,6 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
                trace_id: "trace-live-self-hosted-1",
                ttl_ms: 5_000
              )
-
-    assert result.inference_result.status == :ok
-    assert result.inference_result.streaming?
-    assert result.inference_result.finish_reason == :stop
-    assert result.compatibility_result.metadata.route == :self_hosted
-    assert result.endpoint_descriptor.target_class == :self_hosted_endpoint
-    assert result.endpoint_descriptor.base_url == "http://127.0.0.1:#{fixture.port}/managed/v1"
-    assert result.backend_manifest.backend == :llama_cpp_sdk
-    assert result.lease_ref.lease_ref == result.endpoint_descriptor.lease_ref
-    assert result.stream.opened.checkpoint_policy == :summary
-    assert result.stream.closed.chunk_count > 0
-    assert result.stream.closed.byte_count > 0
-
-    assert Enum.map(ControlPlane.events(result.run.run_id), & &1.type) == [
-             "inference.request_admitted",
-             "inference.attempt_started",
-             "inference.compatibility_evaluated",
-             "inference.target_resolved",
-             "inference.stream_opened",
-             "inference.stream_checkpoint",
-             "inference.stream_closed",
-             "inference.attempt_completed"
-           ]
-
-    assert {:ok, attempt} = ControlPlane.fetch_attempt(result.attempt.attempt_id)
-    assert attempt.output["endpoint_descriptor"]["provider_identity"] == "llama_cpp_sdk"
-    assert attempt.output["compatibility_result"]["metadata"]["route"] == "self_hosted"
-    assert attempt.output["lease_ref"]["lease_ref"] == result.lease_ref.lease_ref
 
     [server_pid] = FakeSelfHostedEndpointProvider.active_server_os_pids()
     assert FakeSelfHostedEndpointProvider.os_pid_alive?(server_pid)
@@ -1014,6 +1106,53 @@ defmodule Jido.Integration.V2.ControlPlaneInferenceExecutionTest do
 
     assert attempt.output["compatibility_result"]["resolved_management_mode"] ==
              "externally_managed"
+  end
+
+  defp mode_alignment_bundle(now) do
+    account_ref = "provider-account://tenant-mode-alignment/openai/account-a"
+
+    lease =
+      CredentialLease.new!(%{
+        lease_id: "lease-mode-alignment-1",
+        tenant_id: "tenant-mode-alignment",
+        credential_ref_id: "credential://mode-alignment/1",
+        subject: "nshkr-runtime",
+        scopes: ["model:invoke"],
+        payload: %{},
+        lease_fields: ["api_key"],
+        issued_at: now,
+        expires_at: DateTime.add(now, 60, :second)
+      })
+
+    materialization_request =
+      MaterializationRequest.new!(%{
+        materialization_ref: "materialization://mode-alignment/1",
+        lease_id: lease.lease_id,
+        account: %{
+          provider_family: "openai",
+          account_ref: account_ref,
+          tenant_id: "tenant-mode-alignment",
+          connection_id: "connection-mode-alignment-1",
+          endpoint_ref: "endpoint://mode-alignment/1",
+          quota_scope_ref: "quota://mode-alignment/1",
+          generation: 1,
+          fence: 0
+        },
+        effect_ref: "effect://mode-alignment/1",
+        operation_ref: "operation://mode-alignment/1",
+        authority_ref: "citadel://mode-alignment/1",
+        endpoint_ref: "endpoint://mode-alignment/1",
+        target_ref: "target://mode-alignment/1",
+        issued_at: now,
+        expires_at: DateTime.add(now, 30, :second)
+      })
+
+    materialization_context = %{
+      provider_family: "openai",
+      requested_model: "gpt-4o-mini"
+    }
+
+    {lease, materialization_request, materialization_context}
   end
 
   defp managed_registration(now) do

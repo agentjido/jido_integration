@@ -76,6 +76,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          {:ok, consumer_manifest} <- build_consumer_manifest(durable_request, opts),
          {:ok, route} <-
            resolve_route(execution_request, context, consumer_manifest, credential_mode, opts),
+         :ok <- validate_route_credential_mode(route, credential_mode),
          :ok <- enforce_required_descriptor_refs(route, opts),
          {:ok, execution} <-
            execute_route(execution_request, context, route, credential_mode, opts),
@@ -996,6 +997,36 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
 
   defp resolved_management_mode(:standalone), do: :provider_managed
   defp resolved_management_mode(%{kind: :managed}), do: :jido_managed
+
+  defp validate_route_credential_mode(route, :standalone) do
+    if :jido_managed in route_management_modes(route),
+      do: {:error, {:route_credential_mode_mismatch, :standalone, :jido_managed}},
+      else: :ok
+  end
+
+  defp validate_route_credential_mode(route, %{kind: :managed}) do
+    resolved_mode = route.compatibility_result.resolved_management_mode
+    descriptor_mode = route.endpoint_descriptor && route.endpoint_descriptor.management_mode
+
+    cond do
+      resolved_mode != :jido_managed ->
+        {:error, {:route_credential_mode_mismatch, :managed, resolved_mode}}
+
+      not is_nil(descriptor_mode) and descriptor_mode != :jido_managed ->
+        {:error, {:route_credential_mode_mismatch, :managed, descriptor_mode}}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp route_management_modes(route) do
+    [
+      route.compatibility_result.resolved_management_mode,
+      route.endpoint_descriptor && route.endpoint_descriptor.management_mode
+    ]
+    |> Enum.reject(&is_nil/1)
+  end
 
   defp credential_lease_id(:standalone), do: nil
 
