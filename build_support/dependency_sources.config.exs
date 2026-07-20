@@ -23,6 +23,16 @@
       default_order: [:path, :github, :hex],
       publish_order: [:hex]
     },
+    citadel_governance: %{
+      path: "../citadel/core/citadel_governance",
+      github: %{
+        repo: "nshkrdotcom/citadel",
+        branch: "main",
+        subdir: "core/citadel_governance"
+      },
+      default_order: [:path, :github],
+      publish_order: [:github]
+    },
     execution_plane: %{
       path: "../execution_plane/core/execution_plane",
       github: %{
@@ -56,6 +66,13 @@
       },
       hex: "~> 0.1.0",
       opts: [override: true],
+      default_order: [:path, :github, :hex],
+      publish_order: [:hex]
+    },
+    gemini_ex: %{
+      path: "../gemini_ex",
+      github: %{repo: "nshkrdotcom/gemini_ex", branch: "main"},
+      hex: "~> 0.14.0",
       default_order: [:path, :github, :hex],
       publish_order: [:hex]
     },

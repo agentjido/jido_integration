@@ -9,6 +9,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   alias Jido.Integration.V2.Contracts
   alias Jido.Integration.V2.ControlPlane
   alias Jido.Integration.V2.ControlPlane.Inference.CallPlan
+  alias Jido.Integration.V2.ControlPlane.InferenceRecorder
   alias Jido.Integration.V2.ControlPlane.RuntimeConfig
   alias Jido.Integration.V2.EndpointDescriptor
   alias Jido.Integration.V2.InferenceExecutionContext
@@ -18,6 +19,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   alias Jido.Integration.V2.MaterializationRequest
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.SecretMaterial
+  alias Jido.Integration.ProviderMaterializer
   alias ReqLLM.Response
   alias ReqLLM.Response.Stream, as: ResponseStream
 
@@ -77,39 +79,16 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          {:ok, route} <-
            resolve_route(execution_request, context, consumer_manifest, credential_mode, opts),
          :ok <- validate_route_credential_mode(route, credential_mode),
-         :ok <- enforce_required_descriptor_refs(route, opts),
-         {:ok, execution} <-
-           execute_route(execution_request, context, route, credential_mode, opts),
-         {:ok, recorded} <-
-           ControlPlane.record_inference_attempt(%{
-             request: durable_request,
-             context: context,
-             consumer_manifest: consumer_manifest,
-             compatibility_result: route.compatibility_result,
-             endpoint_descriptor: route.endpoint_descriptor,
-             backend_manifest: route.backend_manifest,
-             lease_ref: route.lease_ref,
-             credential_lease_id: credential_lease_id(credential_mode),
-             stream: execution.stream,
-             result: execution.inference_result
-           }) do
-      {:ok,
-       %{
-         request: durable_request,
-         context: context,
-         consumer_manifest: consumer_manifest,
-         compatibility_result: route.compatibility_result,
-         endpoint_descriptor: route.endpoint_descriptor,
-         backend_manifest: route.backend_manifest,
-         lease_ref: route.lease_ref,
-         credential_lease_id: credential_lease_id(credential_mode),
-         inference_result: execution.inference_result,
-         stream: execution.stream,
-         response_text: execution.response_text,
-         response_summary: execution.response_summary,
-         run: recorded.run,
-         attempt: recorded.attempt
-       }}
+         :ok <- enforce_required_descriptor_refs(route, opts) do
+      execute_and_record(
+        execution_request,
+        durable_request,
+        context,
+        consumer_manifest,
+        route,
+        credential_mode,
+        opts
+      )
     end
   end
 
@@ -558,6 +537,121 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     end
   end
 
+  defp execute_and_record(
+         execution_request,
+         durable_request,
+         context,
+         consumer_manifest,
+         route,
+         :standalone,
+         opts
+       ) do
+    with {:ok, execution} <- execute_route(execution_request, context, route, :standalone, opts),
+         record_spec =
+           record_spec(durable_request, context, consumer_manifest, route, :standalone),
+         {:ok, recorded} <-
+           ControlPlane.record_inference_attempt(
+             Map.merge(record_spec, %{
+               stream: execution.stream,
+               result: execution.inference_result
+             })
+           ) do
+      {:ok,
+       invocation_result(
+         durable_request,
+         context,
+         consumer_manifest,
+         route,
+         :standalone,
+         execution,
+         recorded
+       )}
+    end
+  end
+
+  defp execute_and_record(
+         execution_request,
+         durable_request,
+         context,
+         consumer_manifest,
+         route,
+         %{kind: :managed} = credential_mode,
+         opts
+       ) do
+    record_spec = record_spec(durable_request, context, consumer_manifest, route, credential_mode)
+
+    with :ok <- validate_managed_call_plan(route.call_plan),
+         :ok <- validate_managed_effect_alignment(route.call_plan, credential_mode.context),
+         :ok <- verify_model_grant(route.call_plan, context, credential_mode, opts),
+         {:ok, _started} <- InferenceRecorder.start_managed(record_spec) do
+      case execute_route(execution_request, context, route, credential_mode, opts) do
+        {:ok, execution} ->
+          with {:ok, recorded} <-
+                 InferenceRecorder.complete_managed(
+                   Map.merge(record_spec, %{
+                     stream: execution.stream,
+                     result: execution.inference_result
+                   })
+                 ) do
+            {:ok,
+             invocation_result(
+               durable_request,
+               context,
+               consumer_manifest,
+               route,
+               credential_mode,
+               execution,
+               recorded
+             )}
+          end
+
+        {:error, reason} = error ->
+          _ = InferenceRecorder.fail_managed(record_spec, reason)
+          error
+      end
+    end
+  end
+
+  defp record_spec(request, context, consumer_manifest, route, credential_mode) do
+    %{
+      request: request,
+      context: context,
+      consumer_manifest: consumer_manifest,
+      compatibility_result: route.compatibility_result,
+      endpoint_descriptor: route.endpoint_descriptor,
+      backend_manifest: route.backend_manifest,
+      lease_ref: route.lease_ref,
+      credential_lease_id: credential_lease_id(credential_mode)
+    }
+  end
+
+  defp invocation_result(
+         request,
+         context,
+         consumer_manifest,
+         route,
+         credential_mode,
+         execution,
+         recorded
+       ) do
+    %{
+      request: request,
+      context: context,
+      consumer_manifest: consumer_manifest,
+      compatibility_result: route.compatibility_result,
+      endpoint_descriptor: route.endpoint_descriptor,
+      backend_manifest: route.backend_manifest,
+      lease_ref: route.lease_ref,
+      credential_lease_id: credential_lease_id(credential_mode),
+      inference_result: execution.inference_result,
+      stream: execution.stream,
+      response_text: execution.response_text,
+      response_summary: execution.response_summary,
+      run: recorded.run,
+      attempt: recorded.attempt
+    }
+  end
+
   defp execute_route(
          %InferenceRequest{} = request,
          %InferenceExecutionContext{} = context,
@@ -575,33 +669,148 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          %{kind: :managed} = credential_mode,
          opts
        ) do
-    with :ok <- validate_managed_call_plan(route.call_plan),
-         :ok <- validate_managed_effect_alignment(route.call_plan, credential_mode.context) do
-      credential_mode.lease
-      |> Auth.with_materialized_credential(
-        credential_mode.request,
-        credential_mode.context,
-        fn material ->
-          case execute_with_material(request, context, route, material, opts) do
-            {:ok, execution} -> %{status: :ok, execution: execution}
-            {:error, _reason} -> %{status: :error}
-          end
+    credential_mode.lease
+    |> Auth.with_materialized_credential(
+      credential_mode.request,
+      credential_mode.context,
+      fn material ->
+        case execute_with_material(request, context, route, credential_mode, material, opts) do
+          {:ok, execution} -> %{status: :ok, execution: execution}
+          {:error, reason} -> %{status: :error, error_class: safe_error_class(reason)}
         end
-      )
-      |> normalize_managed_execution()
+      end
+    )
+    |> normalize_managed_execution()
+  end
+
+  defp execute_with_material(
+         request,
+         context,
+         route,
+         credential_mode,
+         %SecretMaterial{} = material,
+         opts
+       ) do
+    binding = provider_materialization_binding(route.call_plan, credential_mode, opts)
+
+    with :ok <- validate_materialized_provider(route.call_plan, material),
+         {:ok, authority} <- ProviderMaterializer.materialize(material, binding),
+         {:ok, authority_refs} <- ProviderMaterializer.authority_refs(authority),
+         {:ok, client} <-
+           managed_inference_client(
+             route.call_plan,
+             credential_mode,
+             authority_refs,
+             authority
+           ) do
+      execute_managed_call_plan(request, context, route, route.call_plan, client, opts)
     end
   end
 
-  defp execute_with_material(request, context, route, %SecretMaterial{} = material, opts) do
-    with :ok <- validate_materialized_provider(route.call_plan, material),
-         {:ok, credential_opts} <- materialized_req_llm_opts(material) do
-      execute_call_plan(
-        request,
-        context,
-        route,
-        route.call_plan,
-        Keyword.merge(opts, credential_opts)
-      )
+  defp execute_managed_call_plan(request, context, route, %CallPlan{} = call_plan, client, opts) do
+    input = call_input(call_plan)
+    request_opts = managed_request_opts(call_plan)
+    durable_opts = Keyword.put(opts, :require_artifact_refs?, true)
+
+    case call_plan.operation do
+      :generate_text ->
+        execute_managed_generate_text(input, context, route, client, request_opts, durable_opts)
+
+      :stream_text ->
+        execute_managed_stream_text(
+          input,
+          context,
+          route,
+          client,
+          request_opts,
+          request,
+          durable_opts
+        )
+    end
+  end
+
+  defp execute_managed_generate_text(input, context, route, client, request_opts, opts) do
+    with {:ok, response} <- Elixir.Inference.complete(client, input, request_opts) do
+      response_text = Elixir.Inference.Response.text(response)
+
+      {:ok,
+       %{
+         response_text: response_text,
+         response_summary: managed_response_summary(response, response_text),
+         stream: nil,
+         inference_result:
+           InferenceResult.new!(%{
+             run_id: context.run_id,
+             attempt_id: context.attempt_id,
+             status: :ok,
+             streaming?: false,
+             endpoint_id: route.endpoint_descriptor && route.endpoint_descriptor.endpoint_id,
+             stream_id: nil,
+             finish_reason: response.finish_reason || :stop,
+             usage: response.usage,
+             error: nil,
+             metadata:
+               %{
+                 route: route.target_class,
+                 response_id: response.id,
+                 model: response.model,
+                 provider: :gemini
+               }
+               |> put_response_text_ref(response_text, opts)
+               |> Contracts.dump_json_safe!()
+           })
+       }}
+    end
+  end
+
+  defp execute_managed_stream_text(input, context, route, client, request_opts, request, opts) do
+    with {:ok, enumerable} <- Elixir.Inference.stream(client, input, request_opts),
+         {:ok, summary} <- consume_managed_stream(enumerable) do
+      stream_id = Contracts.next_id("stream")
+      checkpoint_policy = checkpoint_policy(context)
+
+      {:ok,
+       %{
+         response_text: summary.text,
+         response_summary: Map.drop(summary, [:checkpoints]),
+         stream: %{
+           opened: %{
+             stream_id: stream_id,
+             protocol: stream_protocol(route),
+             checkpoint_policy: checkpoint_policy
+           },
+           checkpoints:
+             managed_stream_checkpoints(stream_id, checkpoint_policy, summary.checkpoints),
+           closed: %{
+             stream_id: stream_id,
+             finish_reason: summary.finish_reason,
+             chunk_count: summary.chunk_count,
+             byte_count: summary.byte_count
+           }
+         },
+         inference_result:
+           InferenceResult.new!(%{
+             run_id: context.run_id,
+             attempt_id: context.attempt_id,
+             status: :ok,
+             streaming?: true,
+             endpoint_id: route.endpoint_descriptor && route.endpoint_descriptor.endpoint_id,
+             stream_id: stream_id,
+             finish_reason: summary.finish_reason,
+             usage: summary.usage,
+             error: nil,
+             metadata:
+               %{
+                 route: route.target_class,
+                 chunk_count: summary.chunk_count,
+                 byte_count: summary.byte_count,
+                 request_stream?: request.stream?,
+                 provider: :gemini
+               }
+               |> put_response_text_ref(summary.text, opts)
+               |> Contracts.dump_json_safe!()
+           })
+       }}
     end
   end
 
@@ -1048,6 +1257,9 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     expected_provider = Contracts.get(call_plan.model_spec, :provider) |> to_string()
 
     cond do
+      expected_provider != "gemini" ->
+        {:error, {:managed_provider_not_supported, expected_provider}}
+
       context_value(context, :requested_model) != expected_model ->
         {:error, :managed_materialization_model_mismatch}
 
@@ -1067,24 +1279,265 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       else: {:error, :materialized_provider_mismatch}
   end
 
-  defp materialized_req_llm_opts(%SecretMaterial{payload: payload}) do
-    case Map.get(payload, :api_key, Map.get(payload, "api_key")) do
-      api_key when is_binary(api_key) and api_key != "" -> {:ok, api_key: api_key}
-      _missing -> {:error, :materialized_api_key_missing}
+  defp verify_model_grant(call_plan, context, credential_mode, opts) do
+    with {:ok, grant_ref} <- required_string_option(opts, :model_grant_ref),
+         {:ok, binding} <- model_grant_binding(call_plan, context, credential_mode),
+         %DateTime{} = now <- Keyword.get(opts, :now, DateTime.utc_now()),
+         result <- Citadel.Governance.ModelAuthority.verify_grant(grant_ref, binding, now) do
+      normalize_grant_verification(result)
+    end
+  end
+
+  defp normalize_grant_verification(:ok), do: :ok
+  defp normalize_grant_verification({:ok, _verified}), do: :ok
+  defp normalize_grant_verification({:error, _reason} = error), do: error
+  defp normalize_grant_verification(_other), do: {:error, :invalid_model_grant_verification}
+
+  defp model_grant_binding(call_plan, context, credential_mode) do
+    materialization_context = credential_mode.context
+    request = credential_mode.request
+
+    binding = %{
+      decision_ref: context.decision_ref,
+      input_digest: context_value(materialization_context, :model_grant_input_digest),
+      policy_ref: context_value(materialization_context, :model_grant_policy_ref),
+      policy_version: context_value(materialization_context, :model_grant_policy_version),
+      tenant_ref: request.account.tenant_id,
+      actor_ref: context_value(materialization_context, :actor_ref),
+      subject_ref: context_value(materialization_context, :subject_ref),
+      provider_family: request.account.provider_family,
+      account_ref: request.account.account_ref,
+      model_ref: Contracts.get(call_plan.model_spec, :id),
+      operation_ref: request.operation_ref,
+      operation_class: context_value(materialization_context, :operation_class),
+      context_ref: context_value(materialization_context, :execution_context_ref),
+      context_digest: context_value(materialization_context, :context_digest),
+      attempt_ref: context.attempt_id,
+      effect_ref: request.effect_ref,
+      fence_token: context_value(materialization_context, :fence_token)
+    }
+
+    missing =
+      binding
+      |> Enum.reject(fn
+        {:policy_version, value} -> is_integer(value) and value > 0
+        {_key, value} -> present_string?(value)
+      end)
+      |> Enum.map(&elem(&1, 0))
+
+    if missing == [],
+      do: {:ok, binding},
+      else: {:error, {:model_grant_binding_missing, Enum.sort(missing)}}
+  end
+
+  defp provider_materialization_binding(call_plan, credential_mode, _opts) do
+    context = credential_mode.context
+    request = credential_mode.request
+
+    %{
+      base_url: call_plan.base_url,
+      provider_ref: context_value(context, :provider_ref),
+      model_account_ref: request.account.account_ref,
+      credential_handle_ref: context_value(context, :credential_handle_ref),
+      operation_policy_ref: context_value(context, :operation_policy_ref),
+      redaction_ref: context_value(context, :redaction_ref),
+      materialization_request: request,
+      endpoint_ref: request.endpoint_ref,
+      authority_ref: request.authority_ref,
+      operation_ref: request.operation_ref,
+      target_ref: request.target_ref,
+      fence: request.account.fence
+    }
+  end
+
+  defp managed_inference_client(call_plan, credential_mode, provider_refs, authority) do
+    adapter = Inference.Adapters.GeminiExManaged
+
+    with :ok <- validate_managed_adapter(adapter),
+         {:ok, authority_projection} <-
+           managed_authority_projection(call_plan, credential_mode, provider_refs),
+         {:ok, client} <-
+           Elixir.Inference.Client.new(%{
+             adapter: adapter,
+             provider: :gemini,
+             model: Contracts.get(call_plan.model_spec, :id),
+             authority: authority_projection,
+             adapter_opts: [governed_authority: authority]
+           }) do
+      {:ok, client}
+    end
+  end
+
+  defp validate_managed_adapter(adapter) do
+    cond do
+      not (is_atom(adapter) and Code.ensure_loaded?(adapter)) ->
+        {:error, :managed_inference_adapter_unavailable}
+
+      Elixir.Inference.Adapter.credential_mode(adapter) != :managed_materialization ->
+        {:error, :managed_inference_adapter_required}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp managed_authority_projection(call_plan, credential_mode, provider_refs) do
+    context = credential_mode.context
+    request = credential_mode.request
+
+    projection = %{
+      authority_ref: request.authority_ref,
+      execution_context_ref: context_value(context, :execution_context_ref),
+      adapter_ref: "gemini_ex",
+      provider_ref: "gemini",
+      connector_instance_ref: context_value(context, :connector_instance_ref),
+      connector_binding_ref: context_value(context, :connector_binding_ref),
+      endpoint_ref: request.endpoint_ref,
+      provider_account_ref: request.account.account_ref,
+      credential_ref: context_value(context, :credential_ref),
+      credential_handle_ref: context_value(context, :credential_handle_ref),
+      credential_lease_ref: request.lease_id,
+      target_ref: request.target_ref,
+      target_posture_ref: context_value(context, :target_posture_ref),
+      attach_grant_ref: context_value(context, :attach_grant_ref),
+      operation_policy_ref: context_value(context, :operation_policy_ref),
+      model_ref: context_value(context, :model_ref) || Contracts.get(call_plan.model_spec, :id),
+      model_account_ref: request.account.account_ref,
+      service_identity_ref: context_value(context, :service_identity_ref),
+      service_principal_ref: context_value(context, :service_principal_ref)
+    }
+
+    required = Map.keys(projection)
+    missing = Enum.reject(required, &present_string?(Map.get(projection, &1)))
+
+    if missing == [] do
+      {:ok, Map.merge(projection, provider_refs)}
+    else
+      {:error, {:managed_authority_refs_missing, missing}}
+    end
+  end
+
+  defp managed_request_opts(call_plan) do
+    call_plan.options
+    |> Map.take([:temperature, :top_p, :max_tokens])
+    |> put_default_token_budget()
+    |> Map.put(:id, context_value(call_plan.observability, :span_id))
+    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+  end
+
+  defp managed_response_summary(response, response_text) do
+    %{
+      id: response.id,
+      provider: response.provider,
+      model: response.model,
+      finish_reason: response.finish_reason,
+      usage: response.usage,
+      text: response_text
+    }
+    |> Contracts.dump_json_safe!()
+  end
+
+  defp consume_managed_stream(enumerable) do
+    initial = %{
+      parts: [],
+      checkpoints: [],
+      chunk_count: 0,
+      byte_count: 0,
+      finish_reason: :stop,
+      usage: nil
+    }
+
+    enumerable
+    |> Enum.reduce_while({:ok, initial}, fn event, {:ok, acc} ->
+      case managed_stream_event(event, acc) do
+        {:ok, next} -> {:cont, {:ok, next}}
+        {:done, next} -> {:halt, {:ok, next}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, state} ->
+        {:ok,
+         state
+         |> Map.put(:text, state.parts |> Enum.reverse() |> IO.iodata_to_binary())
+         |> Map.delete(:parts)}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp managed_stream_event(%Elixir.Inference.StreamEvent{type: :delta, data: data}, acc) do
+    text = stream_delta_text(data)
+    chunk_count = acc.chunk_count + 1
+    byte_count = acc.byte_count + byte_size(text)
+
+    {:ok,
+     %{
+       acc
+       | parts: [text | acc.parts],
+         chunk_count: chunk_count,
+         byte_count: byte_count,
+         checkpoints: acc.checkpoints ++ [%{chunk_count: chunk_count, byte_count: byte_count}]
+     }}
+  end
+
+  defp managed_stream_event(%Elixir.Inference.StreamEvent{type: :done, data: %{} = data}, acc) do
+    {:done,
+     %{
+       acc
+       | finish_reason: context_value(data, :finish_reason) || acc.finish_reason,
+         usage: context_value(data, :usage) || acc.usage
+     }}
+  end
+
+  defp managed_stream_event(%Elixir.Inference.StreamEvent{type: :done}, _acc),
+    do: {:error, :invalid_managed_provider_done_event}
+
+  defp managed_stream_event(%Elixir.Inference.StreamEvent{type: :error}, _acc),
+    do: {:error, :managed_provider_stream_failed}
+
+  defp managed_stream_event(%Elixir.Inference.StreamEvent{}, acc), do: {:ok, acc}
+  defp managed_stream_event(_event, _acc), do: {:error, :invalid_managed_provider_stream_event}
+
+  defp stream_delta_text(data) when is_binary(data), do: data
+  defp stream_delta_text(%{text: text}) when is_binary(text), do: text
+  defp stream_delta_text(%{"text" => text}) when is_binary(text), do: text
+  defp stream_delta_text(_data), do: ""
+
+  defp managed_stream_checkpoints(_stream_id, :disabled, _checkpoints), do: []
+
+  defp managed_stream_checkpoints(stream_id, _policy, checkpoints) do
+    Enum.map(checkpoints, fn checkpoint ->
+      Map.merge(checkpoint, %{stream_id: stream_id, content_artifact_id: nil})
+    end)
+  end
+
+  defp required_string_option(opts, key) do
+    case Keyword.fetch(opts, key) do
+      {:ok, value} when is_binary(value) and value != "" -> {:ok, value}
+      {:ok, _value} -> {:error, {:invalid_managed_inference_option, key}}
+      :error -> {:error, {:managed_inference_option_required, key}}
     end
   end
 
   defp normalize_managed_execution({:ok, %{status: :ok, execution: execution}}),
     do: {:ok, execution}
 
-  defp normalize_managed_execution({:ok, %{status: :error}}),
-    do: {:error, :managed_provider_call_failed}
+  defp normalize_managed_execution({:ok, %{status: :error, error_class: error_class}}),
+    do: {:error, {:managed_provider_call_failed, error_class}}
 
   defp normalize_managed_execution({:error, _reason} = error), do: error
+
+  defp safe_error_class(reason) when is_atom(reason), do: reason
+  defp safe_error_class({reason, _detail}) when is_atom(reason), do: reason
+  defp safe_error_class(_reason), do: :managed_provider_error
 
   defp context_value(context, key) do
     Map.get(context, key, Map.get(context, Atom.to_string(key)))
   end
+
+  defp present_string?(value), do: is_binary(value) and String.trim(value) != ""
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)

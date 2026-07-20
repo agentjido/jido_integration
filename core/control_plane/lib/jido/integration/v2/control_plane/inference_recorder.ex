@@ -46,6 +46,142 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
      ArgumentError.exception("inference record spec must be a map, got: #{inspect(spec)}")}
   end
 
+  @doc false
+  @spec start_managed(map()) ::
+          {:ok, %{run: Run.t(), attempt: Attempt.t()}} | {:error, Exception.t() | term()}
+  def start_managed(spec) when is_map(spec) do
+    with {:ok, normalized_spec} <- normalize_start_spec(spec),
+         {:ok, staged_input} <-
+           stage_payload(run_input(normalized_spec),
+             payload_kind: :run_input,
+             trace_id: trace_id(normalized_spec),
+             redaction_class: "inference_run_input"
+           ),
+         {:ok, run} <-
+           Run.new(%{
+             run_id: normalized_spec.context.run_id,
+             capability_id: @inference_capability_id,
+             runtime_class: legacy_runtime_class(normalized_spec.request),
+             status: :running,
+             input: staged_input.payload,
+             input_payload_ref: staged_input.payload_ref,
+             credential_ref: inference_credential_ref(),
+             target_id: nil,
+             result: nil
+           }),
+         :ok <- Stores.run_store().put_run(run),
+         {:ok, attempt} <-
+           Attempt.new(%{
+             attempt_id: normalized_spec.context.attempt_id,
+             run_id: run.run_id,
+             attempt: Contracts.attempt_from_id!(run.run_id, normalized_spec.context.attempt_id),
+             aggregator_id: "inference_control_plane",
+             aggregator_epoch: 1,
+             runtime_class: run.runtime_class,
+             status: :running,
+             credential_lease_id: normalized_spec.credential_lease_id,
+             target_id: nil,
+             runtime_ref_id:
+               normalized_spec.endpoint_descriptor &&
+                 normalized_spec.endpoint_descriptor.source_runtime_ref,
+             output: managed_initial_output(normalized_spec)
+           }),
+         :ok <- Stores.attempt_store().put_attempt(attempt),
+         :ok <- append_initial_events(run, attempt, normalized_spec) do
+      {:ok, %{run: fetch_run!(run.run_id), attempt: fetch_attempt!(attempt.attempt_id)}}
+    end
+  rescue
+    error in ArgumentError -> {:error, error}
+  end
+
+  def start_managed(spec) do
+    {:error,
+     ArgumentError.exception("managed inference spec must be a map, got: #{inspect(spec)}")}
+  end
+
+  @doc false
+  @spec complete_managed(map()) ::
+          {:ok, %{run: Run.t(), attempt: Attempt.t()}} | {:error, Exception.t() | term()}
+  def complete_managed(spec) when is_map(spec) do
+    with {:ok, normalized_spec} <- normalize_spec(spec),
+         {:ok, staged_result} <-
+           stage_payload(run_result(normalized_spec),
+             payload_kind: :run_result,
+             trace_id: trace_id(normalized_spec),
+             redaction_class: "inference_run_result"
+           ),
+         {:ok, staged_output} <-
+           stage_payload(attempt_output(normalized_spec),
+             payload_kind: :attempt_output,
+             trace_id: trace_id(normalized_spec),
+             redaction_class: "inference_attempt_output"
+           ),
+         :ok <-
+           Stores.run_store().update_run(
+             normalized_spec.context.run_id,
+             terminal_run_status(normalized_spec.result),
+             staged_result.payload
+           ),
+         :ok <-
+           Stores.attempt_store().update_attempt(
+             normalized_spec.context.attempt_id,
+             terminal_attempt_status(normalized_spec.result),
+             staged_output.payload,
+             normalized_spec.endpoint_descriptor &&
+               normalized_spec.endpoint_descriptor.source_runtime_ref,
+             aggregator_id: "inference_control_plane",
+             aggregator_epoch: 1
+           ),
+         :ok <- append_terminal_events(normalized_spec) do
+      {:ok,
+       %{
+         run: fetch_run!(normalized_spec.context.run_id),
+         attempt: fetch_attempt!(normalized_spec.context.attempt_id)
+       }}
+    end
+  rescue
+    error in ArgumentError -> {:error, error}
+  end
+
+  @doc false
+  @spec fail_managed(map(), term()) ::
+          {:ok, %{run: Run.t(), attempt: Attempt.t()}} | {:error, Exception.t() | term()}
+  def fail_managed(spec, reason) when is_map(spec) do
+    with {:ok, normalized_spec} <- normalize_start_spec(spec),
+         failure = managed_failure(reason),
+         :ok <- Stores.run_store().update_run(normalized_spec.context.run_id, :failed, failure),
+         :ok <-
+           Stores.attempt_store().update_attempt(
+             normalized_spec.context.attempt_id,
+             :failed,
+             failure,
+             normalized_spec.endpoint_descriptor &&
+               normalized_spec.endpoint_descriptor.source_runtime_ref,
+             aggregator_id: "inference_control_plane",
+             aggregator_epoch: 1
+           ),
+         {:ok, run} <- Stores.run_store().fetch_run(normalized_spec.context.run_id),
+         {:ok, attempt} <-
+           Stores.attempt_store().fetch_attempt(normalized_spec.context.attempt_id),
+         :ok <-
+           append_event_specs(
+             run,
+             attempt,
+             [
+               %{
+                 type: "inference.attempt_failed",
+                 level: :error,
+                 payload: failure
+               }
+             ],
+             normalized_spec
+           ) do
+      {:ok, %{run: fetch_run!(run.run_id), attempt: fetch_attempt!(attempt.attempt_id)}}
+    end
+  rescue
+    error in ArgumentError -> {:error, error}
+  end
+
   @spec inference_review_summary(Run.t(), Attempt.t() | nil) :: {:ok, map()} | :error
   def inference_review_summary(%Run{} = run, %Attempt{} = attempt) do
     input = resolved_payload(run.input, Map.get(run, :input_payload_ref))
@@ -80,6 +216,25 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
   end
 
   defp normalize_spec(spec) do
+    with {:ok, base} <- normalize_start_spec(spec) do
+      result = normalize_contract!(InferenceResult, Map.fetch!(spec, :result), :result)
+      stream = normalize_stream(spec[:stream], base.request, base.context, result)
+
+      validate_identity_alignment!(base.context, result)
+      validate_endpoint_alignment!(base.endpoint_descriptor, result)
+
+      {:ok, Map.merge(base, %{stream: stream, result: result})}
+    end
+  rescue
+    error in KeyError ->
+      {:error,
+       ArgumentError.exception("missing required inference record field: #{inspect(error.key)}")}
+
+    error in ArgumentError ->
+      {:error, error}
+  end
+
+  defp normalize_start_spec(spec) do
     request = normalize_contract!(InferenceRequest, Map.fetch!(spec, :request), :request)
     context = normalize_contract!(InferenceExecutionContext, Map.fetch!(spec, :context), :context)
 
@@ -97,8 +252,6 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
         :compatibility_result
       )
 
-    result = normalize_contract!(InferenceResult, Map.fetch!(spec, :result), :result)
-
     endpoint_descriptor =
       normalize_optional_contract(
         spec[:endpoint_descriptor],
@@ -111,10 +264,6 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
 
     lease_ref = normalize_optional_contract(spec[:lease_ref], LeaseRef, :lease_ref)
     credential_lease_id = normalize_optional_string(spec[:credential_lease_id])
-    stream = normalize_stream(spec[:stream], request, context, result)
-
-    validate_identity_alignment!(context, result)
-    validate_endpoint_alignment!(endpoint_descriptor, result)
     validate_lease_alignment!(lease_ref, endpoint_descriptor)
 
     {:ok,
@@ -126,9 +275,7 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
        endpoint_descriptor: endpoint_descriptor,
        backend_manifest: backend_manifest,
        lease_ref: lease_ref,
-       credential_lease_id: credential_lease_id,
-       stream: stream,
-       result: result
+       credential_lease_id: credential_lease_id
      }}
   rescue
     error in KeyError ->
@@ -244,8 +391,77 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
     end)
   end
 
+  defp append_initial_events(run, attempt, spec) do
+    append_event_specs(run, attempt, initial_event_specs(spec), spec)
+  end
+
+  defp append_terminal_events(spec) do
+    with {:ok, run} <- Stores.run_store().fetch_run(spec.context.run_id),
+         {:ok, attempt} <- Stores.attempt_store().fetch_attempt(spec.context.attempt_id) do
+      append_event_specs(
+        run,
+        attempt,
+        stream_event_specs(spec) ++ [terminal_event_spec(spec)],
+        spec
+      )
+    end
+  end
+
+  defp append_event_specs(run, attempt, specs, spec) do
+    event_store = Stores.event_store()
+    start_seq = event_store.next_seq(run.run_id, attempt.attempt_id)
+
+    with {:ok, events} <- build_event_specs(run, attempt, specs, spec, start_seq) do
+      event_store.append_events(events,
+        aggregator_id: attempt.aggregator_id,
+        aggregator_epoch: attempt.aggregator_epoch
+      )
+    end
+  end
+
+  defp build_event_specs(run, attempt, specs, spec, start_seq) do
+    specs
+    |> Enum.with_index(start_seq)
+    |> Enum.reduce_while({:ok, []}, fn {event_spec, seq}, {:ok, acc} ->
+      case stage_payload(
+             Map.fetch!(event_spec, :payload),
+             payload_kind: "event:#{event_spec.type}",
+             trace_id: trace_id(spec),
+             redaction_class: "inference_event_payload"
+           ) do
+        {:ok, staged_payload} ->
+          event =
+            Event.new!(%{
+              event_id: Contracts.event_id(run.run_id, attempt.attempt_id, seq),
+              run_id: run.run_id,
+              attempt: attempt.attempt,
+              attempt_id: attempt.attempt_id,
+              seq: seq,
+              type: event_spec.type,
+              stream: Map.get(event_spec, :stream, :system),
+              level: Map.get(event_spec, :level, :info),
+              payload: staged_payload.payload,
+              payload_ref: staged_payload.payload_ref,
+              trace: %{trace_id: trace_id(spec)},
+              target_id: nil,
+              runtime_ref_id:
+                spec.endpoint_descriptor && spec.endpoint_descriptor.source_runtime_ref
+            })
+
+          {:cont, {:ok, acc ++ [event]}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
+    end)
+  end
+
   defp event_specs(spec) do
-    base_events = [
+    initial_event_specs(spec) ++ stream_event_specs(spec) ++ [terminal_event_spec(spec)]
+  end
+
+  defp initial_event_specs(spec) do
+    [
       %{
         type: "inference.request_admitted",
         payload: %{
@@ -283,8 +499,6 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
         }
       }
     ]
-
-    base_events ++ stream_event_specs(spec) ++ [terminal_event_spec(spec)]
   end
 
   defp stream_event_specs(%{stream: nil}), do: []
@@ -387,6 +601,30 @@ defmodule Jido.Integration.V2.ControlPlane.InferenceRecorder do
     }
     |> Contracts.dump_json_safe!()
   end
+
+  defp managed_initial_output(spec) do
+    %{
+      "contract_version" => Contracts.inference_contract_version(),
+      "runtime_kind" => resolved_runtime_kind(spec),
+      "management_mode" => resolved_management_mode(spec),
+      "target_class" => resolved_target_class(spec),
+      "credential_lease_id" => spec.credential_lease_id,
+      "state" => "provider_attempt_persisted"
+    }
+    |> Contracts.dump_json_safe!()
+  end
+
+  defp managed_failure(reason) do
+    %{
+      "contract_version" => Contracts.inference_contract_version(),
+      "status" => "failed",
+      "error_ref" => "error://jido/inference/#{safe_failure_class(reason)}"
+    }
+  end
+
+  defp safe_failure_class(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp safe_failure_class({reason, _detail}) when is_atom(reason), do: Atom.to_string(reason)
+  defp safe_failure_class(_reason), do: "managed_provider_call_failed"
 
   defp connector_summary(capability) do
     %{

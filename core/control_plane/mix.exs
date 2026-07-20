@@ -36,13 +36,15 @@ defmodule Jido.Integration.V2.ControlPlane.MixProject do
   defp deps do
     [
       DependencyResolver.jido_integration_agent_interop_contracts(),
-      DependencyResolver.jido_integration_contracts(),
+      DependencyResolver.jido_integration_contracts(override: true),
       DependencyResolver.ground_plane_persistence_policy(),
       DependencyResolver.jido_integration_v2_auth(env: Mix.env()),
       DependencyResolver.jido_integration_v2_policy(),
       DependencyResolver.jido_integration_v2_direct_runtime(),
       DependencyResolver.agent_session_manager(env: :dev),
+      DependencyResolver.citadel_governance(),
       DependencyResolver.inference(),
+      DependencyResolver.gemini_ex(),
       DependencyResolver.req_llm(),
       DependencyResolver.jido_integration_v2_runtime_router(only: :test),
       {:jason, "~> 1.4"},

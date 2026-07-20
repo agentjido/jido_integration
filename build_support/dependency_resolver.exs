@@ -187,11 +187,15 @@ defmodule Jido.Integration.Build.DependencyResolver do
 
   def cli_subprocess_core(opts \\ []), do: external_dep(:cli_subprocess_core, opts)
 
+  def citadel_governance(opts \\ []), do: external_dep(:citadel_governance, opts)
+
   def jido_action(opts \\ []), do: external_dep(:jido_action, opts)
 
   def req_llm(opts \\ []), do: external_dep(:req_llm, opts)
 
   def inference(opts \\ []), do: external_dep(:inference, opts)
+
+  def gemini_ex(opts \\ []), do: external_dep(:gemini_ex, opts)
 
   def execution_plane(opts \\ []), do: external_dep(:execution_plane, opts)
 
