@@ -270,6 +270,58 @@ defmodule Jido.Integration.V2.StoreLocal.State do
     end
   end
 
+  @spec record_lease_redemption(
+          t(),
+          String.t(),
+          DateTime.t(),
+          non_neg_integer() | :unlimited
+        ) ::
+          {{:ok, LeaseRecord.t()} | {:error, term()}, t()}
+  def record_lease_redemption(%__MODULE__{} = state, lease_id, now, max_calls) do
+    case Map.get(state.leases, lease_id) do
+      %LeaseRecord{} = lease ->
+        case lease_redemption_status(lease, now, max_calls) do
+          :ok ->
+            updated = %LeaseRecord{
+              lease
+              | redemption_count: lease.redemption_count + 1,
+                last_redeemed_at: now
+            }
+
+            {{:ok, updated}, %{state | leases: Map.put(state.leases, lease_id, updated)}}
+
+          {:error, reason} ->
+            {{:error, reason}, state}
+        end
+
+      nil ->
+        {{:error, :unknown_lease}, state}
+    end
+  end
+
+  @spec record_lease_materialization(t(), String.t(), String.t(), DateTime.t()) ::
+          {{:ok, LeaseRecord.t()} | {:error, :unknown_lease}, t()}
+  def record_lease_materialization(
+        %__MODULE__{} = state,
+        lease_id,
+        materialization_ref,
+        now
+      ) do
+    case Map.get(state.leases, lease_id) do
+      %LeaseRecord{} = lease ->
+        updated = %LeaseRecord{
+          lease
+          | last_materialization_ref: materialization_ref,
+            metadata: Map.put(lease.metadata, :last_materialized_at, now)
+        }
+
+        {{:ok, updated}, %{state | leases: Map.put(state.leases, lease_id, updated)}}
+
+      nil ->
+        {{:error, :unknown_lease}, state}
+    end
+  end
+
   @spec put_run(t(), Run.t()) :: {:ok, t()} | {{:error, :duplicate_run}, t()}
   def put_run(%__MODULE__{} = state, %Run{} = run) do
     if Map.has_key?(state.runs, run.run_id) do
@@ -1006,6 +1058,18 @@ defmodule Jido.Integration.V2.StoreLocal.State do
     Enum.filter(records, fn record ->
       Enum.all?(filters, fn {key, value} -> Map.get(record, key) == value end)
     end)
+  end
+
+  defp lease_redemption_status(%LeaseRecord{revoked_at: %DateTime{}}, _now, _max_calls),
+    do: {:error, :revoked_lease}
+
+  defp lease_redemption_status(%LeaseRecord{} = lease, now, max_calls) do
+    cond do
+      DateTime.compare(lease.expires_at, now) != :gt -> {:error, :expired_lease}
+      max_calls == :unlimited -> :ok
+      lease.redemption_count < max_calls -> :ok
+      true -> {:error, :max_calls_exceeded}
+    end
   end
 
   defp same_position?(%Event{} = left, %Event{} = right) do
