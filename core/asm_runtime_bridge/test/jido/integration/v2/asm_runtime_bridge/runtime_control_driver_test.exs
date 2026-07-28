@@ -778,6 +778,10 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
                run_id: "bridge-run-reviewed-auto"
              )
 
+    assert {:ok, private_inputs} = SessionStore.execution_inputs(session.session_id)
+    assert private_inputs[:execution_environment][:permission_mode] == :auto
+    refute inspect(private_inputs) =~ reviewed_content
+
     assert Enum.to_list(stream) != []
     assert_receive {:stream_scripted_driver_context, context}
     assert context.execution_config.execution_environment.approval_posture == :manual

@@ -140,10 +140,15 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     assert_runtime_started!()
 
     with {:ok, requested_provider, provider} <- fetch_provider(opts),
-         {:ok, session_ref} <-
-           ASM.start_session(start_session_opts(opts, provider, requested_provider)),
+         session_opts = start_session_opts(opts, provider, requested_provider),
+         {:ok, session_ref} <- ASM.start_session(session_opts),
          session_id when is_binary(session_id) <- ASM.session_id(session_ref) do
-      :ok = SessionStore.put(session_id, session_ref)
+      :ok =
+        SessionStore.put(
+          session_id,
+          session_ref,
+          private_session_execution_inputs(session_opts)
+        )
 
       {:ok,
        SessionHandle.new!(%{
@@ -222,7 +227,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
       session_ref = session_ref!(session)
 
       asm_opts = stream_run_opts(request, provider, opts, run_id)
-      asm_opts = inherit_session_execution_inputs(asm_opts, session_ref)
+      asm_opts = inherit_session_execution_inputs(asm_opts, session.session_id)
 
       stream =
         session_ref
@@ -267,7 +272,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
             opts,
             Keyword.get_lazy(opts, :run_id, &Event.generate_id/0)
           )
-          |> inherit_session_execution_inputs(session_ref)
+          |> inherit_session_execution_inputs(session.session_id)
         )
         |> Enum.to_list()
 
@@ -490,10 +495,14 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     |> Keyword.take(allowed_asm_run_option_keys(provider))
   end
 
-  defp inherit_session_execution_inputs(opts, session_ref)
-       when is_list(opts) and is_pid(session_ref) do
-    case ASM.session_info(session_ref) do
-      {:ok, %{options: session_opts}} when is_list(session_opts) ->
+  defp private_session_execution_inputs(session_opts) when is_list(session_opts) do
+    Keyword.take(session_opts, [:execution_surface, :execution_environment])
+  end
+
+  defp inherit_session_execution_inputs(opts, session_id)
+       when is_list(opts) and is_binary(session_id) do
+    case SessionStore.execution_inputs(session_id) do
+      {:ok, session_opts} when is_list(session_opts) ->
         opts
         |> inherit_session_execution_input(
           :execution_surface,
