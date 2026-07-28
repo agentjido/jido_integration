@@ -403,6 +403,8 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
       |> Map.put(:opts, %{
         managed_runtime_opts: [
           managed_session: %{session_ref: "managed-session://router/internal-cwd"},
+          materialization_request: %{materialization_ref: "materialization://router/internal-cwd"},
+          secret_material: %{payload: %{cwd: "/tmp/runtime"}},
           workspace_root: "/tmp/runtime"
         ]
       })
@@ -424,7 +426,10 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     assert_receive {:authored_driver_run, "authored-session",
                     "use the verified materialized workspace", run_opts}
 
-    assert run_opts[:workspace_root] == "/tmp/runtime"
+    refute Keyword.has_key?(run_opts, :managed_session)
+    refute Keyword.has_key?(run_opts, :materialization_request)
+    refute Keyword.has_key?(run_opts, :secret_material)
+    refute Keyword.has_key?(run_opts, :workspace_root)
     refute Keyword.has_key?(run_opts, :cwd)
   end
 
@@ -440,6 +445,8 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
       |> Map.put(:opts, %{
         managed_runtime_opts: [
           managed_session: %{session_ref: "managed-session://router/rejected-cwd"},
+          materialization_request: %{materialization_ref: "materialization://router/rejected-cwd"},
+          secret_material: %{payload: %{cwd: "/tmp/runtime"}},
           workspace_root: "/tmp/runtime"
         ]
       })
@@ -461,6 +468,10 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
                     run_opts}
 
     assert run_opts[:cwd] == "/tmp/caller-override"
+    refute Keyword.has_key?(run_opts, :managed_session)
+    refute Keyword.has_key?(run_opts, :materialization_request)
+    refute Keyword.has_key?(run_opts, :secret_material)
+    refute Keyword.has_key?(run_opts, :workspace_root)
   end
 
   test "decorates embedded runtime results with session lifecycle evidence" do

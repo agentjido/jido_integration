@@ -357,6 +357,13 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     end
   end
 
+  defp managed_runtime_option_keys(context) do
+    context
+    |> managed_runtime_opts()
+    |> Keyword.keys()
+    |> Enum.uniq()
+  end
+
   # A managed workspace is an admitted execution scope, not a caller-owned
   # process route. Its exact Codex cwd travels only inside the verified secret
   # materialization. Preserve an explicit input cwd so the managed ASM boundary
@@ -479,7 +486,9 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     request = build_run_request(capability, input, context)
 
     run_opts =
-      Keyword.merge(driver_opts,
+      driver_opts
+      |> Keyword.drop(managed_runtime_option_keys(context))
+      |> Keyword.merge(
         capability: capability,
         input: input,
         context: context,
