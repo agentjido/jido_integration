@@ -17,6 +17,7 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
   alias Jido.Integration.V2.ControlPlane.PolicyService
   alias Jido.Integration.V2.ControlPlane.Registry
   alias Jido.Integration.V2.ControlPlane.ReplayService
+  alias Jido.Integration.V2.ControlPlane.ReviewedToolEffect
   alias Jido.Integration.V2.ControlPlane.RuntimeConfig
   alias Jido.Integration.V2.ControlPlane.Stores
   alias Jido.Integration.V2.ControlPlane.TreAdapter
@@ -150,6 +151,19 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
          {:ok, account} <- Auth.fetch_managed_account(request.account),
          :ok <- validate_managed_codex_account(account, lease, request),
          {:ok, binding} <- managed_codex_binding(opts, account, request),
+         {:ok, permission_mode} <-
+           ReviewedToolEffect.permission_mode(
+             input,
+             reviewed_tool_effect_binding(
+               capability_id,
+               opts,
+               account,
+               lease,
+               request,
+               binding
+             )
+           ),
+         binding = Map.put(binding, :permission_mode, permission_mode),
          auth_binding <- managed_auth_binding(account, lease) do
       opts =
         opts
@@ -1467,7 +1481,7 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
          managed_session,
          secret_material
        ) do
-    [
+    opts = [
       runtime_auth_mode: :governed,
       runtime_auth_scope: :governed,
       execution_context_ref:
@@ -1501,6 +1515,41 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
       workspace_root: binding.workspace_root,
       native_auth_assertion_ref: binding.native_auth_assertion_ref
     ]
+
+    case binding.permission_mode do
+      nil -> opts
+      permission_mode -> Keyword.put(opts, :permission_mode, permission_mode)
+    end
+  end
+
+  defp reviewed_tool_effect_binding(
+         capability_id,
+         opts,
+         account,
+         lease,
+         request,
+         binding
+       ) do
+    run_id = Keyword.get(opts, :run_id)
+
+    %{
+      authority_ref: request.authority_ref,
+      authority_decision_ref: binding.authority_decision_ref,
+      operation_policy_ref: binding.operation_policy_ref,
+      tenant_ref: account.tenant_id,
+      provider_account_ref: account.account_ref,
+      credential_lease_ref: lease.lease_id,
+      credential_generation: account.generation,
+      managed_session_ref: binding.session_ref,
+      session_generation: Keyword.get(opts, :managed_session_generation, 1),
+      workspace_ref: binding.workspace_ref,
+      workspace_root: binding.workspace_root,
+      operation_ref: request.operation_ref,
+      target_ref: request.target_ref,
+      effect_ref: request.effect_ref,
+      attempt_ref: if(is_binary(run_id), do: Contracts.attempt_id(run_id, 1)),
+      capability_id: capability_id
+    }
   end
 
   defp required_managed_string(opts, key) do
