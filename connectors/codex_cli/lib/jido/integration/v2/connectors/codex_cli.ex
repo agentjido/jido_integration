@@ -30,7 +30,7 @@ defmodule Jido.Integration.V2.Connectors.CodexCli do
       level: :strict,
       egress: :restricted,
       approvals: :manual,
-      file_scope: "/tmp/jido_codex_cli_workspace"
+      file_scope: "runtime_bound"
     }
   }
 

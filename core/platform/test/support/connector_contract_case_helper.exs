@@ -78,10 +78,19 @@ defmodule Jido.Integration.V2.ConnectorContractCase do
       sandbox: spec.sandbox
     ]
 
-    capability_id
-    |> connector_runtime_opts()
-    |> Keyword.merge(defaults)
-    |> Keyword.merge(overrides)
+    opts =
+      capability_id
+      |> connector_runtime_opts()
+      |> Keyword.merge(defaults)
+      |> Keyword.merge(overrides)
+
+    case get_in(spec, [:sandbox, :file_scope]) do
+      workspace_root when is_binary(workspace_root) ->
+        Keyword.put_new(opts, :workspace_root, workspace_root)
+
+      _other ->
+        opts
+    end
   end
 
   def assert_review_surface!(result, spec, expected_lease_payload, secret_values) do

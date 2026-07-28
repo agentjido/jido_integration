@@ -27,7 +27,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
     level: :strict,
     egress: :restricted,
     approvals: :manual,
-    file_scope: "/tmp/jido_codex_cli_workspace",
+    file_scope: "/srv/trading_ops/analyst",
     allowed_tools: ["codex.session.turn"]
   }
 
@@ -371,7 +371,7 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
   end
 
   defp invoke_opts(connection_id, tenant_id, actor_id, capability_id, sandbox, target_id) do
-    [
+    opts = [
       connection_id: connection_id,
       actor_id: actor_id,
       tenant_id: tenant_id,
@@ -380,6 +380,14 @@ defmodule Jido.Integration.V2.Apps.TradingOps do
       sandbox: sandbox,
       target_id: target_id
     ]
+
+    case Map.get(sandbox, :file_scope) do
+      workspace_root when is_binary(workspace_root) ->
+        Keyword.put(opts, :workspace_root, workspace_root)
+
+      _other ->
+        opts
+    end
   end
 
   defp analyst_prompt(trigger, market_output, attrs) do

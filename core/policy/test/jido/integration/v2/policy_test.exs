@@ -107,6 +107,51 @@ defmodule Jido.Integration.V2.PolicyTest do
     assert decision.execution_policy.sandbox.allowed_tools == ["connector.echo"]
   end
 
+  test "runtime-bound file scope must equal the admitted workspace and cannot be broad" do
+    runtime_bound =
+      capability(%{
+        metadata: %{policy: %{sandbox: %{file_scope: "runtime_bound"}}}
+      })
+
+    allowed =
+      Policy.evaluate(
+        runtime_bound,
+        credential(["echo:write"]),
+        %{},
+        request(%{
+          sandbox: %{file_scope: "/tmp/nshkr-reviewed-workspace"},
+          metadata: %{opts: %{workspace_root: "/tmp/nshkr-reviewed-workspace"}}
+        })
+      )
+
+    mismatched =
+      Policy.evaluate(
+        runtime_bound,
+        credential(["echo:write"]),
+        %{},
+        request(%{
+          sandbox: %{file_scope: "/tmp/other-workspace"},
+          metadata: %{opts: %{workspace_root: "/tmp/nshkr-reviewed-workspace"}}
+        })
+      )
+
+    broad =
+      Policy.evaluate(
+        runtime_bound,
+        credential(["echo:write"]),
+        %{},
+        request(%{
+          sandbox: %{file_scope: "/tmp"},
+          metadata: %{opts: %{workspace_root: "/tmp"}}
+        })
+      )
+
+    assert allowed.status == :allowed
+    assert allowed.execution_policy.sandbox.file_scope == "/tmp/nshkr-reviewed-workspace"
+    assert mismatched.status == :denied
+    assert broad.status == :denied
+  end
+
   test "returns a shed decision when the gateway metadata carries a pressure signal" do
     decision =
       Policy.evaluate(

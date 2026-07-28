@@ -79,7 +79,7 @@ defmodule Jido.Integration.V2.ManagedCodexInvocationTest do
                 level: :strict,
                 egress: :restricted,
                 approvals: :manual,
-                file_scope: "/tmp",
+                file_scope: "runtime_bound",
                 allowed_tools: ["codex.session.turn"]
               }
             },
@@ -479,7 +479,7 @@ defmodule Jido.Integration.V2.ManagedCodexInvocationTest do
         level: :strict,
         egress: :restricted,
         approvals: :manual,
-        file_scope: "/tmp",
+        file_scope: workspace_root,
         allowed_tools: ["codex.session.turn"]
       }
     ]

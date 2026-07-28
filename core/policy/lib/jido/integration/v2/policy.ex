@@ -105,11 +105,19 @@ defmodule Jido.Integration.V2.Policy do
         level: contract.sandbox.level,
         egress: contract.sandbox.egress,
         approvals: contract.sandbox.approvals,
-        file_scope: contract.sandbox.file_scope || gateway.sandbox.file_scope,
+        file_scope: execution_file_scope(contract.sandbox.file_scope, gateway.sandbox.file_scope),
         allowed_tools: allowed_tools
       }
     }
   end
+
+  defp execution_file_scope("runtime_bound", requested_file_scope), do: requested_file_scope
+
+  defp execution_file_scope(required_file_scope, _requested_file_scope)
+       when is_binary(required_file_scope),
+       do: required_file_scope
+
+  defp execution_file_scope(nil, requested_file_scope), do: requested_file_scope
 
   defp audit_context(capability, gateway, execution_policy) do
     %{
