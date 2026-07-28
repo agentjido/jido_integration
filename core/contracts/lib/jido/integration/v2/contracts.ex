@@ -270,8 +270,13 @@ defmodule Jido.Integration.V2.Contracts do
   end
 
   @spec next_id(String.t()) :: String.t()
-  def next_id(prefix) do
-    "#{prefix}-#{System.unique_integer([:positive, :monotonic])}"
+  def next_id(prefix) when is_binary(prefix) and prefix != "" do
+    suffix =
+      16
+      |> :crypto.strong_rand_bytes()
+      |> Base.encode16(case: :lower)
+
+    "#{prefix}-#{suffix}"
   end
 
   @spec event_id(String.t(), String.t() | nil, non_neg_integer()) :: String.t()

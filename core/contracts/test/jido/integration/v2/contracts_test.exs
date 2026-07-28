@@ -20,6 +20,13 @@ defmodule Jido.Integration.V2.ContractsTest do
   alias Jido.Integration.V2.SubjectRef
   alias Jido.Integration.V2.TargetDescriptor
 
+  test "generated durable identities do not restart from a VM-local counter" do
+    ids = Enum.map(1..1_000, fn _index -> Contracts.next_id("connection") end)
+
+    assert length(Enum.uniq(ids)) == length(ids)
+    assert Enum.all?(ids, &Regex.match?(~r/^connection-[0-9a-f]{32}$/, &1))
+  end
+
   test "run and attempt identities stay canonical as contracts broaden" do
     credential_ref =
       CredentialRef.new!(%{
