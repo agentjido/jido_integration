@@ -205,6 +205,27 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
     assert fence.lease_id == lease.lease_id
     refute Map.has_key?(fence, :payload)
 
+    assert {:error, :tenant_mismatch} =
+             Auth.revoke_lease(lease.lease_id, %{
+               now: ~U[2026-03-09 12:01:00Z],
+               tenant_id: "tenant-other",
+               revocation_ref: "revocation://tenant-other/codex/lease-1"
+             })
+
+    assert {:error, :tenant_mismatch} =
+             Auth.cleanup_lease(lease.lease_id, %{
+               now: ~U[2026-03-09 12:01:00Z],
+               tenant_id: "tenant-other",
+               cleanup_ref: "cleanup://tenant-other/codex/lease-1"
+             })
+
+    assert {:error, :active_lease_cleanup_rejected} =
+             Auth.cleanup_lease(lease.lease_id, %{
+               now: ~U[2026-03-09 12:01:00Z],
+               tenant_id: "tenant-1",
+               cleanup_ref: "cleanup://tenant-1/codex/lease-1"
+             })
+
     assert {:ok, renewed} =
              Auth.renew_lease(lease.lease_id, %{
                now: ~U[2026-03-09 12:02:00Z],
@@ -217,6 +238,7 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
     assert {:ok, revoked_event} =
              Auth.revoke_lease(lease.lease_id, %{
                now: ~U[2026-03-09 12:02:30Z],
+               tenant_id: "tenant-1",
                revocation_ref: "revocation://tenant-1/codex/lease-1"
              })
 
@@ -231,6 +253,7 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
     assert {:ok, cleanup_event} =
              Auth.cleanup_lease(lease.lease_id, %{
                now: ~U[2026-03-09 12:03:00Z],
+               tenant_id: "tenant-1",
                cleanup_ref: "cleanup://tenant-1/codex/lease-1"
              })
 

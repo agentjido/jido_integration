@@ -574,6 +574,7 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
     now = now(attrs)
 
     with {:ok, %LeaseRecord{} = lease_record} <- Stores.lease_store().fetch_lease(lease_id),
+         :ok <- authorize_context_tenant(lease_record.tenant_id, Map.get(attrs, :tenant_id)),
          revocation_ref when is_binary(revocation_ref) and revocation_ref != "" <-
            Map.get(attrs, :revocation_ref) || {:error, :revocation_ref_required} do
       revoked_record = %LeaseRecord{
@@ -607,6 +608,7 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
     now = now(attrs)
 
     with {:ok, %LeaseRecord{} = lease_record} <- Stores.lease_store().fetch_lease(lease_id),
+         :ok <- authorize_context_tenant(lease_record.tenant_id, Map.get(attrs, :tenant_id)),
          cleanup_ref when is_binary(cleanup_ref) and cleanup_ref != "" <-
            Map.get(attrs, :cleanup_ref) || {:error, :cleanup_ref_required},
          :ok <- ensure_cleanup_allowed(lease_record, now) do
