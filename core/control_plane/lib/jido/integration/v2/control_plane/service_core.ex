@@ -870,6 +870,7 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
 
   defp build_run(capability, input, credential_ref, opts) do
     Run.new!(%{
+      run_id: Keyword.get(opts, :run_id),
       capability_id: capability.id,
       runtime_class: capability.runtime_class,
       status: :accepted,

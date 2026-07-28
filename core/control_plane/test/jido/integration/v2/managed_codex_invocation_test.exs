@@ -357,6 +357,8 @@ defmodule Jido.Integration.V2.ManagedCodexInvocationTest do
              )
 
     assert result.run.status == :completed
+    assert result.run.run_id == "jido-run://managed-codex/test/1"
+    assert result.attempt.attempt_id == "jido-run://managed-codex/test/1:1"
     assert result.attempt.status == :completed
     assert result.output.content == "managed Codex completed"
     assert result.output.cleanup == %{session: "completed", materialization: "completed"}
@@ -469,6 +471,7 @@ defmodule Jido.Integration.V2.ManagedCodexInvocationTest do
       tenant_id: "tenant-1",
       environment: :prod,
       trace_id: "trace-managed-codex-test",
+      run_id: "jido-run://managed-codex/test/1",
       cost_meter_ref: "meter://managed-codex-test",
       budget_refs: ["budget://managed-codex-test/per-run"],
       allowed_operations: ["codex.session.turn"],
