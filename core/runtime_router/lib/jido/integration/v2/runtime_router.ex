@@ -338,7 +338,7 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     options
     |> Keyword.merge(managed_runtime_opts(context))
     |> maybe_put(:provider, normalize_optional_atom(Contracts.get(runtime_config, :provider)))
-    |> maybe_put(:cwd, workspace_root(context) || requested_cwd(input))
+    |> maybe_put(:cwd, runtime_cwd(input, context))
     |> maybe_put(:allowed_tools, allowed_tools(context))
     |> maybe_put(:governed_lower_envelope, governed_lower_envelope(context))
     |> Keyword.put(:capability, capability)
@@ -354,6 +354,19 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     |> case do
       opts when is_list(opts) -> if(Keyword.keyword?(opts), do: opts, else: [])
       _other -> []
+    end
+  end
+
+  # A managed workspace is an admitted execution scope, not a caller-owned
+  # process route. Its exact Codex cwd travels only inside the verified secret
+  # materialization. Preserve an explicit input cwd so the managed ASM boundary
+  # can reject that caller override instead of silently accepting or ignoring
+  # it.
+  defp runtime_cwd(input, context) do
+    if managed_runtime_opts(context) == [] do
+      workspace_root(context) || requested_cwd(input)
+    else
+      requested_cwd(input)
     end
   end
 
@@ -606,7 +619,7 @@ defmodule Jido.Integration.V2.RuntimeRouter do
   defp build_run_request(%Capability{} = capability, input, context) do
     %{
       prompt: request_prompt(capability, input),
-      cwd: workspace_root(context) || requested_cwd(input),
+      cwd: runtime_cwd(input, context),
       allowed_tools: allowed_tools(context),
       metadata:
         %{

@@ -391,6 +391,78 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     assert run_opts[:governed_lower_envelope] == envelope
   end
 
+  test "keeps a managed workspace out of caller-owned cwd fields" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    context =
+      runtime_context()
+      |> Map.put(:opts, %{
+        managed_runtime_opts: [
+          managed_session: %{session_ref: "managed-session://router/internal-cwd"},
+          workspace_root: "/tmp/runtime"
+        ]
+      })
+
+    assert {:ok, _result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{id: "codex.session.turn"}),
+               %{prompt: "use the verified materialized workspace"},
+               context
+             )
+
+    assert_receive {:authored_driver_start_session, start_opts}
+    assert start_opts[:workspace_root] == "/tmp/runtime"
+    refute Keyword.has_key?(start_opts, :cwd)
+
+    assert_receive {:authored_driver_request, request}
+    assert is_nil(request.cwd)
+
+    assert_receive {:authored_driver_run, "authored-session",
+                    "use the verified materialized workspace", run_opts}
+
+    assert run_opts[:workspace_root] == "/tmp/runtime"
+    refute Keyword.has_key?(run_opts, :cwd)
+  end
+
+  test "preserves an explicit managed input cwd for ASM override rejection" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    context =
+      runtime_context()
+      |> Map.put(:opts, %{
+        managed_runtime_opts: [
+          managed_session: %{session_ref: "managed-session://router/rejected-cwd"},
+          workspace_root: "/tmp/runtime"
+        ]
+      })
+
+    assert {:ok, _result} =
+             RuntimeRouter.execute(
+               capability_fixture(%{id: "codex.session.turn"}),
+               %{prompt: "must be rejected downstream", cwd: "/tmp/caller-override"},
+               context
+             )
+
+    assert_receive {:authored_driver_start_session, start_opts}
+    assert start_opts[:cwd] == "/tmp/caller-override"
+
+    assert_receive {:authored_driver_request, request}
+    assert request.cwd == "/tmp/caller-override"
+
+    assert_receive {:authored_driver_run, "authored-session", "must be rejected downstream",
+                    run_opts}
+
+    assert run_opts[:cwd] == "/tmp/caller-override"
+  end
+
   test "decorates embedded runtime results with session lifecycle evidence" do
     Application.put_env(
       :jido_integration_v2_control_plane,
