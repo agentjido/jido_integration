@@ -86,6 +86,7 @@ defmodule Jido.Integration.V2.Auth.SecretGuard do
 
     String.ends_with?(canonical, ["_ref", "_refs", "_id", "_ids"]) or
       canonical in [
+        "aggregate_tokens",
         "credential_handle",
         "cached_tokens",
         "cached_input_tokens",

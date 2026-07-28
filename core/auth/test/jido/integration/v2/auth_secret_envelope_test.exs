@@ -69,6 +69,7 @@ defmodule Jido.Integration.V2.Auth.SecretEnvelopeTest do
                output_tokens: 5,
                reasoning_output_tokens: 1,
                total_tokens: 13,
+               aggregate_tokens?: true,
                cached_tokens: 2,
                reasoning_tokens: 1,
                cache_creation_tokens: 3
