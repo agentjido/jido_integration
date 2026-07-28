@@ -151,8 +151,8 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
          {:ok, account} <- Auth.fetch_managed_account(request.account),
          :ok <- validate_managed_codex_account(account, lease, request),
          {:ok, binding} <- managed_codex_binding(opts, account, request),
-         {:ok, permission_mode} <-
-           ReviewedToolEffect.permission_mode(
+         {:ok, runtime_admission} <-
+           ReviewedToolEffect.runtime_admission(
              input,
              reviewed_tool_effect_binding(
                capability_id,
@@ -163,7 +163,7 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
                binding
              )
            ),
-         binding = Map.put(binding, :permission_mode, permission_mode),
+         binding = Map.merge(binding, runtime_admission),
          auth_binding <- managed_auth_binding(account, lease) do
       opts =
         opts
@@ -1516,11 +1516,15 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
       native_auth_assertion_ref: binding.native_auth_assertion_ref
     ]
 
-    case binding.permission_mode do
-      nil -> opts
-      permission_mode -> Keyword.put(opts, :permission_mode, permission_mode)
-    end
+    opts
+    |> maybe_put_managed_runtime_opt(:permission_mode, Map.get(binding, :permission_mode))
+    |> maybe_put_managed_runtime_opt(:reviewed_approval, Map.get(binding, :reviewed_approval))
   end
+
+  defp maybe_put_managed_runtime_opt(opts, _key, nil), do: opts
+
+  defp maybe_put_managed_runtime_opt(opts, key, value),
+    do: Keyword.put(opts, key, value)
 
   defp reviewed_tool_effect_binding(
          capability_id,

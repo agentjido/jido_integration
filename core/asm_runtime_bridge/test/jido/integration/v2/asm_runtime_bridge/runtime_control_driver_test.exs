@@ -741,12 +741,26 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
   end
 
   test "stream_run/3 preserves a session-admitted permission mode in a partial run environment" do
+    reviewed_content = "reviewed bridge content"
+
+    reviewed_approval = %{
+      effect_ref: "effect://nshkr/codex/reviewed-bridge",
+      workspace_root: "/tmp/reviewed-runtime",
+      relative_path: "reviewed.txt",
+      reviewed_content: reviewed_content,
+      content_digest:
+        "sha256:" <>
+          (:crypto.hash(:sha256, reviewed_content)
+           |> Base.encode16(case: :lower))
+    }
+
     assert {:ok, session} =
              RuntimeControlDriver.start_session(
                provider: :codex,
                workspace_root: "/tmp/reviewed-runtime",
                approval_posture: :manual,
-               permission_mode: :auto
+               permission_mode: :auto,
+               reviewed_approval: reviewed_approval
              )
 
     on_exit(fn ->
@@ -769,6 +783,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert context.execution_config.execution_environment.approval_posture == :manual
     assert context.execution_config.execution_environment.permission_mode == :auto
     assert context.execution_config.provider_permission_mode == :auto_edit
+    assert Keyword.fetch!(context.provider_opts, :reviewed_approval) == reviewed_approval
   end
 
   test "stream_run/3 preserves an explicit run permission-mode override" do

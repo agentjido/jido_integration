@@ -7,7 +7,10 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffectTest do
   @workspace_root "/tmp/jido-reviewed-tool-effect"
   @workspace_ref "workspace://nshkr/reviewed"
   @relative_path "reviewed.txt"
-  @content_digest "sha256:" <> String.duplicate("b", 64)
+  @reviewed_content "reviewed content"
+  @content_digest "sha256:" <>
+                    (:crypto.hash(:sha256, @reviewed_content)
+                     |> Base.encode16(case: :lower))
   @grant_ref "grant://citadel/tool-effect/reviewed"
   @decision_ref "decision://citadel/tool-effect/reviewed"
   @review_ref "review://mezzanine/reviewed"
@@ -25,8 +28,8 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffectTest do
   end
 
   test "ordinary managed Codex input keeps provider permission manual" do
-    assert {:ok, nil} =
-             ReviewedToolEffect.permission_mode(
+    assert {:ok, %{permission_mode: nil, reviewed_approval: nil}} =
+             ReviewedToolEffect.runtime_admission(
                %{prompt: "ordinary managed turn"},
                runtime_binding(),
                authority: RaisingAuthority
@@ -36,8 +39,18 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffectTest do
   test "exact active reviewed-effect authority enables only sandboxed auto permission" do
     Process.put({Authority, :grant}, grant())
 
-    assert {:ok, :auto} =
-             ReviewedToolEffect.permission_mode(
+    assert {:ok,
+            %{
+              permission_mode: :auto,
+              reviewed_approval: %{
+                effect_ref: @effect_ref,
+                workspace_root: @workspace_root,
+                relative_path: @relative_path,
+                reviewed_content: @reviewed_content,
+                content_digest: @content_digest
+              }
+            }} =
+             ReviewedToolEffect.runtime_admission(
                reviewed_input(),
                runtime_binding(),
                authority: Authority,
@@ -63,7 +76,7 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffectTest do
 
     Enum.each(mismatches, fn {key, value} ->
       assert {:error, :reviewed_tool_effect_authority_denied} =
-               ReviewedToolEffect.permission_mode(
+               ReviewedToolEffect.runtime_admission(
                  reviewed_input(),
                  Map.put(runtime_binding(), key, value),
                  authority: Authority,
@@ -77,8 +90,27 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffectTest do
     Process.put({Authority, :verification}, {:error, :expired})
 
     assert {:error, :reviewed_tool_effect_authority_denied} =
-             ReviewedToolEffect.permission_mode(
+             ReviewedToolEffect.runtime_admission(
                reviewed_input(),
+               runtime_binding(),
+               authority: Authority,
+               now: ~U[2026-07-28 12:00:00Z]
+             )
+  end
+
+  test "reviewed content digest drift blocks provider automation" do
+    Process.put({Authority, :grant}, grant())
+
+    input =
+      put_in(
+        reviewed_input(),
+        [:workspace, :reviewed_content],
+        "different reviewed content"
+      )
+
+    assert {:error, :reviewed_tool_effect_authority_denied} =
+             ReviewedToolEffect.runtime_admission(
+               input,
                runtime_binding(),
                authority: Authority,
                now: ~U[2026-07-28 12:00:00Z]
@@ -91,7 +123,8 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffectTest do
       workspace: %{
         workspace_ref: @workspace_ref,
         relative_path: @relative_path,
-        content_digest: @content_digest
+        content_digest: @content_digest,
+        reviewed_content: @reviewed_content
       },
       authority_metadata: %{
         grant_ref: @grant_ref,

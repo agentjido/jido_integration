@@ -4,17 +4,17 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffect do
   alias Citadel.Governance.ToolEffectAuthority
   alias Citadel.ScopedGrant
 
-  @spec permission_mode(map(), map(), keyword()) ::
-          {:ok, :auto | nil}
+  @spec runtime_admission(map(), map(), keyword()) ::
+          {:ok, %{permission_mode: :auto | nil, reviewed_approval: map() | nil}}
           | {:error,
              :invalid_reviewed_tool_effect_evidence
              | :reviewed_tool_effect_authority_denied}
-  def permission_mode(input, binding, opts \\ [])
+  def runtime_admission(input, binding, opts \\ [])
 
-  def permission_mode(%{} = input, %{} = binding, opts) when is_list(opts) do
+  def runtime_admission(%{} = input, %{} = binding, opts) when is_list(opts) do
     case evidence(input) do
       {:ok, nil} ->
-        {:ok, nil}
+        {:ok, %{permission_mode: nil, reviewed_approval: nil}}
 
       {:ok, evidence} ->
         authorize(evidence, binding, opts)
@@ -24,7 +24,7 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffect do
     end
   end
 
-  def permission_mode(_input, _binding, _opts),
+  def runtime_admission(_input, _binding, _opts),
     do: {:error, :invalid_reviewed_tool_effect_evidence}
 
   defp authorize(evidence, binding, opts) do
@@ -34,8 +34,13 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffect do
 
     with {:ok, %ScopedGrant{} = grant} <- authority.fetch_grant(authority_ref),
          :ok <- authority.verify_grant(authority_ref, grant_binding(grant), now),
-         true <- exact_runtime_binding?(grant, evidence, binding) do
-      {:ok, :auto}
+         true <- exact_runtime_binding?(grant, evidence, binding),
+         true <- reviewed_content_matches?(evidence.workspace) do
+      {:ok,
+       %{
+         permission_mode: :auto,
+         reviewed_approval: reviewed_approval(evidence, binding)
+       }}
     else
       _denied -> {:error, :reviewed_tool_effect_authority_denied}
     end
@@ -67,7 +72,8 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffect do
         map_value(authority, :effect_ref),
         map_value(workspace, :workspace_ref),
         map_value(workspace, :relative_path),
-        map_value(workspace, :content_digest)
+        map_value(workspace, :content_digest),
+        map_value(workspace, :reviewed_content)
       ],
       &present_string?/1
     )
@@ -104,6 +110,23 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffect do
       scope["reviewed_content_digest"] == map_value(workspace, :content_digest) and
       scope["target_ref"] == map_value(binding, :target_ref) and
       scope["attempt_ref"] == map_value(binding, :attempt_ref)
+  end
+
+  defp reviewed_content_matches?(workspace) do
+    content = map_value(workspace, :reviewed_content)
+    content_digest = map_value(workspace, :content_digest)
+
+    is_binary(content) and String.valid?(content) and digest(content) == content_digest
+  end
+
+  defp reviewed_approval(evidence, binding) do
+    %{
+      effect_ref: map_value(evidence.authority, :effect_ref),
+      workspace_root: map_value(binding, :workspace_root),
+      relative_path: map_value(evidence.workspace, :relative_path),
+      reviewed_content: map_value(evidence.workspace, :reviewed_content),
+      content_digest: map_value(evidence.workspace, :content_digest)
+    }
   end
 
   defp grant_binding(%ScopedGrant{} = grant) do
@@ -143,6 +166,10 @@ defmodule Jido.Integration.V2.ControlPlane.ReviewedToolEffect do
   end
 
   defp workspace_digest(_value), do: nil
+
+  defp digest(value) when is_binary(value) do
+    "sha256:" <> (:crypto.hash(:sha256, value) |> Base.encode16(case: :lower))
+  end
 
   defp map_value(%{} = map, key) when is_atom(key) do
     Map.get(map, key) || Map.get(map, Atom.to_string(key))
