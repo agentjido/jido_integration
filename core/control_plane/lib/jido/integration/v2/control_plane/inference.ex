@@ -730,13 +730,16 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   end
 
   defp execute_managed_generate_text(input, context, route, client, request_opts, opts) do
-    with {:ok, response} <- Elixir.Inference.complete(client, input, request_opts) do
+    with {:ok, response} <- Elixir.Inference.complete(client, input, request_opts),
+         {:ok, finish_reason} <- normalize_managed_finish_reason(response.finish_reason) do
       response_text = Elixir.Inference.Response.text(response)
+      usage = durable_managed_usage(response.usage)
 
       {:ok,
        %{
          response_text: response_text,
-         response_summary: managed_response_summary(response, response_text),
+         response_summary:
+           managed_response_summary(response, response_text, finish_reason, usage),
          stream: nil,
          inference_result:
            InferenceResult.new!(%{
@@ -746,8 +749,8 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
              streaming?: false,
              endpoint_id: route.endpoint_descriptor && route.endpoint_descriptor.endpoint_id,
              stream_id: nil,
-             finish_reason: response.finish_reason || :stop,
-             usage: response.usage,
+             finish_reason: finish_reason,
+             usage: usage,
              error: nil,
              metadata:
                %{
@@ -768,11 +771,15 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
          {:ok, summary} <- consume_managed_stream(enumerable) do
       stream_id = Contracts.next_id("stream")
       checkpoint_policy = checkpoint_policy(context)
+      usage = durable_managed_usage(summary.usage)
 
       {:ok,
        %{
          response_text: summary.text,
-         response_summary: Map.drop(summary, [:checkpoints]),
+         response_summary:
+           summary
+           |> Map.drop([:checkpoints])
+           |> Map.put(:usage, usage),
          stream: %{
            opened: %{
              stream_id: stream_id,
@@ -797,7 +804,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
              endpoint_id: route.endpoint_descriptor && route.endpoint_descriptor.endpoint_id,
              stream_id: stream_id,
              finish_reason: summary.finish_reason,
-             usage: summary.usage,
+             usage: usage,
              error: nil,
              metadata:
                %{
@@ -1309,7 +1316,7 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
       account_ref: request.account.account_ref,
       model_ref: Contracts.get(call_plan.model_spec, :id),
       operation_ref: request.operation_ref,
-      operation_class: context_value(materialization_context, :operation_class),
+      operation_class: context_value(materialization_context, :model_grant_operation_class),
       context_ref: context_value(materialization_context, :execution_context_ref),
       context_digest: context_value(materialization_context, :context_digest),
       attempt_ref: context.attempt_id,
@@ -1425,13 +1432,13 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)
   end
 
-  defp managed_response_summary(response, response_text) do
+  defp managed_response_summary(response, response_text, finish_reason, usage) do
     %{
       id: response.id,
       provider: response.provider,
       model: response.model,
-      finish_reason: response.finish_reason,
-      usage: response.usage,
+      finish_reason: finish_reason,
+      usage: usage,
       text: response_text
     }
     |> Contracts.dump_json_safe!()
@@ -1483,22 +1490,57 @@ defmodule Jido.Integration.V2.ControlPlane.Inference do
   end
 
   defp managed_stream_event(%Elixir.Inference.StreamEvent{type: :done, data: %{} = data}, acc) do
-    {:done,
-     %{
-       acc
-       | finish_reason: context_value(data, :finish_reason) || acc.finish_reason,
-         usage: context_value(data, :usage) || acc.usage
-     }}
+    with {:ok, finish_reason} <-
+           normalize_managed_finish_reason(
+             context_value(data, :finish_reason) || acc.finish_reason
+           ) do
+      {:done,
+       %{
+         acc
+         | finish_reason: finish_reason,
+           usage: context_value(data, :usage) || acc.usage
+       }}
+    end
   end
 
   defp managed_stream_event(%Elixir.Inference.StreamEvent{type: :done}, _acc),
     do: {:error, :invalid_managed_provider_done_event}
+
+  defp managed_stream_event(
+         %Elixir.Inference.StreamEvent{
+           type: :error,
+           data: %Elixir.Inference.Error{reason: reason}
+         },
+         _acc
+       )
+       when is_atom(reason),
+       do: {:error, reason}
 
   defp managed_stream_event(%Elixir.Inference.StreamEvent{type: :error}, _acc),
     do: {:error, :managed_provider_stream_failed}
 
   defp managed_stream_event(%Elixir.Inference.StreamEvent{}, acc), do: {:ok, acc}
   defp managed_stream_event(_event, _acc), do: {:error, :invalid_managed_provider_stream_event}
+
+  defp normalize_managed_finish_reason(reason) when reason in [nil, :stop, "stop", "STOP"],
+    do: {:ok, :stop}
+
+  defp normalize_managed_finish_reason(reason)
+       when reason in [:length, "length", "MAX_TOKENS"],
+       do: {:ok, :length}
+
+  defp normalize_managed_finish_reason(_reason),
+    do: {:error, :unsupported_managed_provider_finish_reason}
+
+  defp durable_managed_usage(usage) when is_map(usage) do
+    reasoning_tokens = Map.get(usage, :thoughts_tokens, Map.get(usage, "thoughts_tokens"))
+
+    usage
+    |> Map.drop([:thoughts_tokens, "thoughts_tokens"])
+    |> maybe_put(:reasoning_tokens, reasoning_tokens)
+  end
+
+  defp durable_managed_usage(_usage), do: nil
 
   defp stream_delta_text(data) when is_binary(data), do: data
   defp stream_delta_text(%{text: text}) when is_binary(text), do: text
