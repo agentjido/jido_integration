@@ -582,7 +582,7 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
         | revoked_at: now,
           metadata:
             lease_record.metadata
-            |> Map.merge(%{
+            |> merge_metadata(%{
               status: :revoked,
               revocation_ref: revocation_ref,
               revoked_at: now,
@@ -616,7 +616,7 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
         lease_record
         | metadata:
             lease_record.metadata
-            |> Map.merge(%{
+            |> merge_metadata(%{
               status: :cleaned,
               cleanup_ref: cleanup_ref,
               cleaned_at: now
@@ -1513,6 +1513,15 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
 
   defp metadata_value(metadata, key, default) when is_map(metadata) do
     Map.get(metadata, key, Map.get(metadata, Atom.to_string(key), default))
+  end
+
+  defp merge_metadata(metadata, updates) when is_map(metadata) and is_map(updates) do
+    Enum.reduce(updates, metadata, fn {key, value}, merged ->
+      merged
+      |> Map.delete(key)
+      |> Map.delete(Atom.to_string(key))
+      |> Map.put(key, value)
+    end)
   end
 
   defp validate_required_scopes(%Connection{granted_scopes: granted_scopes}, %{

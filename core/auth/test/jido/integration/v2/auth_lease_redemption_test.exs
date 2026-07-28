@@ -5,6 +5,7 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
   alias Jido.Integration.V2.Auth.Connection
   alias Jido.Integration.V2.Auth.Install
   alias Jido.Integration.V2.Auth.LeaseRedemption
+  alias Jido.Integration.V2.Auth.Stores
   alias Jido.Integration.V2.CredentialLease
   alias Jido.Integration.V2.CredentialRef
 
@@ -235,6 +236,17 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
 
     assert renewed.metadata.renewed_from_lease_id == lease.lease_id
 
+    assert {:ok, record} = Stores.lease_store().fetch_lease(lease.lease_id)
+
+    string_metadata =
+      Map.new(record.metadata, fn {key, value} -> {to_string(key), value} end)
+
+    assert :ok =
+             Stores.lease_store().store_lease(%{
+               record
+               | metadata: string_metadata
+             })
+
     assert {:ok, revoked_event} =
              Auth.revoke_lease(lease.lease_id, %{
                now: ~U[2026-03-09 12:02:30Z],
@@ -259,6 +271,11 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
 
     assert cleanup_event.status == :cleaned
     refute String.contains?(inspect(cleanup_event), "phase4a-runtime-token")
+
+    assert {:ok, cleaned_record} = Stores.lease_store().fetch_lease(lease.lease_id)
+    assert cleaned_record.metadata.status == :cleaned
+    refute Map.has_key?(cleaned_record.metadata, "status")
+    refute Map.has_key?(cleaned_record.metadata, "cleanup_ref")
   end
 
   test "governed leases cover every provider family and operation class with bounded metadata" do
