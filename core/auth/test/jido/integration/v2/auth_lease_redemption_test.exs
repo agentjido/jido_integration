@@ -198,6 +198,16 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
     assert {:ok, redemption} = Auth.redeem_lease(lease.lease_id, base_redemption_context(%{}))
     assert redemption.redacted
 
+    assert {:ok, active_status} =
+             Auth.lease_status(lease.lease_id, %{
+               tenant_id: "tenant-1",
+               now: ~U[2026-03-09 12:01:01Z]
+             })
+
+    assert active_status.status == :active
+    assert Map.keys(active_status) |> Enum.sort() == [:expires_at, :revoked_at, :status]
+    refute String.contains?(inspect(active_status), "phase4a-runtime-token")
+
     assert {:ok, audit} = Auth.lease_audit_event("provider_auth.lease.redeemed", lease)
     assert audit.redacted
     refute String.contains?(inspect(audit), "phase4a-runtime-token")
@@ -256,6 +266,12 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
 
     assert revoked_event.status == :revoked
 
+    assert {:ok, %{status: :revoked}} =
+             Auth.lease_status(lease.lease_id, %{
+               tenant_id: "tenant-1",
+               now: ~U[2026-03-09 12:02:31Z]
+             })
+
     assert {:error, :revoked_lease} =
              Auth.fetch_lease(lease.lease_id, %{
                tenant_id: "tenant-1",
@@ -271,6 +287,12 @@ defmodule Jido.Integration.V2.AuthLeaseRedemptionTest do
 
     assert cleanup_event.status == :cleaned
     refute String.contains?(inspect(cleanup_event), "phase4a-runtime-token")
+
+    assert {:ok, %{status: :cleaned}} =
+             Auth.lease_status(lease.lease_id, %{
+               tenant_id: "tenant-1",
+               now: ~U[2026-03-09 12:03:01Z]
+             })
 
     assert {:ok, cleaned_record} = Stores.lease_store().fetch_lease(lease.lease_id)
     assert cleaned_record.metadata.status == :cleaned

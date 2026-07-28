@@ -38,6 +38,7 @@ defmodule Jido.Integration.V2.Auth do
 
   defdelegate request_lease(connection_id, context \\ %{}), to: RefreshService
   defdelegate fetch_lease(lease_id, context \\ %{}), to: RefreshService
+  defdelegate lease_status(lease_id, context \\ %{}), to: RefreshService
   defdelegate renew_lease(lease_id, attrs), to: RefreshService
   defdelegate set_refresh_handler(handler), to: RefreshService
   defdelegate set_external_secret_resolver(handler), to: RefreshService

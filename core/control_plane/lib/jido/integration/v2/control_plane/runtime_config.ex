@@ -6,12 +6,16 @@ defmodule Jido.Integration.V2.ControlPlane.RuntimeConfig do
   use GenServer
 
   @name __MODULE__
-  @keys [:self_hosted_endpoint_provider, :non_direct_runtime_adapter]
-  @empty_state %{self_hosted_endpoint_provider: nil, non_direct_runtime_adapter: nil}
+  @keys [:self_hosted_endpoint_provider, :non_direct_runtime_adapter, :attempt_reconciliation]
+  @empty_state %{
+    self_hosted_endpoint_provider: nil,
+    non_direct_runtime_adapter: nil,
+    attempt_reconciliation: nil
+  }
 
   @spec start_link(keyword()) :: GenServer.on_start()
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, @empty_state, name: @name)
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, name: @name)
   end
 
   @spec current() :: map()
@@ -39,7 +43,17 @@ defmodule Jido.Integration.V2.ControlPlane.RuntimeConfig do
   end
 
   @impl true
-  def init(state), do: {:ok, state}
+  def init(opts) when is_list(opts) do
+    state =
+      Enum.reduce(@keys, @empty_state, fn key, state ->
+        case Keyword.fetch(opts, key) do
+          {:ok, value} -> Map.put(state, key, value)
+          :error -> state
+        end
+      end)
+
+    {:ok, state}
+  end
 
   @impl true
   def handle_call(:current, _from, state), do: {:reply, state, state}

@@ -16,7 +16,9 @@ defmodule Jido.Integration.V2.ControlPlane.Application do
         {Jido.Integration.V2.ControlPlane.Persistence.Owner, persistence_boot_attrs()},
         {Jido.Integration.V2.ControlPlane.RuntimeConfig, []},
         {Jido.Integration.V2.ControlPlane.Registry, []}
-      ] ++ test_store_children()
+      ] ++
+        test_store_children() ++
+        [{Jido.Integration.V2.ControlPlane.AttemptReconciler, []}]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

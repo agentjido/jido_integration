@@ -8,6 +8,7 @@ defmodule Jido.Integration.V2.ControlPlanePersistenceTest do
   @control_plane_store_keys [
     :run_store,
     :attempt_store,
+    :recovery_task_store,
     :event_store,
     :artifact_store,
     :claim_check_store,

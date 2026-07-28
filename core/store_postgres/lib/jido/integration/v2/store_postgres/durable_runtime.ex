@@ -48,8 +48,10 @@ defmodule Jido.Integration.V2.StorePostgres.DurableRuntime do
           ),
           {ControlPlanePersistence.Owner,
            persistence_options_for_control_plane(persistence_opts)},
-          {Jido.Integration.V2.ControlPlane.RuntimeConfig, []},
+          {Jido.Integration.V2.ControlPlane.RuntimeConfig,
+           attempt_reconciliation: Keyword.get(opts, :attempt_reconciliation)},
           {Jido.Integration.V2.ControlPlane.Registry, []},
+          {Jido.Integration.V2.ControlPlane.AttemptReconciler, []},
           Supervisor.child_spec(
             {Task.Supervisor, name: Jido.Integration.V2.StorePostgres.TaskSupervisor},
             id: Jido.Integration.V2.StorePostgres.TaskSupervisor

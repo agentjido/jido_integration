@@ -11,6 +11,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
   alias Jido.Integration.V2.ControlPlane.ProfileRegistryStore
   alias Jido.Integration.V2.Event
   alias Jido.Integration.V2.Redaction
+  alias Jido.Integration.V2.RecoveryTask
   alias Jido.Integration.V2.ServiceSimulationProfile
   alias Jido.Integration.V2.SimulationProfileRegistryEntry
   alias Jido.Integration.V2.TargetDescriptor
@@ -19,6 +20,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
 
   @behaviour Jido.Integration.V2.ControlPlane.RunStore
   @behaviour Jido.Integration.V2.ControlPlane.AttemptStore
+  @behaviour Jido.Integration.V2.ControlPlane.RecoveryTaskStore
   @behaviour Jido.Integration.V2.ControlPlane.EventStore
   @behaviour Jido.Integration.V2.ControlPlane.ArtifactStore
   @behaviour ClaimCheckStore
@@ -32,6 +34,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
         %{
           runs: %{},
           attempts: %{},
+          recovery_tasks: %{},
           events: %{},
           artifacts: %{},
           run_artifacts: %{},
@@ -86,6 +89,24 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
         :output,
         Map.get(attempt, :output_payload_ref)
       )
+    end)
+  end
+
+  @impl Jido.Integration.V2.ControlPlane.RecoveryTaskStore
+  def put_task(%RecoveryTask{} = task) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      case Map.fetch(state.recovery_tasks, task.task_id) do
+        :error ->
+          entry = %{task: task, claim_ref: nil, claim_expires_at: nil}
+          {{:ok, task, :inserted}, put_in(state, [:recovery_tasks, task.task_id], entry)}
+
+        {:ok, %{task: existing}} ->
+          if same_recovery_identity?(existing, task) do
+            {{:ok, existing, :existing}, state}
+          else
+            {{:error, :recovery_task_conflict}, state}
+          end
+      end
     end)
   end
 
@@ -216,6 +237,96 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
       |> Map.values()
       |> Enum.filter(&(&1.run_id == run_id))
       |> Enum.sort_by(&{&1.attempt, &1.attempt_id})
+    end)
+  end
+
+  @impl Jido.Integration.V2.ControlPlane.AttemptStore
+  def list_recoverable_attempts do
+    Agent.get(__MODULE__, fn state ->
+      state.attempts
+      |> Map.values()
+      |> Enum.filter(&(&1.status in [:accepted, :running] and is_binary(&1.runtime_ref_id)))
+      |> Enum.sort_by(&{&1.inserted_at, &1.attempt_id})
+    end)
+  end
+
+  @impl Jido.Integration.V2.ControlPlane.RecoveryTaskStore
+  def fetch_task(task_id) do
+    Agent.get(__MODULE__, fn state ->
+      case Map.fetch(state.recovery_tasks, task_id) do
+        {:ok, %{task: task}} -> {:ok, task}
+        :error -> :error
+      end
+    end)
+  end
+
+  @impl Jido.Integration.V2.ControlPlane.RecoveryTaskStore
+  def list_tasks(filters) do
+    Agent.get(__MODULE__, fn state ->
+      state.recovery_tasks
+      |> Map.values()
+      |> Enum.map(& &1.task)
+      |> Enum.filter(&recovery_task_matches?(&1, filters))
+      |> Enum.sort_by(&{&1.due_at, &1.task_id})
+    end)
+  end
+
+  @impl Jido.Integration.V2.ControlPlane.RecoveryTaskStore
+  def list_due(now, limit) do
+    Agent.get(__MODULE__, fn state ->
+      state.recovery_tasks
+      |> Map.values()
+      |> Enum.filter(&recovery_task_due?(&1, now))
+      |> Enum.map(& &1.task)
+      |> Enum.sort_by(&{&1.due_at, &1.task_id})
+      |> Enum.take(limit)
+    end)
+  end
+
+  @impl Jido.Integration.V2.ControlPlane.RecoveryTaskStore
+  def claim_task(task_id, claim_ref, now, claim_expires_at) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      case Map.fetch(state.recovery_tasks, task_id) do
+        {:ok, entry} ->
+          if recovery_task_due?(entry, now) do
+            claimed = %{entry.task | status: :running, updated_at: now}
+
+            next_entry = %{
+              task: claimed,
+              claim_ref: claim_ref,
+              claim_expires_at: claim_expires_at
+            }
+
+            {{:ok, claimed}, put_in(state, [:recovery_tasks, task_id], next_entry)}
+          else
+            {{:error, :not_claimable}, state}
+          end
+
+        :error ->
+          {{:error, :not_claimable}, state}
+      end
+    end)
+  end
+
+  @impl Jido.Integration.V2.ControlPlane.RecoveryTaskStore
+  def transition_task(task_id, claim_ref, status, due_at, metadata, now) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      case Map.fetch(state.recovery_tasks, task_id) do
+        {:ok, %{task: %{status: :running} = task, claim_ref: ^claim_ref} = entry} ->
+          updated = %{
+            task
+            | status: status,
+              due_at: due_at,
+              metadata: metadata,
+              updated_at: now
+          }
+
+          next_entry = %{entry | task: updated, claim_ref: nil, claim_expires_at: nil}
+          {{:ok, updated}, put_in(state, [:recovery_tasks, task_id], next_entry)}
+
+        _missing_or_stale ->
+          {{:error, :stale_recovery_claim}, state}
+      end
     end)
   end
 
@@ -462,6 +573,7 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
       %{
         runs: %{},
         attempts: %{},
+        recovery_tasks: %{},
         events: %{},
         artifacts: %{},
         run_artifacts: %{},
@@ -861,6 +973,41 @@ defmodule Jido.Integration.V2.ControlPlane.RunLedger do
   defp same_position?(left, right) do
     left.run_id == right.run_id and left.attempt_id == right.attempt_id and left.seq == right.seq
   end
+
+  defp same_recovery_identity?(left, right) do
+    left.subject_ref == right.subject_ref and
+      left.run_id == right.run_id and
+      left.attempt_id == right.attempt_id and
+      left.reason == right.reason and
+      recovery_external_ref(left) == recovery_external_ref(right)
+  end
+
+  defp recovery_external_ref(task) do
+    Map.get(task.metadata, "external_operation_ref") ||
+      Map.get(task.metadata, :external_operation_ref)
+  end
+
+  defp recovery_task_matches?(task, filters) do
+    Enum.all?(filters, fn {key, expected} ->
+      Map.get(task, normalize_filter_key(key)) == expected
+    end)
+  end
+
+  defp normalize_filter_key("status"), do: :status
+  defp normalize_filter_key("attempt_id"), do: :attempt_id
+  defp normalize_filter_key("run_id"), do: :run_id
+  defp normalize_filter_key(key), do: key
+
+  defp recovery_task_due?(%{task: %{status: :pending, due_at: due_at}}, now),
+    do: DateTime.compare(due_at, now) != :gt
+
+  defp recovery_task_due?(
+         %{task: %{status: :running}, claim_expires_at: %DateTime{} = expires_at},
+         now
+       ),
+       do: DateTime.compare(expires_at, now) != :gt
+
+  defp recovery_task_due?(_entry, _now), do: false
 
   defp checkpoint_key(tenant_id, connector_id, trigger_id, partition_key) do
     {tenant_id, connector_id, trigger_id, partition_key}

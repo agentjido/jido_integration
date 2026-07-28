@@ -903,7 +903,10 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
       runtime_class: run.runtime_class,
       status: :accepted,
       credential_lease_id: credential_lease.lease_id,
-      target_id: run.target_id
+      target_id: run.target_id,
+      runtime_ref_id:
+        Keyword.get(opts, :managed_session_ref) ||
+          Keyword.get(opts, :external_operation_ref)
     })
   end
 

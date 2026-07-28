@@ -87,6 +87,7 @@ defmodule Jido.Integration.V2.StorePostgres do
     %{
       run_store: Jido.Integration.V2.StorePostgres.RunStore,
       attempt_store: Jido.Integration.V2.StorePostgres.AttemptStore,
+      recovery_task_store: Jido.Integration.V2.StorePostgres.RecoveryTaskStore,
       event_store: Jido.Integration.V2.StorePostgres.EventStore,
       artifact_store: Jido.Integration.V2.StorePostgres.ArtifactStore,
       claim_check_store: Jido.Integration.V2.StorePostgres.ClaimCheckStore,

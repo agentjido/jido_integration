@@ -5,6 +5,8 @@ defmodule Jido.Integration.V2.ControlPlane do
   """
 
   alias Jido.Integration.V2.ControlPlane.ArtifactService
+  alias Jido.Integration.V2.ControlPlane.AttemptReconciler
+  alias Jido.Integration.V2.ControlPlane.AttemptRecovery
   alias Jido.Integration.V2.ControlPlane.ConnectorRegistry
   alias Jido.Integration.V2.ControlPlane.InferenceService
   alias Jido.Integration.V2.ControlPlane.InvocationService
@@ -33,6 +35,27 @@ defmodule Jido.Integration.V2.ControlPlane do
   defdelegate fetch_attempt(attempt_id), to: RunLedgerService
   defdelegate attempts(run_id), to: RunLedgerService
   defdelegate events(run_id), to: RunLedgerService
+
+  defdelegate mark_attempt_outcome_unknown(attempt_id, attrs \\ %{}),
+    to: AttemptRecovery,
+    as: :mark_outcome_unknown
+
+  defdelegate recovery_task(task_id), to: AttemptRecovery, as: :task
+  defdelegate recovery_tasks(filters \\ %{}), to: AttemptRecovery, as: :tasks
+
+  defdelegate reconcile_attempt(task_id, observer, opts \\ []),
+    to: AttemptRecovery,
+    as: :reconcile_task
+
+  defdelegate reconcile_attempts_on_start(observer, opts \\ []),
+    to: AttemptRecovery,
+    as: :reconcile_on_start
+
+  defdelegate reconcile_due_attempts(observer, opts \\ []),
+    to: AttemptRecovery,
+    as: :reconcile_due
+
+  defdelegate reconcile_attempts_now(), to: AttemptReconciler, as: :reconcile_now
 
   defdelegate admit_trigger(trigger, opts \\ []), to: TriggerIngressService
   defdelegate record_rejected_trigger(trigger, reason), to: TriggerIngressService

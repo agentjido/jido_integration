@@ -523,6 +523,35 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
     end
   end
 
+  @doc """
+  Returns only durable lease lifecycle facts.
+
+  This query never resolves or materializes credential payloads and is safe for
+  restart reconciliation.
+  """
+  @spec lease_status(String.t(), map()) ::
+          {:ok,
+           %{
+             status: :active | :expired | :revoked | :cleaned,
+             expires_at: DateTime.t(),
+             revoked_at: DateTime.t() | nil
+           }}
+          | {:error, :unknown_lease | :tenant_mismatch}
+  def lease_status(lease_id, context \\ %{}) when is_binary(lease_id) and is_map(context) do
+    context = Map.new(context)
+    current_time = now(context)
+
+    with {:ok, %LeaseRecord{} = lease_record} <- Stores.lease_store().fetch_lease(lease_id),
+         :ok <- authorize_context_tenant(lease_record.tenant_id, Map.get(context, :tenant_id)) do
+      {:ok,
+       %{
+         status: lease_lifecycle_status(lease_record, current_time),
+         expires_at: lease_record.expires_at,
+         revoked_at: lease_record.revoked_at
+       }}
+    end
+  end
+
   @spec redeem_lease(String.t(), map()) :: {:ok, LeaseRedemption.evidence()} | {:error, term()}
   def redeem_lease(lease_id, context) when is_binary(lease_id) and is_map(context) do
     with {:ok, lease} <- fetch_lease(lease_id, context),
@@ -1615,6 +1644,22 @@ defmodule Jido.Integration.V2.Auth.ServiceCore do
     if DateTime.compare(lease_record.expires_at, now) == :gt,
       do: :ok,
       else: {:error, :expired_lease}
+  end
+
+  defp lease_lifecycle_status(%LeaseRecord{} = lease_record, now) do
+    cond do
+      metadata_value(lease_record.metadata, :status, nil) in [:cleaned, "cleaned"] ->
+        :cleaned
+
+      match?(%DateTime{}, lease_record.revoked_at) ->
+        :revoked
+
+      DateTime.compare(lease_record.expires_at, now) != :gt ->
+        :expired
+
+      true ->
+        :active
+    end
   end
 
   defp authorize_context_tenant(_record_tenant_id, nil), do: :ok

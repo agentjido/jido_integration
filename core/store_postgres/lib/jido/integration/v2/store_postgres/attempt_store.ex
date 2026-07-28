@@ -55,6 +55,18 @@ defmodule Jido.Integration.V2.StorePostgres.AttemptStore do
   end
 
   @impl true
+  def list_recoverable_attempts do
+    from(attempt in AttemptRecord,
+      where:
+        attempt.status in [:accepted, :running] and
+          not is_nil(attempt.runtime_ref_id),
+      order_by: [asc: attempt.inserted_at, asc: attempt.attempt_id]
+    )
+    |> Repo.all()
+    |> Enum.map(&to_contract/1)
+  end
+
+  @impl true
   def update_attempt(attempt_id, status, output, runtime_ref_id, opts \\ []) do
     with :ok <- SecretGuard.validate_durable(output) do
       Repo.transaction(fn ->

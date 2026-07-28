@@ -13,6 +13,11 @@ defmodule Jido.Integration.V2.ControlPlane.Stores do
     configured_store(:attempt_store)
   end
 
+  @spec recovery_task_store() :: module()
+  def recovery_task_store do
+    configured_store(:recovery_task_store)
+  end
+
   @spec event_store() :: module()
   def event_store do
     configured_store(:event_store)

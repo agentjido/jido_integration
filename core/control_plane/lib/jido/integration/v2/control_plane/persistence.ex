@@ -92,6 +92,7 @@ defmodule Jido.Integration.V2.ControlPlane.Persistence do
   @required_store_keys [
     :run_store,
     :attempt_store,
+    :recovery_task_store,
     :event_store,
     :artifact_store,
     :claim_check_store,
@@ -102,6 +103,7 @@ defmodule Jido.Integration.V2.ControlPlane.Persistence do
   @memory_store_modules %{
     run_store: RunLedger,
     attempt_store: RunLedger,
+    recovery_task_store: RunLedger,
     event_store: RunLedger,
     artifact_store: RunLedger,
     claim_check_store: RunLedger,

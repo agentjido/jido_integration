@@ -27,6 +27,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
   alias Jido.Integration.V2.StorePostgres.Schemas.MemoryPrivateRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.MemorySharedRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.ProfileRegistryEntryRecord
+  alias Jido.Integration.V2.StorePostgres.Schemas.RecoveryTaskRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.RunRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.SubmissionRecord
   alias Jido.Integration.V2.StorePostgres.Schemas.TargetRecord
@@ -201,6 +202,7 @@ defmodule Jido.Integration.V2.StorePostgres.TestSupport do
     Repo.delete_all(ClaimCheckReferenceRecord)
     Repo.delete_all(ClaimCheckBlobRecord)
     Repo.delete_all(EventRecord)
+    Repo.delete_all(RecoveryTaskRecord)
     Repo.delete_all(AttemptRecord)
     Repo.delete_all(RunRecord)
     Repo.delete_all(TriggerRecordSchema)

@@ -12,6 +12,7 @@ defmodule Jido.Integration.V2.StorePostgres.DataCase do
   @control_plane_keys [
     :run_store,
     :attempt_store,
+    :recovery_task_store,
     :event_store,
     :artifact_store,
     :claim_check_store,
