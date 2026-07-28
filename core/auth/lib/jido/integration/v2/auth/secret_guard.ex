@@ -88,6 +88,7 @@ defmodule Jido.Integration.V2.Auth.SecretGuard do
       canonical in [
         "credential_handle",
         "cached_tokens",
+        "cached_input_tokens",
         "cache_creation_input_tokens",
         "cache_creation_tokens",
         "cache_read_input_tokens",
@@ -99,6 +100,7 @@ defmodule Jido.Integration.V2.Auth.SecretGuard do
         "output_tokens",
         "prompt_tokens",
         "reasoning_tokens",
+        "reasoning_output_tokens",
         "completion_tokens",
         "total_tokens",
         "secret_material_redacted"

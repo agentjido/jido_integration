@@ -65,7 +65,9 @@ defmodule Jido.Integration.V2.Auth.SecretEnvelopeTest do
     assert :ok =
              SecretGuard.validate_durable(%{
                input_tokens: 8,
+               cached_input_tokens: 2,
                output_tokens: 5,
+               reasoning_output_tokens: 1,
                total_tokens: 13,
                cached_tokens: 2,
                reasoning_tokens: 1,
