@@ -183,6 +183,35 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     result
   end
 
+  @doc false
+  @spec cleanup_managed_session(SessionHandle.t(), atom()) :: :ok | {:error, term()}
+  def cleanup_managed_session(%SessionHandle{session_id: session_id} = session, reason)
+      when is_binary(session_id) and is_atom(reason) do
+    assert_runtime_started!()
+
+    cleanup_result =
+      case SessionStore.fetch(session_id) do
+        {:ok, _session_ref} -> ASM.cleanup_managed_session(session_id, reason)
+        :error -> {:error, :managed_session_not_found}
+      end
+
+    stop_result = stop_session(session)
+
+    case {cleanup_result, stop_result} do
+      {:ok, :ok} ->
+        :ok
+
+      {{:error, cleanup_reason}, :ok} ->
+        {:error, cleanup_reason}
+
+      {:ok, {:error, stop_reason}} ->
+        {:error, stop_reason}
+
+      {{:error, cleanup_reason}, {:error, stop_reason}} ->
+        {:error, {:managed_session_cleanup_failed, cleanup_reason, stop_reason}}
+    end
+  end
+
   @impl true
   def stream_run(%SessionHandle{} = session, %RunRequest{} = request, opts) when is_list(opts) do
     assert_runtime_started!()

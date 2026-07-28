@@ -28,6 +28,21 @@ defmodule Jido.Integration.V2.ExecutionRouter do
     )
   end
 
+  @doc false
+  @spec cleanup_runtime_session(String.t(), atom()) :: :ok | {:error, term()}
+  def cleanup_runtime_session(session_id, reason)
+      when is_binary(session_id) and is_atom(reason) do
+    non_direct_runtime_adapter()
+    |> if_non_direct_runtime_available(
+      fn adapter ->
+        if function_exported?(adapter, :cleanup_runtime_session, 2),
+          do: adapter.cleanup_runtime_session(session_id, reason),
+          else: {:error, :runtime_session_cleanup_unsupported}
+      end,
+      fn -> {:error, :non_direct_runtime_unavailable} end
+    )
+  end
+
   @spec reset!() :: :ok
   def reset! do
     non_direct_runtime_adapter()

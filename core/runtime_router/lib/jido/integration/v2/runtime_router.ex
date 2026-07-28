@@ -218,6 +218,32 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     :ok
   end
 
+  @doc false
+  @spec cleanup_runtime_session(String.t(), atom()) :: :ok | {:error, term()}
+  def cleanup_runtime_session(session_id, reason)
+      when is_binary(session_id) and is_atom(reason) do
+    case fetch_session_entry_by_id(session_id) do
+      {:ok,
+       %{
+         driver_module: driver_module,
+         session: %SessionHandle{} = session,
+         session_key: session_key
+       }} ->
+        result =
+          if function_exported?(driver_module, :cleanup_managed_session, 2) do
+            driver_module.cleanup_managed_session(session, reason)
+          else
+            driver_module.stop_session(session)
+          end
+
+        if result == :ok, do: delete_session_entry(session_key)
+        result
+
+      :error ->
+        {:error, :runtime_session_not_found}
+    end
+  end
+
   @spec available?() :: boolean()
   def available? do
     Process.whereis(SessionStore) != nil
@@ -310,6 +336,7 @@ defmodule Jido.Integration.V2.RuntimeRouter do
       |> normalize_driver_option_aliases()
 
     options
+    |> Keyword.merge(managed_runtime_opts(context))
     |> maybe_put(:provider, normalize_optional_atom(Contracts.get(runtime_config, :provider)))
     |> maybe_put(:cwd, workspace_root(context) || requested_cwd(input))
     |> maybe_put(:allowed_tools, allowed_tools(context))
@@ -318,6 +345,16 @@ defmodule Jido.Integration.V2.RuntimeRouter do
     |> Keyword.put(:input, input)
     |> Keyword.put(:context, context)
     |> Keyword.put_new(:run_id, context.run_id)
+  end
+
+  defp managed_runtime_opts(context) when is_map(context) do
+    context
+    |> Contracts.get(:opts, %{})
+    |> Contracts.get(:managed_runtime_opts, [])
+    |> case do
+      opts when is_list(opts) -> if(Keyword.keyword?(opts), do: opts, else: [])
+      _other -> []
+    end
   end
 
   defp fetch_or_start_session(
@@ -854,7 +891,13 @@ defmodule Jido.Integration.V2.RuntimeRouter do
         }
       end
 
-    {driver_id, reuse_key}
+    managed_session_ref =
+      case Keyword.get(managed_runtime_opts(context), :managed_session) do
+        %{} = managed_session -> Contracts.get(managed_session, :session_ref)
+        _missing -> nil
+      end
+
+    {driver_id, managed_session_ref || reuse_key}
   end
 
   defp request_prompt(%Capability{id: capability_id}, input) do

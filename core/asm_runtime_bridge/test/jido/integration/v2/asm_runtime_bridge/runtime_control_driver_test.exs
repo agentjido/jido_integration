@@ -470,7 +470,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
   end
 
   test "stream_run/3 rejects host tools for unsupported providers with a Jido-facing error" do
-    assert {:ok, session} = RuntimeControlDriver.start_session(provider: :gemini)
+    assert {:ok, session} = RuntimeControlDriver.start_session(provider: :amp)
 
     on_exit(fn ->
       _ = RuntimeControlDriver.stop_session(session)
@@ -490,7 +490,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
              )
 
     assert String.contains?(Exception.message(error), "host_tools")
-    assert String.contains?(Exception.message(error), "gemini")
+    assert String.contains?(Exception.message(error), "amp")
   end
 
   test "normalizer projects host tool events and redacts raw provider evidence" do

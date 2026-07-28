@@ -75,6 +75,11 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
       send(self(), {:authored_driver_stop_session, session.session_id})
       :ok
     end
+
+    def cleanup_managed_session(%SessionHandle{} = session, reason) do
+      send(self(), {:authored_driver_cleanup_managed_session, session.session_id, reason})
+      :ok
+    end
   end
 
   defmodule OverrideDriver do
@@ -600,6 +605,24 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
 
     assert error.field == :session_id
     assert error.details == %{operation: :status}
+  end
+
+  test "managed cleanup delegates to the driver and forgets the exact session" do
+    Application.put_env(
+      :jido_integration_v2_control_plane,
+      :runtime_drivers,
+      %{authored_driver: AuthoredDriver}
+    )
+
+    put_session_store_entry("authored-session")
+
+    assert :ok = RuntimeRouter.cleanup_runtime_session("authored-session", :effect_scope_closed)
+
+    assert_receive {:authored_driver_cleanup_managed_session, "authored-session",
+                    :effect_scope_closed}
+
+    assert {:error, :runtime_session_not_found} =
+             RuntimeRouter.cleanup_runtime_session("authored-session", :effect_scope_closed)
   end
 
   test "routes session-control approve to approve with explicit approval id and decision" do

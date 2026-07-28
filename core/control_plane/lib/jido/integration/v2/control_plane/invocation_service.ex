@@ -7,5 +7,6 @@ defmodule Jido.Integration.V2.ControlPlane.InvocationService do
 
   defdelegate invoke(request), to: ServiceCore
   defdelegate invoke(capability_id, input, opts \\ []), to: ServiceCore
+  defdelegate invoke_managed_session(capability_id, input, opts), to: ServiceCore
   defdelegate execute_run(run_id, attempt_number, opts \\ []), to: ServiceCore
 end

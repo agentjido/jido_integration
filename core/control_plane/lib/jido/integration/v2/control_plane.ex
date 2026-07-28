@@ -25,6 +25,7 @@ defmodule Jido.Integration.V2.ControlPlane do
 
   defdelegate invoke(request), to: InvocationService
   defdelegate invoke(capability_id, input, opts \\ []), to: InvocationService
+  defdelegate invoke_managed_session(capability_id, input, opts), to: InvocationService
   defdelegate execute_run(run_id, attempt_number, opts \\ []), to: InvocationService
 
   defdelegate fetch_run(run_id), to: RunLedgerService

@@ -28,14 +28,19 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
   alias Jido.Integration.V2.GovernedLowerEnvelope
   alias Jido.Integration.V2.InvocationRequest
   alias Jido.Integration.V2.Manifest
+  alias Jido.Integration.V2.MaterializationRequest
   alias Jido.Integration.V2.PolicyDecision
   alias Jido.Integration.V2.Run
   alias Jido.Integration.V2.RuntimeResult
+  alias Jido.Integration.V2.SecretMaterial
   alias Jido.Integration.V2.ServiceSimulationProfile
   alias Jido.Integration.V2.SimulationProfileRegistryEntry
   alias Jido.Integration.V2.TargetDescriptor
   alias Jido.Integration.V2.TriggerCheckpoint
   alias Jido.Integration.V2.TriggerRecord
+  alias Jido.Integration.ProviderMaterializer
+
+  alias ASM.ManagedSession
 
   @type invoke_preflight_error ::
           :unknown_capability
@@ -97,6 +102,7 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
              }}
   def invoke(capability_id, input, opts \\ []) do
     reject_public_credential_ref!(opts)
+    reject_private_managed_runtime!(opts)
 
     with {:ok, capability} <- fetch_capability(capability_id),
          {:ok, governed_lower_envelope} <-
@@ -107,6 +113,68 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
 
       :ok = Stores.run_store().put_run(run)
       continue_invoke(capability, run, input, opts, auth_binding)
+    end
+  end
+
+  @doc """
+  Invokes one exact managed Codex session inside a redeemed credential scope.
+
+  The public inputs remain secret-free. Jido constructs the managed ASM bundle
+  only after policy admission, destroys the provider session before the
+  materialization callback returns, and records truthful cleanup evidence with
+  the attempt.
+  """
+  @spec invoke_managed_session(String.t(), map(), keyword()) ::
+          {:ok, %{run: Run.t(), attempt: Attempt.t(), output: map()}}
+          | {:error, term()}
+          | {:error,
+             %{
+               reason: term(),
+               run: Run.t(),
+               attempt: Attempt.t() | nil,
+               policy_decision: PolicyDecision.t() | nil
+             }}
+  def invoke_managed_session(capability_id, input, opts)
+      when is_binary(capability_id) and is_map(input) and is_list(opts) do
+    reject_public_credential_ref!(opts)
+    reject_managed_secret_supplementation!(opts)
+
+    with {:ok, capability} <- fetch_capability(capability_id),
+         :ok <- ensure_managed_codex_capability(capability),
+         {:ok, governed_lower_envelope} <-
+           GovernedLowerAdmission.admit(capability, capability_id, opts),
+         {:ok, lease} <- typed_managed_option(opts, :credential_lease, CredentialLease),
+         {:ok, request} <-
+           typed_managed_option(opts, :materialization_request, MaterializationRequest),
+         {:ok, redemption_context} <- managed_materialization_context(opts),
+         {:ok, account} <- Auth.fetch_managed_account(request.account),
+         :ok <- validate_managed_codex_account(account, lease, request),
+         {:ok, binding} <- managed_codex_binding(opts, account, request),
+         auth_binding <- managed_auth_binding(account, lease) do
+      opts =
+        opts
+        |> Keyword.drop([
+          :credential_lease,
+          :materialization_request,
+          :materialization_context
+        ])
+        |> maybe_put_governed_lower_envelope(governed_lower_envelope)
+
+      run = build_run(capability, input, auth_binding.credential_ref, opts)
+      :ok = Stores.run_store().put_run(run)
+
+      continue_managed_invoke(
+        capability,
+        run,
+        input,
+        opts,
+        auth_binding,
+        account,
+        lease,
+        request,
+        redemption_context,
+        binding
+      )
     end
   end
 
@@ -364,6 +432,236 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
         reject_run(run, decision)
     end
   end
+
+  defp continue_managed_invoke(
+         capability,
+         run,
+         input,
+         opts,
+         auth_binding,
+         account,
+         lease,
+         request,
+         redemption_context,
+         binding
+       ) do
+    opts = default_cost_budget_opts(run, opts)
+
+    with :ok <- validate_target_selection(run, capability),
+         :ok <- validate_guard_bindings(capability, opts),
+         :ok <- ReplayService.validate_submission(capability, opts),
+         :ok <- validate_cost_budget_submission(capability, opts),
+         %PolicyDecision{status: :allowed} = policy_decision <-
+           PolicyService.evaluate(
+             capability,
+             auth_binding.credential,
+             auth_binding.credential_ref,
+             input,
+             opts
+           ) do
+      materialize_and_execute_managed_session(
+        capability,
+        run,
+        input,
+        opts,
+        policy_decision,
+        auth_binding.credential_ref,
+        account,
+        lease,
+        request,
+        redemption_context,
+        binding
+      )
+    else
+      {:error, reason} ->
+        fail_before_attempt(run, reason)
+
+      %PolicyDecision{status: status} = decision when status in [:denied, :shed] ->
+        reject_run(run, decision)
+    end
+  end
+
+  defp materialize_and_execute_managed_session(
+         capability,
+         run,
+         input,
+         opts,
+         policy_decision,
+         credential_ref,
+         account,
+         lease,
+         request,
+         redemption_context,
+         binding
+       ) do
+    result =
+      Auth.with_materialized_credential(
+        lease,
+        request,
+        redemption_context,
+        fn %SecretMaterial{} = material ->
+          with {:ok, bundle} <-
+                 ProviderMaterializer.materialize_codex(
+                   material,
+                   lease,
+                   request,
+                   account,
+                   binding
+                 ) do
+            managed_session =
+              managed_session!(
+                account,
+                request,
+                binding,
+                Keyword.get(opts, :managed_session_generation, 1)
+              )
+
+            managed_runtime_opts =
+              managed_runtime_opts(
+                account,
+                lease,
+                request,
+                binding,
+                managed_session,
+                bundle.secret_material
+              )
+
+            execute_admitted_managed_run(
+              capability,
+              run,
+              input,
+              Keyword.put(opts, :managed_runtime_opts, managed_runtime_opts),
+              policy_decision,
+              lease,
+              credential_ref,
+              bundle
+            )
+          end
+        end
+      )
+
+    case result do
+      {:ok, {:error, %{run: %Run{}}} = nested_result} ->
+        nested_result
+
+      {:ok, {:error, reason}} ->
+        fail_before_attempt(run, reason)
+
+      {:ok, nested_result} ->
+        nested_result
+
+      {:error, reason} ->
+        fail_before_attempt(run, reason)
+    end
+  end
+
+  defp execute_admitted_managed_run(
+         capability,
+         run,
+         input,
+         opts,
+         policy_decision,
+         credential_lease,
+         credential_ref,
+         bundle
+       ) do
+    attempt = build_attempt(run, credential_lease, opts, 1)
+
+    context =
+      build_context(
+        capability,
+        run,
+        attempt,
+        opts,
+        policy_decision,
+        credential_lease,
+        credential_ref
+      )
+
+    with :ok <- Stores.attempt_store().put_attempt(attempt),
+         :ok <-
+           append_specs(
+             run.run_id,
+             attempt,
+             [%{type: "run.started"}] ++ guard_input_specs(context)
+           ) do
+      dispatch_result = dispatch_or_replay(capability, input, context)
+      {dispatch_result, cleanup} = cleanup_managed_dispatch(dispatch_result, bundle)
+      dispatch_result = attach_cleanup(dispatch_result, cleanup)
+
+      case dispatch_result do
+        {:ok, runtime_result} ->
+          :ok =
+            append_specs(run.run_id, attempt, guard_output_specs(context, runtime_result.output))
+
+          complete_attempt(run, attempt, runtime_result)
+
+        {:error, reason, runtime_result} ->
+          fail_attempt(run, attempt, reason, runtime_result, policy_decision)
+      end
+    else
+      {:error, reason} ->
+        _ = ProviderMaterializer.cleanup_codex(bundle)
+        fail_before_attempt(run, reason)
+    end
+  end
+
+  defp cleanup_managed_dispatch(dispatch_result, bundle) do
+    runtime_result =
+      case dispatch_result do
+        {:ok, %RuntimeResult{} = result} -> result
+        {:error, _reason, %RuntimeResult{} = result} -> result
+      end
+
+    session_cleanup =
+      case runtime_result.runtime_ref_id do
+        session_id when is_binary(session_id) and session_id != "" ->
+          ExecutionRouter.cleanup_runtime_session(session_id, :effect_scope_closed)
+
+        _missing ->
+          {:error, :managed_runtime_session_ref_missing}
+      end
+
+    root_cleanup = ProviderMaterializer.cleanup_codex(bundle)
+
+    cleanup = %{
+      session: cleanup_status(session_cleanup),
+      materialization: cleanup_status(root_cleanup)
+    }
+
+    {dispatch_result, cleanup}
+  end
+
+  defp attach_cleanup({:ok, %RuntimeResult{} = result}, cleanup),
+    do: {:ok, put_cleanup(result, cleanup)}
+
+  defp attach_cleanup({:error, reason, %RuntimeResult{} = result}, cleanup),
+    do: {:error, reason, put_cleanup(result, cleanup)}
+
+  defp put_cleanup(%RuntimeResult{} = result, cleanup) do
+    event_type =
+      if cleanup.session == "completed" and cleanup.materialization == "completed",
+        do: "managed_session.cleaned",
+        else: "managed_session.cleanup_failed"
+
+    %RuntimeResult{
+      result
+      | output: Map.put(result.output || %{}, :cleanup, cleanup),
+        events:
+          result.events ++
+            [
+              %{
+                type: event_type,
+                stream: :control,
+                payload: cleanup,
+                runtime_ref_id: result.runtime_ref_id
+              }
+            ]
+    }
+  end
+
+  defp cleanup_status(:ok), do: "completed"
+  defp cleanup_status({:error, _reason}), do: "failed"
 
   defp continue_execute_run(capability, run, attempt_number, opts) do
     opts = default_cost_budget_opts(run, opts)
@@ -978,6 +1276,250 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
     if Keyword.has_key?(opts, :credential_ref) do
       raise ArgumentError, "credential_ref is not part of the public invoke contract"
     end
+  end
+
+  defp reject_private_managed_runtime!(opts) do
+    if Keyword.has_key?(opts, :managed_runtime_opts) do
+      raise ArgumentError, "managed_runtime_opts is not part of the public invoke contract"
+    end
+  end
+
+  defp reject_managed_secret_supplementation!(opts) do
+    forbidden = [
+      :api_key,
+      :auth_json,
+      :codex_home,
+      :codex_materialized_runtime,
+      :command,
+      :config_root,
+      :env,
+      :process_env,
+      :secret_material
+    ]
+
+    case Enum.find(forbidden, &Keyword.has_key?(opts, &1)) do
+      nil -> :ok
+      key -> raise ArgumentError, "#{key} is forbidden for managed session invocation"
+    end
+  end
+
+  defp typed_managed_option(opts, key, module) do
+    case Keyword.fetch(opts, key) do
+      {:ok, %{__struct__: ^module} = value} -> {:ok, value}
+      {:ok, _other} -> {:error, {:invalid_managed_session_option, key}}
+      :error -> {:error, {:managed_session_option_required, key}}
+    end
+  end
+
+  defp managed_materialization_context(opts) do
+    case Keyword.fetch(opts, :materialization_context) do
+      {:ok, %{} = context} -> {:ok, context}
+      {:ok, _other} -> {:error, {:invalid_managed_session_option, :materialization_context}}
+      :error -> {:error, {:managed_session_option_required, :materialization_context}}
+    end
+  end
+
+  defp ensure_managed_codex_capability(%Capability{} = capability) do
+    provider =
+      capability.metadata
+      |> Contracts.get(:runtime, %{})
+      |> Contracts.get(:provider)
+
+    cond do
+      capability.id != "codex.session.turn" ->
+        {:error, :managed_codex_capability_required}
+
+      capability.runtime_class != :session ->
+        {:error, :managed_codex_session_runtime_required}
+
+      provider not in [:codex, "codex"] ->
+        {:error, :managed_codex_provider_required}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_managed_codex_account(account, lease, request) do
+    cond do
+      account.provider_family != "codex" ->
+        {:error, :managed_codex_account_required}
+
+      account.state != :active ->
+        {:error, :managed_codex_account_inactive}
+
+      lease.tenant_id != account.tenant_id ->
+        {:error, :managed_codex_lease_tenant_mismatch}
+
+      request.account != Jido.Integration.V2.Auth.ManagedAccount.ref(account) ->
+        {:error, :stale_managed_account_ref}
+
+      request.lease_id != lease.lease_id ->
+        {:error, :managed_codex_lease_mismatch}
+
+      lease.connection_id != account.connection_id ->
+        {:error, :managed_codex_connection_mismatch}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp managed_auth_binding(account, lease) do
+    credential_ref =
+      CredentialRef.new!(%{
+        id: lease.credential_ref_id,
+        connection_id: account.connection_id,
+        subject: lease.subject,
+        scopes: lease.scopes,
+        lease_fields: lease.lease_fields,
+        metadata: %{managed_account_ref: account.account_ref}
+      })
+
+    credential =
+      Credential.new!(%{
+        id: lease.credential_id || lease.credential_ref_id,
+        credential_ref_id: lease.credential_ref_id,
+        connection_id: account.connection_id,
+        subject: lease.subject,
+        auth_type: :external_ref,
+        scopes: lease.scopes,
+        secret: %{},
+        lease_fields: lease.lease_fields,
+        source: :managed_account,
+        source_ref: %{account_ref: account.account_ref, generation: account.generation},
+        metadata: %{managed: true}
+      })
+
+    %{
+      credential_ref: credential_ref,
+      credential: credential,
+      connection_id: account.connection_id
+    }
+  end
+
+  defp managed_codex_binding(opts, account, request) do
+    with {:ok, workspace_root} <- required_managed_string(opts, :workspace_root),
+         {:ok, workspace_ref} <- required_managed_string(opts, :workspace_ref),
+         {:ok, session_ref} <- required_managed_string(opts, :managed_session_ref),
+         {:ok, operation_policy_ref} <- required_managed_string(opts, :operation_policy_ref),
+         {:ok, authority_decision_ref} <-
+           required_managed_string(opts, :authority_decision_ref),
+         :ok <- validate_managed_session_generation(opts) do
+      {:ok,
+       %{
+         authority_ref: request.authority_ref,
+         target_ref: request.target_ref,
+         operation_ref: request.operation_ref,
+         workspace_root: workspace_root,
+         workspace_ref: workspace_ref,
+         session_ref: session_ref,
+         connector_instance_ref:
+           Keyword.get(
+             opts,
+             :connector_instance_ref,
+             "connector-instance://jido/codex/#{safe_ref_token(account.account_ref)}"
+           ),
+         connector_binding_ref:
+           Keyword.get(
+             opts,
+             :connector_binding_ref,
+             "connector-binding://jido/codex/#{safe_ref_token(request.materialization_ref)}"
+           ),
+         native_auth_assertion_ref:
+           Keyword.get(
+             opts,
+             :native_auth_assertion_ref,
+             "native-auth-assertion://jido/codex/#{safe_ref_token(request.materialization_ref)}"
+           ),
+         operation_policy_ref: operation_policy_ref,
+         authority_decision_ref: authority_decision_ref,
+         runtime_gateway_ref: "runtime-gateway://cli-subprocess-core/local/v1",
+         installation_ref:
+           Keyword.get(opts, :installation_ref, "installation://nshkr/developer-local")
+       }}
+    end
+  end
+
+  defp managed_session!(account, request, binding, generation) do
+    ManagedSession.new!(%{
+      contract_version: 1,
+      session_ref: binding.session_ref,
+      generation: generation,
+      provider_account_ref: account.account_ref,
+      credential_generation: account.generation,
+      materialization_ref: request.materialization_ref,
+      authority_ref: request.authority_ref,
+      target_ref: request.target_ref,
+      runtime_gateway: binding.runtime_gateway_ref,
+      status: :allocated,
+      fence: account.fence,
+      row_version: 1
+    })
+  end
+
+  defp managed_runtime_opts(
+         account,
+         lease,
+         request,
+         binding,
+         managed_session,
+         secret_material
+       ) do
+    [
+      runtime_auth_mode: :governed,
+      runtime_auth_scope: :governed,
+      execution_context_ref:
+        "execution-context://jido/codex/#{safe_ref_token(request.materialization_ref)}",
+      connector_instance_ref: binding.connector_instance_ref,
+      connector_binding_ref: binding.connector_binding_ref,
+      connector_id: "codex_cli",
+      connector_runtime_ref: "runtime://jido/asm/codex",
+      connector_auth_backend: ProviderMaterializer,
+      provider_auth_backend: ProviderMaterializer,
+      provider_account_ref: account.account_ref,
+      provider_account_status: :asserted,
+      provider_account_evidence: %{redacted: true, source: :jido_managed_account},
+      target_ref: request.target_ref,
+      operation_policy_ref: binding.operation_policy_ref,
+      tenant_ref: account.tenant_id,
+      installation_ref: binding.installation_ref,
+      authority_ref: request.authority_ref,
+      authority_decision_ref: binding.authority_decision_ref,
+      credential_handle_ref: account.credential_handle_ref,
+      credential_lease_ref: lease.lease_id,
+      credential_generation: account.generation,
+      materialization_ref: request.materialization_ref,
+      managed_session: managed_session,
+      materialization_request: request,
+      secret_material: secret_material,
+      runtime_gateway_module: CliSubprocessCore.RuntimeGateway.Local,
+      runtime_gateway_ref: binding.runtime_gateway_ref,
+      workspace_ref: binding.workspace_ref,
+      working_directory_ref: binding.workspace_ref,
+      workspace_root: binding.workspace_root,
+      native_auth_assertion_ref: binding.native_auth_assertion_ref
+    ]
+  end
+
+  defp required_managed_string(opts, key) do
+    case Keyword.get(opts, key) do
+      value when is_binary(value) and value != "" -> {:ok, value}
+      _missing -> {:error, {:managed_session_option_required, key}}
+    end
+  end
+
+  defp validate_managed_session_generation(opts) do
+    case Keyword.get(opts, :managed_session_generation, 1) do
+      generation when is_integer(generation) and generation > 0 -> :ok
+      _invalid -> {:error, {:invalid_managed_session_option, :managed_session_generation}}
+    end
+  end
+
+  defp safe_ref_token(ref) do
+    :crypto.hash(:sha256, ref)
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 24)
   end
 
   defp ref_option(opts, key) do

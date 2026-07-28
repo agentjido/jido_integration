@@ -565,6 +565,7 @@ defmodule Jido.Integration.V2.ControlPlaneTest do
       invocation: [
         invoke: 1,
         invoke: 3,
+        invoke_managed_session: 3,
         execute_run: 3
       ],
       run_ledger: [
