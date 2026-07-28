@@ -505,6 +505,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
           session_opts,
           @execution_environment_option_keys
         )
+        |> inherit_session_permission_mode(session_opts)
 
       _other ->
         opts
@@ -523,6 +524,35 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
         maybe_put(opts, key, Keyword.get(session_opts, key))
     end
   end
+
+  defp inherit_session_permission_mode(opts, session_opts)
+       when is_list(opts) and is_list(session_opts) do
+    session_environment = Keyword.get(session_opts, :execution_environment)
+    run_environment = Keyword.get(opts, :execution_environment)
+
+    case {execution_input_value(run_environment, :permission_mode),
+          execution_input_value(session_environment, :permission_mode)} do
+      {nil, permission_mode} when not is_nil(permission_mode) ->
+        Keyword.put(
+          opts,
+          :execution_environment,
+          put_execution_input(run_environment, :permission_mode, permission_mode)
+        )
+
+      _other ->
+        opts
+    end
+  end
+
+  defp execution_input_value(input, key) when is_list(input), do: Keyword.get(input, key)
+  defp execution_input_value(%{} = input, key), do: Map.get(input, key)
+  defp execution_input_value(_input, _key), do: nil
+
+  defp put_execution_input(input, key, value) when is_list(input),
+    do: Keyword.put(input, key, value)
+
+  defp put_execution_input(%{} = input, key, value), do: Map.put(input, key, value)
+  defp put_execution_input(_input, key, value), do: [{key, value}]
 
   defp normalize_bridge_run_overrides(opts) do
     {run_module, opts} = Keyword.pop(opts, :driver)

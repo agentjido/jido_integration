@@ -740,6 +740,66 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriverTest do
     assert info.options[:execution_environment].workspace_root == "/tmp/runtime-root"
   end
 
+  test "stream_run/3 preserves a session-admitted permission mode in a partial run environment" do
+    assert {:ok, session} =
+             RuntimeControlDriver.start_session(
+               provider: :codex,
+               workspace_root: "/tmp/reviewed-runtime",
+               approval_posture: :manual,
+               permission_mode: :auto
+             )
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request = RunRequest.new!(%{prompt: "perform the reviewed operation", metadata: %{}})
+
+    assert {:ok, _run, stream} =
+             RuntimeControlDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               driver_opts: [test_pid: self()],
+               approval_posture: :manual,
+               allowed_tools: ["codex.session.turn"],
+               run_id: "bridge-run-reviewed-auto"
+             )
+
+    assert Enum.to_list(stream) != []
+    assert_receive {:stream_scripted_driver_context, context}
+    assert context.execution_config.execution_environment.approval_posture == :manual
+    assert context.execution_config.execution_environment.permission_mode == :auto
+    assert context.execution_config.provider_permission_mode == :auto_edit
+  end
+
+  test "stream_run/3 preserves an explicit run permission-mode override" do
+    assert {:ok, session} =
+             RuntimeControlDriver.start_session(
+               provider: :codex,
+               approval_posture: :manual,
+               permission_mode: :auto
+             )
+
+    on_exit(fn ->
+      _ = RuntimeControlDriver.stop_session(session)
+    end)
+
+    request = RunRequest.new!(%{prompt: "stay read only", metadata: %{}})
+
+    assert {:ok, _run, stream} =
+             RuntimeControlDriver.stream_run(session, request,
+               driver: StreamScriptedDriver,
+               driver_opts: [test_pid: self()],
+               approval_posture: :manual,
+               permission_mode: :plan,
+               run_id: "bridge-run-explicit-plan"
+             )
+
+    assert Enum.to_list(stream) != []
+    assert_receive {:stream_scripted_driver_context, context}
+    assert context.execution_config.execution_environment.permission_mode == :plan
+    assert context.execution_config.provider_permission_mode == :plan
+  end
+
   test "reuse_key/4 keeps control-plane credential leases out of stable session identity" do
     capability = %{id: "cap-1", runtime_class: :session}
     input = %{prompt: "hello"}
