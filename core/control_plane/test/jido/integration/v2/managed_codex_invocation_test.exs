@@ -205,6 +205,42 @@ defmodule Jido.Integration.V2.ManagedCodexInvocationTest do
     def events, do: Agent.get(__MODULE__, &Enum.reverse/1)
   end
 
+  defmodule RuntimeClientGateway do
+    @behaviour CliSubprocessCore.RuntimeGateway
+
+    @impl true
+    def start_session(_request), do: {:error, :not_started_by_projection_test}
+    @impl true
+    def send_input(_session, _input), do: :ok
+    @impl true
+    def end_input(_session), do: :ok
+    @impl true
+    def info(_session), do: {:error, :not_started_by_projection_test}
+    @impl true
+    def subscribe(_session, _subscriber), do: :ok
+    @impl true
+    def cancel(_session, _reason), do: :ok
+    @impl true
+    def terminate(_session, _reason), do: :ok
+  end
+
+  defmodule EffectRuntimeClient do
+    @behaviour ExecutionPlane.Runtime.Client
+
+    @impl true
+    def start(_request, _opts), do: {:error, :not_started_by_projection_test}
+    @impl true
+    def subscribe(_execution_ref, _subscriber, _opts), do: :ok
+    @impl true
+    def send_input(_execution_ref, _input, _opts), do: :ok
+    @impl true
+    def end_input(_execution_ref, _opts), do: :ok
+    @impl true
+    def status(_execution_ref, _opts), do: {:error, :not_started_by_projection_test}
+    @impl true
+    def cancel(_execution_ref, _opts), do: :ok
+  end
+
   defmodule RuntimeAdapter do
     @session_id "managed-codex-runtime-test"
 
@@ -225,6 +261,12 @@ defmodule Jido.Integration.V2.ManagedCodexInvocationTest do
         config_root: runtime.config_root,
         materialization_ref: runtime.materialization_ref,
         session_ref: Keyword.fetch!(runtime_opts, :managed_session).session_ref,
+        execution_mode: Keyword.fetch!(runtime_opts, :execution_mode),
+        runtime_gateway_module: Keyword.fetch!(runtime_opts, :runtime_gateway_module),
+        runtime_gateway_ref: Keyword.fetch!(runtime_opts, :runtime_gateway_ref),
+        runtime_client: Keyword.get(runtime_opts, :runtime_client),
+        runtime_client_opts: Keyword.get(runtime_opts, :runtime_client_opts),
+        runtime_attestation_classes: Keyword.get(runtime_opts, :runtime_attestation_classes),
         secret_redacted?: not (inspect(secret_material) =~ "managed-codex-secret-sentinel")
       })
 
@@ -370,7 +412,12 @@ defmodule Jido.Integration.V2.ManagedCodexInvocationTest do
                secret_redacted?: true,
                config_root: config_root,
                materialization_ref: "materialization://codex/test/1",
-               session_ref: "managed-session://codex/test/1"
+               session_ref: "managed-session://codex/test/1",
+               execution_mode: :local,
+               runtime_gateway_module: CliSubprocessCore.RuntimeGateway.Local,
+               runtime_gateway_ref: "runtime-gateway://cli-subprocess-core/local/v1",
+               runtime_client: nil,
+               runtime_client_opts: nil
              },
              %{type: :cleanup, session_id: "managed-codex-runtime-test"}
            ] = RuntimeRecorder.events()
@@ -381,6 +428,87 @@ defmodule Jido.Integration.V2.ManagedCodexInvocationTest do
     durable_snapshot = inspect({result, ControlPlane.events(result.run.run_id)})
     refute durable_snapshot =~ "managed-codex-secret-sentinel"
     refute durable_snapshot =~ "auth.json"
+  end
+
+  test "runtime-admitted managed invocation requires an explicit non-local gateway",
+       context do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    assert {:ok, %{account: %ManagedAccount{} = account, account_ref: account_ref}} =
+             Auth.register_managed_account(registration(now))
+
+    lease_context = lease_context(account, now)
+    assert {:ok, lease} = Auth.request_managed_lease(account_ref, lease_context)
+
+    request =
+      MaterializationRequest.new!(%{
+        materialization_ref: "materialization://codex/test/runtime",
+        lease_id: lease.lease_id,
+        account: account_ref,
+        effect_ref: lease_context.effect_ref,
+        operation_ref: lease_context.operation_ref,
+        authority_ref: lease_context.authority_ref,
+        endpoint_ref: account.endpoint_ref,
+        target_ref: lease_context.target_ref,
+        issued_at: now,
+        expires_at: DateTime.add(now, 30, :second)
+      })
+
+    assert :ok = ControlPlane.register_connector(Connector)
+
+    base_opts =
+      managed_invoke_opts(lease, request, lease_context, now, context.workspace_root)
+      |> Keyword.put(:managed_session_ref, "managed-session://codex/test/runtime")
+      |> Keyword.put(:run_id, "jido-run://managed-codex/test/runtime")
+      |> Keyword.put(:runtime_gateway_mode, :runtime)
+
+    assert {:error, {:managed_session_option_required, :runtime_gateway_module}} =
+             ControlPlane.invoke_managed_session(
+               "codex.session.turn",
+               %{prompt: "must not silently run locally"},
+               base_opts
+             )
+
+    runtime_opts =
+      base_opts
+      |> Keyword.put(:runtime_gateway_module, RuntimeClientGateway)
+      |> Keyword.put(
+        :runtime_gateway_ref,
+        "runtime-gateway://cli-subprocess-core/runtime-client/v1"
+      )
+      |> Keyword.put(:runtime_client, EffectRuntimeClient)
+      |> Keyword.put(:runtime_attestation_classes, ["local-erlexec-weak"])
+      |> Keyword.put(
+        :runtime_client_opts,
+        server: {:execution_plane_node, :effect_node@localhost},
+        timeout: 5_000
+      )
+
+    assert {:ok, result} =
+             ControlPlane.invoke_managed_session(
+               "codex.session.turn",
+               %{prompt: "route through Runtime Client"},
+               runtime_opts
+             )
+
+    assert result.run.status == :completed
+
+    assert [
+             %{
+               type: :execute,
+               execution_mode: :runtime,
+               runtime_gateway_module: RuntimeClientGateway,
+               runtime_gateway_ref: "runtime-gateway://cli-subprocess-core/runtime-client/v1",
+               runtime_client: EffectRuntimeClient,
+               runtime_attestation_classes: ["local-erlexec-weak"],
+               runtime_client_opts: [
+                 fence: 0,
+                 server: {:execution_plane_node, :effect_node@localhost},
+                 timeout: 5_000
+               ]
+             },
+             %{type: :cleanup, session_id: "managed-codex-runtime-test"}
+           ] = RuntimeRecorder.events()
   end
 
   defp registration(now) do

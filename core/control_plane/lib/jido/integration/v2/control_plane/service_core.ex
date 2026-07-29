@@ -1423,6 +1423,7 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
          {:ok, operation_policy_ref} <- required_managed_string(opts, :operation_policy_ref),
          {:ok, authority_decision_ref} <-
            required_managed_string(opts, :authority_decision_ref),
+         {:ok, runtime_gateway} <- managed_runtime_gateway(opts, account.fence),
          :ok <- validate_managed_session_generation(opts) do
       {:ok,
        %{
@@ -1452,10 +1453,146 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
            ),
          operation_policy_ref: operation_policy_ref,
          authority_decision_ref: authority_decision_ref,
-         runtime_gateway_ref: "runtime-gateway://cli-subprocess-core/local/v1",
+         runtime_gateway_mode: runtime_gateway.mode,
+         runtime_gateway_module: runtime_gateway.module,
+         runtime_gateway_ref: runtime_gateway.ref,
+         runtime_client: Map.get(runtime_gateway, :runtime_client),
+         runtime_client_opts: Map.get(runtime_gateway, :runtime_client_opts),
+         runtime_attestation_classes: Map.get(runtime_gateway, :runtime_attestation_classes),
          installation_ref:
            Keyword.get(opts, :installation_ref, "installation://nshkr/developer-local")
        }}
+    end
+  end
+
+  defp managed_runtime_gateway(opts, fence) do
+    case Keyword.get(opts, :runtime_gateway_mode, :local) do
+      :local ->
+        local_module = CliSubprocessCore.RuntimeGateway.Local
+        local_ref = "runtime-gateway://cli-subprocess-core/local/v1"
+
+        with :ok <- exact_optional_value(opts, :runtime_gateway_module, local_module),
+             :ok <- exact_optional_value(opts, :runtime_gateway_ref, local_ref) do
+          {:ok, %{mode: :local, module: local_module, ref: local_ref}}
+        end
+
+      :runtime ->
+        with {:ok, module} <- required_runtime_gateway_module(opts),
+             {:ok, ref} <- required_managed_string(opts, :runtime_gateway_ref),
+             {:ok, runtime_client} <- required_runtime_client(opts),
+             {:ok, runtime_client_opts} <- runtime_client_opts(opts),
+             {:ok, runtime_attestation_classes} <- runtime_attestation_classes(opts),
+             :ok <- reject_local_runtime_gateway(module, ref) do
+          {:ok,
+           %{
+             mode: :runtime,
+             module: module,
+             ref: ref,
+             runtime_client: runtime_client,
+             runtime_client_opts: Keyword.put(runtime_client_opts, :fence, fence),
+             runtime_attestation_classes: runtime_attestation_classes
+           }}
+        end
+
+      _other ->
+        {:error, {:invalid_managed_session_option, :runtime_gateway_mode}}
+    end
+  end
+
+  defp required_runtime_gateway_module(opts) do
+    case Keyword.fetch(opts, :runtime_gateway_module) do
+      {:ok, module} when is_atom(module) ->
+        {:ok, module}
+
+      {:ok, _other} ->
+        {:error, {:invalid_managed_session_option, :runtime_gateway_module}}
+
+      :error ->
+        {:error, {:managed_session_option_required, :runtime_gateway_module}}
+    end
+  end
+
+  defp required_runtime_client(opts) do
+    case Keyword.fetch(opts, :runtime_client) do
+      {:ok, module} when is_atom(module) ->
+        callbacks = [start: 2, subscribe: 3, send_input: 3, end_input: 2, status: 2, cancel: 2]
+
+        if Code.ensure_loaded?(module) and
+             Enum.all?(callbacks, fn {name, arity} ->
+               function_exported?(module, name, arity)
+             end) do
+          {:ok, module}
+        else
+          {:error, {:invalid_managed_session_option, :runtime_client}}
+        end
+
+      {:ok, _other} ->
+        {:error, {:invalid_managed_session_option, :runtime_client}}
+
+      :error ->
+        {:error, {:managed_session_option_required, :runtime_client}}
+    end
+  end
+
+  defp runtime_client_opts(opts) do
+    case Keyword.get(opts, :runtime_client_opts, []) do
+      runtime_opts when is_list(runtime_opts) ->
+        if Keyword.keyword?(runtime_opts) and safe_runtime_client_opts?(runtime_opts) do
+          {:ok, runtime_opts}
+        else
+          {:error, {:invalid_managed_session_option, :runtime_client_opts}}
+        end
+
+      _other ->
+        {:error, {:invalid_managed_session_option, :runtime_client_opts}}
+    end
+  end
+
+  defp safe_runtime_client_opts?(opts) do
+    Enum.all?(opts, fn
+      {:server, {name, node}} when is_atom(name) and is_atom(node) -> true
+      {:timeout, timeout} when is_integer(timeout) and timeout > 0 -> true
+      _other -> false
+    end)
+  end
+
+  defp runtime_attestation_classes(opts) do
+    case Keyword.fetch(opts, :runtime_attestation_classes) do
+      {:ok, classes} when is_list(classes) ->
+        if classes == [] or
+             not Enum.all?(classes, &(is_binary(&1) and String.trim(&1) != "")) do
+          {:error, {:invalid_managed_session_option, :runtime_attestation_classes}}
+        else
+          {:ok, Enum.uniq(classes)}
+        end
+
+      {:ok, _other} ->
+        {:error, {:invalid_managed_session_option, :runtime_attestation_classes}}
+
+      :error ->
+        {:error, {:managed_session_option_required, :runtime_attestation_classes}}
+    end
+  end
+
+  defp reject_local_runtime_gateway(
+         CliSubprocessCore.RuntimeGateway.Local,
+         _runtime_gateway_ref
+       ),
+       do: {:error, {:runtime_gateway_mode_mismatch, :local_module}}
+
+  defp reject_local_runtime_gateway(
+         _runtime_gateway_module,
+         "runtime-gateway://cli-subprocess-core/local/v1"
+       ),
+       do: {:error, {:runtime_gateway_mode_mismatch, :local_ref}}
+
+  defp reject_local_runtime_gateway(_runtime_gateway_module, _runtime_gateway_ref), do: :ok
+
+  defp exact_optional_value(opts, key, expected) do
+    case Keyword.fetch(opts, key) do
+      {:ok, ^expected} -> :ok
+      {:ok, _other} -> {:error, {:runtime_gateway_mode_mismatch, key}}
+      :error -> :ok
     end
   end
 
@@ -1511,7 +1648,8 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
       managed_session: managed_session,
       materialization_request: request,
       secret_material: secret_material,
-      runtime_gateway_module: CliSubprocessCore.RuntimeGateway.Local,
+      execution_mode: binding.runtime_gateway_mode,
+      runtime_gateway_module: binding.runtime_gateway_module,
       runtime_gateway_ref: binding.runtime_gateway_ref,
       workspace_ref: binding.workspace_ref,
       working_directory_ref: binding.workspace_ref,
@@ -1520,6 +1658,15 @@ defmodule Jido.Integration.V2.ControlPlane.ServiceCore do
     ]
 
     opts
+    |> maybe_put_managed_runtime_opt(:runtime_client, Map.get(binding, :runtime_client))
+    |> maybe_put_managed_runtime_opt(
+      :runtime_client_opts,
+      Map.get(binding, :runtime_client_opts)
+    )
+    |> maybe_put_managed_runtime_opt(
+      :runtime_attestation_classes,
+      Map.get(binding, :runtime_attestation_classes)
+    )
     |> maybe_put_managed_runtime_opt(:permission_mode, Map.get(binding, :permission_mode))
     |> maybe_put_managed_runtime_opt(:reviewed_approval, Map.get(binding, :reviewed_approval))
   end

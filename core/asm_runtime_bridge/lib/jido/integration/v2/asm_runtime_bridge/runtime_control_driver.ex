@@ -72,6 +72,9 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
     :run_module,
     :run_module_opts,
     :backend_module,
+    :runtime_client,
+    :runtime_client_opts,
+    :runtime_attestation_classes,
     :tools,
     :tool_executor,
     :pipeline,
@@ -84,6 +87,7 @@ defmodule Jido.Integration.V2.AsmRuntimeBridge.RuntimeControlDriver do
                            :continuation,
                            :backend_module,
                            :codex_materialized_runtime,
+                           :governed_lower_envelope,
                            :metadata
                          ]
   @blocked_provider_option_keys [:env]
