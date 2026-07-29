@@ -174,46 +174,81 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
   defmodule FallbackRuntimeClient do
     @behaviour ExecutionPlane.Runtime.Client
 
-    alias ExecutionPlane.Admission.Rejection
-    alias ExecutionPlane.ExecutionResult, as: PlaneExecutionResult
-    alias ExecutionPlane.Runtime.NodeDescriptor
+    alias ExecutionPlane.ActiveExecution
+    alias ExecutionPlane.ExecutionRef
+    alias ExecutionPlane.Runtime.{Error, Status}
 
-    def describe(_opts), do: {:ok, NodeDescriptor.new!(node_id: "stub-remote-node")}
-
-    def admit(request, _opts), do: {:error, Rejection.new(:not_implemented, request.request_id)}
-
-    def execute(request, opts) do
+    @impl true
+    def start(request, opts) do
       test_pid = Keyword.fetch!(opts, :test_pid)
       attestation_class = List.first(request.acceptable_attestation.classes)
-      send(test_pid, {:execution_plane_execute, attestation_class, request})
+      send(test_pid, {:execution_plane_start, attestation_class, request})
 
       if attestation_class == Keyword.fetch!(opts, :succeed_on) do
         {:ok,
-         PlaneExecutionResult.new!(
-           execution_ref: "exec-#{attestation_class}",
-           status: "succeeded",
-           output: %{"attestation_class" => attestation_class},
-           evidence: [
-             %{
-               "evidence_type" => "execution.completed",
-               "attestation_class" => attestation_class
-             }
-           ],
-           provenance: request.provenance
+         ActiveExecution.new!(
+           execution_ref: "execution://jido/#{attestation_class}",
+           session_ref: "session://jido/fallback",
+           admission_decision_ref: "admission://jido/#{attestation_class}",
+           node_id: "effect-node",
+           lane_id: request.lane_id,
+           state: "running",
+           started_at: DateTime.utc_now(),
+           fence: 1
          )}
       else
         {:error,
-         PlaneExecutionResult.new!(
-           execution_ref: "exec-#{attestation_class}",
-           status: "rejected",
-           error: %{"reason" => "no_target_for_attestation"},
-           provenance: request.provenance
+         Error.new!(
+           category: "rejected",
+           message: "no target for acceptable attestation",
+           retryable: false,
+           ambiguous: false
          )}
       end
     end
 
-    def stream(_request, _opts), do: {:error, Rejection.new(:not_implemented, "stream")}
-    def cancel(_execution_ref, _opts), do: :ok
+    @impl true
+    def subscribe(%ExecutionRef{} = execution_ref, subscriber, opts) do
+      send(
+        Keyword.fetch!(opts, :test_pid),
+        {:execution_plane_subscribe, execution_ref, subscriber}
+      )
+
+      :ok
+    end
+
+    @impl true
+    def send_input(%ExecutionRef{} = execution_ref, input, opts) do
+      send(Keyword.fetch!(opts, :test_pid), {:execution_plane_input, execution_ref, input})
+      :ok
+    end
+
+    @impl true
+    def end_input(%ExecutionRef{} = execution_ref, opts) do
+      send(Keyword.fetch!(opts, :test_pid), {:execution_plane_eof, execution_ref})
+      :ok
+    end
+
+    @impl true
+    def status(%ExecutionRef{} = execution_ref, opts) do
+      send(Keyword.fetch!(opts, :test_pid), {:execution_plane_status, execution_ref})
+
+      {:ok,
+       Status.new!(
+         execution_ref: execution_ref,
+         state: "completed",
+         sequence: 4,
+         input_open: false,
+         output_open: false,
+         receipt_ref: "receipt://jido/runtime/final"
+       )}
+    end
+
+    @impl true
+    def cancel(%ExecutionRef{} = execution_ref, opts) do
+      send(Keyword.fetch!(opts, :test_pid), {:execution_plane_cancel, execution_ref})
+      :ok
+    end
   end
 
   setup do
@@ -812,30 +847,63 @@ defmodule Jido.Integration.V2.RuntimeRouterTest do
     assert request.provenance.owner == "jido_integration"
   end
 
-  test "owns the Execution Plane fallback ladder over separate runtime-client calls" do
-    assert {:ok, result, attempts} =
-             ExecutionPlaneBoundary.execute_fallback_ladder(
+  test "owns the Execution Plane fallback ladder over separate Runtime Client starts" do
+    runtime_opts = [test_pid: self(), succeed_on: "local-erlexec-weak"]
+
+    assert {:ok, active, attempts} =
+             ExecutionPlaneBoundary.start_fallback_ladder(
                execution_governance_projection(),
                %{"prompt" => "hello"},
                FallbackRuntimeClient,
-               runtime_client_opts: [
-                 test_pid: self(),
-                 succeed_on: "local-erlexec-weak"
-               ]
+               runtime_client_opts: runtime_opts
              )
 
-    assert result.status == "succeeded"
+    assert active.state == "running"
+    assert active.node_id == "effect-node"
 
     assert Enum.map(attempts, &{&1.rung, &1.attestation_class, &1.status}) == [
              {1, "spiffe://prod/microvm-strict@v1", :rejected},
              {2, "local-erlexec-weak", :succeeded}
            ]
 
-    assert_receive {:execution_plane_execute, "spiffe://prod/microvm-strict@v1", first_request}
+    assert_receive {:execution_plane_start, "spiffe://prod/microvm-strict@v1", first_request}
     assert first_request.acceptable_attestation.classes == ["spiffe://prod/microvm-strict@v1"]
 
-    assert_receive {:execution_plane_execute, "local-erlexec-weak", second_request}
+    assert_receive {:execution_plane_start, "local-erlexec-weak", second_request}
     assert second_request.acceptable_attestation.classes == ["local-erlexec-weak"]
+
+    assert :ok =
+             ExecutionPlaneBoundary.subscribe(
+               active,
+               self(),
+               FallbackRuntimeClient,
+               runtime_opts
+             )
+
+    assert :ok =
+             ExecutionPlaneBoundary.send_input(
+               active,
+               %{"prompt" => "next"},
+               FallbackRuntimeClient,
+               runtime_opts
+             )
+
+    assert :ok = ExecutionPlaneBoundary.end_input(active, FallbackRuntimeClient, runtime_opts)
+
+    assert {:ok, terminal} =
+             ExecutionPlaneBoundary.status(active, FallbackRuntimeClient, runtime_opts)
+
+    assert terminal.state == "completed"
+    assert terminal.receipt_ref == "receipt://jido/runtime/final"
+    assert :ok = ExecutionPlaneBoundary.cancel(active, FallbackRuntimeClient, runtime_opts)
+
+    execution_ref = active.execution_ref
+    assert_receive {:execution_plane_subscribe, ^execution_ref, subscriber}
+    assert subscriber == self()
+    assert_receive {:execution_plane_input, ^execution_ref, %{"prompt" => "next"}}
+    assert_receive {:execution_plane_eof, ^execution_ref}
+    assert_receive {:execution_plane_status, ^execution_ref}
+    assert_receive {:execution_plane_cancel, ^execution_ref}
   end
 
   defp capability_fixture(overrides \\ %{}) do

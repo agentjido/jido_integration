@@ -3,16 +3,22 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary do
   Maps Jido/Citadel governance into the Execution Plane runtime-client boundary.
 
   This module owns the upstream fallback ladder. Each ladder rung becomes a
-  separate runtime-client `execute/2` call with a single acceptable attestation
+  separate runtime-client `start/2` call with a single acceptable attestation
   class. The Execution Plane node never receives or interprets the ladder.
+
+  Once admitted, every lifecycle operation stays on the same Runtime Client
+  boundary. Jido never selects a distributed node, performs RPC, or substitutes
+  a local execution path for a runtime-admitted effect.
   """
 
+  alias ExecutionPlane.ActiveExecution
   alias ExecutionPlane.Admission.Request
   alias ExecutionPlane.Authority.Ref, as: AuthorityRef
-  alias ExecutionPlane.ExecutionResult
+  alias ExecutionPlane.ExecutionRef
   alias ExecutionPlane.Placement.Surface
   alias ExecutionPlane.Provenance
   alias ExecutionPlane.Runtime.Constraint
+  alias ExecutionPlane.Runtime.Status
   alias ExecutionPlane.Sandbox.AcceptableAttestation
   alias ExecutionPlane.Sandbox.Profile
   alias Jido.Integration.V2.ExecutionGovernanceProjection
@@ -22,7 +28,7 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary do
           required(:attestation_class) => String.t(),
           required(:request_id) => String.t(),
           required(:status) => :succeeded | :rejected,
-          optional(:result) => ExecutionResult.t(),
+          optional(:active_execution) => ActiveExecution.t(),
           optional(:reason) => term()
         }
 
@@ -63,15 +69,15 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary do
     )
   end
 
-  @spec execute_fallback_ladder(
+  @spec start_fallback_ladder(
           ExecutionGovernanceProjection.t(),
           map(),
           module(),
           keyword()
         ) ::
-          {:ok, ExecutionResult.t(), [attempt_record()]}
+          {:ok, ActiveExecution.t(), [attempt_record()]}
           | {:error, term(), [attempt_record()]}
-  def execute_fallback_ladder(
+  def start_fallback_ladder(
         %ExecutionGovernanceProjection{} = projection,
         payload,
         runtime_client,
@@ -93,14 +99,10 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary do
           )
         )
 
-      case runtime_client.execute(request, Keyword.get(opts, :runtime_client_opts, [])) do
-        {:ok, %ExecutionResult{} = result} ->
-          attempt = success_attempt(rung, attestation_class, request, result)
-          {:halt, {:ok, result, Enum.reverse([attempt | attempts])}}
-
-        {:error, %ExecutionResult{} = result} ->
-          attempt = rejection_attempt(rung, attestation_class, request, result)
-          {:cont, [attempt | attempts]}
+      case runtime_client.start(request, Keyword.get(opts, :runtime_client_opts, [])) do
+        {:ok, %ActiveExecution{} = active_execution} ->
+          attempt = success_attempt(rung, attestation_class, request, active_execution)
+          {:halt, {:ok, active_execution, Enum.reverse([attempt | attempts])}}
 
         {:error, reason} ->
           attempt = rejection_attempt(rung, attestation_class, request, reason)
@@ -114,6 +116,41 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary do
       attempts ->
         {:error, :execution_plane_ladder_exhausted, Enum.reverse(attempts)}
     end
+  end
+
+  @spec subscribe(ActiveExecution.t() | ExecutionRef.t(), pid(), module(), keyword()) ::
+          :ok | {:error, term()}
+  def subscribe(execution, subscriber, runtime_client, opts \\ [])
+      when is_pid(subscriber) and is_atom(runtime_client) and is_list(opts) do
+    runtime_client.subscribe(execution_ref(execution), subscriber, opts)
+  end
+
+  @spec send_input(ActiveExecution.t() | ExecutionRef.t(), iodata() | map(), module(), keyword()) ::
+          :ok | {:error, term()}
+  def send_input(execution, input, runtime_client, opts \\ [])
+      when is_atom(runtime_client) and is_list(opts) do
+    runtime_client.send_input(execution_ref(execution), input, opts)
+  end
+
+  @spec end_input(ActiveExecution.t() | ExecutionRef.t(), module(), keyword()) ::
+          :ok | {:error, term()}
+  def end_input(execution, runtime_client, opts \\ [])
+      when is_atom(runtime_client) and is_list(opts) do
+    runtime_client.end_input(execution_ref(execution), opts)
+  end
+
+  @spec status(ActiveExecution.t() | ExecutionRef.t(), module(), keyword()) ::
+          {:ok, Status.t()} | {:error, term()}
+  def status(execution, runtime_client, opts \\ [])
+      when is_atom(runtime_client) and is_list(opts) do
+    runtime_client.status(execution_ref(execution), opts)
+  end
+
+  @spec cancel(ActiveExecution.t() | ExecutionRef.t(), module(), keyword()) ::
+          :ok | {:error, term()}
+  def cancel(execution, runtime_client, opts \\ [])
+      when is_atom(runtime_client) and is_list(opts) do
+    runtime_client.cancel(execution_ref(execution), opts)
   end
 
   @spec acceptable_ladder(ExecutionGovernanceProjection.t()) :: [String.t()]
@@ -196,13 +233,13 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary do
     |> List.to_string()
   end
 
-  defp success_attempt(rung, attestation_class, request, result) do
+  defp success_attempt(rung, attestation_class, request, active_execution) do
     %{
       rung: rung,
       attestation_class: attestation_class,
       request_id: request.request_id,
       status: :succeeded,
-      result: result
+      active_execution: active_execution
     }
   end
 
@@ -215,4 +252,7 @@ defmodule Jido.Integration.V2.RuntimeRouter.ExecutionPlaneBoundary do
       reason: result_or_reason
     }
   end
+
+  defp execution_ref(%ActiveExecution{execution_ref: execution_ref}), do: execution_ref
+  defp execution_ref(%ExecutionRef{} = execution_ref), do: execution_ref
 end
