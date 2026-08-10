@@ -39,12 +39,12 @@ defmodule Jido.Integration.Workspace.MixProject do
 
   defp deps do
     [
-      {:blitz, "~> 0.3.0", runtime: false},
+      DependencySources.dep(:blitz, __DIR__, runtime: false),
       DependencyResolver.jido_integration_v2_conformance(),
       DependencyResolver.jido_integration_contracts(),
       DependencyResolver.jido_integration_connector_generator(),
       DependencyResolver.req_llm(runtime: false),
-      {:weld, "~> 0.8.2", only: [:dev, :test], runtime: false},
+      DependencySources.dep(:weld, __DIR__, only: [:dev, :test], runtime: false),
       {:jason, "~> 1.4", runtime: false},
       {:credo, "~> 1.7.17", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},

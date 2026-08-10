@@ -3,22 +3,27 @@
     agent_session_manager: %{
       path: "../agent_session_manager",
       github: %{repo: "nshkrdotcom/agent_session_manager", branch: "main"},
-      hex: "~> 0.9.2",
+      hex: "~> 0.12.0",
       default_order: [:path, :github, :hex],
       publish_order: [:hex]
     },
     amp_sdk: %{
       path: "../amp_sdk",
       github: %{repo: "nshkrdotcom/amp_sdk", branch: "main"},
-      hex: "~> 0.5.0",
+      hex: "~> 0.7.0",
       opts: [override: true],
       default_order: [:path, :github, :hex],
+      publish_order: [:hex]
+    },
+    blitz: %{
+      hex: "~> 0.3.0",
+      default_order: [:hex],
       publish_order: [:hex]
     },
     cli_subprocess_core: %{
       path: "../cli_subprocess_core",
       github: %{repo: "nshkrdotcom/cli_subprocess_core", branch: "main"},
-      hex: "~> 0.1.0",
+      hex: "~> 0.4.0",
       opts: [override: true],
       default_order: [:path, :github, :hex],
       publish_order: [:hex]
@@ -30,8 +35,9 @@
         branch: "main",
         subdir: "core/citadel_governance"
       },
-      default_order: [:path, :github],
-      publish_order: [:github]
+      hex: "~> 0.1.0",
+      default_order: [:path, :github, :hex],
+      publish_order: [:hex]
     },
     execution_plane: %{
       path: "../execution_plane/core/execution_plane",
@@ -40,7 +46,7 @@
         branch: "main",
         subdir: "core/execution_plane"
       },
-      hex: "~> 0.1.0",
+      hex: "~> 0.2.0",
       opts: [override: true],
       default_order: [:path, :github, :hex],
       publish_order: [:hex]
@@ -72,7 +78,7 @@
     gemini_ex: %{
       path: "../gemini_ex",
       github: %{repo: "nshkrdotcom/gemini_ex", branch: "main"},
-      hex: "~> 0.14.0",
+      hex: "~> 0.15.0",
       default_order: [:path, :github, :hex],
       publish_order: [:hex]
     },
@@ -110,7 +116,7 @@
     inference: %{
       path: "../inference/apps/inference",
       github: %{repo: "nshkrdotcom/inference", branch: "main", subdir: "apps/inference"},
-      hex: "~> 0.1.0",
+      hex: "~> 0.3.0",
       default_order: [:path, :github, :hex],
       publish_order: [:hex]
     },
@@ -163,13 +169,18 @@
     self_hosted_inference_core: %{
       path: "../self_hosted_inference_core",
       github: %{repo: "nshkrdotcom/self_hosted_inference_core", branch: "main"},
-      hex: "~> 0.1.0",
+      hex: "~> 0.2.0",
       opts: [override: true],
       default_order: [:path, :github, :hex],
       publish_order: [:hex]
     },
     splode: %{
       hex: "~> 0.3.0",
+      default_order: [:hex],
+      publish_order: [:hex]
+    },
+    weld: %{
+      hex: "~> 0.8.2",
       default_order: [:hex],
       publish_order: [:hex]
     }
